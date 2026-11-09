@@ -1,0 +1,111 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.SticksView" x:DataType="vm:SticksViewModel">
+  <UserControl.DataTemplates>
+    <!-- One stick: sliders and curve on the left, the live preview on the right -->
+    <DataTemplate DataType="vm:StickEditor">
+      <Border Classes="panel">
+        <Grid ColumnDefinitions="*,24,Auto">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="{Binding Title}" />
+            <StackPanel Spacing="2">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding InnerLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding InnerText}" />
+              </Grid>
+              <Slider Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Inner}" />
+            </StackPanel>
+            <StackPanel Spacing="2">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding OuterLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding OuterText}" />
+              </Grid>
+              <Slider Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Outer}" />
+            </StackPanel>
+            <StackPanel Spacing="2">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding AntiLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding AntiText}" />
+              </Grid>
+              <Slider Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Anti}" />
+            </StackPanel>
+            <StackPanel Spacing="6">
+              <TextBlock Classes="label" Text="{Binding CurveLabel}" />
+              <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Curves}" SelectedItem="{Binding SelectedCurve}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CurveOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+          </StackPanel>
+          <c:StickPreview Grid.Column="2" Width="140" Height="140" VerticalAlignment="Center" Accent="{StaticResource AccentBrush}"
+                          RawX="{Binding RawX}" RawY="{Binding RawY}" TunedX="{Binding TunedX}" TunedY="{Binding TunedY}"
+                          InnerDeadzone="{Binding Inner}" OuterDeadzone="{Binding Outer}" IsLive="{Binding IsLive}" />
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <!-- One trigger: live level (after the range) and the start/end sliders -->
+    <DataTemplate DataType="vm:TriggerRangeEditor">
+      <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="Auto,14,*">
+          <TextBlock Classes="h2" Text="{Binding Title}" VerticalAlignment="Center" />
+          <ProgressBar Grid.Column="2" Classes="meter" Value="{Binding TunedLevel}" VerticalAlignment="Center" />
+        </Grid>
+        <Grid ColumnDefinitions="Auto,16,*,12,Auto" RowDefinitions="Auto,Auto" RowSpacing="6">
+          <TextBlock Classes="label" Text="{Binding StartLabel}" />
+          <Slider Grid.Column="2" Maximum="95" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Start}" />
+          <TextBlock Grid.Column="4" Classes="value" Text="{Binding StartText}" />
+          <TextBlock Grid.Row="1" Classes="label" Text="{Binding EndLabel}" />
+          <Slider Grid.Row="1" Grid.Column="2" Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding End}" />
+          <TextBlock Grid.Row="1" Grid.Column="4" Classes="value" Text="{Binding EndText}" />
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <ScrollViewer Classes="page">
+    <StackPanel Spacing="16" MaxWidth="1500" Margin="32,28,32,28">
+      <Grid ColumnDefinitions="*,16,Auto">
+        <StackPanel Spacing="4" VerticalAlignment="Center">
+          <TextBlock Classes="h1" Text="{Binding Title}" />
+          <TextBlock Classes="body" Text="{Binding Intro}" />
+        </StackPanel>
+        <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding ResetText}" Command="{Binding ResetCommand}" VerticalAlignment="Center" />
+      </Grid>
+
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,14,*">
+          <ContentControl Content="{Binding LeftStick}" />
+          <ContentControl Grid.Column="2" Content="{Binding RightStick}" />
+        </Grid>
+        <TextBlock Classes="caption" Text="{Binding PreviewHint}" />
+      </StackPanel>
+
+      <Border Classes="panel">
+        <Grid ColumnDefinitions="*,24,Auto">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="{Binding CalibrationLabel}" />
+            <TextBlock Classes="body" Text="{Binding CalibrationHint}" />
+            <StackPanel Spacing="8" Margin="0,6,0,0" IsVisible="{Binding HasCalibrationText}">
+              <ProgressBar Classes="meter" Value="{Binding CalibrationProgress}" MaxWidth="420" HorizontalAlignment="Stretch" />
+              <TextBlock Classes="label" Text="{Binding CalibrationText}" />
+            </StackPanel>
+          </StackPanel>
+          <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding CalibrateText}" Command="{Binding CalibrateCommand}" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="h2" Text="{Binding TriggerRangeLabel}" />
+            <TextBlock Classes="body" Text="{Binding TriggerRangeHint}" />
+          </StackPanel>
+          <Grid ColumnDefinitions="*,32,*">
+            <ContentControl Content="{Binding L2}" />
+            <ContentControl Grid.Column="2" Content="{Binding R2}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

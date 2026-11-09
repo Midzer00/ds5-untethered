@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.TriggersView" x:DataType="vm:TriggersViewModel">
+  <ScrollViewer Classes="page">
+    <StackPanel Spacing="16" MaxWidth="1500" Margin="32,28,32,28">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <TextBlock Classes="body" Text="{Binding Intro}" />
+      </StackPanel>
+
+      <StackPanel>
+        <TextBlock Classes="section" Text="{Binding EffectsLabel}" />
+        <!-- Effect picker: one panel per effect with its resistance curve -->
+        <ListBox Classes="plain" ItemsSource="{Binding Effects}" SelectedItem="{Binding SelectedEffect}" ItemContainerTheme="{StaticResource CardItem}" Margin="0,6,0,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="0,0,1,1">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Columns="4" ColumnSpacing="12" /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:TriggerEffectItem">
+              <StackPanel Spacing="12">
+                <c:TriggerCurve TriggerEffect="{Binding Effect}" Stroke="{Binding $parent[ListBoxItem].Foreground}" Height="64" />
+                <StackPanel Spacing="2">
+                  <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" />
+                  <TextBlock Classes="caption" Text="{Binding Hint}" />
+                </StackPanel>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </StackPanel>
+
+      <Border Classes="panel">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="h2" Text="{Binding StrengthLabel}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" />
+          </Grid>
+          <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}" />
+          <TextBlock Classes="body" Text="{Binding StrengthHint}" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

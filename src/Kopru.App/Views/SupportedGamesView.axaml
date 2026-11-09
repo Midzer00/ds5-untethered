@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.SupportedGamesView" x:DataType="vm:SupportedGamesViewModel">
+  <!-- Fills the window: the game list takes the free height and scrolls itself -->
+  <Grid RowDefinitions="Auto,16,Auto,*" MaxWidth="1500" Margin="32,28,32,28">
+    <!-- Header: title, intro and the game in the foreground -->
+    <Grid ColumnDefinitions="*,16,Auto">
+      <StackPanel Spacing="4" VerticalAlignment="Center">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <TextBlock Classes="body" Text="{Binding Intro}" />
+      </StackPanel>
+      <Border Grid.Column="2" Classes="statusChip" VerticalAlignment="Center" MaxWidth="340">
+        <Grid ColumnDefinitions="Auto,9,*" VerticalAlignment="Center" ToolTip.Tip="{Binding CurrentGameDetail}">
+          <Ellipse Classes="indicator" Classes.on="{Binding IsActive}" />
+          <TextBlock Grid.Column="2" Text="{Binding CurrentGameText}" FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Steam Input: a warning when it may take the controller, a muted note when it could not be read -->
+    <StackPanel Grid.Row="2">
+      <Border Classes="panel" Padding="16,12" Margin="0,0,0,14" IsVisible="{Binding HasSteamWarning}">
+        <Grid ColumnDefinitions="Auto,12,*">
+          <Ellipse Classes="indicator waiting" VerticalAlignment="Top" Margin="0,6,0,0" />
+          <StackPanel Grid.Column="2" Spacing="2">
+            <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding SteamTitle}" />
+            <TextBlock Classes="body" Text="{Binding SteamText}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+      <TextBlock Classes="caption" Margin="0,0,0,12" Text="{Binding SteamText}" IsVisible="{Binding HasSteamNote}" />
+    </StackPanel>
+
+    <Grid Grid.Row="3" ColumnDefinitions="2*,14,3*">
+      <!-- Profile for supported games -->
+      <Border Classes="panel" Padding="20,4" VerticalAlignment="Top">
+        <StackPanel>
+          <TextBlock Classes="section" Text="{Binding ProfileLabel}" Margin="0,16,0,0" />
+          <StackPanel Spacing="6" Margin="0,12,0,14">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="h2" Text="{Binding GameHapticsLabel}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.GameHapticsText}" />
+            </Grid>
+            <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Settings.GameHapticsLevel}" />
+            <TextBlock Classes="body" Text="{Binding GameHapticsHint}" />
+          </StackPanel>
+          <Border Classes="divider" />
+          <StackPanel Spacing="6" Margin="0,14">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="h2" Text="{Binding TriggerLabel}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" />
+            </Grid>
+            <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}" />
+            <TextBlock Classes="body" Text="{Binding TriggerHint}" />
+          </StackPanel>
+          <Border Classes="divider" />
+          <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+            <StackPanel Spacing="3" Margin="0,0,16,0">
+              <TextBlock Classes="h2" Text="{Binding LightLabel}" />
+              <TextBlock Classes="body" Text="{Binding LightHint}" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.LightFromGame}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Supported games: search, then one row per game with its features and the mode choice -->
+      <Border Grid.Column="2" Classes="panel" Padding="20,16,8,8">
+        <Grid RowDefinitions="Auto,10,Auto,6,Auto,8,*">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,12,0">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Gamepad}" /></Border>
+              <TextBlock Classes="h2" Text="{Binding ListLabel}" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Classes="value" Text="{Binding CountText}" />
+          </Grid>
+          <TextBox Grid.Row="2" Margin="0,0,12,0" Text="{Binding SearchText}" Watermark="{Binding SearchWatermark}" />
+          <TextBlock Grid.Row="4" Classes="caption" Margin="0,0,12,0" Text="{Binding OverrideHint}" />
+          <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,0,12,0">
+              <TextBlock Classes="body" Text="{Binding NoMatchText}" IsVisible="{Binding HasNoMatch}" Margin="0,8" />
+              <ItemsControl ItemsSource="{Binding Games}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GameItemViewModel">
+                    <StackPanel>
+                      <Grid ColumnDefinitions="*,12,Auto" Margin="0,9">
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                          <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                          <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasHaptics}">
+                              <Path Classes="icon small" Data="{x:Static c:IconPaths.Haptics}" Width="12" Height="12" />
+                              <TextBlock Classes="caption" Text="{Binding HapticsText}" TextWrapping="NoWrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasTriggers}">
+                              <Path Classes="icon small" Data="{x:Static c:IconPaths.Trigger}" Width="12" Height="12" />
+                              <TextBlock Classes="caption" Text="{Binding TriggersText}" TextWrapping="NoWrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsLearned}">
+                              <Ellipse Classes="indicator on" VerticalAlignment="Center" />
+                              <TextBlock Classes="caption" Foreground="{StaticResource IndicatorOnBrush}" Text="{Binding DetectedText}" TextWrapping="NoWrap" />
+                            </StackPanel>
+                          </StackPanel>
+                        </StackPanel>
+                        <ComboBox Grid.Column="2" Width="140" VerticalAlignment="Center" ItemsSource="{Binding Overrides}" SelectedItem="{Binding SelectedOverride}">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OverrideOption">
+                              <TextBlock Text="{Binding Name}" TextWrapping="NoWrap" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </Grid>
+                      <Border Classes="divider" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,75 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Kopru.App.ViewModels"
+        xmlns:c="using:Kopru.App.Controls"
+        x:Class="Kopru.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding AppName}"
+        Icon="/Assets/icon.ico"
+        Width="1100" Height="700" MinWidth="960" MinHeight="640"
+        TransparencyLevelHint="Mica, None"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen">
+  <Panel>
+    <!--
+      Backdrop: a translucent tint over Windows 11 Mica, or opaque graphite where Mica is unavailable.
+      AcrylicBlur is deliberately not requested: Avalonia renders it with its own composition blur, which looks
+      blocky and banded at high DPI, while Mica is drawn by the system and stays smooth at any scale.
+    -->
+    <Border Classes="backdrop" />
+    <!-- A faint cool wash from the top right that the glass panels pick up -->
+    <Border Background="{StaticResource AmbientBrush}" IsHitTestVisible="False" />
+
+    <Grid ColumnDefinitions="240,1,*">
+      <!-- Sidebar -->
+      <DockPanel Grid.Column="0" Background="{StaticResource SidebarBrush}">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding AppName}" FontSize="14" FontWeight="SemiBold" TextWrapping="NoWrap" Margin="24,22,16,16" />
+
+        <!-- Connected controller: drawing, name and link, battery and bridge state -->
+        <Border DockPanel.Dock="Top" Classes="panel" Margin="14,0,14,18" Padding="14,16,14,14">
+          <StackPanel Spacing="12">
+            <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
+                             PlayerLeds="{Binding Settings.PlayerLeds}" Height="100" HorizontalAlignment="Center" />
+            <StackPanel Spacing="2">
+              <TextBlock Text="{Binding DeviceName}" Classes="label" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding DeviceConnection}" Classes="caption" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Border Classes="divider" />
+            <StackPanel Spacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}"
+                                Width="22" Height="11" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding BatteryShort}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Panel Width="22">
+                  <Ellipse Classes="indicator" HorizontalAlignment="Left" Margin="1,0,0,0"
+                           Classes.waiting="{Binding Overview.IsWaiting}" Classes.on="{Binding Overview.IsRunning}" />
+                </Panel>
+                <TextBlock Text="{Binding Overview.BridgeStateText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <ListBox Classes="plain" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}" ItemContainerTheme="{StaticResource NavItem}" Margin="14,0">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:NavItem">
+              <StackPanel Orientation="Horizontal" Spacing="11">
+                <Path Data="{Binding Icon}" Stroke="{Binding $parent[ListBoxItem].Foreground}" StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
+                      Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Title}" FontSize="13" Foreground="{Binding $parent[ListBoxItem].Foreground}"
+                           VerticalAlignment="Center" TextWrapping="NoWrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+      <Border Grid.Column="1" Background="{StaticResource HairlineBrush}" />
+
+      <!-- Content: each page fills the area and scrolls itself when it needs to -->
+      <ContentControl Grid.Column="2" Content="{Binding CurrentPage}" />
+    </Grid>
+  </Panel>
+</Window>

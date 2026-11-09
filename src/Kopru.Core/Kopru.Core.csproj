@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SupportedOSPlatformVersion>10.0.17763</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Games\*.json" LogicalName="Kopru.Core.Games.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Virtual\Identity\dualsense.json" LogicalName="Kopru.Core.Virtual.Identity.dualsense.json" />
+  </ItemGroup>
+
+</Project>

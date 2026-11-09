@@ -1,0 +1,54 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.LightView" x:DataType="vm:LightViewModel">
+  <!-- Fills the window: the preview takes the free height -->
+  <Grid RowDefinitions="Auto,16,*" MaxWidth="1500" Margin="32,28,32,28">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <TextBlock Classes="body" Text="{Binding Intro}" />
+      </StackPanel>
+
+      <!-- Live preview beside the settings: the light strips follow colour, brightness and player LEDs -->
+      <Grid Grid.Row="2" ColumnDefinitions="3*,14,2*">
+        <Border Classes="stage" Padding="24,20" MinHeight="260">
+          <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
+                           PlayerLeds="{Binding Settings.PlayerLeds}" MaxHeight="460" VerticalAlignment="Center" />
+        </Border>
+
+        <Border Grid.Column="2" Classes="panel" Padding="20,4" VerticalAlignment="Top">
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+              <StackPanel Spacing="10">
+                <TextBlock Classes="h2" Text="{Binding ColourLabel}" />
+                <ListBox Classes="plain" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" ItemContainerTheme="{StaticResource SwatchItem}">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ColourPreset">
+                      <Ellipse Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding SelectedName}" VerticalAlignment="Top" />
+            </Grid>
+            <Border Classes="divider" />
+            <StackPanel Spacing="6" Margin="0,14">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="h2" Text="{Binding BrightnessLabel}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.BrightnessText}" />
+              </Grid>
+              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.Brightness}" />
+            </StackPanel>
+            <Border Classes="divider" />
+            <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+              <StackPanel Spacing="3" Margin="0,0,16,0">
+                <TextBlock Classes="h2" Text="{Binding PlayerLedsLabel}" />
+                <TextBlock Classes="body" Text="{Binding PlayerLedsHint}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PlayerLeds}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
+        </Border>
+      </Grid>
+  </Grid>
+</UserControl>

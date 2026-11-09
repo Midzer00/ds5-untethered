@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.SetupView" x:DataType="vm:SetupViewModel">
+  <ScrollViewer Classes="page">
+    <StackPanel Spacing="0" MaxWidth="1500" Margin="32,28,32,28">
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CloseText}" Command="{Binding CloseCommand}" VerticalAlignment="Center" />
+      </Grid>
+      <TextBlock Classes="body" Text="{Binding Intro}" Margin="0,0,0,20" />
+
+      <Border Classes="panel" Padding="20,0">
+        <ItemsControl ItemsSource="{Binding Steps}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SetupStepItem">
+              <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1" Padding="0,16">
+                <Grid ColumnDefinitions="20,*">
+                  <Ellipse Classes="indicator" Classes.on="{Binding IsDone}" Classes.waiting="{Binding IsWarning}" VerticalAlignment="Top" Margin="0,5,0,0" />
+                  <StackPanel Grid.Column="1" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <TextBlock Classes="label" Text="{Binding Title}" />
+                      <TextBlock Classes="caption" Text="{Binding StatusText}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Classes="body" Text="{Binding Instructions}" />
+                    <TextBlock Classes="body" Text="{Binding Notes}" IsVisible="{Binding HasNotes}" Foreground="{StaticResource IndicatorWaitBrush}" />
+                    <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" Margin="0,6,0,0">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SetupActionItem">
+                          <Button Theme="{StaticResource QuietButton}" Content="{Binding Label}" Command="{Binding Command}" Margin="0,0,8,0" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+      <TextBlock Classes="body" Text="{Binding Message}" IsVisible="{Binding HasMessage}" Margin="0,16,0,0" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,467 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:semi="https://irihi.tech/semi"
+             xmlns:vm="using:Kopru.App.ViewModels"
+             xmlns:views="using:Kopru.App.Views"
+             x:Class="Kopru.App.App"
+             RequestedThemeVariant="Dark">
+
+  <!--
+    Design language: frosted glass over graphite. The window uses the system Mica backdrop when available
+    (an opaque graphite gradient otherwise); panels are translucent white layers, slightly stronger at the top,
+    with a hairline edge that catches light along the top. No glows, halos or drop shadows.
+    Radius 10 for panels, 8 for controls. One blue accent, used only for interactive and selected state.
+  -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <!-- Surfaces, darkest to lightest -->
+      <Color x:Key="K.Bg0">#141619</Color>
+      <Color x:Key="K.Bg1">#1A1C20</Color>
+      <Color x:Key="K.Surface">#1F2125</Color>
+      <Color x:Key="K.Surface2">#272A2F</Color>
+      <Color x:Key="K.Surface3">#30333A</Color>
+      <Color x:Key="K.Accent">#3B82F6</Color>
+      <SolidColorBrush x:Key="Bg0Brush" Color="{StaticResource K.Bg0}" />
+      <SolidColorBrush x:Key="Bg1Brush" Color="{StaticResource K.Bg1}" />
+      <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource K.Surface}" />
+      <SolidColorBrush x:Key="Surface2Brush" Color="{StaticResource K.Surface2}" />
+      <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource K.Surface3}" />
+      <SolidColorBrush x:Key="HairlineBrush" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="BorderBrush" Color="#22FFFFFF" />
+      <SolidColorBrush x:Key="TextBrush" Color="#E6E8EB" />
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A3A8B0" />
+      <SolidColorBrush x:Key="MutedBrush" Color="#7B818B" />
+      <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource K.Accent}" />
+      <SolidColorBrush x:Key="AccentHoverBrush" Color="#5592F7" />
+      <SolidColorBrush x:Key="AccentPressedBrush" Color="#2F6FD8" />
+      <SolidColorBrush x:Key="IndicatorOffBrush" Color="#5F646D" />
+      <SolidColorBrush x:Key="IndicatorWaitBrush" Color="#C9A24A" />
+      <SolidColorBrush x:Key="IndicatorOnBrush" Color="#4FA877" />
+      <SolidColorBrush x:Key="DangerBrush" Color="#E5534B" />
+      <!-- Toast card: a plain opaque graphite surface like a Windows 11 flyout (it sits over any desktop or game) -->
+      <SolidColorBrush x:Key="ToastBrush" Color="#FF25272B" />
+      <SolidColorBrush x:Key="ToastHoverBrush" Color="#FF2B2D32" />
+      <SolidColorBrush x:Key="ToastEdgeBrush" Color="#2EFFFFFF" />
+
+      <!-- Window backdrop: opaque without system Mica, a translucent tint over it with -->
+      <LinearGradientBrush x:Key="BackdropBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#1A1D22" Offset="0" />
+        <GradientStop Color="#0F1013" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="GlassTintBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#A0141619" Offset="0" />
+        <GradientStop Color="#C00D0E11" Offset="1" />
+      </LinearGradientBrush>
+      <RadialGradientBrush x:Key="AmbientBrush" Center="88%,0%" GradientOrigin="88%,0%" RadiusX="70%" RadiusY="90%">
+        <GradientStop Color="#223B82F6" Offset="0" />
+        <GradientStop Color="#003B82F6" Offset="1" />
+      </RadialGradientBrush>
+      <SolidColorBrush x:Key="SidebarBrush" Color="#2E000000" />
+      <!-- Glass panels and the stage behind the controller -->
+      <LinearGradientBrush x:Key="PanelBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#16FFFFFF" Offset="0" />
+        <GradientStop Color="#08FFFFFF" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="PanelEdgeBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#38FFFFFF" Offset="0" />
+        <GradientStop Color="#0CFFFFFF" Offset="1" />
+      </LinearGradientBrush>
+      <RadialGradientBrush x:Key="StageBrush" Center="38%,45%" GradientOrigin="38%,45%" RadiusX="60%" RadiusY="90%">
+        <GradientStop Color="#22FFFFFF" Offset="0" />
+        <GradientStop Color="#07FFFFFF" Offset="1" />
+      </RadialGradientBrush>
+      <!-- Controls -->
+      <LinearGradientBrush x:Key="AccentFillBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#4D8FF8" Offset="0" />
+        <GradientStop Color="#3375EA" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="AccentFillHoverBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#629CF9" Offset="0" />
+        <GradientStop Color="#4283F0" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="QuietFillBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#1EFFFFFF" Offset="0" />
+        <GradientStop Color="#12FFFFFF" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="QuietFillHoverBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#2CFFFFFF" Offset="0" />
+        <GradientStop Color="#1CFFFFFF" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="ControlEdgeBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#30FFFFFF" Offset="0" />
+        <GradientStop Color="#14FFFFFF" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="MeterBrush" StartPoint="0%,0%" EndPoint="100%,0%">
+        <GradientStop Color="#2F6FD8" Offset="0" />
+        <GradientStop Color="#7AB0FF" Offset="1" />
+      </LinearGradientBrush>
+
+      <!-- Semi palette overrides (dark only) -->
+      <SolidColorBrush x:Key="SemiColorPrimary" Color="{StaticResource K.Accent}" />
+      <SolidColorBrush x:Key="SemiColorPrimaryPointerover" Color="#5592F7" />
+      <SolidColorBrush x:Key="SemiColorPrimaryPressed" Color="#2F6FD8" />
+      <SolidColorBrush x:Key="SemiColorPrimaryActive" Color="#2F6FD8" />
+      <SolidColorBrush x:Key="SemiColorPrimaryLight" Color="#263B82F6" />
+      <SolidColorBrush x:Key="SemiColorPrimaryLightPointerover" Color="#333B82F6" />
+      <SolidColorBrush x:Key="SemiColorPrimaryLightActive" Color="#403B82F6" />
+      <!-- Toggle switches: accent when on (Semi uses green) -->
+      <SolidColorBrush x:Key="ToggleSwitchContainerCheckedDefaultBackground" Color="{StaticResource K.Accent}" />
+      <SolidColorBrush x:Key="ToggleSwitchContainerCheckedPointeroverBackground" Color="#5592F7" />
+      <SolidColorBrush x:Key="ToggleSwitchContainerCheckedPressedBackground" Color="#2F6FD8" />
+      <SolidColorBrush x:Key="SemiColorFocusBorder" Color="{StaticResource K.Accent}" />
+      <SolidColorBrush x:Key="SemiColorBackground0" Color="{StaticResource K.Bg0}" />
+      <SolidColorBrush x:Key="SemiColorBackground1" Color="{StaticResource K.Bg1}" />
+      <SolidColorBrush x:Key="SemiColorBackground2" Color="{StaticResource K.Surface}" />
+      <SolidColorBrush x:Key="SemiColorBackground3" Color="{StaticResource K.Surface2}" />
+      <SolidColorBrush x:Key="SemiColorBackground4" Color="{StaticResource K.Surface3}" />
+      <SolidColorBrush x:Key="SemiColorWindow" Color="{StaticResource K.Bg0}" />
+      <SolidColorBrush x:Key="SemiColorBorder" Color="#22FFFFFF" />
+      <SolidColorBrush x:Key="SemiColorFill0" Color="#0DFFFFFF" />
+      <SolidColorBrush x:Key="SemiColorFill1" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="SemiColorFill2" Color="#1CFFFFFF" />
+      <SolidColorBrush x:Key="SemiColorText0" Color="#E6E8EB" />
+      <SolidColorBrush x:Key="SemiColorText1" Color="#C6CAD0" />
+      <SolidColorBrush x:Key="SemiColorText2" Color="#A3A8B0" />
+      <SolidColorBrush x:Key="SemiColorText3" Color="#7B818B" />
+
+      <!-- Primary action: solid accent, compact -->
+      <ControlTheme x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource AccentFillBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontSize" Value="13.5" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="22,0" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                              Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Foreground="{TemplateBinding Foreground}" />
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource AccentFillHoverBrush}" /></Style>
+        <Style Selector="^:pressed"><Setter Property="Background" Value="{StaticResource AccentPressedBrush}" /></Style>
+        <!-- Stop: same size, neutral -->
+        <Style Selector="^.quiet">
+          <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+          <Setter Property="BorderThickness" Value="1" />
+          <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style Selector="^.quiet:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" /></Style>
+      </ControlTheme>
+
+      <!-- Secondary action: neutral fill with a hairline border -->
+      <ControlTheme x:Key="QuietButton" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="MinWidth" Value="64" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                              Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Foreground="{TemplateBinding Foreground}" />
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" /></Style>
+        <Style Selector="^:pressed"><Setter Property="Background" Value="{StaticResource Surface2Brush}" /></Style>
+      </ControlTheme>
+
+      <!-- Sidebar navigation row: the selected page sits on a small lit panel -->
+      <ControlTheme x:Key="NavItem" TargetType="ListBoxItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="8">
+              <ContentPresenter Name="PART_ContentPresenter" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" VerticalContentAlignment="Center" Foreground="{TemplateBinding Foreground}" />
+            </Border>
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="Foreground" Value="{StaticResource TextBrush}" /></Style>
+        <Style Selector="^:selected">
+          <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+          <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+      </ControlTheme>
+
+      <!-- Selectable option (trigger effects): a panel; the selected one gets an accent edge -->
+      <ControlTheme x:Key="CardItem" TargetType="ListBoxItem">
+        <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="10"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </Border>
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillBrush}" /></Style>
+        <Style Selector="^:selected">
+          <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        </Style>
+      </ControlTheme>
+
+      <!-- Chip: a small toggle for a setting; on = accent edge and a light accent tint -->
+      <ControlTheme x:Key="ChipToggle" TargetType="ToggleButton">
+        <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                              Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" Foreground="{TemplateBinding Foreground}" />
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" /></Style>
+        <Style Selector="^:checked">
+          <Setter Property="Background" Value="#263B82F6" />
+          <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+          <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+      </ControlTheme>
+
+      <!-- Colour swatch: a ring marks the selected colour -->
+      <ControlTheme x:Key="SwatchItem" TargetType="ListBoxItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Width="32" Height="32" CornerRadius="16" BorderThickness="1.5" BorderBrush="{TemplateBinding BorderBrush}" Padding="4">
+              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </Border>
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" /></Style>
+        <Style Selector="^:selected"><Setter Property="BorderBrush" Value="{StaticResource TextBrush}" /></Style>
+      </ControlTheme>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:OverviewViewModel"><views:OverviewView /></DataTemplate>
+    <DataTemplate DataType="vm:SupportedGamesViewModel"><views:SupportedGamesView /></DataTemplate>
+    <DataTemplate DataType="vm:OtherGamesViewModel"><views:OtherGamesView /></DataTemplate>
+    <DataTemplate DataType="vm:TriggersViewModel"><views:TriggersView /></DataTemplate>
+    <DataTemplate DataType="vm:SticksViewModel"><views:SticksView /></DataTemplate>
+    <DataTemplate DataType="vm:LightViewModel"><views:LightView /></DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
+    <DataTemplate DataType="vm:SetupViewModel"><views:SetupView /></DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Styles>
+    <semi:SemiTheme />
+
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{StaticResource Bg0Brush}" />
+      <Setter Property="FontFamily" Value="fonts:Inter#Inter" />
+    </Style>
+
+    <!-- Type scale: 24 / 18 / 14 / 13 / 12 -->
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.display">
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.h1">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.h2">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.body">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="LineHeight" Value="19" />
+    </Style>
+    <Style Selector="TextBlock.caption">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <!-- Plain numeric value, right-aligned next to a slider -->
+    <Style Selector="TextBlock.value">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="MinWidth" Value="52" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- Section heading: small, muted, sentence case -->
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+
+    <!-- Window backdrop -->
+    <Style Selector="Border.backdrop">
+      <Setter Property="Background" Value="{StaticResource BackdropBrush}" />
+    </Style>
+    <Style Selector="Window.glass Border.backdrop">
+      <Setter Property="Background" Value="{StaticResource GlassTintBrush}" />
+    </Style>
+    <!-- Page body: scrolls vertically when the window is too short (pages set their own margins) -->
+    <Style Selector="ScrollViewer.page">
+      <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+
+    <!-- Glass panel and the controller stage -->
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="20,18" />
+    </Style>
+    <Style Selector="Border.stage">
+      <Setter Property="Background" Value="{StaticResource StageBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+    </Style>
+    <!-- Large readout inside a stat panel -->
+    <Style Selector="TextBlock.stat">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- Dashboard pieces: icon tile, label/value rows, read-only chip, overall status chip -->
+    <Style Selector="Border.iconTile">
+      <Setter Property="Width" Value="36" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Background" Value="#10FFFFFF" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.iconTile > Path, Path.icon">
+      <Setter Property="Stroke" Value="{StaticResource AccentBrush}" />
+      <Setter Property="StrokeThickness" Value="1.6" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="StrokeJoin" Value="Round" />
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Path.icon.small">
+      <Setter Property="Width" Value="15" />
+      <Setter Property="Height" Value="15" />
+    </Style>
+    <Style Selector="TextBlock.rowLabel">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.rowValue">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="10,0,0,0" />
+    </Style>
+    <Style Selector="TextBlock.rowValue.good"><Setter Property="Foreground" Value="{StaticResource IndicatorOnBrush}" /></Style>
+    <Style Selector="TextBlock.rowValue.warn"><Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" /></Style>
+    <Style Selector="Border.chip">
+      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="14,0" />
+    </Style>
+    <Style Selector="Border.statusChip">
+      <Setter Property="Background" Value="#10FFFFFF" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="14,0" />
+    </Style>
+
+    <Style Selector="Border.divider">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{StaticResource HairlineBrush}" />
+    </Style>
+    <!-- Small static state indicator -->
+    <Style Selector="Ellipse.indicator">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="Fill" Value="{StaticResource IndicatorOffBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Ellipse.indicator.waiting"><Setter Property="Fill" Value="{StaticResource IndicatorWaitBrush}" /></Style>
+    <Style Selector="Ellipse.indicator.on"><Setter Property="Fill" Value="{StaticResource IndicatorOnBrush}" /></Style>
+
+    <Style Selector="Slider">
+      <Setter Property="Minimum" Value="0" />
+    </Style>
+    <Style Selector="ProgressBar.meter">
+      <Setter Property="MinHeight" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Maximum" Value="100" />
+      <Setter Property="Background" Value="#14FFFFFF" />
+      <Setter Property="Foreground" Value="{StaticResource MeterBrush}" />
+    </Style>
+    <Style Selector="ListBox.plain">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+  </Application.Styles>
+</Application>

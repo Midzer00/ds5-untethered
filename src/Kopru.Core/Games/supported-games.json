@@ -1,0 +1,801 @@
+{
+  "version": 1,
+  "updated": "2026-11-09",
+  "games": [
+    {
+      "name": "A Plague Tale: Requiem",
+      "exe": [
+        "APlagueTaleRequiem_x64.exe"
+      ],
+      "steamAppId": 1182900,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Alan Wake 2",
+      "exe": [
+        "AlanWake2.exe"
+      ],
+      "steamAppId": null,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Epic Games Store only"
+    },
+    {
+      "name": "Apex Legends",
+      "exe": [
+        "r5apex.exe"
+      ],
+      "steamAppId": 1172470,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Assassin's Creed Mirage",
+      "exe": [
+        "ACMirage.exe"
+      ],
+      "steamAppId": null,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Assassin's Creed Shadows",
+      "exe": [
+        "ACShadows.exe"
+      ],
+      "steamAppId": 3159330,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Adaptive triggers only per PCGamingWiki"
+    },
+    {
+      "name": "Assassin's Creed Valhalla",
+      "exe": [
+        "ACValhalla.exe"
+      ],
+      "steamAppId": 2208920,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Avatar: Frontiers of Pandora",
+      "exe": [
+        "afop.exe"
+      ],
+      "steamAppId": 2840770,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Battlefield 6",
+      "exe": [
+        "bf6.exe"
+      ],
+      "steamAppId": 2807960,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Black Myth: Wukong",
+      "exe": [
+        "b1-Win64-Shipping.exe"
+      ],
+      "steamAppId": 2358720,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": ""
+    },
+    {
+      "name": "Call of Duty: Black Ops 6",
+      "exe": [
+        "cod.exe"
+      ],
+      "steamAppId": 2933620,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Shared cod.exe launcher across CoD HQ titles (Steam app 1938090 hosts MWII/BO6 content); match by exe is ambiguous"
+    },
+    {
+      "name": "Call of Duty: Modern Warfare II",
+      "exe": [
+        "cod.exe",
+        "cod22-cod.exe"
+      ],
+      "steamAppId": 1938090,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Shared cod.exe launcher across CoD HQ titles (Steam app 1938090 hosts MWII/BO6 content); match by exe is ambiguous"
+    },
+    {
+      "name": "Call of Duty: Modern Warfare III",
+      "exe": [
+        "cod.exe"
+      ],
+      "steamAppId": 2519060,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Shared cod.exe launcher across CoD HQ titles (Steam app 1938090 hosts MWII/BO6 content); match by exe is ambiguous"
+    },
+    {
+      "name": "Control",
+      "exe": [
+        "Control_DX12.exe",
+        "Control_DX11.exe"
+      ],
+      "steamAppId": 870780,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Adaptive triggers via Ultimate Edition update"
+    },
+    {
+      "name": "Cyberpunk 2077",
+      "exe": [
+        "Cyberpunk2077.exe"
+      ],
+      "steamAppId": 1091500,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added in patch 2.1; Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Days Gone",
+      "exe": [
+        "DaysGone.exe"
+      ],
+      "steamAppId": 1259420,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Adaptive triggers only per PCGamingWiki"
+    },
+    {
+      "name": "Death Stranding Director's Cut",
+      "exe": [
+        "DeathStranding.exe"
+      ],
+      "steamAppId": 1850570,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Deathloop",
+      "exe": [
+        "Deathloop.exe"
+      ],
+      "steamAppId": 1252330,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Dragon Age: The Veilguard",
+      "exe": [
+        "Dragon Age The Veilguard.exe"
+      ],
+      "steamAppId": 1845910,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Dying Light 2 Stay Human",
+      "exe": [
+        "DyingLightGame_x64_rwdi.exe"
+      ],
+      "steamAppId": 534380,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "EA Sports WRC",
+      "exe": [
+        "WRC.exe"
+      ],
+      "steamAppId": 1849250,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "F1 23",
+      "exe": [
+        "F1_23.exe"
+      ],
+      "steamAppId": 2108330,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": ""
+    },
+    {
+      "name": "F1 24",
+      "exe": [
+        "F1_24.exe"
+      ],
+      "steamAppId": 2488620,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": ""
+    },
+    {
+      "name": "F1 25",
+      "exe": [
+        "F1_25.exe"
+      ],
+      "steamAppId": 3059520,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Far Cry 6",
+      "exe": [
+        "FarCry6.exe"
+      ],
+      "steamAppId": 2369390,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Final Fantasy VII Rebirth",
+      "exe": [
+        "ff7rebirth_.exe"
+      ],
+      "steamAppId": 2909400,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Final Fantasy VII Remake Intergrade",
+      "exe": [
+        "ff7remake_.exe"
+      ],
+      "steamAppId": 1462040,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": ""
+    },
+    {
+      "name": "Final Fantasy XVI",
+      "exe": [
+        "ffxvi.exe"
+      ],
+      "steamAppId": 2515020,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Forspoken",
+      "exe": [
+        "Forspoken.exe"
+      ],
+      "steamAppId": 1680880,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Forza Horizon 5",
+      "exe": [
+        "ForzaHorizon5.exe"
+      ],
+      "steamAppId": 1551360,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Ghost of Tsushima",
+      "exe": [
+        "GhostOfTsushima.exe"
+      ],
+      "steamAppId": 2215430,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Ghostwire: Tokyo",
+      "exe": [
+        "GWT.exe"
+      ],
+      "steamAppId": 1475810,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "God of War",
+      "exe": [
+        "GoW.exe"
+      ],
+      "steamAppId": 1593500,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Adaptive triggers only per PCGamingWiki"
+    },
+    {
+      "name": "God of War Ragnarok",
+      "exe": [
+        "GoWR.exe"
+      ],
+      "steamAppId": 2322010,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Hellblade II: Senua's Saga",
+      "exe": [
+        "Hellblade2-Win64-Shipping.exe"
+      ],
+      "steamAppId": 2461850,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Helldivers 2",
+      "exe": [
+        "helldivers2.exe"
+      ],
+      "steamAppId": 553850,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Hi-Fi Rush",
+      "exe": [
+        "Hi-Fi-RUSH.exe"
+      ],
+      "steamAppId": 1817230,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Hogwarts Legacy",
+      "exe": [
+        "HogwartsLegacy.exe"
+      ],
+      "steamAppId": 990080,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Horizon Forbidden West",
+      "exe": [
+        "HorizonForbiddenWest.exe"
+      ],
+      "steamAppId": 2420110,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Horizon Zero Dawn Remastered",
+      "exe": [
+        "HorizonZeroDawnRemastered.exe"
+      ],
+      "steamAppId": 2561580,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Indiana Jones and the Great Circle",
+      "exe": [
+        "TheGreatCircle.exe"
+      ],
+      "steamAppId": 2677660,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Kingdom Come: Deliverance II",
+      "exe": [
+        "KingdomCome.exe"
+      ],
+      "steamAppId": 1771300,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Lords of the Fallen (2023)",
+      "exe": [
+        "LOTF2-Win64-Shipping.exe"
+      ],
+      "steamAppId": 1501750,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Marvel Rivals",
+      "exe": [
+        "Marvel-Win64-Shipping.exe"
+      ],
+      "steamAppId": 2767030,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Marvel's Spider-Man 2",
+      "exe": [
+        "Spider-Man2.exe"
+      ],
+      "steamAppId": 2651280,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Marvel's Spider-Man Remastered",
+      "exe": [
+        "Spider-Man.exe"
+      ],
+      "steamAppId": 1817070,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Marvel's Spider-Man: Miles Morales",
+      "exe": [
+        "MilesMorales.exe"
+      ],
+      "steamAppId": 1817190,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Metal Gear Solid Delta: Snake Eater",
+      "exe": [
+        "MGSDelta-Win64-Shipping.exe"
+      ],
+      "steamAppId": 2417610,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Metro Exodus Enhanced Edition",
+      "exe": [
+        "MetroExodus.exe"
+      ],
+      "steamAppId": 412020,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Enhanced Edition only; ships under base Metro Exodus Steam app 412020"
+    },
+    {
+      "name": "Monster Hunter Wilds",
+      "exe": [
+        "MonsterHunterWilds.exe"
+      ],
+      "steamAppId": 2246340,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": ""
+    },
+    {
+      "name": "No Man's Sky",
+      "exe": [
+        "NMS.exe"
+      ],
+      "steamAppId": 275850,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki lists; triggers also over Bluetooth"
+    },
+    {
+      "name": "Prince of Persia: The Lost Crown",
+      "exe": [
+        "TheLostCrown.exe"
+      ],
+      "steamAppId": 2751000,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Ratchet & Clank: Rift Apart",
+      "exe": [
+        "RiftApart.exe"
+      ],
+      "steamAppId": 1895880,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Ready or Not",
+      "exe": [
+        "ReadyOrNot-Win64-Shipping.exe"
+      ],
+      "steamAppId": 1144200,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": ""
+    },
+    {
+      "name": "Red Dead Redemption 2",
+      "exe": [
+        "RDR2.exe"
+      ],
+      "steamAppId": 1174180,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Returnal",
+      "exe": [
+        "Returnal-Win64-Shipping.exe"
+      ],
+      "steamAppId": 1649240,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Rise of the Ronin",
+      "exe": [
+        "Ronin.exe"
+      ],
+      "steamAppId": 1340990,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "S.T.A.L.K.E.R. 2: Heart of Chornobyl",
+      "exe": [
+        "Stalker2-Win64-Shipping.exe"
+      ],
+      "steamAppId": 1643320,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Sackboy: A Big Adventure",
+      "exe": [
+        "GameApp_PcDx12.exe"
+      ],
+      "steamAppId": 1599660,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Sea of Thieves",
+      "exe": [
+        "SoTGame.exe"
+      ],
+      "steamAppId": 1172620,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Silent Hill 2",
+      "exe": [
+        "SHProto-Win64-Shipping.exe"
+      ],
+      "steamAppId": 2124490,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Star Wars Jedi: Survivor",
+      "exe": [
+        "JediSurvivor.exe"
+      ],
+      "steamAppId": 1774580,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Star Wars Outlaws",
+      "exe": [
+        "Outlaws.exe"
+      ],
+      "steamAppId": 2842040,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Stellar Blade",
+      "exe": [
+        "SB-Win64-Shipping.exe"
+      ],
+      "steamAppId": 3489700,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Stray",
+      "exe": [
+        "Stray-Win64-Shipping.exe"
+      ],
+      "steamAppId": 1332010,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Tekken 8",
+      "exe": [
+        "Polaris-Win64-Shipping.exe"
+      ],
+      "steamAppId": 1778820,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": "low",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "The Last of Us Part I",
+      "exe": [
+        "tlou-i.exe"
+      ],
+      "steamAppId": 1888930,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "The Last of Us Part II Remastered",
+      "exe": [
+        "tlou-ii.exe"
+      ],
+      "steamAppId": 2531310,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "The Witcher 3: Wild Hunt",
+      "exe": [
+        "witcher3.exe"
+      ],
+      "steamAppId": 292030,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Uncharted: Legacy of Thieves Collection",
+      "exe": [
+        "u4.exe",
+        "tll.exe"
+      ],
+      "steamAppId": 1659420,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Until Dawn",
+      "exe": [
+        "Bates-Win64-Shipping.exe"
+      ],
+      "steamAppId": 2172010,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": "medium",
+      "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Warhammer 40,000: Space Marine 2",
+      "exe": [
+        "Warhammer 40000 Space Marine 2.exe"
+      ],
+      "steamAppId": 2183900,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": ""
+    },
+    {
+      "name": "WRC Generations",
+      "exe": [
+        "WRCG.exe"
+      ],
+      "steamAppId": 1953520,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": "low",
+      "notes": ""
+    }
+  ]
+}
