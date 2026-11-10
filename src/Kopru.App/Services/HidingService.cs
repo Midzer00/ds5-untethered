@@ -70,16 +70,29 @@ public static class HidingLifecycle
 
 // HidingSession over HidHideCLI. The ledger lives in %LOCALAPPDATA%\Untethered (the same for every exe folder); flat
 // files of older versions are imported and recovered.
-public sealed class HidHideHidingService(HidHideControl control, HidingStateStore store, IReadOnlyList<string>? legacyPaths = null) : IHidingService
+// relocate: looks for HidHideCLI.exe again while it was not found, so HidHide installed from the setup page while the app
+// runs is used without a restart.
+public sealed class HidHideHidingService(HidHideControl control, HidingStateStore store, IReadOnlyList<string>? legacyPaths = null,
+	Func<HidHideControl>? relocate = null) : IHidingService
 {
 	private readonly SemaphoreSlim gate = new(1, 1);
 
 	private HidingSession? session;
 
 	public static HidHideHidingService CreateDefault() =>
-		new(HidHideControl.CreateDefault(), HidingStateStore.CreateDefault(), HidingStateStore.LegacyPaths());
+		new(HidHideControl.CreateDefault(), HidingStateStore.CreateDefault(), HidingStateStore.LegacyPaths(), () => HidHideControl.CreateDefault());
 
-	public bool IsInstalled => control.IsInstalled;
+	public bool IsInstalled
+	{
+		get
+		{
+			if (!control.IsInstalled && relocate?.Invoke() is { IsInstalled: true } found)
+			{
+				control = found;
+			}
+			return control.IsInstalled;
+		}
+	}
 
 	public async Task RecoverAsync()
 	{

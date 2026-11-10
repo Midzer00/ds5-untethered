@@ -12,8 +12,8 @@
                 IsVisible="{Binding IsTestTab}" />
       </Grid>
 
-      <!-- Test first (what the controller sends, fixed right beside it), then the settings that are not on it -->
-      <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="440">
+      <!-- Test first (what the controller sends, fixed right beside it, and the output tests), then remap & gyro -->
+      <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="360">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TabOption">
             <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" />
@@ -24,20 +24,6 @@
       <Panel IsVisible="{Binding IsTestTab}">
         <v:TesterView DataContext="{Binding Test}" />
       </Panel>
-
-      <!-- Triggers: effects to feel with the strength, where the fallback effect lives (the range is on the Test tab) -->
-      <StackPanel Spacing="16" IsVisible="{Binding IsTriggersTab}">
-        <v:TriggersView DataContext="{Binding Tuning.Triggers}" />
-        <Border Classes="panel">
-          <Grid ColumnDefinitions="*,24,Auto">
-            <StackPanel Spacing="4">
-              <TextBlock Classes="h2" Text="{Binding Tuning.FallbackLabel}" />
-              <TextBlock Classes="body" Text="{Binding Tuning.FallbackHint}" />
-            </StackPanel>
-            <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding Tuning.FallbackLinkText}" Command="{Binding Tuning.OpenFallbackCommand}" VerticalAlignment="Center" />
-          </Grid>
-        </Border>
-      </StackPanel>
 
       <Panel IsVisible="{Binding IsRemapTab}">
         <v:RemapView DataContext="{Binding Tuning.Remap}" />

@@ -46,7 +46,7 @@ public enum ServiceNoticeKind
 	PoweredOffIdle,
 	// The bridge stopped on a problem; Detail is the localized reason.
 	BridgeError,
-	// The bridge started without HidHide.
+	// A virtual controller start was refused because HidHide is not installed.
 	HidHideMissing,
 	// The bridged controller was plugged in by cable: the bridge stopped (resumes on Bluetooth).
 	CableConnected,

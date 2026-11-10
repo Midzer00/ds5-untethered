@@ -65,8 +65,8 @@ public static partial class Text
 
 	// Hiding chip.
 	public static string HealthHidingMissing(Language? l = null) => Pick(l,
-		$"HidHide kurulu değil; oyunlar iki kumanda görebilir.",
-		$"HidHide isn't installed; games may see two controllers.");
+		$"HidHide kurulu değil; sanal kumanda onsuz başlamaz, yoksa oyunlar iki kumanda görürdü.",
+		$"HidHide isn't installed; the virtual controller won't start without it, or games would see two controllers.");
 
 	public static string HealthHidingDriverMissing(Language? l = null) => Pick(l,
 		$"HidHide kurulu ama sürücüsü yok. Yeniden kur.",
@@ -151,6 +151,10 @@ public static partial class Text
 	public static string CannotStartDriver(Language? l = null) => Pick(l,
 		$"Önce usbip-win2 sürücüsünü kur.",
 		$"Install the usbip-win2 driver first.");
+
+	public static string CannotStartHidHide(Language? l = null) => Pick(l,
+		$"Önce HidHide'ı kur; o olmadan oyunlar iki kumanda görür.",
+		$"Install HidHide first; without it games see two controllers.");
 
 	public static string CannotStartNoRadio(Language? l = null) => Pick(l,
 		$"Sanal kumanda için bir Bluetooth adaptörü gerekli.",

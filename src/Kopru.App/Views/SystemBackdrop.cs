@@ -25,14 +25,31 @@ internal static class SystemBackdrop
 		{
 			int dark = 1;
 			DwmSetWindowAttribute(hwnd, DwmwaUseImmersiveDarkMode, ref dark, sizeof(int));
-			var margins = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
-			DwmExtendFrameIntoClientArea(hwnd, ref margins);
+			ExtendFrame(hwnd);
 			int type = DwmsbtTransientWindow;
 			return DwmSetWindowAttribute(hwnd, DwmwaSystemBackdropType, ref type, sizeof(int)) == 0;
 		}
 		catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
 		{
 			return false;
+		}
+	}
+
+	// The acrylic shows behind the whole client area only while the frame covers all of it. The window's extended title bar
+	// sets a frame of its own (the caption height) when it changes state, so the window extends it again afterwards.
+	public static void ExtendFrame(IntPtr hwnd)
+	{
+		if (!IsSupported || hwnd == IntPtr.Zero)
+		{
+			return;
+		}
+		try
+		{
+			var margins = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+			DwmExtendFrameIntoClientArea(hwnd, ref margins);
+		}
+		catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+		{
 		}
 	}
 

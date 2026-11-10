@@ -220,7 +220,7 @@ public class TesterTests
 				}
 
 				vm.OpenController(ControllerPageViewModel.TestTab);
-				foreach ((double height, string suffix) in new[] { (700.0, ""), (1240.0, "-full") })
+				foreach ((double height, string suffix) in new[] { (700.0, ""), (1460.0, "-full") })
 				{
 					window.Height = height;
 					service.LiveHandler!(Sample);
@@ -228,9 +228,6 @@ public class TesterTests
 					Capture($"controller-test{suffix}");
 				}
 				window.Height = 700;
-
-				vm.Controller.SelectedTab = ControllerPageViewModel.TriggersTab;
-				Capture("controller-triggers");
 
 				vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
 				Capture("controller-remap");

@@ -223,14 +223,38 @@
             <TextBlock Classes="h2" Text="{Binding OutputsLabel}" />
             <TextBlock Classes="body" Text="{Binding OutputsHint}" />
           </StackPanel>
-          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="8">
-            <TextBlock Classes="rowLabel" Text="{Binding HapticsLabel}" Margin="0,0,0,6" />
-            <WrapPanel Grid.Column="1">
+          <!-- One row per output, each at least a button high so the rows sit evenly -->
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20" RowSpacing="8">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" MinHeight="36" />
+              <RowDefinition Height="Auto" MinHeight="36" />
+              <RowDefinition Height="Auto" MinHeight="36" />
+              <RowDefinition Height="Auto" MinHeight="36" />
+            </Grid.RowDefinitions>
+            <TextBlock Classes="rowLabel" Text="{Binding HapticsLabel}" />
+            <WrapPanel Grid.Column="1" Margin="0,0,0,-6" VerticalAlignment="Center">
               <Button Classes="test" Theme="{StaticResource QuietButton}" Content="{Binding LeftText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}" />
               <Button Classes="test" Theme="{StaticResource QuietButton}" Content="{Binding RightText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}" />
             </WrapPanel>
-            <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding LightLabel}" />
-            <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Swatches}">
+            <!-- Trigger effect to feel on both triggers (stays on until Off); what each does in its tooltip -->
+            <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding Triggers.EffectsLabel}" />
+            <ListBox x:Name="TriggerEffects" Grid.Row="1" Grid.Column="1" Theme="{StaticResource Segmented}" ItemsSource="{Binding Triggers.Effects}"
+                     SelectedItem="{Binding Triggers.SelectedEffect}" AutoScrollToSelectedItem="False" HorizontalAlignment="Left" VerticalAlignment="Center" Width="380" AutomationProperties.Name="{Binding Triggers.EffectsLabel}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TriggerEffectItem">
+                  <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" ToolTip.Tip="{Binding Hint}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <!-- How strong the games' trigger effects are (the same setting as on Supported Games and in Quick Settings) -->
+            <TextBlock Grid.Row="2" Classes="rowLabel" Text="{Binding Triggers.StrengthLabel}" />
+            <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" HorizontalAlignment="Left" Width="380">
+              <Slider x:Name="TriggerStrength" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}"
+                      VerticalAlignment="Center" AutomationProperties.Name="{Binding Triggers.StrengthLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" MinWidth="40" TextAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+            <TextBlock Grid.Row="3" Classes="rowLabel" Text="{Binding LightLabel}" />
+            <ItemsControl Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Swatches}" VerticalAlignment="Center">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>

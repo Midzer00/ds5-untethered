@@ -228,28 +228,31 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		{
 			return;
 		}
+		// HidHide is required (HealthReport.Blocking): without it games would see the real and the virtual controller. Every
+		// start path ends here (Overview, sidebar, tray, shortcuts, the app's own restarts), so none of them gets past it.
+		if (!hiding.IsInstalled || health.BlockingIssue?.Kind == Kopru.Core.Health.BlockingKind.HidHideMissing)
+		{
+			AppLog.Write("virtual controller start refused (HidHide is not installed): " + reason);
+			SetHidingWarning(Text.HidingUnavailable());
+			RaiseNotice(new ServiceNotice(ServiceNoticeKind.HidHideMissing));
+			Raise();
+			RequestHealthRefresh();
+			return;
+		}
 		AppLog.Write("virtual controller start: " + reason);
 		started = true;
 		hidHideAppAllowed = null;
 		controllerHidden = null;
 		SetHidingWarning(string.Empty);
-		if (!hiding.IsInstalled)
+		try
 		{
-			SetHidingWarning(Text.HidingUnavailable());
-			RaiseNotice(new ServiceNotice(ServiceNoticeKind.HidHideMissing));
+			await hiding.BeginAsync().ConfigureAwait(false);
+			hidHideAppAllowed = true;
 		}
-		else
+		catch (HidHideException e)
 		{
-			try
-			{
-				await hiding.BeginAsync().ConfigureAwait(false);
-				hidHideAppAllowed = true;
-			}
-			catch (HidHideException e)
-			{
-				hidHideAppAllowed = false;
-				SetHidingWarning(Text.HidingFailed(e.Message));
-			}
+			hidHideAppAllowed = false;
+			SetHidingWarning(Text.HidingFailed(e.Message));
 		}
 		await host.StartAsync(reason).ConfigureAwait(false);
 		await StartOthersAsync().ConfigureAwait(false);

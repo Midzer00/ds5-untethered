@@ -80,6 +80,10 @@ public sealed class AppSettings
 	// Start the bridge by itself when the app starts and the controller connects (missing in older files: on).
 	public bool AutoStartBridge { get; set; } = true;
 
+	// The required setup steps were all done once (or the virtual controller ran): the setup page no longer opens by
+	// itself. Null = a file from before this setting (decided at the next start, see MainWindowViewModel).
+	public bool? SetupCompleted { get; set; }
+
 	// The "still running in the tray" hint was shown once.
 	public bool TrayHintShown { get; set; }
 	// Supported games list: the weekly automatic check and when it last ran.

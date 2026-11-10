@@ -150,7 +150,7 @@
             <StackPanel Spacing="3" Margin="0,12">
               <TextBlock Classes="h2" Text="{Binding MuteLedLabel}" />
               <TextBlock Classes="body" Text="{Binding MuteLedHint}" />
-              <ListBox Classes="plain" ItemsSource="{Binding MuteChoices}" SelectedItem="{Binding SelectedMute}" ItemContainerTheme="{StaticResource SegmentItem}"
+              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding MuteChoices}" SelectedItem="{Binding SelectedMute}" ItemContainerTheme="{StaticResource SegmentItem}"
                        ItemsPanel="{StaticResource Wrap}" Margin="0,6,0,0">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" /></DataTemplate>

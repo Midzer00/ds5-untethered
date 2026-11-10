@@ -9,6 +9,8 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <RootNamespace>Kopru.App</RootNamespace>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <AssemblyTitle>DS5 Untethered</AssemblyTitle>
+    <Description>Relays a Bluetooth DualSense to games as a wired controller, with the game's haptics and adaptive triggers.</Description>
   </PropertyGroup>
 
   <ItemGroup>

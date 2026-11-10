@@ -49,7 +49,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		_selectedNav = NavItems[0];
 		Overview.Attach(_environment.Now);
 		Overview.Quick.OpenAdvanced = () => Navigate(SettingsPage);
-		Sticks.OpenOtherGames = () => Navigate(OtherGames);
 		Overview.Quick.OpenShortcuts = () => OpenSettingsAt(SettingsSections.Shortcuts);
 		_service.FixRequested += (_, fix) => RunOnUi(() => HandleFix(fix));
 		Overview.SetVisible(true);
@@ -57,13 +56,38 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		SupportedGames.ListUpdatedAutomatically += added => Notifications.Post(NotificationCenter.GameListUpdated(added));
 		AutoUpdateTask = SupportedGames.AutoUpdateAsync();
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
-		if (Settings.IsFirstRun && _environment.Wizard != null)
+		// The virtual controller connected to games: setup works, whatever the wizard last saw.
+		_service.StateChanged += (_, _) => RunOnUi(() =>
 		{
-			ShowSetup(null, autoFinish: true);
-			if (Setup?.Wizard.FirstIncomplete == null)
+			if (_service.IsGameConnected)
 			{
-				Setup = null;
+				Settings.MarkSetupCompleted();
 			}
+		});
+		OpenSetupUntilCompleted();
+	}
+
+	// The setup page opens by itself at every start until the required steps were all done once (SetupCompleted). An
+	// older settings file (no SetupCompleted yet) counts as completed when both drivers are ready: its user already went
+	// through setup, and a controller that is just off must not bring the page back. Once completed, a missing driver
+	// shows the blocking state and its fix button instead.
+	private void OpenSetupUntilCompleted()
+	{
+		if (_environment.Store == null || _environment.Wizard == null || Settings.SetupCompleted == true)
+		{
+			return;
+		}
+		ShowSetup(null, autoFinish: true);
+		if (Setup is not { } setup)
+		{
+			return;
+		}
+		Kopru.Core.Setup.SystemStatus status = setup.Wizard.Status;
+		bool olderFileWithDrivers = Settings.SetupCompleted == null && status.UsbIp.Ready && status.HidHide.Ready;
+		if (setup.Wizard.FirstIncomplete == null || olderFileWithDrivers)
+		{
+			Settings.MarkSetupCompleted();
+			Setup = null;
 		}
 	}
 
@@ -80,7 +104,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	{
 		if (_environment.Wizard is { } create)
 		{
-			Setup = new SetupViewModel(create(), _service, CloseSetup, autoFinish) { FocusStep = focus };
+			var setup = new SetupViewModel(create(), _service, CloseSetup, autoFinish) { FocusStep = focus };
+			// Finishing the required steps (here or opened from Settings) completes setup for good.
+			setup.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == nameof(SetupViewModel.IsComplete) && setup.IsComplete)
+				{
+					Settings.MarkSetupCompleted();
+				}
+			};
+			Setup = setup;
 		}
 	}
 
@@ -125,7 +158,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	public ControllerPageViewModel Controller { get; }
 	public SticksViewModel Sticks => Controller.Tuning;
 	public TesterViewModel Tester => Controller.Test;
-	// The trigger effects and strength: the Triggers tab of the controller page.
+	// The trigger effects and strength: the output tests on the controller page's Test tab.
 	public TriggersViewModel Triggers => Sticks.Triggers;
 	public LightViewModel Light { get; }
 	public SettingsViewModel SettingsPage { get; }
@@ -177,7 +210,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	// Opens the controller page on a tab (ControllerPageViewModel.TestTab...).
 	public void OpenController(int tab)
 	{
-		Controller.SelectedTab = tab;
+		Controller.ShowTab(tab);
 		Navigate(Controller);
 	}
 

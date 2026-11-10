@@ -96,6 +96,11 @@ yalnızca herkese açık protokol bilgileri ve kendi ölçümlerimiz kullanılı
 10. [x] Gyro → sağ çubuk (her zaman / L2 basılıyken) (Orta) — her zaman / L2 / R1 (basılı ya da aç-kapa), hassasiyet, ölü bölge, yumuşatma, kalibrasyon; profille değişir — testli, donanımda denenmedi
 11. [x] Kumanda testi sayfası (menüde Ayarlar'dan önce): canlı tuşlar, çubuklar, tetikler, dokunmatik yüzey, gyro, pil — testli (sahtelerle), donanımda denenmedi
 12. [x] Köprü sağlamlığı: eski sanal kumandaların temizlenmesi (durum dosyası + `usbip port`), uykudan önce düzgün kapatma ve uyanınca yeniden başlatma, bekçi (USB/IP sunucusu yanıt vermez ya da haptik akışı durursa bağlantı yeniden kurulur) — testli, donanımda denenmedi
+13. [ ] Mikrofon tuşu ayarı (Orta) — şimdilik yapılmayacak:
+   - (a) tuşun ne yapacağı seçilebilsin: "Sessize Al" (mikrofon bağlı kalır, yalnızca ses kesilir) ya da "Tamamen Kapat" (mikrofon akışı durur; bugünkü davranış)
+   - (b) bu seçim Ayarlar'da ve Hızlı Ayarlar'da olsun
+   - (c) mikrofon seçimi: hangi mikrofonun kullanılacağı (kumanda mikrofonu / bilgisayardaki başka bir mikrofon) seçilebilsin
+   - Bugün: tuş Mikrofon özelliğini açıp kapatır, turuncu ışık = açık. Bilinen eksik: kendi profili olan bir kumandada tuş genel ayarı değiştirir
 
 ### C. Sonraya
 - [x] Touchpad/D-pad ile fare, gyro ile fare (masaüstü modu) — Ayarlar → Masaüstü Modu, PS+Options, tepsi öğesi; gyro hedefi fare — testli, donanımda denenmedi
@@ -113,7 +118,10 @@ yalnızca herkese açık protokol bilgileri ve kendi ölçümlerimiz kullanılı
 - [x] USB↔BT kablo geçişi (kablo takılınca köprü durur, Bluetooth'ta sürer; bildirim) — testli, donanımda denenmedi
 
 ### D. Yayın
-- [ ] Tek dosyalık kurulum programı (sürücü kontrolü dahil)
+- [x] Kullanıcı başına kurulum programı ve zip (`tools/publish.ps1`, `tools/installer/DS5Untethered.iss`): self-contained win-x64 klasör, yönetici izni yok, `%LOCALAPPDATA%\Programs\DS5 Untethered`; kaldırırken "Windows ile Başlat" kaydı silinir, ayarların silinmesi sorulur; yapı makinesinin kullanıcı yolu taraması; tek kopya koruması (ikinci açılış ilk kopyanın penceresini öne getirir)
+- [ ] Sürücüleri (usbip-win2, HidHide) kurulum programının kurması — yönetici izni ve yeniden başlatma gerekir; şimdilik uygulamanın Kurulum sayfası yönlendiriyor
+- [ ] Kod imzalama (SmartScreen uyarısı)
+- [ ] Güncelleme denetimi
 - [ ] Uygulama simgesi ve nihai logo
 - [ ] Güncelleme kontrolü
 - [ ] README ve ekran görüntüleri

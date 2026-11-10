@@ -9,6 +9,8 @@
         Icon="/Assets/icon.ico"
         Width="1100" Height="700" MinWidth="960" MinHeight="640"
         Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="SystemChrome"
         WindowStartupLocation="CenterScreen">
   <Window.Styles>
     <!-- Sidebar controller list row (several controllers); the selected one gets the accent edge and tint like a chip -->
@@ -55,7 +57,12 @@
       <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
     </Style>
   </Window.Styles>
-  <Panel>
+  <!-- No system title bar band: the sidebar and the content run up to the top edge, Windows draws only its caption buttons
+       (top right) over the content. The chrome hint is SystemChrome alone: Avalonia's default (PreferSystemChrome) hides
+       the native buttons and shows its own managed set (with a full-screen button) instead, and the system acrylic's
+       frame (SystemBackdrop) brings the native ones back, so both sets would show. The top band is a drag handle (see
+       MainWindow.axaml.cs). Maximized, the root is kept inside the screen by the window's off-screen margin. -->
+  <Panel x:Name="Root">
     <!-- Backdrop: a flat translucent tint over the system acrylic (see SystemBackdrop), or opaque graphite without it -->
     <Border Classes="backdrop" />
 
@@ -154,8 +161,12 @@
       </DockPanel>
       <Border Grid.Column="1" Background="{StaticResource HairlineBrush}" />
 
-      <!-- Content: each page fills the area and scrolls itself when it needs to; the sidebar pages' views are kept when left -->
-      <views:PageHost Grid.Column="2" x:Name="Pages" CachedPages="{Binding Pages}" Page="{Binding CurrentPage}" />
+      <!-- Content: each page fills the area and scrolls itself when it needs to; the sidebar pages' views are kept when left.
+           Its top inset keeps the page headers (and scrolled content) clear of the caption buttons; the backdrop shows through above. -->
+      <views:PageHost Grid.Column="2" x:Name="Pages" CachedPages="{Binding Pages}" Page="{Binding CurrentPage}" Margin="0,32,0,0" />
     </Grid>
+
+    <!-- Drag handle over the top band (no controls there): drag moves and snaps the window, a double click maximizes or restores -->
+    <Border x:Name="DragBand" Height="32" VerticalAlignment="Top" Background="Transparent" />
   </Panel>
 </Window>

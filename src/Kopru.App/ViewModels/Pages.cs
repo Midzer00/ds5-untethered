@@ -398,7 +398,8 @@ public sealed class TriggerEffectItem(TriggerTestEffect effect, Func<string> nam
 	public string Hint => hint();
 }
 
-// Trigger effects to try and the trigger strength: the Triggers tab of the controller page.
+// Trigger effects to try (what each does in its tooltip) and the trigger strength: the output tests on the controller
+// page's Test tab.
 public sealed partial class TriggersViewModel : ViewModelBase
 {
 	private readonly IControllerService _service;
@@ -419,9 +420,7 @@ public sealed partial class TriggersViewModel : ViewModelBase
 
 	public SettingsState Settings { get; }
 	public IReadOnlyList<TriggerEffectItem> Effects { get; private set; }
-	public string Intro => Text.TriggerEffectsHint();
 	public string StrengthLabel => Text.TriggerStrength();
-	public string StrengthHint => Text.TriggerStrengthHint();
 	public string EffectsLabel => Text.TesterTriggerEffects();
 
 	[ObservableProperty]

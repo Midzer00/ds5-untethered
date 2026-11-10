@@ -114,7 +114,7 @@ public sealed class TriggerRangeEditor : ViewModelBase
 }
 
 // The stick and trigger tuning of the controller page: the editors (the Test tab shows them beside the live input),
-// drift calibration, reset, the trigger effects and strength (Triggers tab) and remap & gyro. The remap tab's gyro
+// drift calibration, reset, the trigger effects and strength (the Test tab's output tests) and remap & gyro. The remap tab's gyro
 // preview polls the virtual controller's input only while that tab is shown (SetVisible, driven by
 // ControllerPageViewModel).
 public sealed partial class SticksViewModel : ViewModelBase
@@ -156,7 +156,7 @@ public sealed partial class SticksViewModel : ViewModelBase
 	public TriggerRangeEditor L2 { get; }
 	public TriggerRangeEditor R2 { get; }
 
-	// Trigger effects and strength (Triggers tab).
+	// Trigger effects and strength (the Test tab's output tests).
 	public TriggersViewModel Triggers { get; }
 
 	// Button remapping and gyro aiming (Remap tab).
@@ -165,15 +165,6 @@ public sealed partial class SticksViewModel : ViewModelBase
 	public string CalibrationLabel => Text.DriftCalibration();
 	public string CalibrateText => Text.CalibrateAction();
 	public string ResetText => Text.ResetToDefault();
-	public string FallbackLabel => Text.FallbackTriggerLabel();
-	public string FallbackHint => Text.FallbackTriggerElsewhere();
-	public string FallbackLinkText => Text.OpenOtherGames();
-
-	// Opens the Other Games page, where the fallback trigger effect lives (set by the main window).
-	public Action? OpenOtherGames { get; set; }
-
-	[RelayCommand]
-	private void OpenFallback() => OpenOtherGames?.Invoke();
 	public bool HasCalibrationText => !string.IsNullOrEmpty(CalibrationText);
 
 	[ObservableProperty]

@@ -107,6 +107,12 @@ internal sealed class TestHiding(bool installed = true) : IHidingService
 	}
 }
 
+internal sealed class NoRunner : Kopru.Core.Hiding.ICommandRunner
+{
+	public Task<Kopru.Core.Hiding.CommandResult> RunAsync(string fileName, string arguments, CancellationToken cancellationToken = default) =>
+		Task.FromResult(new Kopru.Core.Hiding.CommandResult(0, string.Empty, string.Empty));
+}
+
 internal sealed class TestStartup : IStartupRegistration
 {
 	public List<bool> Calls { get; } = [];
@@ -158,19 +164,49 @@ public class RealServiceTests
 	}
 
 	[Fact]
-	public async Task WithoutHidHide_TheBridgeStillRuns_AndWarns()
+	public async Task WithoutHidHide_TheBridgeDoesNotStart_AndSaysWhy()
 	{
 		TestHiding hiding = new(installed: false);
 		using RealControllerService service = Service(hiding);
+		var notices = new List<ServiceNoticeKind>();
+		service.Notice += (_, n) =>
+		{
+			lock (notices)
+			{
+				notices.Add(n.Kind);
+			}
+		};
 		controllers.Links.Enqueue(new TestLink());
 
 		await service.StartBridgeAsync();
-		WaitUntil(() => service.IsGameConnected);
 
+		Assert.False(service.IsBridgeRunning);
+		Assert.False(service.IsGameConnected);
+		Assert.Single(controllers.Links); // the controller was never opened
 		Assert.Empty(hiding.Calls);
 		Assert.Equal(Text.HidingUnavailable(), service.Warning);
+		WaitUntil(() =>
+		{
+			lock (notices)
+			{
+				return notices.Contains(ServiceNoticeKind.HidHideMissing);
+			}
+		});
 		await service.ShutdownAsync();
-		Assert.False(service.IsBridgeRunning);
+	}
+
+	[Fact]
+	public void HidHideInstalledLater_IsUsedWithoutARestart()
+	{
+		// Nothing is written: the store's file is only touched by hiding calls, and none is made here.
+		string ledger = Path.Combine(Path.GetTempPath(), "kopru-hiding-" + Guid.NewGuid().ToString("N"), "ledger.json");
+		Kopru.Core.Hiding.HidHideControl? found = null;
+		var service = new HidHideHidingService(new Kopru.Core.Hiding.HidHideControl(new NoRunner(), null),
+			new Kopru.Core.Hiding.HidingStateStore(ledger), null, () => found ?? new Kopru.Core.Hiding.HidHideControl(new NoRunner(), null));
+		Assert.False(service.IsInstalled);
+		found = new Kopru.Core.Hiding.HidHideControl(new NoRunner(), @"C:\HidHide\x64\HidHideCLI.exe");
+		Assert.True(service.IsInstalled);
+		Assert.False(File.Exists(ledger));
 	}
 
 	[Fact]

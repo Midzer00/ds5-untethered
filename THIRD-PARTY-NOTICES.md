@@ -19,20 +19,29 @@ Transitive packages pulled in by Avalonia and shipped with it:
 
 | Component | Version | License | Copyright | Project |
 |---|---|---|---|---|
-| Avalonia.Win32, Avalonia.Skia, Avalonia.Remote.Protocol and related Avalonia.* packages | 11.3.22 | MIT | The AvaloniaUI Project | https://github.com/AvaloniaUI/Avalonia |
-| Avalonia.Angle.Windows.Natives (ANGLE) | 2.1.25547.20250602 | BSD-3-Clause style (ANGLE license, bundled `LICENSE`) | Copyright 2018 The ANGLE Project Authors | https://chromium.googlesource.com/angle/angle |
-| SkiaSharp, SkiaSharp.NativeAssets.Win32 | 2.88.9 | MIT (see the package's THIRD-PARTY-NOTICES.txt for Skia and its dependencies) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
-| HarfBuzzSharp, HarfBuzzSharp.NativeAssets.Win32 | 8.3.1.1 | MIT (see the package's THIRD-PARTY-NOTICES.txt for HarfBuzz) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
+| Avalonia.Win32, Avalonia.Win32.Automation, Avalonia.Skia, Avalonia.Remote.Protocol, Avalonia.FreeDesktop, Avalonia.X11, Avalonia.Native, Avalonia.Metal, Avalonia.Vulkan, Avalonia.OpenGL, Avalonia.DesignerSupport and the other Avalonia.* assemblies | 11.3.22 | MIT | The AvaloniaUI Project | https://github.com/AvaloniaUI/Avalonia |
+| Avalonia.Angle.Windows.Natives (ANGLE, `av_libglesv2.dll`) | 2.1.25547.20250602 | BSD-3-Clause style (ANGLE license; full text in `licenses/ANGLE-LICENSE.txt`) | Copyright 2018 The ANGLE Project Authors | https://chromium.googlesource.com/angle/angle |
+| SkiaSharp, SkiaSharp.NativeAssets.Win32 (`libSkiaSharp.dll`) | 2.88.9 | MIT (Skia and its dependencies: `licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt`) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
+| HarfBuzzSharp, HarfBuzzSharp.NativeAssets.Win32 (`libHarfBuzzSharp.dll`) | 8.3.1.1 | MIT (HarfBuzz: `licenses/HarfBuzzSharp-THIRD-PARTY-NOTICES.txt`) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
 | MicroCom.Runtime | 0.11.0 | MIT | Copyright 2021 © Nikita Tsukanov | https://github.com/kekekeks/MicroCom |
 | Tmds.DBus.Protocol | 0.21.3 | MIT | Tom Deseyn | https://github.com/tmds/Tmds.DBus |
 | Irihi.Avalonia.Shared (pulled in by Semi.Avalonia) | 0.3.1 | MIT | IRIHI Technology Co., Ltd. | https://github.com/irihitech/Ursa.Avalonia |
 | System.IO.Pipelines | 8.0.0 | MIT | © Microsoft Corporation | https://github.com/dotnet/runtime |
 
-## .NET runtime (self-contained builds only)
+## .NET runtime
 
-If DS5 Untethered is published self-contained, the .NET 8 runtime is included. It is licensed under MIT,
-Copyright (c) .NET Foundation and Contributors (https://github.com/dotnet/runtime). The runtime carries its own
-`ThirdPartyNotices.txt`, which applies to the files it ships.
+The published build (installer and zip) is self-contained: it includes the .NET 8 runtime (the files of the
+`Microsoft.NETCore.App.Runtime.win-x64` pack, 8.0.30 at the time of writing, among them `coreclr.dll`, the `System.*` and
+`Microsoft.*` assemblies, `msquic.dll` and `Microsoft.DiaSymReader.Native.amd64.dll`). It is licensed under MIT,
+Copyright (c) .NET Foundation and Contributors (https://github.com/dotnet/runtime). The runtime's own licence and its
+third-party notices ship next to the app as `licenses/dotnet-runtime-LICENSE.TXT` and
+`licenses/dotnet-runtime-THIRD-PARTY-NOTICES.TXT`; they apply to the runtime files.
+
+## Licence files shipped with a build
+
+The `licenses` folder of a published build holds the licence and notice files that come with the shipped packages
+(copied unchanged by `tools/publish.ps1`): the .NET runtime licence and third-party notices, the SkiaSharp and
+HarfBuzzSharp third-party notices and the ANGLE licence.
 
 ## Development-only packages (not shipped)
 

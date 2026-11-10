@@ -4,16 +4,15 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// The controller page: three tabs. Test (live input with every stick setting, the trigger ranges and drift calibration
-// beside it, output tests, controller info), Triggers (effects, strength) and Remap & Gyro. Every setting is on one tab
-// only. The live readouts run only while the page is shown and the tab with them is selected: the Test tab holds the
+// The controller page: two tabs. Test (live input with every stick setting, the trigger ranges and drift calibration
+// beside it, output tests with the trigger effects and strength, controller info) and Remap & Gyro. Every setting is on
+// one tab only. The live readouts run only while the page is shown and the tab with them is selected: the Test tab holds the
 // controller (TesterViewModel), the Remap tab polls the virtual controller's input for its gyro preview
 // (SticksViewModel). The selected tab is kept while the app runs.
 public sealed class ControllerPageViewModel : PageViewModel
 {
 	public const int TestTab = 0;
-	public const int TriggersTab = 1;
-	public const int RemapTab = 2;
+	public const int RemapTab = 1;
 
 	private int _selectedTab = TestTab;
 
@@ -31,7 +30,7 @@ public sealed class ControllerPageViewModel : PageViewModel
 
 	// Tabs for the segmented switch. The list stays the same on a language switch (only the names change), so the
 	// switch never loses its selection. "Test" is the same word in both languages.
-	public IReadOnlyList<TabOption> Tabs { get; } = [new(() => "Test"), new(() => Text.TriggersTab()), new(() => Text.RemapTab())];
+	public IReadOnlyList<TabOption> Tabs { get; } = [new(() => "Test"), new(() => Text.RemapTab())];
 
 	// The shown tab; out of range values (-1: nothing selected) are ignored.
 	public int SelectedTab
@@ -46,7 +45,6 @@ public sealed class ControllerPageViewModel : PageViewModel
 			_selectedTab = value;
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(IsTestTab));
-			OnPropertyChanged(nameof(IsTriggersTab));
 			OnPropertyChanged(nameof(IsRemapTab));
 			UpdateLive();
 		}
@@ -54,8 +52,10 @@ public sealed class ControllerPageViewModel : PageViewModel
 
 	// Reset (stick and trigger tuning) shows with the Test tab, where that tuning is; the remap tab has its own.
 	public bool IsTestTab => SelectedTab == TestTab;
-	public bool IsTriggersTab => SelectedTab == TriggersTab;
 	public bool IsRemapTab => SelectedTab == RemapTab;
+
+	// Opens a tab by number; one that does not exist (such as the former Triggers tab) opens Test.
+	public void ShowTab(int tab) => SelectedTab = tab is >= TestTab and <= RemapTab ? tab : TestTab;
 
 	public bool IsVisible { get; private set; }
 

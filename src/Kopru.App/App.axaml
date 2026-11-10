@@ -250,31 +250,6 @@
         <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
       </ControlTheme>
 
-      <!-- Selectable option (trigger effects): a panel; hover lifts it one step; the selected one gets an accent edge -->
-      <ControlTheme x:Key="CardItem" TargetType="ListBoxItem">
-        <Setter Property="Background" Value="{StaticResource PanelBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
-        <Setter Property="Padding" Value="14" />
-        <Setter Property="Margin" Value="0" />
-        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Template">
-          <ControlTemplate>
-            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
-                    CornerRadius="{StaticResource RadiusCard}" Padding="{TemplateBinding Padding}">
-              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
-            </Border>
-          </ControlTemplate>
-        </Setter>
-        <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillBrush}" /></Style>
-        <Style Selector="^:pressed"><Setter Property="Background" Value="{StaticResource QuietFillPressedBrush}" /></Style>
-        <Style Selector="^:selected">
-          <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-          <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-        </Style>
-        <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" /></Style>
-      </ControlTheme>
-
       <!-- Chip: a small toggle for a setting; on = accent edge and a light accent tint -->
       <ControlTheme x:Key="ChipToggle" TargetType="ToggleButton">
         <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />

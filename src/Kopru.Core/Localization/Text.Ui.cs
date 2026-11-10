@@ -8,7 +8,6 @@ public static partial class Text
 	public static string NavOverview(Language? l = null) => Pick(l, $"Genel Bakış", $"Overview");
 	public static string NavSupportedGames(Language? l = null) => Pick(l, $"Desteklenen Oyunlar", $"Supported Games");
 	public static string NavOtherGames(Language? l = null) => Pick(l, $"Diğer Oyunlar", $"Other Games");
-	public static string TriggersTab(Language? l = null) => Pick(l, $"Tetikler", $"Triggers");
 	public static string NavLight(Language? l = null) => Pick(l, $"Işık", $"Light");
 	public static string NavSettings(Language? l = null) => Pick(l, $"Ayarlar", $"Settings");
 
@@ -66,9 +65,6 @@ public static partial class Text
 	public static string Tests(Language? l = null) => Pick(l, $"Testler", $"Tests");
 
 	// Triggers
-	public static string TriggerEffectsHint(Language? l = null) => Pick(l,
-		$"Bir efekte tıkla ve tetiklerde hisset; gücünü hemen altından ayarla.",
-		$"Click an effect to feel it on the triggers; set its strength right below.");
 	public static string TriggerStrength(Language? l = null) => Pick(l, $"Tetik Gücü", $"Trigger Strength");
 	public static string TriggerStrengthHint(Language? l = null) => Pick(l,
 		$"Desteklenen oyunların tetik efektlerinin ve test efektlerinin gücü. %0 tetikleri kapatır.",
@@ -328,10 +324,6 @@ public static partial class Text
 		$"Oyun tetik efekti göndermediği için L2 ve R2'ye uygulanır.",
 		$"Applied to L2 and R2, since the game sends no trigger effects.");
 	public static string FallbackStrength(Language? l = null) => Pick(l, $"Efekt Gücü", $"Effect Strength");
-	public static string FallbackTriggerElsewhere(Language? l = null) => Pick(l,
-		$"Tetik efekti göndermeyen oyunlarda L2 ve R2'ye ne uygulanacağı Diğer Oyunlar sayfasında seçilir.",
-		$"What L2 and R2 do in games that send no trigger effects is chosen on the Other Games page.");
-	public static string OpenOtherGames(Language? l = null) => Pick(l, $"Diğer Oyunlar'a Git", $"Go to Other Games");
 	public static string TestFallbackTrigger(Language? l = null) => Pick(l, $"Tetik Efektini Dene", $"Try Trigger Effect");
 
 	// The controller page: test, sticks, triggers, remap & gyro
@@ -382,8 +374,8 @@ public static partial class Text
 	public static string NotifyBridgeOpenFailed(Language? l = null) => Pick(l, $"Kumanda açılamadı", $"Controller won't open");
 	public static string NotifyBridgeLost(Language? l = null) => Pick(l, $"Kumanda bağlantısı koptu", $"Controller connection lost");
 	public static string NotifyBridgeOther(Language? l = null) => Pick(l, $"Ayrıntılar Genel Bakış'ta", $"Details on the Overview page");
-	public static string NotifyHidHideTitle(Language? l = null) => Pick(l, $"HidHide Yok", $"HidHide Missing");
-	public static string NotifyHidHideBody(Language? l = null) => Pick(l, $"Kurulumdan yükleyin", $"Install it from setup");
+	public static string NotifyHidHideTitle(Language? l = null) => Pick(l, $"Sanal Kumanda Başlamadı", $"Virtual Controller Not Started");
+	public static string NotifyHidHideBody(Language? l = null) => Pick(l, $"Önce HidHide'ı kurun", $"Install HidHide first");
 	public static string NotifyTrayTitle(Language? l = null) => Pick(l, $"Arka Planda Çalışıyor", $"Running in Background");
 	public static string NotifyTrayBody(Language? l = null) => Pick(l, $"Simgeyi saat yanında bulun", $"Find the icon by the clock");
 	public static string NotifyClose(Language? l = null) => Pick(l, $"Bildirimi Kapat", $"Dismiss");
@@ -403,7 +395,7 @@ public static partial class Text
 	public static string NotifyErrorsSetting(Language? l = null) => Pick(l, $"Sanal Kumanda Hataları", $"Virtual Controller Errors");
 	public static string NotifyErrorsHint(Language? l = null) => Pick(l, $"Bir sorunla durunca, nedeniyle birlikte.", $"When it stops on a problem, with the reason.");
 	public static string NotifyHidHideSetting(Language? l = null) => Pick(l, $"HidHide Eksik", $"HidHide Missing");
-	public static string NotifyHidHideHint(Language? l = null) => Pick(l, $"Bir kez, sanal kumanda HidHide olmadan başlarsa.", $"Once, if the virtual controller starts without HidHide.");
+	public static string NotifyHidHideHint(Language? l = null) => Pick(l, $"Sanal kumanda HidHide kurulu olmadığı için başlayamazsa.", $"If the virtual controller can't start because HidHide isn't installed.");
 	public static string QuietWhilePlaying(Language? l = null) => Pick(l, $"Oyun Sırasında Bildirim Gösterme", $"Don't Notify While Playing");
 	public static string QuietWhilePlayingHint(Language? l = null) => Pick(l, $"Bir oyun bağlıyken ya da tam ekrandayken sessiz kalır.", $"Stays quiet while a game is connected or full screen.");
 	public static string KeepInTray(Language? l = null) => Pick(l, $"Kapatınca Arka Planda Çalış", $"Keep Running in Background");

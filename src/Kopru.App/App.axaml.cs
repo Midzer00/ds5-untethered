@@ -72,6 +72,8 @@ public partial class App : Application
 		var window = new MainWindow { DataContext = vm };
 		window.FitToScreen();
 		var shell = new DesktopShell(desktop, window, vm);
+		// A second start (Start menu, the exe again) shows this copy's window on its current page; that copy then exits.
+		Program.Instance?.Listen(() => ShowFromOtherStart(shell));
 		var toasts = new ToastHost(page => shell.ShowMainWindow(page), FullScreenDetector.IsForegroundFullScreen);
 		vm.Notifications.Raised += toasts.Show;
 		CreateTrayIcon(new TrayViewModel(service, vm.Settings, shell), shell);
@@ -115,6 +117,25 @@ public partial class App : Application
 		if (!minimized)
 		{
 			desktop.MainWindow = window;
+		}
+	}
+
+	// Runs on a thread-pool thread; waits for the window so the other start's "shown" answer is true.
+	private static void ShowFromOtherStart(DesktopShell shell)
+	{
+		try
+		{
+			Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
+			{
+				if (!shell.IsExiting)
+				{
+					shell.ShowMainWindow();
+				}
+			});
+		}
+		catch (Exception e) when (e is InvalidOperationException or TaskCanceledException or OperationCanceledException)
+		{
+			// The app is shutting down.
 		}
 	}
 

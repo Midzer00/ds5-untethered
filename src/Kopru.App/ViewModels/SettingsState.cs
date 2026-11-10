@@ -29,6 +29,7 @@ public sealed partial class SettingsState : ViewModelBase
 		_startup = startup;
 		AppSettings? saved = store?.Load();
 		IsFirstRun = store != null && saved == null;
+		SetupCompleted = saved != null ? saved.SetupCompleted : false;
 		if (saved != null)
 		{
 			_loading = true;
@@ -95,8 +96,23 @@ public sealed partial class SettingsState : ViewModelBase
 		Push();
 	}
 
-	// No settings were saved before (the setup wizard opens on its own).
+	// No settings were saved before.
 	public bool IsFirstRun { get; }
+
+	// True once the required setup steps were all done (the setup page then stops opening by itself); null = an older
+	// settings file that does not say yet. A new install starts with false.
+	public bool? SetupCompleted { get; private set; }
+
+	// Remembers that setup is complete and saves it. Never undone: a driver removed later shows the blocking state.
+	public void MarkSetupCompleted()
+	{
+		if (SetupCompleted == true)
+		{
+			return;
+		}
+		SetupCompleted = true;
+		ScheduleSave();
+	}
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(GameHapticsText))]
@@ -311,6 +327,7 @@ public sealed partial class SettingsState : ViewModelBase
 		MicNoiseGate = MicNoiseGate,
 		MicMuteWindows = MicMuteWindows,
 		AutoStartBridge = AutoStartBridge,
+		SetupCompleted = SetupCompleted,
 	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers));
 
 	// Writes a pending change at once (also called by the debounce timer and on exit).

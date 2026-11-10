@@ -94,7 +94,7 @@ public sealed class LightSwatch(uint rgb)
 }
 
 // The controller page's Test tab: live input from the real controller (buttons, sticks, triggers, touchpad, motion,
-// battery, report rate) and output tests. Input arrives on any thread (ILiveInputSource) and is applied at most
+// battery, report rate) and output tests (vibration, trigger effects and strength, light). Input arrives on any thread (ILiveInputSource) and is applied at most
 // UpdateInterval apart. The controller is only held while the tab is shown (SetVisible). Beside the live sticks and
 // triggers the user fixes what they see: deadzones, curve, trigger range and drift calibration are the page's own
 // editors (Tuning), the only place these settings are shown.
@@ -173,6 +173,8 @@ public sealed partial class TesterViewModel : ViewModelBase
 	public SettingsState Settings { get; }
 	// The page's stick and trigger tuning: its editors and calibration command are used here as they are.
 	public SticksViewModel Tuning { get; }
+	// The trigger effects to feel and the trigger strength, in the output tests.
+	public TriggersViewModel Triggers => Tuning.Triggers;
 	// The "Controller Info" card.
 	public ControllerInfoViewModel Info { get; }
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;

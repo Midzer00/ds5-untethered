@@ -139,16 +139,49 @@ public sealed class UsbIpExeAttacher : IUsbIpAttacher
 
 	public static string? Locate()
 	{
-		if (File.Exists(DefaultPath))
+		if (!OperatingSystem.IsWindows())
 		{
-			return DefaultPath;
+			return null;
 		}
-		foreach (string dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+		try
+		{
+			return Locate(new Setup.WindowsInstallRegistry(), Environment.GetEnvironmentVariable("PATH"));
+		}
+		catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+		{
+			return null;
+		}
+	}
+
+	// The same place the setup check looks first (SystemCheck.CheckUsbIp: the uninstall entry's install folder), then the
+	// default install folder, then PATH.
+	public static string? Locate(Setup.IInstallRegistry registry, string? pathVariable)
+	{
+		if (registry.FindProgram(Setup.SystemCheck.UsbIpProgramPrefix) is { } program && program.Location is { Length: > 0 } folder)
 		{
 			try
 			{
-				string candidate = Path.Combine(dir.Trim(), "usbip.exe");
-				if (File.Exists(candidate))
+				string installed = Path.Combine(folder, Setup.SystemCheck.UsbIpExe);
+				if (registry.FileExists(installed))
+				{
+					return installed;
+				}
+			}
+			catch (ArgumentException)
+			{
+				// A malformed install location.
+			}
+		}
+		if (registry.FileExists(DefaultPath))
+		{
+			return DefaultPath;
+		}
+		foreach (string dir in (pathVariable ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+		{
+			try
+			{
+				string candidate = Path.Combine(dir.Trim(), Setup.SystemCheck.UsbIpExe);
+				if (registry.FileExists(candidate))
 				{
 					return candidate;
 				}

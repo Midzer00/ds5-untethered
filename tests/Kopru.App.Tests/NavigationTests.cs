@@ -87,11 +87,6 @@ public class NavigationTests
 		Assert.False(vm.Tester.IsVisible);
 		Assert.True(vm.Sticks.IsPreviewRunning);
 
-		// Triggers tab: no live readout, nothing runs.
-		vm.Controller.SelectedTab = ControllerPageViewModel.TriggersTab;
-		Assert.Null(service.LiveHandler);
-		Assert.False(vm.Sticks.IsPreviewRunning);
-
 		// Another page: the view is kept but hidden, nothing runs; coming back lands on the same tab.
 		vm.Controller.SelectedTab = ControllerPageViewModel.TestTab;
 		Go(vm, window, vm.NavItems.Single(n => n.Page == vm.Light));

@@ -46,6 +46,8 @@ public enum FixAction
 public enum BlockingKind
 {
 	DriverMissing,
+	// HidHide is required: without it games see the real and the virtual controller.
+	HidHideMissing,
 	NoRadio,
 	BluetoothOff,
 	NeverPaired,
@@ -187,13 +189,17 @@ public sealed record HealthReport(
 		return new HealthReport(connection, chips, blocking, blocking?.Reason ?? string.Empty, testReason);
 	}
 
-	// Priority: driver missing > no radio > Bluetooth off > never paired > on a cable. A paired controller that is off or
-	// asleep does not block: the bridge starts and waits for it.
+	// Priority: usbip-win2 missing > HidHide missing > no radio > Bluetooth off > never paired > on a cable. A paired
+	// controller that is off or asleep does not block: the bridge starts and waits for it.
 	public static BlockingIssue? Blocking(HealthEnvironment env, ConnectionState connection, Language? l = null)
 	{
 		if (!env.UsbIp.Ready)
 		{
 			return new(BlockingKind.DriverMissing, HealthLevel.Error, Text.HealthChipDriver(l), Text.CannotStartDriver(l), FixAction.InstallDriver);
+		}
+		if (!env.HidHide.Ready)
+		{
+			return new(BlockingKind.HidHideMissing, HealthLevel.Error, Text.HealthChipHiding(l), Text.CannotStartHidHide(l), FixAction.InstallHidHide);
 		}
 		return connection.Kind switch
 		{
@@ -230,11 +236,11 @@ public sealed record HealthReport(
 		HealthChip Chip(HealthLevel level, string reason, FixAction fix) => new(HealthChipKind.HidHide, level, label, reason, fix);
 		if (!env.HidHide.Installed)
 		{
-			return Chip(HealthLevel.Warning, Text.HealthHidingMissing(l), FixAction.InstallHidHide);
+			return Chip(HealthLevel.Error, Text.HealthHidingMissing(l), FixAction.InstallHidHide);
 		}
 		if (!env.HidHide.DriverPresent)
 		{
-			return Chip(HealthLevel.Warning, Text.HealthHidingDriverMissing(l), FixAction.InstallHidHide);
+			return Chip(HealthLevel.Error, Text.HealthHidingDriverMissing(l), FixAction.InstallHidHide);
 		}
 		if (!run.BridgeStarted)
 		{

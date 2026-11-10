@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+﻿// SPDX-License-Identifier: GPL-3.0-or-later
 using System.Diagnostics;
 using Kopru.Core.Hid;
-using Microsoft.Win32;
 
 namespace Kopru.Core.Hiding;
 
@@ -43,7 +42,6 @@ public sealed record HidHideState(bool CloakOn, IReadOnlyList<string> HiddenDevi
 public sealed class HidHideControl(ICommandRunner runner, string? cliPath)
 {
 	public const string DefaultCliPath = @"C:\Program Files\Nefarius Software Solutions\HidHide\x64\HidHideCLI.exe";
-	private const string UninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
 
 	public string? CliPath { get; } = cliPath;
 
@@ -58,28 +56,7 @@ public sealed class HidHideControl(ICommandRunner runner, string? cliPath)
 		{
 			try
 			{
-				foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
-				{
-					using RegistryKey root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
-					using RegistryKey? uninstall = root.OpenSubKey(UninstallKey);
-					if (uninstall is null)
-					{
-						continue;
-					}
-					foreach (string name in uninstall.GetSubKeyNames())
-					{
-						using RegistryKey? entry = uninstall.OpenSubKey(name);
-						if (entry?.GetValue("DisplayName") is string display && display.Equals("HidHide", StringComparison.OrdinalIgnoreCase) &&
-							entry.GetValue("InstallLocation") is string location)
-						{
-							string candidate = Path.Combine(location, Environment.Is64BitOperatingSystem ? "x64" : "x86", "HidHideCLI.exe");
-							if (File.Exists(candidate))
-							{
-								return candidate;
-							}
-						}
-					}
-				}
+				return LocateCli(new Setup.WindowsInstallRegistry(), Environment.Is64BitOperatingSystem);
 			}
 			catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
 			{
@@ -87,6 +64,27 @@ public sealed class HidHideControl(ICommandRunner runner, string? cliPath)
 			}
 		}
 		return File.Exists(DefaultCliPath) ? DefaultCliPath : null;
+	}
+
+	// The uninstall entry the setup check finds (SystemCheck.CheckHidHide), then the default install folder.
+	public static string? LocateCli(Setup.IInstallRegistry registry, bool is64Bit)
+	{
+		if (registry.FindProgram(Setup.SystemCheck.HidHideProgramPrefix) is { } program && program.Location is { Length: > 0 } folder)
+		{
+			try
+			{
+				string candidate = Path.Combine(folder, is64Bit ? "x64" : "x86", "HidHideCLI.exe");
+				if (registry.FileExists(candidate))
+				{
+					return candidate;
+				}
+			}
+			catch (ArgumentException)
+			{
+				// A malformed install location.
+			}
+		}
+		return registry.FileExists(DefaultCliPath) ? DefaultCliPath : null;
 	}
 
 	// Quotes one argument for the command line. Windows paths cannot contain '"'.

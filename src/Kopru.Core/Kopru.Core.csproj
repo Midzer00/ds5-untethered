@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SupportedOSPlatformVersion>10.0.17763</SupportedOSPlatformVersion>
+    <AssemblyTitle>DS5 Untethered Core</AssemblyTitle>
   </PropertyGroup>
 
   <ItemGroup>

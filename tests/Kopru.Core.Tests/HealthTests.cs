@@ -125,8 +125,8 @@ public class HealthTests
 	}
 
 	[Theory]
-	[InlineData(false, false, false, null, null, HealthLevel.Warning, FixAction.InstallHidHide)]
-	[InlineData(true, false, false, null, null, HealthLevel.Warning, FixAction.InstallHidHide)]
+	[InlineData(false, false, false, null, null, HealthLevel.Error, FixAction.InstallHidHide)]
+	[InlineData(true, false, false, null, null, HealthLevel.Error, FixAction.InstallHidHide)]
 	[InlineData(true, true, false, null, null, HealthLevel.Ok, FixAction.None)]
 	[InlineData(true, true, true, false, null, HealthLevel.Warning, FixAction.RestartBridge)]
 	[InlineData(true, true, true, true, false, HealthLevel.Warning, FixAction.RestartBridge)]
@@ -238,6 +238,34 @@ public class HealthTests
 		Assert.Equal(FixAction.InstallDriver, r.BlockingIssue?.Fix);
 		Assert.False(r.CanStartBridge);
 		Assert.Equal(Text.CannotStartDriver(), r.CanStartBridgeReason);
+	}
+
+	[Theory]
+	[InlineData(false, false)]
+	[InlineData(true, false)]
+	[InlineData(false, true)]
+	public void Blocking_HidHideMissing_BlocksLikeTheDriver(bool installed, bool driver)
+	{
+		HealthReport r = HealthReport.Build(Env(hidHide: new ComponentInfo(installed, "1.5", null, driver)), Run(), Now);
+		Assert.Equal(BlockingKind.HidHideMissing, r.BlockingIssue?.Kind);
+		Assert.Equal(HealthLevel.Error, r.BlockingIssue?.Level);
+		Assert.Equal(FixAction.InstallHidHide, r.BlockingIssue?.Fix);
+		Assert.False(r.CanStartBridge);
+		Assert.Equal(Text.CannotStartHidHide(), r.CanStartBridgeReason);
+	}
+
+	[Fact]
+	public void Blocking_UsbIpMissing_BeatsHidHideMissing()
+	{
+		HealthReport r = HealthReport.Build(Env(usbIp: ComponentInfo.Missing, hidHide: ComponentInfo.Missing), Run(), Now);
+		Assert.Equal(BlockingKind.DriverMissing, r.BlockingIssue?.Kind);
+	}
+
+	[Fact]
+	public void Blocking_HidHideMissing_BeatsBluetooth()
+	{
+		HealthReport r = HealthReport.Build(Env(radio: RadioState.Off, hidHide: ComponentInfo.Missing), Run(pads: []), Now);
+		Assert.Equal(BlockingKind.HidHideMissing, r.BlockingIssue?.Kind);
 	}
 
 	[Theory]

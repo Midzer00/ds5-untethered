@@ -17,11 +17,13 @@ public sealed class SetupFlowTests
 	internal sealed class MutableProbes : IInstallRegistry, IBluetoothRadio, IControllerFinder, IRestartProbe
 	{
 		public bool Drivers { get; set; }
+		// The controller is connected over Bluetooth (off = paired before but switched off now).
+		public bool ControllerOn { get; set; } = true;
 		public (string? Version, string? Location)? FindProgram(string displayNamePrefix) => Drivers ? ("1.0", @"C:\x") : null;
 		public bool ServiceExists(string serviceName) => Drivers;
 		public bool FileExists(string path) => Drivers;
 		public RadioState Query() => RadioState.On;
-		public IReadOnlyList<HidDevice> Find() => [new HidDevice(TestLink.BtPath, 0x054C, 0x0CE6, 78, 547, 64)];
+		public IReadOnlyList<HidDevice> Find() => ControllerOn ? [new HidDevice(TestLink.BtPath, 0x054C, 0x0CE6, 78, 547, 64)] : [];
 		public bool? IsRestartPending() => false;
 	}
 
@@ -79,6 +81,78 @@ public sealed class SetupFlowTests
 		Assert.False(items[1].IsCurrent);
 		Assert.True(items[1].ShowsNumber);
 		Assert.True(items[2].IsCurrent);
+	}
+
+	private static MainWindowViewModel OpenMain(MutableProbes p, MemorySettingsStore store) =>
+		new(new FakeControllerService(animate: false), new AppEnvironment(store, null, () => Wizard(p)));
+
+	[AvaloniaFact]
+	public void ClosedDuringSetup_OpensSetupAgainAtTheNextStart()
+	{
+		// A settings file saved while setup was still incomplete (the app was closed on the setup page).
+		var store = new MemorySettingsStore(new AppSettings { SetupCompleted = false });
+		MainWindowViewModel main = OpenMain(new MutableProbes(), store);
+		SetupViewModel setup = Assert.IsType<SetupViewModel>(main.CurrentPage);
+		Assert.True(setup.AutoFinish);
+		Assert.False(main.Settings.IsFirstRun);
+	}
+
+	[AvaloniaFact]
+	public async Task CompletedSetup_IsSaved_AndNeverOpensByItselfAgain()
+	{
+		var probes = new MutableProbes();
+		var store = new MemorySettingsStore();
+		MainWindowViewModel main = OpenMain(probes, store);
+		SetupViewModel setup = Assert.IsType<SetupViewModel>(main.CurrentPage);
+		Assert.False(main.Settings.SetupCompleted);
+
+		probes.Drivers = true;
+		await setup.RunAsync(Action(setup, SetupStepId.Drivers, SetupActionKind.Recheck));
+		Assert.True(main.Settings.SetupCompleted);
+		main.Settings.SaveNow();
+		Assert.True(store.Saved?.SetupCompleted);
+
+		// A driver removed later: the normal blocking state, not the setup page.
+		probes.Drivers = false;
+		MainWindowViewModel next = OpenMain(probes, store);
+		Assert.Null(next.Setup);
+		Assert.Same(next.Overview, next.CurrentPage);
+	}
+
+	[AvaloniaFact]
+	public void FirstStart_WithEverythingDone_CompletesAtOnce()
+	{
+		var store = new MemorySettingsStore();
+		MainWindowViewModel main = OpenMain(new MutableProbes { Drivers = true }, store);
+		Assert.Null(main.Setup);
+		Assert.True(main.Settings.SetupCompleted);
+	}
+
+	[AvaloniaFact]
+	public void FirstStart_ControllerOff_StillNeedsThePairingStep()
+	{
+		MainWindowViewModel main = OpenMain(new MutableProbes { Drivers = true, ControllerOn = false }, new MemorySettingsStore());
+		SetupViewModel setup = Assert.IsType<SetupViewModel>(main.CurrentPage);
+		Assert.Equal(SetupStepId.PairController, setup.Wizard.FirstIncomplete?.Id);
+		Assert.False(main.Settings.SetupCompleted);
+	}
+
+	[AvaloniaFact]
+	public void OlderSettingsFile_WithBothDrivers_CountsAsCompleted_EvenWithTheControllerOff()
+	{
+		var store = new MemorySettingsStore(new AppSettings());
+		Assert.Null(store.Saved?.SetupCompleted);
+		MainWindowViewModel main = OpenMain(new MutableProbes { Drivers = true, ControllerOn = false }, store);
+		Assert.Null(main.Setup);
+		Assert.True(main.Settings.SetupCompleted);
+	}
+
+	[AvaloniaFact]
+	public void OlderSettingsFile_WithADriverMissing_OpensSetup()
+	{
+		MainWindowViewModel main = OpenMain(new MutableProbes(), new MemorySettingsStore(new AppSettings()));
+		Assert.IsType<SetupViewModel>(main.CurrentPage);
+		Assert.Null(main.Settings.SetupCompleted);
 	}
 
 	[AvaloniaFact]
