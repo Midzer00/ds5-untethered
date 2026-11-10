@@ -31,12 +31,15 @@ public sealed class EarlyRegistrationTests : IDisposable
 
 	private int Count(string prefix) => _fake.Calls.Count(c => c.StartsWith(prefix, StringComparison.Ordinal));
 
+	private string[] EarlyClaims() =>
+		_store.Load().Claims.Where(c => c.Scope == HidingClaimScope.Early && c.Kind == HidingClaimKind.App).Select(c => c.Value).ToArray();
+
 	[Fact]
 	public async Task Registers_at_start_and_records_it()
 	{
 		Assert.True(await EarlyAppRegistration.EnsureAppAllowedAsync(_control, _store, OurExe));
 		Assert.Equal(new[] { OurExe }, _fake.Apps);
-		Assert.Equal(new[] { OurExe }, _store.Load()!.EarlyApps);
+		Assert.Equal(new[] { OurExe }, EarlyClaims());
 		Assert.True(await EarlyAppRegistration.EnsureAppAllowedAsync(_control, _store, OurExe));
 		Assert.Equal(1, Count("--app-reg"));
 	}
@@ -47,11 +50,11 @@ public sealed class EarlyRegistrationTests : IDisposable
 		await EarlyAppRegistration.EnsureAppAllowedAsync(_control, _store, OurExe);
 		HidingSession session = await HidingSession.StartAsync(_control, _store, [BtPad], OurExe);
 		Assert.Empty(session.AddedApps);
-		Assert.Equal(new[] { OurExe }, _store.Load()!.EarlyApps);
+		Assert.Equal(new[] { OurExe }, EarlyClaims());
 		await session.DisposeAsync();
 		Assert.Equal(new[] { OurExe }, _fake.Apps);
 		Assert.Empty(_fake.Devices);
-		Assert.Equal(new[] { OurExe }, _store.Load()!.EarlyApps);
+		Assert.Equal(new[] { OurExe }, EarlyClaims());
 
 		await using (await HidingSession.StartAsync(_control, _store, [BtPad], OurExe))
 		{
@@ -73,11 +76,14 @@ public sealed class EarlyRegistrationTests : IDisposable
 	[Fact]
 	public async Task Crash_recovery_unregisters()
 	{
-		await EarlyAppRegistration.EnsureAppAllowedAsync(_control, _store, OurExe);
-		await HidingSession.StartAsync(_control, _store, [BtPad], OurExe); // never disposed: crash
+		var live = new HashSet<HidingOwner> { new(1, 1) };
+		var crashed = new HidingStateStore(_store.Path, new HidingOwner(1, 1), live.Contains);
+		await EarlyAppRegistration.EnsureAppAllowedAsync(_control, crashed, OurExe);
+		await HidingSession.StartAsync(_control, crashed, [BtPad], OurExe); // never disposed: crash
 		Assert.True(_fake.CloakOn);
+		live.Clear();
 
-		await HidingSession.RecoverAsync(_control, _store);
+		await HidingSession.RecoverAsync(_control, new HidingStateStore(_store.Path, new HidingOwner(2, 2), live.Contains));
 		Assert.False(_fake.CloakOn);
 		Assert.Empty(_fake.Devices);
 		Assert.Empty(_fake.Apps);
@@ -89,7 +95,7 @@ public sealed class EarlyRegistrationTests : IDisposable
 	{
 		_fake.Apps.Add(OurExe);
 		Assert.True(await EarlyAppRegistration.EnsureAppAllowedAsync(_control, _store, OurExe));
-		Assert.Null(_store.Load());
+		Assert.Empty(_store.Load().Claims);
 		await EarlyAppRegistration.ReleaseAsync(_control, _store);
 		await HidingSession.RecoverAsync(_control, _store);
 		Assert.Equal(new[] { OurExe }, _fake.Apps);

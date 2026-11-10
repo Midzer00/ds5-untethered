@@ -7,14 +7,20 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
+// One tab of a segmented switch; the name follows the language.
+public sealed class TabOption(Func<string> name) : ViewModelBase
+{
+	public string Name => name();
+}
+
 public sealed class CurveOption(ResponseCurve curve)
 {
 	public ResponseCurve Curve { get; } = curve;
 	public string Name => Text.CurveName(Curve);
 }
 
-// One stick's settings (written back into SettingsState.Tuning) and its live preview: raw and tuned position, -1..1.
-public sealed partial class StickEditor : ViewModelBase
+// One stick's settings (written back into SettingsState.Tuning); the Test tab shows them beside the live stick.
+public sealed class StickEditor : ViewModelBase
 {
 	private readonly SettingsState _settings;
 	private readonly bool _left;
@@ -28,7 +34,7 @@ public sealed partial class StickEditor : ViewModelBase
 
 	private StickTuning Current => _left ? _settings.Tuning.LeftStick : _settings.Tuning.RightStick;
 
-	public string Title => _left ? Text.LeftStick() : Text.RightStick();
+	public string Title => _left ? Text.TesterLeftStick() : Text.TesterRightStick();
 	public string InnerLabel => Text.InnerDeadzoneLabel();
 	public string OuterLabel => Text.OuterDeadzoneLabel();
 	public string AntiLabel => Text.AntiDeadzoneLabel();
@@ -54,40 +60,14 @@ public sealed partial class StickEditor : ViewModelBase
 		}
 	}
 
-	// Raw input is arriving (the bridge runs with a controller).
-	[ObservableProperty]
-	private bool _isLive;
-
-	[ObservableProperty]
-	private double _rawX;
-
-	[ObservableProperty]
-	private double _rawY;
-
-	[ObservableProperty]
-	private double _tunedX;
-
-	[ObservableProperty]
-	private double _tunedY;
-
 	// Called when SettingsState.Tuning changed.
 	public void Refresh() => OnPropertyChanged(string.Empty);
-
-	public void SetPosition(byte rawX, byte rawY, byte tunedX, byte tunedY)
-	{
-		RawX = Axis(rawX);
-		RawY = Axis(rawY);
-		TunedX = Axis(tunedX);
-		TunedY = Axis(tunedY);
-	}
 
 	protected override void OnLanguageChanged()
 	{
 		Curves = BuildCurves();
 		base.OnLanguageChanged();
 	}
-
-	private static double Axis(byte v) => Math.Clamp((v - 127.5) / 127.5, -1, 1);
 
 	private static IReadOnlyList<CurveOption> BuildCurves() =>
 		[new(ResponseCurve.Linear), new(ResponseCurve.Smooth), new(ResponseCurve.Aggressive)];
@@ -99,8 +79,8 @@ public sealed partial class StickEditor : ViewModelBase
 	}
 }
 
-// One trigger's range (percent of travel) and its live level, 0..100.
-public sealed partial class TriggerRangeEditor : ViewModelBase
+// One trigger's range (percent of travel); the controller page's Test tab shows it beside the live trigger.
+public sealed class TriggerRangeEditor : ViewModelBase
 {
 	private readonly SettingsState _settings;
 	private readonly bool _left;
@@ -124,22 +104,7 @@ public sealed partial class TriggerRangeEditor : ViewModelBase
 	public string StartText => Text.PercentValue(Math.Round(Start));
 	public string EndText => Text.PercentValue(Math.Round(End));
 
-	[ObservableProperty]
-	private bool _isLive;
-
-	[ObservableProperty]
-	private double _rawLevel;
-
-	[ObservableProperty]
-	private double _tunedLevel;
-
 	public void Refresh() => OnPropertyChanged(string.Empty);
-
-	public void SetLevel(byte raw, byte tuned)
-	{
-		RawLevel = raw / 255.0 * 100;
-		TunedLevel = tuned / 255.0 * 100;
-	}
 
 	private void Set(Func<TriggerTuning, TriggerTuning> change)
 	{
@@ -148,42 +113,41 @@ public sealed partial class TriggerRangeEditor : ViewModelBase
 	}
 }
 
-// Sticks & triggers: deadzones, curve, drift calibration and trigger ranges, with a live preview of the raw input.
-public sealed partial class SticksViewModel : PageViewModel
+// The stick and trigger tuning of the controller page: the editors (the Test tab shows them beside the live input),
+// drift calibration, reset, the trigger effects and strength (Triggers tab) and remap & gyro. The remap tab's gyro
+// preview polls the virtual controller's input only while that tab is shown (SetVisible, driven by
+// ControllerPageViewModel).
+public sealed partial class SticksViewModel : ViewModelBase
 {
 	public static readonly TimeSpan CalibrationLength = TimeSpan.FromSeconds(3);
 	public static readonly TimeSpan PreviewInterval = TimeSpan.FromMilliseconds(50);
 
 	private readonly IControllerService _service;
-	private readonly Timer? _previewTimer;
-	private byte[]? _lastRaw;
-	private InputTransform _transform;
+	private readonly bool _livePreview;
+	private Timer? _previewTimer;
+	private bool _previewStopped;
 
 	public SticksViewModel(IControllerService service, SettingsState settings, bool livePreview = true)
 	{
 		_service = service;
+		_livePreview = livePreview;
 		Settings = settings;
-		_transform = new InputTransform(settings.Tuning);
 		LeftStick = new StickEditor(settings, left: true);
 		RightStick = new StickEditor(settings, left: false);
 		L2 = new TriggerRangeEditor(settings, left: true);
 		R2 = new TriggerRangeEditor(settings, left: false);
+		Triggers = new TriggersViewModel(service, settings);
+		Remap = new RemapViewModel(service, settings);
 		settings.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(SettingsState.Tuning))
 			{
-				_transform = new InputTransform(Settings.Tuning);
 				LeftStick.Refresh();
 				RightStick.Refresh();
 				L2.Refresh();
 				R2.Refresh();
-				UpdatePreview(_lastRaw, force: true);
 			}
 		};
-		if (livePreview)
-		{
-			_previewTimer = new Timer(_ => RunOnUi(RefreshInput), null, PreviewInterval, PreviewInterval);
-		}
 	}
 
 	public SettingsState Settings { get; }
@@ -192,16 +156,24 @@ public sealed partial class SticksViewModel : PageViewModel
 	public TriggerRangeEditor L2 { get; }
 	public TriggerRangeEditor R2 { get; }
 
-	public override string Title => Text.NavSticks();
-	public string Intro => Text.SticksIntro();
-	public string PreviewHint => HasLiveInput ? Text.StickPreviewHint() : Text.LivePreviewNeedsBridge();
+	// Trigger effects and strength (Triggers tab).
+	public TriggersViewModel Triggers { get; }
+
+	// Button remapping and gyro aiming (Remap tab).
+	public RemapViewModel Remap { get; }
+
 	public string CalibrationLabel => Text.DriftCalibration();
-	public string CalibrationHint => Text.DriftCalibrationHint();
 	public string CalibrateText => Text.CalibrateAction();
-	public string TriggerRangeLabel => Text.TriggerRange();
-	public string TriggerRangeHint => Text.TriggerRangeHint();
 	public string ResetText => Text.ResetToDefault();
-	public bool HasLiveInput => _lastRaw != null;
+	public string FallbackLabel => Text.FallbackTriggerLabel();
+	public string FallbackHint => Text.FallbackTriggerElsewhere();
+	public string FallbackLinkText => Text.OpenOtherGames();
+
+	// Opens the Other Games page, where the fallback trigger effect lives (set by the main window).
+	public Action? OpenOtherGames { get; set; }
+
+	[RelayCommand]
+	private void OpenFallback() => OpenOtherGames?.Invoke();
 	public bool HasCalibrationText => !string.IsNullOrEmpty(CalibrationText);
 
 	[ObservableProperty]
@@ -215,46 +187,36 @@ public sealed partial class SticksViewModel : PageViewModel
 	[NotifyPropertyChangedFor(nameof(HasCalibrationText))]
 	private string _calibrationText = string.Empty;
 
-	// Stops the live preview timer.
-	public void StopPreview() => _previewTimer?.Dispose();
+	public bool IsVisible { get; private set; }
 
-	// Reads the latest raw input and moves the preview (timer; tests call it directly).
-	public void RefreshInput() => UpdatePreview(_service.RawInput, force: false);
-
-	private void UpdatePreview(byte[]? raw, bool force)
+	// The remap tab was shown or left: its live preview polls the raw input only while it is shown.
+	public void SetVisible(bool visible)
 	{
-		if (raw == null || raw.Length <= InputTransform.Buttons1)
-		{
-			if (_lastRaw != null)
-			{
-				_lastRaw = null;
-				SetLive(false);
-				OnPropertyChanged(nameof(HasLiveInput));
-				OnPropertyChanged(nameof(PreviewHint));
-			}
-			return;
-		}
-		if (!force && _lastRaw != null && raw.AsSpan().SequenceEqual(_lastRaw))
+		if (visible == IsVisible)
 		{
 			return;
 		}
-		bool appeared = _lastRaw == null;
-		_lastRaw = raw;
-		byte[] tuned = (byte[])raw.Clone();
-		_transform.Apply(tuned);
-		LeftStick.SetPosition(raw[InputTransform.LeftX], raw[InputTransform.LeftY], tuned[InputTransform.LeftX], tuned[InputTransform.LeftY]);
-		RightStick.SetPosition(raw[InputTransform.RightX], raw[InputTransform.RightY], tuned[InputTransform.RightX], tuned[InputTransform.RightY]);
-		L2.SetLevel(raw[InputTransform.L2Analog], tuned[InputTransform.L2Analog]);
-		R2.SetLevel(raw[InputTransform.R2Analog], tuned[InputTransform.R2Analog]);
-		if (appeared)
+		IsVisible = visible;
+		_previewTimer?.Dispose();
+		_previewTimer = null;
+		if (visible && _livePreview && !_previewStopped)
 		{
-			SetLive(true);
-			OnPropertyChanged(nameof(HasLiveInput));
-			OnPropertyChanged(nameof(PreviewHint));
+			_previewTimer = new Timer(_ => RunOnUi(RefreshInput), null, PreviewInterval, PreviewInterval);
 		}
 	}
 
-	private void SetLive(bool live) => LeftStick.IsLive = RightStick.IsLive = L2.IsLive = R2.IsLive = live;
+	public bool IsPreviewRunning => _previewTimer != null;
+
+	// Stops the live preview timer for good (tests).
+	public void StopPreview()
+	{
+		_previewStopped = true;
+		_previewTimer?.Dispose();
+		_previewTimer = null;
+	}
+
+	// Reads the latest raw input and moves the gyro preview (timer; tests call it directly).
+	public void RefreshInput() => Remap.UpdateLive(_service.RawInput);
 
 	private bool CanCalibrate() => !IsCalibrating;
 

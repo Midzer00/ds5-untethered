@@ -95,7 +95,7 @@ public class HapticsConverterTests
 	}
 }
 
-public class BridgeTests
+public partial class BridgeTests
 {
 	internal static readonly byte[] Device = [18, 1, 0x00, 0x02, 0, 0, 0, 64, 0x4C, 0x05, 0xE6, 0x0C, 0x00, 0x01, 1, 2, 0, 1];
 
@@ -279,5 +279,34 @@ public class BridgeTests
 		Assert.False(bridge.TakeGameSignals().Haptics);
 		pad.Submit(Command(8, UsbIpCodes.DirOut, VirtualDualSense.AudioOutEndpoint, HapticsConverterTests.Audio(480, ch4: HapticsConverterTests.Tone(100, 0.2)), packets), _ => { });
 		Assert.True(bridge.TakeGameSignals().IsNative);
+	}
+
+	[Fact]
+	public void GameControlsLight_OnceTheGameSetsIt_UntilTheProfileChanges()
+	{
+		FakeLink link = new();
+		using BluetoothSession session = new(link);
+		using VirtualDualSense pad = Pad();
+		using ControllerBridge bridge = new(session, pad);
+		Assert.False(bridge.GameControlsLight);
+		SendOutput(pad, b => OutputBlock.SetTriggers(b, TriggerEffects.Off(), TriggerEffects.Off()));
+		Assert.False(bridge.GameControlsLight);
+		SendOutput(pad, b => OutputBlock.SetLightbar(b, 1, 2, 3));
+		Assert.True(bridge.GameControlsLight);
+		bridge.ApplyProfile(new BridgeProfile(LightFromGame: true));
+		Assert.False(bridge.GameControlsLight);
+
+		// Light not let through: never the game's, and its LED controls are dropped.
+		bridge.ApplyProfile(new BridgeProfile(LightFromGame: false));
+		SendOutput(pad, b =>
+		{
+			OutputBlock.SetLightbar(b, 9, 9, 9);
+			OutputBlock.SetPlayerLeds(b, 0x1F, OutputBlock.LedBrightnessLow);
+			OutputBlock.SetMuteLed(b, OutputBlock.MuteLedOn);
+		});
+		Assert.False(bridge.GameControlsLight);
+		byte[] sent = Block(link.Writes.Last(w => w[0] == 0x31));
+		Assert.Equal(0, sent[OutputBlock.Flag1] & (OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl));
+		Assert.Equal(0, sent[OutputBlock.Flag2] & OutputBlock.LedBrightnessControl);
 	}
 }

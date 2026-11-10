@@ -62,15 +62,22 @@ yalnızca herkese açık protokol bilgileri ve kendi ölçümlerimiz kullanılı
 - [ ] Titreşim→haptik his ayarı (80/160 Hz, boşta eşiği)
 - [x] HidHide: başka araç gizlemişse köprü başlamadan da kumandayı görmek (açılışta erken kayıt, çıkışta geri alma)
 - [x] Gerçek gecikme ölçümü (Genel bakış: bağlantı gecikmesi ortanca / en kötü %1)
-- [ ] Tetik gücü oyunun efektlerine de uygulansın
+- [x] Tetik gücü oyunun efektlerine de uygulansın — tüm bilinen modlar (0x01/0x02/0x06 basit, 0x21 direnç/eğim/çoklu, 0x22 yay, 0x25 silah, 0x26 titreşim/çoklu, 0x27 makine) kuvvet/genlikle ölçeklenir; konum, bölge maskesi, frekans dokunulmaz; %100 birebir, %0 kapalı, sıfır olmayan kuvvet en az 1; bilinmeyen mod değişmeden geçer ve sayılır; ayar değişince oyunun son efekti hemen yeniden gönderilir — testli, donanımda denenmedi
+- [ ] Donanımda deneme: tetik gücü (Hafif/Normal/Güçlü) destekli bir oyunun silah/direnç/titreşim efektlerinde hissedilir mi; 0x22 yay, 0x27 makine ve 0x01/0x02/0x06 basit mod bayt düzenleri doğru mu; Hafif'te hafif efektler kaybolmuyor mu
 - [x] Boşta kumandayı kapatma (BT bağlantısını kesme) ve Genel bakış'ta "Kumandayı kapat"
 - [x] Tanılama dışa aktarımı (Ayarlar → zip; adaptör testi sonucu dahil)
 - [ ] Sanal kumanda kimliğini programa gömme
 
 ### B. PS5 deneyimi için özellikler (öncelik sırasıyla)
 1. [ ] Oyun sesi → kumanda hoparlörü/kulaklık; ses seviyesi; kulaklık takılınca otomatik geçiş (Orta)
-2. [ ] Mikrofon oyuna; sessize alma tuşu ve ışığı (Büyük)
-3. [ ] Oyuna göre otomatik profiller + kumanda kısayolları (PS+D-pad profil, PS+üçgen kapat) (Orta)
+   - [x] Araştırma ve prototip: Bluetooth hoparlör sesi (Audio/, 0x36 raporunda haptikle iç içe, `Kopru.Probe speaker`; docs/research/bt-audio.md) — varsayılan kapalı, testli, donanımda denenmedi
+   - [x] Kodlayıcı: Concentus 2.2.2 (yönetilen Opus, BSD-3-Clause; opus.dll gerekmez; 10 ms çerçeve ~0,33 ms), libopus yalnızca KOPRU_OPUS=native ile isteğe bağlı
+   - [x] Köprüye bağlandı: oyunun 1–2. kanalları hoparlöre, 3–4. kanallar haptik olarak aynen; 200 ms sessizlikte 0x32'ye dönüş;
+         kulaklık girişine otomatik geçiş; Ayarlar → Kumanda Hoparlörü (deneysel anahtar, hoparlör/kulaklık sesi, "Kulaklık takılı"),
+         settings.json ve profillerde saklanır — varsayılan kapalı, testli, donanımda denenmedi
+   - [ ] Donanım denemesi: `Kopru.Probe speaker`, ardından bir oyunla uygulama içinde
+2. [~] Mikrofon oyuna; sessize alma tuşu ve ışığı (Büyük) — sessize alma tuşu (oyuna iletilmez), LED "Mikrofonu İzle", isteğe bağlı Windows mikrofonunu sessize alma: testli. BT mikrofon aktarımı deneysel prototip (Opus 0xD4 düzeni varsayım), donanımda denenmedi; bkz. docs/research/bt-mic.md
+3. [x] Oyuna göre otomatik profiller + kumanda kısayolları (PS+D-pad profil, PS+üçgen kapat) (Orta) — Ayarlar'da "Profiller" (yeni, yeniden adlandır, çoğalt, sil, .json içe/dışa aktar; "Varsayılan" hep var, eski ayarlar ona taşındı), Desteklenen oyunlar listesinde oyun başına profil seçici (tanınınca etkinleşir, yoksa Varsayılan), etkin profil Genel bakış ve kenar çubuğunda; PS basılıyken Sol/Sağ profil, Yukarı/Aşağı haptik ±%10, Kare destekli mod, Üçgen 1 sn kapat (oyuncu ışıkları profil numarası + bildirim; kısayolda PS ve tuş oyuna gitmez, tek PS dokunuşu gider), "Kumanda Kısayolları" anahtarı — testli (sahtelerle), donanımda denenmedi
 4. [x] Stick deadzone, drift kalibrasyonu, tepki eğrisi (Küçük) — "Analog ve tetikler" sayfası, canlı önizleme
 5. [x] Tetik deadzone ve basma aralığı (Küçük)
 6. [ ] PS5 tarzı yoğunluk ayarları: haptik, tetik efekti (kapalı dahil), ışık/oyuncu ışığı parlaklığı (Küçük)
@@ -79,18 +86,31 @@ yalnızca herkese açık protokol bilgileri ve kendi ölçümlerimiz kullanılı
    - [x] Bildirimler: uygulamaya özel toast kartları (sağ alt, en fazla 3, 200 ms kayma/solma, üzerindeyken durur, tıklayınca ilgili sayfa), bağlantı / pil %20-%10 / şarj bitti / oyun ve modu / Steam Input / boşta kapatma / köprü hatası / HidHide eksik; tür başına anahtar, tekrar ve hız sınırı, "Oyun sırasında bildirim gösterme"
    - [x] Tepsi simgesi (Aç, köprüyü başlat/durdur, kumandayı kapat, bildirimler aç/kapat, çıkış), kapatınca tepside çalışma, "Windows ile başlat" tepside açılır (--minimized)
    - [ ] Donanımda deneme: toast konumu çoklu ekran/DPI, tam ekran oyunda görünüm, tepsi menüsü
-9. [ ] Tuş atama (DualSense raporunun içinde) (Orta)
-10. [ ] Gyro → sağ çubuk (her zaman / L2 basılıyken) (Orta)
+   - [x] Işık efektleri (Işık sayfası): Sabit / Nefes / Gökkuşağı / Pil Rengi (yeşil → turuncu → kırmızı, %10 altında yanıp söner) / Oyun Kontrolünde; ~30 Hz, yalnızca değişince gönderilir; destekli oyun ışığı gönderirse oyun kazanır. Oyuncu LED deseni (kapalı / 1–4 / tümü) ve parlaklığı (düşük/orta/yüksek, çıkış bloğu bayt 42), mikrofon LED'i (açık/kapalı) — testli, donanımda denenmedi
+   - [x] "DualSense Destekli Mod" anahtarı (Genel bakış köprü kartı, kenar çubuğu kartı, tepsi menüsü): kapalıyken (varsayılan) diğer oyunlar profili, açıkken destekli profil. Rastgele ön plan uygulamaları artık taranmıyor/öğrenilmiyor; yalnızca tanınan oyunlar: listedeki exe, Steam kütüphanesi (libraryfolders.vdf + appmanifest installdir → steamAppId) ya da kullanıcının eklediği oyun ("Oyun Ekle": açık uygulamalardan ya da dosyadan; "Kaldır"). Tanınan oyun açılınca, mod kapalıysa her açılışta bir kez butonlu bildirim (Aç / Şimdi Değil / Her Zaman, 20 sn, odak çalmaz); "Her Zaman" oyunu "Otomatik Aç" olarak işaretler (listeden kaldırılabilir); oyun için açılan mod oyun kapanınca ya da başka tanınan oyun gelince kapanır; elle değiştirmek oyun kapanana dek geçerli. "Tanınan Oyunda Sor" ayarı; eski exe seçimleri taşındı (Destekli → Her Zaman, Desteksiz → Sorma) — testli (sahtelerle), donanımda denenmedi
+   - [ ] Donanımda deneme: Steam kütüphanesi eşlemesi, bildirim butonlarının oyun odağını almaması
+   - [x] DualSense Modu tek anahtar: açıkken oyunun haptiği, tetik efektleri, ışığı (Oyunun Işığını Kullan, varsayılan açık) ve kumanda hoparlörü birlikte açık (Core `DualSenseMode`, Düşük Güç gibi üst katman; kullanıcının hoparlör anahtarı değişmez, mod kapanınca geri gelir). Mod açıkken hoparlörü elle kapatmak mod yeniden değişene kadar geçerli; Düşük Güç her zaman kazanır; güç değerleri ve mikrofon kullanıcının. Tek değişiklik tek gönderim, köprü yeniden başlamaz. Yeni kurulumda ve anahtarı olmayan eski ayar dosyalarında mod açık; kayıtlı "kapalı" korunur — testli (sahtelerle), donanımda denenmedi
+   - [x] "Köprüyü Kendiliğinden Başlat" (Ayarlar → Genel, varsayılan açık): uygulama açılınca kurulum tamamsa (engel yok, kurulum sayfası kapalı) ve kumanda bağlıysa bir kez başlar; elle durdurmak geri alınmaz, kumanda yeniden bağlanınca yeniden kurulur (Core `BridgeAutoStart`) — testli (sahtelerle), donanımda denenmedi
+   - [ ] Donanımda deneme: DualSense Modunda oyunun hoparlör sesleri (ör. Astro's Playroom/Returnal), açılışta kendiliğinden başlama, kumanda kapanıp açılınca yeniden başlama
+9. [x] Tuş atama (DualSense raporunun içinde) (Orta) — "Analog ve tetikler" sayfasında ikinci sekme: tuş hedefleri, çubuk değiştirme, eksen ters çevirme; profille değişir — testli, donanımda denenmedi
+10. [x] Gyro → sağ çubuk (her zaman / L2 basılıyken) (Orta) — her zaman / L2 / R1 (basılı ya da aç-kapa), hassasiyet, ölü bölge, yumuşatma, kalibrasyon; profille değişir — testli, donanımda denenmedi
+11. [x] Kumanda testi sayfası (menüde Ayarlar'dan önce): canlı tuşlar, çubuklar, tetikler, dokunmatik yüzey, gyro, pil — testli (sahtelerle), donanımda denenmedi
+12. [x] Köprü sağlamlığı: eski sanal kumandaların temizlenmesi (durum dosyası + `usbip port`), uykudan önce düzgün kapatma ve uyanınca yeniden başlatma, bekçi (USB/IP sunucusu yanıt vermez ya da haptik akışı durursa bağlantı yeniden kurulur) — testli, donanımda denenmedi
 
 ### C. Sonraya
-- [ ] Touchpad/D-pad ile fare, gyro ile fare (masaüstü modu)
+- [x] Touchpad/D-pad ile fare, gyro ile fare (masaüstü modu) — Ayarlar → Masaüstü Modu, PS+Options, tepsi öğesi; gyro hedefi fare — testli, donanımda denenmedi
 - [ ] PC sesini haptik olarak hissetme
-- [ ] Işık efektleri (nefes, gökkuşağı)
+- [x] Işık efektleri (nefes, gökkuşağı) — bkz. 8. madde
 - [ ] Özel tetik efekti editörü; oyun desteklemiyorsa hazır efektler
 - [ ] DSX mod uyumluluğu
-- [ ] DualSense Edge arka tuşlar ve profiller
-- [ ] Birden fazla kumanda
-- [ ] Xbox/DS4 taklidi (yalnızca oyun bazında, haptik/tetik/hoparlör kaybolur)
+- [x] DualSense Edge kimliği (Edge Olarak Göster) ve arka tuş atama (Tuş atama → Edge Arka Tuşları) — testli, donanımda denenmedi
+- [x] Birden fazla kumanda (en fazla 4; BridgeManager, slot başına bus id/adres, kumanda seçici, kumandaya özel profil) — testli, donanımda denenmedi. Kablo geçişi, pil yoklaması, sağlık ve uyku koruması şimdilik yalnızca 1. slotta
+- [x] Xbox 360 taklidi (USB/IP, oyun başına "Kumanda Türü"; haptik/tetik/hoparlör/mikrofon kaybolur) — testli, donanımda denenmedi
+- [x] DS4 taklidi (kablolu DualShock 4 v2, 054C:09CC, yalnızca HID; oyun başına "Kumanda Türü" → DualShock 4; titreşim haptik olarak, ışık çubuğu; adaptif tetik/oyun haptikleri/hoparlör/mikrofon yok) — testli, donanımda denenmedi
+- [ ] Donanım testi (DS4 taklidi): Windows'ta "Wireless Controller" olarak görünmesi, Steam'in PS4 kumandası olarak tanıması, DS4 destekli bir oyun, titreşim, ışık çubuğu rengi, jiroskop/ivmeölçer ölçeği ve eksenleri, dokunmatik yüzey, pil/şarj göstergesi
+- [x] Kumanda bilgisi (0x20/0x09: model, yazılım/donanım sürümü, adres; Kumanda testi kartı, Ayarlar → Hakkında) — testli, donanımda denenmedi
+- [x] Kumandayı yeniden bağla (Kumanda testi, tepsi, sağlık düzeltmesi) — testli, donanımda denenmedi
+- [x] USB↔BT kablo geçişi (kablo takılınca köprü durur, Bluetooth'ta sürer; bildirim) — testli, donanımda denenmedi
 
 ### D. Yayın
 - [ ] Tek dosyalık kurulum programı (sürücü kontrolü dahil)

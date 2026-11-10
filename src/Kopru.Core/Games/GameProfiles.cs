@@ -14,7 +14,7 @@ public enum GameMode
 	Supported
 }
 
-// The user's choice for one game.
+// The per-exe choice older versions saved (read only to migrate settings: Supported -> always, Unsupported -> never ask).
 public enum GameOverride
 {
 	Auto,
@@ -22,14 +22,25 @@ public enum GameOverride
 	Unsupported
 }
 
-// Why the current mode was chosen.
+// Why the supported mode switch is where it is.
 public enum ModeReason
 {
-	// Nothing known about the game: unsupported.
+	// Off: the other games profile.
 	Default,
-	Catalog,
-	Detected,
-	User
+	// The user flipped the switch.
+	User,
+	// Turned on for the game in front ("Turn On" on the question).
+	Game,
+	// Turned on by itself: the game is on the "always" list.
+	Always
+}
+
+// The answer to "turn on DualSense supported mode?" when a known game starts.
+public enum AskAnswer
+{
+	TurnOn,
+	NotNow,
+	Always
 }
 
 // A trigger effect for games that send none.

@@ -1,10 +1,11 @@
-﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
 using Kopru.App.Views;
@@ -81,8 +82,8 @@ public class NotificationTests
 		AppNotification connected = Assert.Single(h.Raised);
 		Assert.Equal(NotificationType.Connected, connected.Type);
 		Assert.Equal(NotificationKind.Success, connected.Kind);
-		Assert.Equal("Kumanda bağlandı", connected.Title);
-		Assert.Equal("DualSense · pil %78", connected.Body);
+		Assert.Equal("Kumanda Bağlandı", connected.Title);
+		Assert.Equal("DualSense hazır", connected.Body);
 		Assert.Equal(78, connected.Value);
 		h.Change(f => f.IsConnected = false);
 		Assert.Equal([NotificationType.Connected, NotificationType.Disconnected], h.Types);
@@ -144,43 +145,134 @@ public class NotificationTests
 		Assert.Equal(NotificationKind.Success, charged.Kind);
 	}
 
+	private static void Focus(Harness h, string? exe)
+	{
+		h.Later();
+		h.Fake.Watcher.Exe = exe;
+		h.Fake.Games.Tick();
+		h.Fake.RaiseStateChanged();
+	}
+
 	[AvaloniaFact]
-	public void Game_IsAnnouncedWhenItChanges_WithItsMode()
+	public void Game_KnownGameWithModeOff_AsksOncePerLaunch_WithButtons()
 	{
 		var h = new Harness();
 		// Cyberpunk was already in front when the app started.
 		h.Fake.RaiseStateChanged();
 		Assert.Empty(h.Raised);
-		WithLanguage(Language.Turkish, () =>
-		{
-			h.Fake.Watcher.Exe = "Spider-Man.exe";
-			h.Fake.Games.Tick();
-			h.Fake.RaiseStateChanged();
-		});
-		AppNotification game = Assert.Single(h.Raised);
-		Assert.Equal(NotificationType.GameDetected, game.Type);
-		bool supported = h.Fake.Games.State.Mode == Kopru.Core.Games.GameMode.Supported;
-		Assert.Equal(supported ? "Marvel's Spider-Man Remastered · DualSense destekli" : "Marvel's Spider-Man Remastered · klasik titreşim", game.Body);
-		Assert.Equal(supported ? AppPage.SupportedGames : AppPage.OtherGames, game.Page);
+		WithLanguage(Language.Turkish, () => Focus(h, "Spider-Man.exe"));
+		AppNotification ask = Assert.Single(h.Raised);
+		Assert.Equal(NotificationType.GameAsk, ask.Type);
+		Assert.Equal("Marvel's Spider-Man Remastered", ask.Title);
+		Assert.Equal("DualSense modu açılsın mı?", ask.Body);
+		Assert.Equal(["Şimdi Değil", "Her Zaman", "Aç"], ask.Actions.Select(a => a.Label));
+		Assert.True(ask.Actions[2].IsPrimary);
+		Assert.Equal(AppNotification.ActionDuration, ask.Duration);
 
-		// Away and back to the same game: nothing new.
-		h.Later();
-		h.Fake.Watcher.Exe = null;
-		h.Fake.Games.Tick();
-		h.Fake.RaiseStateChanged();
-		h.Fake.Watcher.Exe = "Spider-Man.exe";
-		h.Fake.Games.Tick();
-		h.Fake.RaiseStateChanged();
+		// Away (to nothing, to unknown apps) and back: the same launch, no repeat.
+		Focus(h, null);
+		Focus(h, "claude.exe");
+		Focus(h, "chrome.exe");
+		Focus(h, "Tetris.exe");
+		Focus(h, "Spider-Man.exe");
 		Assert.Single(h.Raised);
+
+		// The game was closed and started again: asked again.
+		h.Fake.Watcher.Exit("Spider-Man.exe");
+		Focus(h, null);
+		Focus(h, "Spider-Man.exe");
+		Assert.Equal(2, h.Raised.Count(n => n.Type == NotificationType.GameAsk));
+	}
+
+	[AvaloniaFact]
+	public void Game_AskShowsEvenWhileQuiet_ButNotWhenAskIsOff()
+	{
+		var h = new Harness();
+		h.Settings.QuietWhilePlaying = true;
+		h.FullScreen = true;
+		Focus(h, "Returnal-Win64-Shipping.exe");
+		Assert.Equal([NotificationType.GameAsk], h.Types);
+
+		h.Settings.AskOnKnownGame = false;
+		Assert.False(h.Fake.Games.AskOnKnownGame);
+		Focus(h, "Spider-Man.exe");
+		Assert.Single(h.Raised);
+	}
+
+	[AvaloniaFact]
+	public void Game_AskButtons_TurnOn_NotNow_Always()
+	{
+		var h = new Harness();
+		Focus(h, "Spider-Man.exe");
+		h.Raised[^1].Actions.Single(a => a.Label == Text.AskTurnOn()).Run();
+		Assert.True(h.Fake.Games.IsSupportedModeOn);
+		Assert.True(h.Vm.Overview.IsSupportedModeOn);
+		Assert.Equal(Text.ModeShortSupported(), h.Vm.Overview.ModeValue);
+		// The game exits: back off.
+		h.Fake.Watcher.Exit("Spider-Man.exe");
+		Focus(h, null);
+		Assert.False(h.Fake.Games.IsSupportedModeOn);
+
+		Focus(h, "Returnal-Win64-Shipping.exe");
+		h.Raised[^1].Actions.Single(a => a.Label == Text.AskNotNow()).Run();
+		Assert.False(h.Fake.Games.IsSupportedModeOn);
+
+		Focus(h, "AC2-Win64-Shipping.exe");
+		h.Raised[^1].Actions.Single(a => a.Label == Text.AskAlways()).Run();
+		Assert.True(h.Fake.Games.IsSupportedModeOn);
+		Assert.True(h.Fake.Games.IsAlways("Assetto Corsa Competizione"));
+		Assert.Contains(h.Vm.SupportedGames.Games, g => g.Name == "Assetto Corsa Competizione" && g.IsAlways);
+		int asks = h.Raised.Count(n => n.Type == NotificationType.GameAsk);
+
+		// Next launch: on by itself, announced once, no question.
+		h.Fake.Watcher.Exit("AC2-Win64-Shipping.exe");
+		Focus(h, null);
+		Assert.False(h.Fake.Games.IsSupportedModeOn);
+		Focus(h, "AC2-Win64-Shipping.exe");
+		Assert.True(h.Fake.Games.IsSupportedModeOn);
+		Assert.Equal(asks, h.Raised.Count(n => n.Type == NotificationType.GameAsk));
+		Assert.Equal(NotificationType.GameDetected, h.Raised[^1].Type);
+	}
+
+	[AvaloniaFact]
+	public void Game_UnknownApps_AreNeverAskedAbout()
+	{
+		var h = new Harness();
+		Focus(h, "claude.exe");
+		Focus(h, "chrome.exe");
+		Focus(h, "Tetris.exe");
+		Assert.Empty(h.Raised);
+		Assert.Equal("Cyberpunk 2077", h.Fake.Games.State.Name);
 	}
 
 	[AvaloniaFact]
 	public void Game_ModeTexts_InBothLanguages()
 	{
-		Assert.Equal("Cyberpunk 2077 · DualSense destekli", Text.NotifyGameSupported("Cyberpunk 2077", Language.Turkish));
-		Assert.Equal("Cyberpunk 2077 · klasik titreşim", Text.NotifyGameClassic("Cyberpunk 2077", Language.Turkish));
-		Assert.Equal("Cyberpunk 2077 · DualSense supported", Text.NotifyGameSupported("Cyberpunk 2077", Language.English));
-		Assert.Equal("Cyberpunk 2077 · classic rumble", Text.NotifyGameClassic("Cyberpunk 2077", Language.English));
+		Assert.Equal("DualSense modu açık", Text.NotifyGameSupported(Language.Turkish));
+		Assert.Equal("DualSense mode is on", Text.NotifyGameSupported(Language.English));
+		Assert.Equal("Turn on DualSense mode?", Text.AskGameBody(Language.English));
+		Assert.Equal(("Aç", "Şimdi Değil", "Her Zaman"), (Text.AskTurnOn(Language.Turkish), Text.AskNotNow(Language.Turkish), Text.AskAlways(Language.Turkish)));
+		Assert.Equal(("Turn On", "Not Now", "Always"), (Text.AskTurnOn(Language.English), Text.AskNotNow(Language.English), Text.AskAlways(Language.English)));
+		Assert.Equal("DualSense Modu", Text.SupportedMode(Language.Turkish));
+		Assert.Equal("DualSense Mode", Text.SupportedMode(Language.English));
+	}
+
+	[AvaloniaFact]
+	public void ToastActions_RunTheActionAndAskToClose()
+	{
+		int ran = 0;
+		var n = new AppNotification(NotificationType.GameAsk, NotificationKind.Info, "t", "b", AppPage.SupportedGames)
+		{
+			Actions = [new("A", () => ran++), new("B", () => ran += 10, IsPrimary: true)]
+		};
+		var vm = new ToastViewModel(n);
+		int closed = 0;
+		vm.ActionInvoked += () => closed++;
+		Assert.True(vm.HasActions);
+		Assert.Equal(["A", "B"], vm.Actions.Select(a => a.Label));
+		vm.Actions[1].Command.Execute(null);
+		Assert.Equal((10, 1), (ran, closed));
+		Assert.False(new ToastViewModel(Samples(Language.English).First().Notification).HasActions);
 	}
 
 	[AvaloniaFact]
@@ -200,7 +292,7 @@ public class NotificationTests
 		h.Fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
 		h.Fake.Games.Tick();
 		h.Fake.RaiseStateChanged();
-		Assert.Equal([NotificationType.SteamInput, NotificationType.GameDetected, NotificationType.SteamInput], h.Types);
+		Assert.Equal([NotificationType.SteamInput, NotificationType.SteamInput, NotificationType.GameAsk], h.Types);
 	}
 
 	[AvaloniaFact]
@@ -223,7 +315,7 @@ public class NotificationTests
 		});
 		Assert.Equal([NotificationType.BridgeError, NotificationType.PoweredOffIdle, NotificationType.HidHideMissing], h.Types);
 		Assert.Equal(NotificationKind.Error, h.Raised[0].Kind);
-		Assert.Equal("Bridge error", h.Raised[0].Title);
+		Assert.Equal("Virtual Controller Error", h.Raised[0].Title);
 		Assert.Equal("USB/IP is not installed.", h.Raised[0].Body);
 		Assert.Equal(AppNotification.ErrorDuration, h.Raised[0].Duration);
 		Assert.Equal(AppNotification.NormalDuration, h.Raised[1].Duration);
@@ -371,11 +463,11 @@ public class NotificationTests
 		var tray = new TrayViewModel(h.Fake, h.Settings, shell);
 		WithLanguage(Language.English, () =>
 		{
-			Assert.Equal("Start bridge", tray.BridgeText);
+			Assert.Equal("Start Virtual Controller", tray.BridgeText);
 			tray.ToggleBridgeCommand.Execute(null);
 			Assert.Equal(1, h.Fake.Starts);
 			Assert.True(h.Fake.IsBridgeRunning);
-			Assert.Equal("Stop bridge", tray.BridgeText);
+			Assert.Equal("Stop Virtual Controller", tray.BridgeText);
 			Assert.True(tray.CanPowerOff);
 			tray.PowerOffCommand.Execute(null);
 			Assert.Equal(1, h.Fake.PowerOffs);
@@ -383,10 +475,10 @@ public class NotificationTests
 			Assert.Equal(1, h.Fake.Stops);
 			Assert.False(tray.CanPowerOff);
 
-			Assert.Equal("Turn off notifications", tray.NotificationsText);
+			Assert.Equal("Turn Off Notifications", tray.NotificationsText);
 			tray.ToggleNotificationsCommand.Execute(null);
 			Assert.False(h.Settings.NotificationsEnabled);
-			Assert.Equal("Turn on notifications", tray.NotificationsText);
+			Assert.Equal("Turn On Notifications", tray.NotificationsText);
 			tray.ToggleNotificationsCommand.Execute(null);
 			Assert.True(h.Settings.NotificationsEnabled);
 
@@ -404,15 +496,15 @@ public class NotificationTests
 		var tray = new TrayViewModel(h.Fake, h.Settings, new FakeShell());
 		WithLanguage(Language.Turkish, () =>
 		{
-			Assert.Equal("DS5 Untethered · Durdu · Pil %78", tray.ToolTip);
+			Assert.Equal("DS5 Untethered · Sanal Kumanda Kapalı · Pil %78", tray.ToolTip);
 			h.Fake.StartBridgeAsync();
-			Assert.Equal("DS5 Untethered · Oyun bekleniyor · Pil %78", tray.ToolTip);
+			Assert.Equal("DS5 Untethered · Oyun Bekleniyor · Pil %78", tray.ToolTip);
 			h.Fake.Tick();
 			Assert.StartsWith("DS5 Untethered · Çalışıyor · Pil %", tray.ToolTip);
 			h.Fake.IsConnected = false;
-			Assert.Equal("DS5 Untethered · Kumanda yok", tray.ToolTip);
+			Assert.Equal("DS5 Untethered · Kumanda Yok", tray.ToolTip);
 		});
-		WithLanguage(Language.English, () => Assert.Equal("DS5 Untethered · No controller", tray.ToolTip));
+		WithLanguage(Language.English, () => Assert.Equal("DS5 Untethered · No Controller", tray.ToolTip));
 	}
 
 	// Close to tray
@@ -522,7 +614,7 @@ public class NotificationTests
 	public static IEnumerable<(string Name, AppNotification Notification)> Samples(Language l)
 	{
 		yield return ("connected", new(NotificationType.Connected, NotificationKind.Success, Text.NotifyConnectedTitle(l),
-			Text.NotifyConnectedBattery("DualSense Edge", 78, l), AppPage.Overview, 78, IsEdge: true));
+			Text.NotifyConnectedBody("DualSense Edge", l), AppPage.Overview, 78, IsEdge: true));
 		yield return ("disconnected", new(NotificationType.Disconnected, NotificationKind.Info, Text.NotifyDisconnectedTitle(l),
 			Text.NotifyDisconnectedBody(l), AppPage.Overview));
 		yield return ("battery-low", new(NotificationType.BatteryLow, NotificationKind.Warning, Text.NotifyBatteryLowTitle(l),
@@ -531,16 +623,20 @@ public class NotificationTests
 			Text.NotifyBatteryCriticalBody(10, l), AppPage.Overview, 10));
 		yield return ("charged", new(NotificationType.Charged, NotificationKind.Success, Text.NotifyChargedTitle(l),
 			Text.NotifyChargedBody(l), AppPage.Overview, 100, IsCharging: true));
-		yield return ("game", new(NotificationType.GameDetected, NotificationKind.Info, Text.NotifyGameTitle(l),
-			Text.NotifyGameSupported("Cyberpunk 2077", l), AppPage.SupportedGames));
-		yield return ("game-classic", new(NotificationType.GameDetected, NotificationKind.Info, Text.NotifyGameTitle(l),
-			Text.NotifyGameClassic("Elden Ring", l), AppPage.OtherGames));
+		yield return ("game", new(NotificationType.GameDetected, NotificationKind.Info, "Cyberpunk 2077",
+			Text.NotifyGameSupported(l), AppPage.SupportedGames));
+		// A long name: cut in the title, the question below stays whole.
+		yield return ("ask", new(NotificationType.GameAsk, NotificationKind.Info, "Marvel's Spider-Man 2: Digital Deluxe Edition", Text.AskGameBody(l),
+			AppPage.SupportedGames)
+		{
+			Actions = [new(Text.AskNotNow(l), () => { }), new(Text.AskAlways(l), () => { }), new(Text.AskTurnOn(l), () => { }, IsPrimary: true)]
+		});
 		yield return ("steam-input", new(NotificationType.SteamInput, NotificationKind.Warning, Text.NotifySteamInputTitle(l),
 			Text.NotifySteamInputBody(l), AppPage.SupportedGames));
 		yield return ("powered-off", new(NotificationType.PoweredOffIdle, NotificationKind.Info, Text.NotifyPoweredOffTitle(l),
 			Text.NotifyPoweredOffBody(l), AppPage.Settings));
 		yield return ("bridge-error", new(NotificationType.BridgeError, NotificationKind.Error, Text.NotifyBridgeErrorTitle(l),
-			Text.BridgeUsbIpMissing(l), AppPage.Overview));
+			Text.NotifyBridgeUsbIpMissing(l), AppPage.Overview));
 		yield return ("hidhide", new(NotificationType.HidHideMissing, NotificationKind.Warning, Text.NotifyHidHideTitle(l),
 			Text.NotifyHidHideBody(l), AppPage.Overview));
 		yield return ("tray", new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(l), Text.NotifyTrayBody(l), AppPage.Settings));
@@ -577,6 +673,35 @@ public class NotificationTests
 		VerticalAlignment = VerticalAlignment.Bottom,
 	};
 
+	// Every toast is the same size, and every text fits it whole except a long game name in the title.
+	[AvaloniaFact]
+	public void Toasts_AllTheSameSize_AndTheirTextsFit()
+	{
+		foreach (Language language in new[] { Language.Turkish, Language.English })
+		{
+			WithLanguage(language, () =>
+			{
+				foreach ((string name, AppNotification n) in Samples(language))
+				{
+					ToastView card = Card(n);
+					var window = new Window { Width = 420, Height = 172, Content = new Border { Padding = new Avalonia.Thickness(20), Child = card } };
+					window.Show();
+					Dispatcher.UIThread.RunJobs();
+					Assert.Equal((380.0, 132.0), (card.Bounds.Width, card.Bounds.Height));
+					foreach (TextBlock text in card.GetVisualDescendants().OfType<TextBlock>().Where(t => !string.IsNullOrEmpty(t.Text) && t.IsEffectivelyVisible))
+					{
+						bool gameTitle = text.Text == n.Title && n.Type is NotificationType.GameAsk or NotificationType.GameDetected;
+						if (!gameTitle)
+						{
+							Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5, $"{name}/{language}: '{text.Text}' does not fit");
+						}
+					}
+					window.Close();
+				}
+			});
+		}
+	}
+
 	// Renders each toast kind, a compact one, a stack of three and the settings group; PNGs go to docs/screens only with
 	// KOPRU_RENDER_SCREENS=1.
 	[AvaloniaFact]
@@ -599,10 +724,10 @@ public class NotificationTests
 			{
 				foreach ((string name, AppNotification n) in Samples(language))
 				{
-					Save($"toast-{name}-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = Card(n) }, 408, 150));
+					Save($"toast-{name}-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = Card(n) }, 420, 172));
 				}
 				AppNotification game = Samples(language).First(s => s.Name == "game").Notification;
-				Save($"toast-compact-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = Card(game, compact: true) }, 384, 104));
+				Save($"toast-compact-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = Card(game, compact: true) }, 420, 172));
 
 				// Three stacked as on screen: oldest at the bottom, newest on top, 10 px apart.
 				var stack = new StackPanel { Spacing = 10, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Right };
@@ -610,7 +735,7 @@ public class NotificationTests
 				{
 					stack.Children.Add(Card(Samples(language).First(s => s.Name == name).Notification));
 				}
-				Save($"toast-stack-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = stack }, 408, 400));
+				Save($"toast-stack-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = stack }, 420, 456));
 
 				// The settings page scrolled to the notifications group.
 				var vm = new MainWindowViewModel(new FakeControllerService(animate: false));

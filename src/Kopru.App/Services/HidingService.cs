@@ -68,15 +68,16 @@ public static class HidingLifecycle
 	}
 }
 
-// HidingSession over HidHideCLI. State lives in %LOCALAPPDATA%\Untethered; the old Kopru file is still recovered.
-public sealed class HidHideHidingService(HidHideControl control, HidingStateStore store, HidingStateStore? legacy = null) : IHidingService
+// HidingSession over HidHideCLI. The ledger lives in %LOCALAPPDATA%\Untethered (the same for every exe folder); flat
+// files of older versions are imported and recovered.
+public sealed class HidHideHidingService(HidHideControl control, HidingStateStore store, IReadOnlyList<string>? legacyPaths = null) : IHidingService
 {
 	private readonly SemaphoreSlim gate = new(1, 1);
 
 	private HidingSession? session;
 
 	public static HidHideHidingService CreateDefault() =>
-		new(HidHideControl.CreateDefault(), HidingStateStore.CreateDefault(), HidingStateStore.CreateLegacy());
+		new(HidHideControl.CreateDefault(), HidingStateStore.CreateDefault(), HidingStateStore.LegacyPaths());
 
 	public bool IsInstalled => control.IsInstalled;
 
@@ -89,11 +90,7 @@ public sealed class HidHideHidingService(HidHideControl control, HidingStateStor
 		await gate.WaitAsync().ConfigureAwait(false);
 		try
 		{
-			if (legacy != null)
-			{
-				await HidingSession.RecoverAsync(control, legacy).ConfigureAwait(false);
-			}
-			await HidingSession.RecoverAsync(control, store).ConfigureAwait(false);
+			await HidingSession.RecoverAsync(control, store, legacyPaths).ConfigureAwait(false);
 		}
 		finally
 		{

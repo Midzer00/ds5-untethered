@@ -2,74 +2,160 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Kopru.App.ViewModels"
         xmlns:c="using:Kopru.App.Controls"
+        xmlns:views="using:Kopru.App.Views"
         x:Class="Kopru.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding AppName}"
         Icon="/Assets/icon.ico"
         Width="1100" Height="700" MinWidth="960" MinHeight="640"
-        TransparencyLevelHint="Mica, None"
         Background="Transparent"
         WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <!-- Sidebar controller list row (several controllers); the selected one gets the accent edge and tint like a chip -->
+    <Style Selector="Button.controllerRow">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="Padding" Value="6,5" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.controllerRow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+    </Style>
+    <Style Selector="Button.controllerRow:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource QuietFillPressedBrush}" />
+    </Style>
+    <Style Selector="Button.controllerRow.selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="Button.controllerRow.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource AccentTintHoverBrush}" />
+    </Style>
+    <Style Selector="Button.controllerRow:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+    </Style>
+    <Style Selector="Border.slotBadge">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <!-- Virtual controller state under its name in the controller card: muted when off, accent when on, red on a problem -->
+    <Style Selector="TextBlock.virtualState.on">
+      <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="TextBlock.virtualState.problem">
+      <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+    </Style>
+  </Window.Styles>
   <Panel>
-    <!--
-      Backdrop: a translucent tint over Windows 11 Mica, or opaque graphite where Mica is unavailable.
-      AcrylicBlur is deliberately not requested: Avalonia renders it with its own composition blur, which looks
-      blocky and banded at high DPI, while Mica is drawn by the system and stays smooth at any scale.
-    -->
+    <!-- Backdrop: a flat translucent tint over the system acrylic (see SystemBackdrop), or opaque graphite without it -->
     <Border Classes="backdrop" />
-    <!-- A faint cool wash from the top right that the glass panels pick up -->
-    <Border Background="{StaticResource AmbientBrush}" IsHitTestVisible="False" />
 
-    <Grid ColumnDefinitions="240,1,*">
-      <!-- Sidebar -->
+    <Grid ColumnDefinitions="272,1,*">
+      <!-- Sidebar: the logo at the top, the connected controller at the bottom, the pages spread over the height between -->
       <DockPanel Grid.Column="0" Background="{StaticResource SidebarBrush}">
-        <TextBlock DockPanel.Dock="Top" Text="{Binding AppName}" FontSize="14" FontWeight="SemiBold" TextWrapping="NoWrap" Margin="24,22,16,16" />
+        <Image DockPanel.Dock="Top" Source="/Assets/logo.png" Height="104" Margin="24,20,24,10" HorizontalAlignment="Center"
+               RenderOptions.BitmapInterpolationMode="HighQuality" ToolTip.Tip="{Binding AppName}" AutomationProperties.Name="{Binding AppName}" />
 
         <!-- Connected controller: drawing, name and link, battery and bridge state -->
-        <Border DockPanel.Dock="Top" Classes="panel" Margin="14,0,14,18" Padding="14,16,14,14">
-          <StackPanel Spacing="12">
-            <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
-                             PlayerLeds="{Binding Settings.PlayerLeds}" Height="100" HorizontalAlignment="Center" />
-            <StackPanel Spacing="2">
-              <TextBlock Text="{Binding DeviceName}" Classes="label" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="{Binding DeviceConnection}" Classes="caption" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
+        <Border DockPanel.Dock="Bottom" Classes="panel" Margin="14,10,14,14" Padding="14,12">
+          <StackPanel Spacing="10">
+            <!-- Several controllers: a compact list (slot, name, battery); a click selects the one the pages show -->
+            <ItemsControl ItemsSource="{Binding Picker.Items}" IsVisible="{Binding Picker.IsMulti}" AutomationProperties.Name="{Binding Picker.Label}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ControllerChipViewModel">
+                  <Button Classes="controllerRow" Classes.selected="{Binding IsSelected}" Command="{Binding SelectCommand}"
+                          ToolTip.Tip="{Binding SlotText}" AutomationProperties.Name="{Binding SlotText}">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                      <Border Classes="slotBadge"><TextBlock Text="{Binding SlotNumber}" FontSize="11.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <c:BatteryGlyph Grid.Column="2" Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}"
+                                      Width="18" Height="9" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="3" Text="{Binding BatteryShort}" Classes="caption" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !Picker.IsMulti}">
+              <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
+                               PlayerLeds="{Binding Settings.PlayerLeds}" Width="62" Height="42" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <!-- The controller's name (the user's or the model's) with a pencil to rename it -->
+                <views:ControllerNameEditor DataContext="{Binding Picker.NameEditor}" />
+                <TextBlock Text="{Binding DeviceConnection}" Classes="caption" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
             <Border Classes="divider" />
+            <!-- The battery, then the virtual controller on one line: its name on the left, its state beside it on the right (a line of
+                 its own, so no language or state ever needs an ellipsis); the details in the tooltips -->
             <StackPanel Spacing="8">
-              <StackPanel Orientation="Horizontal" Spacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent" ToolTip.Tip="{Binding BatteryRowTip}">
                 <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}"
                                 Width="22" Height="11" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding BatteryShort}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding BatteryRowText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center" />
               </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Panel Width="22">
-                  <Ellipse Classes="indicator" HorizontalAlignment="Left" Margin="1,0,0,0"
-                           Classes.waiting="{Binding Overview.IsWaiting}" Classes.on="{Binding Overview.IsRunning}" />
-                </Panel>
-                <TextBlock Text="{Binding Overview.BridgeStateText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              </StackPanel>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Background="Transparent" ToolTip.Tip="{Binding Overview.VirtualStatusTip}">
+                <TextBlock x:Name="VirtualLabel" Text="{Binding Overview.VirtualLabel}" Classes="caption" Foreground="{StaticResource TextBrush}"
+                           TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock x:Name="VirtualState" Grid.Column="1" Text="{Binding Overview.VirtualStateText}" Classes="caption virtualState"
+                           Classes.on="{Binding Overview.IsVirtualStateOn}" Classes.problem="{Binding Overview.IsVirtualStateProblem}" TextWrapping="NoWrap"
+                           VerticalAlignment="Center" />
+              </Grid>
             </StackPanel>
+            <!-- DualSense mode, compact (what it does in the tooltip) -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding Overview.SupportedModeTip}">
+              <TextBlock Text="{Binding SupportedModeShort}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Overview.IsSupportedModeOn}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+                            Margin="0,0,-16,0" AutomationProperties.Name="{Binding SupportedModeShort}" />
+            </Grid>
+            <!-- Active profile, compact -->
+            <TextBlock Text="{Binding Settings.ActiveProfileLine}" Classes="caption" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,-4,0,0" />
           </StackPanel>
         </Border>
 
-        <ListBox Classes="plain" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}" ItemContainerTheme="{StaticResource NavItem}" Margin="14,0">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:NavItem">
-              <StackPanel Orientation="Horizontal" Spacing="11">
-                <Path Data="{Binding Icon}" Stroke="{Binding $parent[ListBoxItem].Foreground}" StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
-                      Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Title}" FontSize="13" Foreground="{Binding $parent[ListBoxItem].Foreground}"
-                           VerticalAlignment="Center" TextWrapping="NoWrap" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+        <!-- One row per page; the rows share the height between the logo and the controller (40 px rows centred in cells of up to 59 px) -->
+        <!-- The first row takes the height up to its cap; whatever is left stays empty above the controller card -->
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="1000*" MaxHeight="413" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <ListBox Classes="plain" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}" ItemContainerTheme="{StaticResource NavItem}"
+                   Margin="14,0" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><UniformGrid Columns="1" /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:NavItem">
+                <StackPanel Orientation="Horizontal" Spacing="13">
+                  <Path Data="{Binding Icon}" Stroke="{Binding $parent[ListBoxItem].Foreground}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
+                        Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Title}" FontSize="14.5" Foreground="{Binding $parent[ListBoxItem].Foreground}"
+                             VerticalAlignment="Center" TextWrapping="NoWrap" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
       </DockPanel>
       <Border Grid.Column="1" Background="{StaticResource HairlineBrush}" />
 
-      <!-- Content: each page fills the area and scrolls itself when it needs to -->
-      <ContentControl Grid.Column="2" Content="{Binding CurrentPage}" />
+      <!-- Content: each page fills the area and scrolls itself when it needs to; the sidebar pages' views are kept when left -->
+      <views:PageHost Grid.Column="2" x:Name="Pages" CachedPages="{Binding Pages}" Page="{Binding CurrentPage}" />
     </Grid>
   </Panel>
 </Window>

@@ -46,7 +46,11 @@ public sealed partial class SettingsState : ViewModelBase
 			IdlePowerOffMinutes = saved.IdlePowerOffMinutes;
 			StartWithWindows = saved.StartWithWindows;
 			PowerOffWhenIdle = saved.PowerOffWhenIdle;
+			LowPowerOn = saved.LowPowerOn;
+			AutoLowPower = saved.AutoLowPower;
 			Tuning = saved.Tuning ?? InputTuning.Default;
+			Remap = saved.Remap ?? RemapSettings.Default;
+			Gyro = saved.Gyro ?? GyroSettings.Default;
 			NotificationsEnabled = saved.NotificationsEnabled;
 			NotifyConnection = saved.NotifyConnection;
 			NotifyBattery = saved.NotifyBattery;
@@ -58,9 +62,30 @@ public sealed partial class SettingsState : ViewModelBase
 			QuietWhilePlaying = saved.QuietWhilePlaying;
 			KeepInTray = saved.KeepInTray;
 			TrayHintShown = saved.TrayHintShown;
+			AutoUpdateGameList = saved.AutoUpdateGameList;
+			GameListCheckedAt = saved.GameListCheckedAt;
+			AskOnKnownGame = saved.AskOnKnownGame;
+			LoadLight(saved);
+			ShortcutsEnabled = saved.ShortcutsEnabled;
+			SpeakerEnabled = saved.SpeakerEnabled;
+			SpeakerVolume = Math.Clamp(saved.SpeakerVolume, 0, 100);
+			HeadphoneVolume = Math.Clamp(saved.HeadphoneVolume, 0, 100);
+			DesktopMode = saved.DesktopMode ?? DesktopModeSettings.Default;
+			LoadMic(saved);
+			AutoStartBridge = saved.AutoStartBridge;
 			_loading = false;
-			service.Games.LoadMemory(saved.GameOverrides, saved.LearnedGames);
+			service.Games.LoadMemory(saved.ToGameMemory(service.Games.Catalog));
 		}
+		else if (IsFirstRun)
+		{
+			// A fresh install starts with the saved defaults (DualSense Mode on).
+			service.Games.LoadMemory(new AppSettings().ToGameMemory(service.Games.Catalog));
+		}
+		InitProfiles(saved);
+		InitDesktop();
+		InitControllerProfiles(saved);
+		InitLowPower();
+		InitDualSenseMode();
 		if (store != null)
 		{
 			_saveTimer = new Timer(_ => SaveNow());
@@ -141,12 +166,45 @@ public sealed partial class SettingsState : ViewModelBase
 	[ObservableProperty]
 	private bool _trayHintShown;
 
+	[ObservableProperty]
+	private bool _autoUpdateGameList = true;
+
+	// Ask when a known game starts while the supported mode is off.
+	[ObservableProperty]
+	private bool _askOnKnownGame = true;
+
+	[ObservableProperty]
+	private DateTimeOffset? _gameListCheckedAt;
+
 	// Stick and trigger tuning (edited on the sticks & triggers page).
 	[ObservableProperty]
 	private InputTuning _tuning = InputTuning.Default;
 
+	// Button remapping and stick swap/invert (edited on the remap & gyro tab).
+	[ObservableProperty]
+	private RemapSettings _remap = RemapSettings.Default;
+
+	// Gyro aiming (edited on the remap & gyro tab).
+	[ObservableProperty]
+	private GyroSettings _gyro = GyroSettings.Default;
+
 	[ObservableProperty]
 	private bool _lightFromGame = true;
+
+	// Experimental controller speaker: the switch and the volumes in percent.
+	[ObservableProperty]
+	private bool _speakerEnabled;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(SpeakerVolumeText))]
+	private double _speakerVolume = 80;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HeadphoneVolumeText))]
+	private double _headphoneVolume = 60;
+
+	public string SpeakerVolumeText => Text.PercentValue(Math.Round(SpeakerVolume));
+	public string HeadphoneVolumeText => Text.PercentValue(Math.Round(HeadphoneVolume));
 
 	[ObservableProperty]
 	private RumbleFeel _rumbleFeel = RumbleFeel.Soft;
@@ -168,11 +226,12 @@ public sealed partial class SettingsState : ViewModelBase
 	protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
 	{
 		base.OnPropertyChanged(e);
-		if (_loading || string.IsNullOrEmpty(e.PropertyName) || e.PropertyName.EndsWith("Text", StringComparison.Ordinal)
-			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity))
+		if (_loading || _applyingProfile || string.IsNullOrEmpty(e.PropertyName) || e.PropertyName.EndsWith("Text", StringComparison.Ordinal)
+			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity) or nameof(ActiveProfileName) or nameof(ActiveProfileLine))
 		{
 			return;
 		}
+		CaptureProfileValue(e.PropertyName);
 		if (e.PropertyName == nameof(StartWithWindows))
 		{
 			// Only a change by the user touches the registry.
@@ -197,10 +256,18 @@ public sealed partial class SettingsState : ViewModelBase
 		PlayerLeds, IdlePowerOffMinutes, LightFromGame, RumbleFeel, FallbackTrigger, FallbackStrength)
 	{
 		Tuning = Tuning,
-		PowerOffWhenIdle = PowerOffWhenIdle
+		Remap = Remap,
+		Gyro = Gyro,
+		PowerOffWhenIdle = PowerOffWhenIdle,
+		LightOptions = LightOptions,
+		ShortcutsEnabled = ShortcutsEnabled,
+		Speaker = new SpeakerSettings(SpeakerEnabled, Math.Clamp(SpeakerVolume / 100, 0, 1), Math.Clamp(HeadphoneVolume / 100, 0, 1)),
+		DesktopModeOn = DesktopModeOn,
+		Desktop = DesktopMode,
+		Mic = ToMicSettings()
 	};
 
-	public AppSettings ToAppSettings() => new()
+	public AppSettings ToAppSettings() => WithLight(new AppSettings
 	{
 		Language = Localizer.Chosen switch { Language.Turkish => "tr", Language.English => "en", _ => null },
 		GameHapticsLevel = GameHapticsLevel,
@@ -212,7 +279,11 @@ public sealed partial class SettingsState : ViewModelBase
 		IdlePowerOffMinutes = IdlePowerOffMinutes,
 		StartWithWindows = StartWithWindows,
 		PowerOffWhenIdle = PowerOffWhenIdle,
+		LowPowerOn = LowPowerOn,
+		AutoLowPower = AutoLowPower,
 		Tuning = Tuning,
+		Remap = Remap,
+		Gyro = Gyro,
 		LightFromGame = LightFromGame,
 		RumbleFeel = RumbleFeel,
 		FallbackTrigger = FallbackTrigger,
@@ -228,9 +299,19 @@ public sealed partial class SettingsState : ViewModelBase
 		QuietWhilePlaying = QuietWhilePlaying,
 		KeepInTray = KeepInTray,
 		TrayHintShown = TrayHintShown,
-		GameOverrides = _service.Games.SnapshotOverrides(),
-		LearnedGames = _service.Games.SnapshotLearned()
-	};
+		AutoUpdateGameList = AutoUpdateGameList,
+		GameListCheckedAt = GameListCheckedAt,
+		ShortcutsEnabled = ShortcutsEnabled,
+		SpeakerEnabled = SpeakerEnabled,
+		SpeakerVolume = SpeakerVolume,
+		HeadphoneVolume = HeadphoneVolume,
+		DesktopMode = DesktopMode,
+		MicEnabled = MicEnabled,
+		MicGain = MicGain,
+		MicNoiseGate = MicNoiseGate,
+		MicMuteWindows = MicMuteWindows,
+		AutoStartBridge = AutoStartBridge,
+	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers));
 
 	// Writes a pending change at once (also called by the debounce timer and on exit).
 	public void SaveNow()
@@ -260,5 +341,25 @@ public sealed partial class SettingsState : ViewModelBase
 		_saveTimer?.Change(SaveDelay, Timeout.InfiniteTimeSpan);
 	}
 
-	private void Push() => _service.ApplySettings(ToSettings());
+	// Sends the effective settings (Low Power applied) when they differ from the last ones sent: one user change is one
+	// push, and a change that does not alter what the controller gets (e.g. the speaker switch while Low Power holds it
+	// off, or a second notification for the same change) sends nothing.
+	private void Push()
+	{
+		_service.Games.AskOnKnownGame = AskOnKnownGame;
+		ControllerSettings next = Effective(ToSettings());
+		if (next != _pushed)
+		{
+			if (_pushed == null || _pushed.Speaker.Enabled != next.Speaker.Enabled || _pushed.Mic.Enabled != next.Mic.Enabled)
+			{
+				Kopru.Core.Diagnostics.AppLog.Write($"settings push: speaker {(next.Speaker.Enabled ? "on" : "off")}, mic {(next.Mic.Enabled ? "on" : "off")} " +
+					$"(DualSense Mode {(_modeOn ? "on" : "off")}, Low Power {(LowPowerOn ? "on" : "off")})");
+			}
+			_pushed = next;
+			_service.ApplySettings(next);
+		}
+		PushControllerProfiles();
+	}
+
+	private ControllerSettings? _pushed;
 }

@@ -3,6 +3,15 @@
   "updated": "2026-11-09",
   "games": [
     {
+      "name": "007 First Light",
+      "exe": [],
+      "steamAppId": 3768760,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "A Plague Tale: Requiem",
       "exe": [
         "APlagueTaleRequiem_x64.exe"
@@ -12,6 +21,33 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "A Quiet Place: The Road Ahead",
+      "exe": [],
+      "steamAppId": 2233120,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Ace Combat 8: Wings of Theve",
+      "exe": [],
+      "steamAppId": 2288340,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Active Matter",
+      "exe": [],
+      "steamAppId": 2887580,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Alan Wake 2",
@@ -25,6 +61,15 @@
       "notes": "Epic Games Store only"
     },
     {
+      "name": "Animal Well",
+      "exe": [],
+      "steamAppId": 813230,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Apex Legends",
       "exe": [
         "r5apex.exe"
@@ -36,11 +81,29 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "ARC Raiders",
+      "exe": [],
+      "steamAppId": 1808500,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Arknights: Endfield",
+      "exe": [],
+      "steamAppId": 4732690,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Assassin's Creed Mirage",
       "exe": [
         "ACMirage.exe"
       ],
-      "steamAppId": null,
+      "steamAppId": 3035570,
       "haptics": true,
       "adaptiveTriggers": false,
       "exeConfidence": "medium",
@@ -52,7 +115,7 @@
         "ACShadows.exe"
       ],
       "steamAppId": 3159330,
-      "haptics": false,
+      "haptics": true,
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Adaptive triggers only per PCGamingWiki"
@@ -69,6 +132,24 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Assassin's Creed: Black Flag Resynced",
+      "exe": [],
+      "steamAppId": 3751950,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Assetto Corsa",
+      "exe": [],
+      "steamAppId": 244210,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Avatar: Frontiers of Pandora",
       "exe": [
         "afop.exe"
@@ -78,6 +159,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Banishers: Ghosts of New Eden",
+      "exe": [],
+      "steamAppId": 1493640,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Battlefield 6",
@@ -91,6 +181,24 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "BeamNG.drive",
+      "exe": [],
+      "steamAppId": 284160,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Beast of Reincarnation",
+      "exe": [],
+      "steamAppId": 2001760,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Black Myth: Wukong",
       "exe": [
         "b1-Win64-Shipping.exe"
@@ -102,6 +210,42 @@
       "notes": ""
     },
     {
+      "name": "Borderlands 4",
+      "exe": [],
+      "steamAppId": 1285190,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Bramble: The Mountain King",
+      "exe": [],
+      "steamAppId": 1623940,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Bugsnax",
+      "exe": [],
+      "steamAppId": 674140,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Cairn",
+      "exe": [],
+      "steamAppId": 1588550,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Call of Duty: Black Ops 6",
       "exe": [
         "cod.exe"
@@ -111,6 +255,24 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Shared cod.exe launcher across CoD HQ titles (Steam app 1938090 hosts MWII/BO6 content); match by exe is ambiguous"
+    },
+    {
+      "name": "Call of Duty: Black Ops Cold War",
+      "exe": [],
+      "steamAppId": 1985810,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Call of Duty: Modern Warfare 4",
+      "exe": [],
+      "steamAppId": 4435490,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Call of Duty: Modern Warfare II",
@@ -136,6 +298,42 @@
       "notes": "Shared cod.exe launcher across CoD HQ titles (Steam app 1938090 hosts MWII/BO6 content); match by exe is ambiguous"
     },
     {
+      "name": "Call of Duty: Warzone 2.0",
+      "exe": [],
+      "steamAppId": 1938090,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Call of the Wild: The Angler",
+      "exe": [],
+      "steamAppId": 1408610,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Clive Barker's Hellraiser: Revival",
+      "exe": [],
+      "steamAppId": 1551980,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Cloudheim",
+      "exe": [],
+      "steamAppId": 2070270,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Control",
       "exe": [
         "Control_DX12.exe",
@@ -146,6 +344,51 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Adaptive triggers via Ultimate Edition update"
+    },
+    {
+      "name": "Control Resonant",
+      "exe": [],
+      "steamAppId": 3669870,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Crime Boss: Rockay City",
+      "exe": [],
+      "steamAppId": 2933080,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Crimson Desert",
+      "exe": [],
+      "steamAppId": 3321460,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Cronos: The New Dawn",
+      "exe": [],
+      "steamAppId": 2101960,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Cthulhu: The Cosmic Abyss",
+      "exe": [],
+      "steamAppId": 2760560,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Cyberpunk 2077",
@@ -159,15 +402,60 @@
       "notes": "Added in patch 2.1; Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Dave the Diver",
+      "exe": [],
+      "steamAppId": 1868140,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Days Gone",
       "exe": [
         "DaysGone.exe"
       ],
       "steamAppId": 1259420,
-      "haptics": false,
+      "haptics": true,
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Adaptive triggers only per PCGamingWiki"
+    },
+    {
+      "name": "Deadzone: Rogue",
+      "exe": [],
+      "steamAppId": 3228590,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Deadzone: Rogue 2",
+      "exe": [],
+      "steamAppId": 4465790,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Death Stranding",
+      "exe": [],
+      "steamAppId": 1190460,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Death Stranding 2: On the Beach",
+      "exe": [],
+      "steamAppId": 3280350,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Death Stranding Director's Cut",
@@ -192,15 +480,87 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Delta Force (2024)",
+      "exe": [],
+      "steamAppId": 2507950,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Depersonalization",
+      "exe": [],
+      "steamAppId": 1477070,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "DiRT 4",
+      "exe": [],
+      "steamAppId": 421020,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "DiRT Rally",
+      "exe": [],
+      "steamAppId": 310560,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "DiRT Rally 2.0",
+      "exe": [],
+      "steamAppId": 690790,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Dolmen",
+      "exe": [],
+      "steamAppId": 831050,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Dragon Age: The Veilguard",
       "exe": [
         "Dragon Age The Veilguard.exe"
       ],
       "steamAppId": 1845910,
       "haptics": true,
-      "adaptiveTriggers": true,
+      "adaptiveTriggers": false,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Duck Game",
+      "exe": [],
+      "steamAppId": 312530,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Dying Light",
+      "exe": [],
+      "steamAppId": 239140,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Dying Light 2 Stay Human",
@@ -214,15 +574,69 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Dying Light: The Beast",
+      "exe": [],
+      "steamAppId": 3008130,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "EA Sports WRC",
       "exe": [
         "WRC.exe"
       ],
       "steamAppId": 1849250,
       "haptics": true,
-      "adaptiveTriggers": true,
+      "adaptiveTriggers": false,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Eriksholm: The Stolen Dream",
+      "exe": [],
+      "steamAppId": 2377280,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Euro Truck Simulator 2",
+      "exe": [],
+      "steamAppId": 227300,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Everspace 2",
+      "exe": [],
+      "steamAppId": 1128920,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "F1 2021",
+      "exe": [],
+      "steamAppId": 1134570,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "F1 22",
+      "exe": [],
+      "steamAppId": 1692250,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "F1 23",
@@ -258,6 +672,24 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Fallout 4",
+      "exe": [],
+      "steamAppId": 377160,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Fantasian Neo Dimension",
+      "exe": [],
+      "steamAppId": 2844850,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Far Cry 6",
       "exe": [
         "FarCry6.exe"
@@ -267,6 +699,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "FBC: Firebreak",
+      "exe": [],
+      "steamAppId": 2272540,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Final Fantasy VII Rebirth",
@@ -291,6 +732,15 @@
       "notes": ""
     },
     {
+      "name": "Final Fantasy XIV: A Realm Reborn",
+      "exe": [],
+      "steamAppId": 39210,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Final Fantasy XVI",
       "exe": [
         "ffxvi.exe"
@@ -300,6 +750,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Fobia: St. Dinfna Hotel",
+      "exe": [],
+      "steamAppId": 1298140,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Forspoken",
@@ -313,6 +772,15 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Forza Horizon 4",
+      "exe": [],
+      "steamAppId": 1293830,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Forza Horizon 5",
       "exe": [
         "ForzaHorizon5.exe"
@@ -322,6 +790,42 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Forza Horizon 6",
+      "exe": [],
+      "steamAppId": 2483190,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Forza Motorsport 7",
+      "exe": [],
+      "steamAppId": null,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Gears of War: E-Day",
+      "exe": [],
+      "steamAppId": 3010850,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Genshin Impact",
+      "exe": [],
+      "steamAppId": null,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Ghost of Tsushima",
@@ -366,6 +870,87 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Granblue Fantasy: Relink",
+      "exe": [],
+      "steamAppId": 881020,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Grand Theft Auto V",
+      "exe": [],
+      "steamAppId": 271590,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Grand Theft Auto V Enhanced",
+      "exe": [],
+      "steamAppId": 3240220,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Grand Theft Auto: San Andreas",
+      "exe": [],
+      "steamAppId": 12120,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Gravity Circuit",
+      "exe": [],
+      "steamAppId": 858710,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Half-Life: Alyx",
+      "exe": [],
+      "steamAppId": 546560,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Halo: Campaign Evolved",
+      "exe": [],
+      "steamAppId": 2806050,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Haste",
+      "exe": [],
+      "steamAppId": 1796470,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Hell is Us",
+      "exe": [],
+      "steamAppId": 1620730,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Hellblade II: Senua's Saga",
@@ -445,6 +1030,42 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Infinity Nikki",
+      "exe": [],
+      "steamAppId": 3164330,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Jak 3 (OpenGOAL)",
+      "exe": [],
+      "steamAppId": null,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Jak II (OpenGOAL)",
+      "exe": [],
+      "steamAppId": null,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "John Carpenter's Toxic Commando",
+      "exe": [],
+      "steamAppId": 2157830,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Kingdom Come: Deliverance II",
       "exe": [
         "KingdomCome.exe"
@@ -454,6 +1075,24 @@
       "adaptiveTriggers": true,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Lego Batman: Legacy of the Dark Knight",
+      "exe": [],
+      "steamAppId": 2215200,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Lego Horizon Adventures",
+      "exe": [],
+      "steamAppId": 2428810,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Lords of the Fallen (2023)",
@@ -467,6 +1106,33 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Lost Soul Aside",
+      "exe": [],
+      "steamAppId": 3378960,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Luto",
+      "exe": [],
+      "steamAppId": 1729740,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Marathon (2026)",
+      "exe": [],
+      "steamAppId": 3065800,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Marvel Rivals",
       "exe": [
         "Marvel-Win64-Shipping.exe"
@@ -476,6 +1142,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Marvel Tōkon: Fighting Souls",
+      "exe": [],
+      "steamAppId": 3787240,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Marvel's Spider-Man 2",
@@ -511,15 +1186,51 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Mecha Break",
+      "exe": [],
+      "steamAppId": 2452280,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Metal Gear Solid Delta: Snake Eater",
       "exe": [
         "MGSDelta-Win64-Shipping.exe"
       ],
       "steamAppId": 2417610,
       "haptics": true,
-      "adaptiveTriggers": true,
+      "adaptiveTriggers": false,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Metal Gear Solid V: Ground Zeroes",
+      "exe": [],
+      "steamAppId": 311340,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Metal Gear Solid V: The Phantom Pain",
+      "exe": [],
+      "steamAppId": 287700,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Metro 2033 Redux",
+      "exe": [],
+      "steamAppId": 286690,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Metro Exodus Enhanced Edition",
@@ -527,10 +1238,37 @@
         "MetroExodus.exe"
       ],
       "steamAppId": 412020,
-      "haptics": true,
+      "haptics": false,
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Enhanced Edition only; ships under base Metro Exodus Steam app 412020"
+    },
+    {
+      "name": "Microsoft Flight Simulator 2024",
+      "exe": [],
+      "steamAppId": 2537590,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "MindsEye",
+      "exe": [],
+      "steamAppId": 3265250,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Mixtape",
+      "exe": [],
+      "steamAppId": 2582320,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Monster Hunter Wilds",
@@ -544,6 +1282,51 @@
       "notes": ""
     },
     {
+      "name": "Mortal Shell II",
+      "exe": [],
+      "steamAppId": 2584270,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Neva",
+      "exe": [],
+      "steamAppId": 2420660,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Neverness to Everness",
+      "exe": [],
+      "steamAppId": 4508340,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Ninja Gaiden 4",
+      "exe": [],
+      "steamAppId": 2627260,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Nioh 3",
+      "exe": [],
+      "steamAppId": 3681010,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "No Man's Sky",
       "exe": [
         "NMS.exe"
@@ -555,6 +1338,78 @@
       "notes": "Added from PCGamingWiki lists; triggers also over Bluetooth"
     },
     {
+      "name": "Off the Grid",
+      "exe": [],
+      "steamAppId": 3659280,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Onimusha: Way of the Sword",
+      "exe": [],
+      "steamAppId": 2638890,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Overwatch 2",
+      "exe": [],
+      "steamAppId": 2357570,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "P.T. for PC",
+      "exe": [],
+      "steamAppId": null,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Pacific Drive",
+      "exe": [],
+      "steamAppId": 1458140,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Painkiller (2025)",
+      "exe": [],
+      "steamAppId": 2300120,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Phantom Blade Zero",
+      "exe": [],
+      "steamAppId": 4115450,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Pragmata",
+      "exe": [],
+      "steamAppId": 3357650,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Prince of Persia: The Lost Crown",
       "exe": [
         "TheLostCrown.exe"
@@ -564,6 +1419,15 @@
       "adaptiveTriggers": false,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Project Colored Mountains",
+      "exe": [],
+      "steamAppId": 2340980,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Ratchet & Clank: Rift Apart",
@@ -599,6 +1463,33 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Resident Evil 5",
+      "exe": [],
+      "steamAppId": 21690,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Resident Evil Requiem",
+      "exe": [],
+      "steamAppId": 3764200,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Resonance: A Plague Tale Legacy",
+      "exe": [],
+      "steamAppId": 2713000,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Returnal",
       "exe": [
         "Returnal-Win64-Shipping.exe"
@@ -621,6 +1512,33 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Riven (2024)",
+      "exe": [],
+      "steamAppId": 1712350,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "RoadCraft",
+      "exe": [],
+      "steamAppId": 2104890,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Rocket League",
+      "exe": [],
+      "steamAppId": 252950,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "S.T.A.L.K.E.R. 2: Heart of Chornobyl",
       "exe": [
         "Stalker2-Win64-Shipping.exe"
@@ -630,6 +1548,33 @@
       "adaptiveTriggers": true,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "S.T.A.L.K.E.R.: Call of Prypiat Enhanced Edition",
+      "exe": [],
+      "steamAppId": 2427430,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "S.T.A.L.K.E.R.: Clear Sky Enhanced Edition",
+      "exe": [],
+      "steamAppId": 2427420,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "S.T.A.L.K.E.R.: Shadow of Chornobyl Enhanced Edition",
+      "exe": [],
+      "steamAppId": 2427410,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Sackboy: A Big Adventure",
@@ -643,6 +1588,33 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Satisfactory",
+      "exe": [],
+      "steamAppId": 526870,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Scars Above",
+      "exe": [],
+      "steamAppId": 1196090,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Screamer (2026)",
+      "exe": [],
+      "steamAppId": 2814990,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Sea of Thieves",
       "exe": [
         "SoTGame.exe"
@@ -654,6 +1626,24 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "SEASON: A letter to the future",
+      "exe": [],
+      "steamAppId": 695330,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Signalis",
+      "exe": [],
+      "steamAppId": 1262350,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Silent Hill 2",
       "exe": [
         "SHProto-Win64-Shipping.exe"
@@ -663,6 +1653,60 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Silent Hill: Townfall",
+      "exe": [],
+      "steamAppId": 1636440,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Skate",
+      "exe": [],
+      "steamAppId": 3354750,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Skull and Bones",
+      "exe": [],
+      "steamAppId": 2853730,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Sleep Awake",
+      "exe": [],
+      "steamAppId": 2446540,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Sonic Racing: CrossWorlds",
+      "exe": [],
+      "steamAppId": 2486820,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Sonic Superstars",
+      "exe": [],
+      "steamAppId": 2022670,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Star Wars Jedi: Survivor",
@@ -687,6 +1731,15 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Star Wars: Galactic Racer",
+      "exe": [],
+      "steamAppId": 4078430,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Stellar Blade",
       "exe": [
         "SB-Win64-Shipping.exe"
@@ -696,6 +1749,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
+    },
+    {
+      "name": "Still Wakes the Deep",
+      "exe": [],
+      "steamAppId": 1622910,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Stray",
@@ -709,6 +1771,51 @@
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
     },
     {
+      "name": "Styx: Blades of Greed",
+      "exe": [],
+      "steamAppId": 3290690,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Suicide Squad: Kill the Justice League",
+      "exe": [],
+      "steamAppId": 315210,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Sword of the Sea",
+      "exe": [],
+      "steamAppId": 2453160,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "System Shock 2: 25th Anniversary Remaster",
+      "exe": [],
+      "steamAppId": 866570,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Tainted Grail: The Fall of Avalon",
+      "exe": [],
+      "steamAppId": 1466060,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Tekken 8",
       "exe": [
         "Polaris-Win64-Shipping.exe"
@@ -718,6 +1825,69 @@
       "adaptiveTriggers": false,
       "exeConfidence": "low",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Test Drive Unlimited Solar Crown",
+      "exe": [],
+      "steamAppId": 1249970,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The Chant",
+      "exe": [],
+      "steamAppId": 1577250,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The Crew Motorfest",
+      "exe": [],
+      "steamAppId": 2698940,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The Elder Scrolls IV: Oblivion Remastered",
+      "exe": [],
+      "steamAppId": 2623190,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The Elder Scrolls V: Skyrim Special Edition",
+      "exe": [],
+      "steamAppId": 489830,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The First Berserker: Khazan",
+      "exe": [],
+      "steamAppId": 2680010,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The First Descendant",
+      "exe": [],
+      "steamAppId": 2074920,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "The Last of Us Part I",
@@ -742,15 +1912,96 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "The Riftbreaker",
+      "exe": [],
+      "steamAppId": 780310,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The Sinking City 2",
+      "exe": [],
+      "steamAppId": 2825860,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "The Smurfs 2: The Prisoner of the Green Stone",
+      "exe": [],
+      "steamAppId": 2397500,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "The Witcher 3: Wild Hunt",
       "exe": [
         "witcher3.exe"
       ],
       "steamAppId": 292030,
-      "haptics": false,
+      "haptics": true,
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Added from PCGamingWiki DualSense lists; exe name not verified"
+    },
+    {
+      "name": "Tom Clancy's Rainbow Six Extraction",
+      "exe": [],
+      "steamAppId": 2379390,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Tom Clancy's Rainbow Six Siege",
+      "exe": [],
+      "steamAppId": 359550,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Tomb Raider (2013)",
+      "exe": [],
+      "steamAppId": 203160,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Tony Hawk's Pro Skater 3 + 4",
+      "exe": [],
+      "steamAppId": 2545710,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Tormented Souls 2",
+      "exe": [],
+      "steamAppId": 2464280,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Tour de France 2026",
+      "exe": [],
+      "steamAppId": 3936520,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Uncharted: Legacy of Thieves Collection",
@@ -776,6 +2027,33 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "V Rising",
+      "exe": [],
+      "steamAppId": 1604030,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "War Robots: Frontiers",
+      "exe": [],
+      "steamAppId": 1491000,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Warframe",
+      "exe": [],
+      "steamAppId": 230410,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Warhammer 40,000: Space Marine 2",
       "exe": [
         "Warhammer 40000 Space Marine 2.exe"
@@ -787,6 +2065,33 @@
       "notes": ""
     },
     {
+      "name": "Where Winds Meet",
+      "exe": [],
+      "steamAppId": 3564740,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "World War Z",
+      "exe": [],
+      "steamAppId": 699130,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "WRC 10: FIA World Rally Championship",
+      "exe": [],
+      "steamAppId": 1462810,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "WRC Generations",
       "exe": [
         "WRCG.exe"
@@ -796,6 +2101,42 @@
       "adaptiveTriggers": true,
       "exeConfidence": "low",
       "notes": ""
+    },
+    {
+      "name": "Wuthering Waves",
+      "exe": [],
+      "steamAppId": 3513350,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "XDefiant",
+      "exe": [],
+      "steamAppId": null,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Yakuza Kiwami 3 & Dark Ties",
+      "exe": [],
+      "steamAppId": 3937550,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Zenless Zone Zero",
+      "exe": [],
+      "steamAppId": 4162040,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     }
   ]
 }

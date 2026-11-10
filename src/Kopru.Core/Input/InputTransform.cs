@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 namespace Kopru.Core.Input;
 
-// Applies an InputTuning to the 63-byte input body in place. Immutable after construction, so it can be swapped
-// atomically; Apply allocates nothing.
+// Applies remapping, an InputTuning and gyro aiming to the 63-byte input body in place, in this order:
+//   1. ButtonRemap (buttons, stick swap/invert) - so the tuning below works on the sticks/triggers the game sees;
+//   2. tuning (deadzones, curves, drift, trigger ranges);
+//   3. gyro mix (added to the tuned right stick, clamped) - so stick deadzones never swallow small gyro motion.
+// The gyro activation button is read from the body as it arrived (physical buttons, before the remap).
+// Swapped as a whole when settings change; Apply allocates nothing. With gyro on, it keeps smoothing/toggle state, so
+// only one thread (the bridge's input thread) may call Apply.
 //
 // Body offsets (same as InputState.Parse; Linux hid-playstation struct dualsense_input_report minus the report ID):
 //   0 LX, 1 LY, 2 RX, 3 RY (0..255, center ~128), 4 L2 analog, 5 R2 analog,
@@ -17,9 +22,11 @@ public sealed class InputTransform
 	private readonly Stick left, right;
 	private readonly byte[]? l2Map, r2Map;
 
-	public InputTransform(InputTuning tuning)
+	public InputTransform(InputTuning tuning, RemapSettings? remap = null, GyroSettings? gyro = null)
 	{
 		Tuning = tuning;
+		Remap = new ButtonRemap(remap ?? RemapSettings.Default);
+		Gyro = gyro is { IsOff: false } ? new GyroAim(gyro) : null;
 		left = new Stick(tuning.LeftStick);
 		right = new Stick(tuning.RightStick);
 		l2Map = TriggerMap(tuning.L2);
@@ -30,14 +37,26 @@ public sealed class InputTransform
 
 	public InputTuning Tuning { get; }
 
+	public ButtonRemap Remap { get; }
+
+	public RemapSettings RemapSettings => Remap.Settings;
+
+	// Null while gyro aiming is off.
+	public GyroAim? Gyro { get; }
+
+	public GyroSettings GyroSettings => Gyro?.Settings ?? GyroSettings.Default;
+
 	public void Apply(Span<byte> body)
 	{
 		if (body.Length <= Buttons1)
 			return;
+		Gyro?.UpdateActivation(body);
+		Remap.Apply(body);
 		left.Apply(ref body[LeftX], ref body[LeftY]);
 		right.Apply(ref body[RightX], ref body[RightY]);
 		ApplyTrigger(body, l2Map, L2Analog, L2Bit);
 		ApplyTrigger(body, r2Map, R2Analog, R2Bit);
+		Gyro?.Apply(body);
 	}
 
 	private static void ApplyTrigger(Span<byte> body, byte[]? map, int offset, byte bit)

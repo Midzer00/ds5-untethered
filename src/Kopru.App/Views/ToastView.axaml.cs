@@ -12,7 +12,6 @@ public partial class ToastView : UserControl
 	{
 		InitializeComponent();
 		CloseButton.Click += OnClose;
-		CompactCloseButton.Click += OnClose;
 		Card.PointerReleased += (_, e) =>
 		{
 			if (e.InitialPressMouseButton == MouseButton.Left)

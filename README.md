@@ -78,7 +78,7 @@ dotnet test
 | | |
 |---|---|
 | ![Overview](docs/screens/overview-en.png) | ![Overview, DualSense Edge](docs/screens/overview-edge-en.png) |
-| ![Haptics](docs/screens/haptics-en.png) | ![Triggers](docs/screens/triggers-en.png) |
+| ![Controller](docs/screens/controller-test-en.png) | ![Triggers](docs/screens/controller-triggers-en.png) |
 | ![Light](docs/screens/light-en.png) | ![Settings](docs/screens/settings-en.png) |
 
 ### License
@@ -159,7 +159,7 @@ dotnet test
 | | |
 |---|---|
 | ![Genel bakış](docs/screens/overview-tr.png) | ![Genel bakış, DualSense Edge](docs/screens/overview-edge-tr.png) |
-| ![Haptik](docs/screens/haptics-tr.png) | ![Tetikler](docs/screens/triggers-tr.png) |
+| ![Kumanda](docs/screens/controller-test-tr.png) | ![Tetikler](docs/screens/controller-triggers-tr.png) |
 | ![Işık](docs/screens/light-tr.png) | ![Ayarlar](docs/screens/settings-tr.png) |
 
 ### Lisans

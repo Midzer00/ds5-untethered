@@ -1,12 +1,12 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls"
-             x:Class="Kopru.App.Views.ToastView" x:DataType="vm:ToastViewModel" Width="{Binding CardWidth}">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls"
+             x:Class="Kopru.App.Views.ToastView" x:DataType="vm:ToastViewModel" Width="{Binding CardWidth}" Height="{Binding CardHeight}">
   <UserControl.Styles>
-    <!-- Close button: a quiet 22px square that only shows a fill on hover -->
+    <!-- Close button: a quiet 22px square that only shows a fill on hover (the same glass steps as the app's controls) -->
     <Style Selector="Button.close">
       <Setter Property="Width" Value="22" />
       <Setter Property="Height" Value="22" />
       <Setter Property="Padding" Value="0" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -14,10 +14,10 @@
       <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Button.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#1CFFFFFF" />
+      <Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" />
     </Style>
     <Style Selector="Button.close:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#28FFFFFF" />
+      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
     </Style>
     <Style Selector="Button.close Path">
       <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
@@ -29,21 +29,27 @@
       <Setter Property="Background" Value="{StaticResource ToastBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource ToastEdgeBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
     </Style>
-    <!-- Compact cards (full-screen app in front) have no header, so the padding is even -->
-    <Style Selector="Grid#Body.compact">
-      <Setter Property="Margin" Value="12,12,10,12" />
+    <!-- Action buttons: the design's buttons, smaller to fit the card -->
+    <Style Selector="Button.toastAction">
+      <Setter Property="Height" Value="26" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="11,0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="MinWidth" Value="44" />
     </Style>
     <Style Selector="Border.card:pointerover">
       <Setter Property="Background" Value="{StaticResource ToastHoverBrush}" />
     </Style>
   </UserControl.Styles>
 
+  <!-- Every toast has the same size: header, then the controller beside a title, a one-line body and (questions only) buttons -->
   <Border Classes="card" Name="Card" Cursor="Hand">
-    <Grid RowDefinitions="Auto,Auto" Margin="14,10,10,14" Name="Body" Classes.compact="{Binding IsCompact}">
+    <Grid RowDefinitions="Auto,*" Margin="14,10,10,12">
       <!-- Header: app mark and name, close -->
-      <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding ShowHeader}" Margin="0,0,0,10">
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
         <Image Source="/Assets/icon.ico" Width="14" Height="14" VerticalAlignment="Center" />
         <TextBlock Grid.Column="1" Text="{Binding AppName}" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"
                    TextWrapping="NoWrap" VerticalAlignment="Center" Margin="7,0,0,0" />
@@ -52,30 +58,38 @@
         </Button>
       </Grid>
 
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="14">
         <!-- The controller as it is drawn in the app, faded with its light off when it has gone away -->
         <c:ControllerArt Width="{Binding ArtWidth}" Height="{Binding ArtHeight}" VerticalAlignment="Center" IsEdge="{Binding IsEdge}"
                          LightIntensity="{Binding LightIntensity}" Opacity="{Binding ArtOpacity}" />
-        <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,6,0" VerticalAlignment="Center">
-          <!-- Title with the status mark before it and the battery at the end -->
+        <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,4,0" VerticalAlignment="Center">
+          <!-- Title (long game names are cut here, never in the body) with the status mark before it and the battery at the end -->
           <Grid ColumnDefinitions="Auto,*,Auto">
             <Path IsVisible="{Binding HasStatusMark}" Data="{Binding StatusMark}" Fill="{Binding StatusBrush}" Width="12" Height="12" Stretch="Uniform"
                   VerticalAlignment="Center" Margin="0,0,6,0" />
-            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding Title}" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasBattery}" Margin="10,0,0,0" VerticalAlignment="Center">
               <c:BatteryGlyph Level="{Binding BatteryLevel}" IsCharging="{Binding IsCharging}" Width="22" Height="11" VerticalAlignment="Center" />
               <TextBlock Text="{Binding BatteryText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="NoWrap"
                          VerticalAlignment="Center" />
             </StackPanel>
           </Grid>
-          <TextBlock Text="{Binding Body}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="NoWrap"
-                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Body}" />
+          <TextBlock Name="BodyText" Text="{Binding Body}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="NoWrap" />
+          <!-- Buttons (questions only) -->
+          <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" Margin="0,7,0,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ToastActionViewModel">
+                <Button Theme="{StaticResource PrimaryButton}" Classes="toastAction" Classes.quiet="{Binding !IsPrimary}" Command="{Binding Command}">
+                  <TextBlock Text="{Binding Label}" TextWrapping="NoWrap" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
-        <!-- Compact cards have no header, so the close button sits next to the text -->
-        <Button Grid.Column="2" Classes="close" Name="CompactCloseButton" IsVisible="{Binding IsCompact}" ToolTip.Tip="{Binding CloseText}"
-                VerticalAlignment="Top">
-          <Path Data="M1,1 L9,9 M9,1 L1,9" StrokeThickness="1.4" StrokeLineCap="Round" Width="10" Height="10" />
-        </Button>
       </Grid>
     </Grid>
   </Border>

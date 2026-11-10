@@ -41,6 +41,8 @@ internal sealed class FakeHidHide : ICommandRunner
 	}
 }
 
+// Reads text in the current language (LocalizationTests switch it): not in parallel with them.
+[Collection("Localization")]
 public sealed class HidingTests : IDisposable
 {
 	private const string BtPad = @"HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0ce6\b&24ba9c0d&2&0000";
@@ -67,6 +69,18 @@ public sealed class HidingTests : IDisposable
 			Directory.Delete(_dir, true);
 		}
 	}
+
+	// Simulated app processes sharing the ledger: Run starts one, Kill ends it without cleanup.
+	private readonly HashSet<HidingOwner> _live = [];
+
+	private HidingStateStore Run(int pid)
+	{
+		var owner = new HidingOwner(pid, pid * 1000L);
+		_live.Add(owner);
+		return new HidingStateStore(_store.Path, owner, _live.Contains);
+	}
+
+	private void Kill(HidingStateStore store) => _live.Remove(store.Owner);
 
 	[Fact]
 	public void Instance_ids_are_classified()
@@ -156,11 +170,13 @@ public sealed class HidingTests : IDisposable
 	public async Task Crashed_run_is_recovered_from_state_file()
 	{
 		_fake.Apps.Add(OtherExe);
-		await HidingSession.StartAsync(_control, _store, [BtPad], OurExe); // never disposed = crash
+		HidingStateStore crashed = Run(1);
+		await HidingSession.StartAsync(_control, crashed, [BtPad], OurExe); // never disposed = crash
 		Assert.True(File.Exists(_store.Path));
+		Kill(crashed);
 
 		var fresh = new HidHideControl(_fake, _control.CliPath);
-		await HidingSession.RecoverAsync(fresh, new HidingStateStore(_store.Path));
+		await HidingSession.RecoverAsync(fresh, Run(2));
 		Assert.False(_fake.CloakOn);
 		Assert.Empty(_fake.Devices);
 		Assert.Equal(new[] { OtherExe }, _fake.Apps);
@@ -197,19 +213,29 @@ public sealed class HidingTests : IDisposable
 
 		await session.AddDevicesAsync([BtPad, VirtualPad, BtPad]);
 		Assert.Equal([BtPad], _fake.Devices);
-		Assert.Contains(BtPad, _store.Load()!.AddedDevices);
+		Assert.True(_store.Load().IsClaimed(HidingClaimKind.Device, BtPad));
 
 		await session.DisposeAsync();
 		Assert.Empty(_fake.Devices);
 		Assert.Empty(_fake.Apps);
 		Assert.False(_fake.CloakOn);
-		Assert.Null(_store.Load());
+		Assert.Empty(_store.Load().Claims);
+		Assert.False(File.Exists(_store.Path));
 	}
 
 	[Fact]
 	public void Default_state_file_is_in_the_untethered_folder()
 	{
-		Assert.Contains(Path.Combine("Untethered", "hiding-state.json"), HidingStateStore.CreateDefault().Path);
-		Assert.Contains(Path.Combine("Kopru", "hiding-state.json"), HidingStateStore.CreateLegacy().Path);
+		Assert.Contains(Path.Combine("Untethered", "hiding-ledger.json"), HidingStateStore.CreateDefault().Path);
+		Assert.Contains(HidingStateStore.LegacyPaths(), p => p.EndsWith(Path.Combine("Untethered", "hiding-state.json"), StringComparison.Ordinal));
+		Assert.Contains(HidingStateStore.LegacyPaths(), p => p.EndsWith(Path.Combine("Kopru", "hiding-state.json"), StringComparison.Ordinal));
+	}
+
+	[Fact]
+	public void Owner_of_this_process_is_running_and_a_reused_pid_is_not()
+	{
+		Assert.True(HidingOwner.IsRunning(HidingOwner.Current));
+		Assert.False(HidingOwner.IsRunning(HidingOwner.Current with { StartedUtcTicks = HidingOwner.Current.StartedUtcTicks - TimeSpan.TicksPerHour }));
+		Assert.False(HidingOwner.IsRunning(HidingOwner.Unknown));
 	}
 }

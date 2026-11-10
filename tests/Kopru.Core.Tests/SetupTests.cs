@@ -177,12 +177,31 @@ public class SetupTests
 		var w = AllGood();
 		w.AdapterVerdict = null;
 		Assert.Equal(StepStatus.Needed, StatusOf(w, SetupStepId.AdapterTest));
-		Assert.Equal(SetupStepId.AdapterTest, w.FirstIncomplete?.Id);
+		// Optional: an untested adapter does not block finishing.
+		Assert.Null(w.FirstIncomplete);
+		Assert.True(w.CanFinish);
+		Assert.Equal(StepStatus.Done, StatusOf(w, SetupStepId.Done));
 		w.AdapterVerdict = AdapterVerdict.Borderline;
 		Assert.Equal(StepStatus.Warning, StatusOf(w, SetupStepId.AdapterTest));
 		w.AdapterVerdict = AdapterVerdict.Unsuitable;
 		Assert.Equal(StepStatus.Warning, StatusOf(w, SetupStepId.AdapterTest));
 		Assert.True(w.CanFinish);
+	}
+
+	[Fact]
+	public void OnlyTheAdapterTestIsOptional()
+	{
+		Assert.Equal([SetupStepId.AdapterTest], AllGood().Steps.Where(s => s.IsOptional).Select(s => s.Id));
+	}
+
+	[Fact]
+	public void UnpairedControllerBlocksFinishEvenWithAdapterTested()
+	{
+		var w = Wizard(new FakeRegistry().WithUsbIp().WithHidHide(), RadioState.On, []);
+		w.LanguageChosen = true;
+		w.AdapterVerdict = AdapterVerdict.Suitable;
+		Assert.False(w.CanFinish);
+		Assert.Equal(SetupStepId.PairController, w.FirstIncomplete?.Id);
 	}
 
 	[Fact]

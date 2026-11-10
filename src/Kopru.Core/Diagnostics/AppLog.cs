@@ -38,6 +38,9 @@ public static class AppLog
 		}
 	}
 
+	// Raised after every Write with the message (tests watch for their lines).
+	public static event Action<string>? Written;
+
 	public static void Write(string message)
 	{
 		string line = DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + " " +
@@ -60,6 +63,7 @@ public static class AppLog
 				// Logging is best effort.
 			}
 		}
+		Written?.Invoke(message);
 	}
 
 	// The last lines of the log (older file first).

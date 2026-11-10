@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.DesktopModePanel" x:DataType="vm:DesktopModeViewModel">
+  <UserControl.Styles>
+    <Style Selector="Grid.row">
+      <Setter Property="Margin" Value="0,14" />
+    </Style>
+    <Style Selector="Grid.row > StackPanel">
+      <Setter Property="Spacing" Value="3" />
+      <Setter Property="Margin" Value="0,0,24,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <TextBlock Classes="section" Text="{Binding Title}" Margin="0,24,0,8" />
+    <Border Classes="panel" Padding="20,0" Name="DesktopModeGroup">
+      <StackPanel>
+        <!-- The switch -->
+        <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Classes="label" Text="{Binding SwitchLabel}" />
+            <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.DesktopModeOn}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding SwitchLabel}" />
+        </Grid>
+        <Border Classes="divider" />
+        <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Classes="label" Text="{Binding AutoOffLabel}" />
+            <TextBlock Classes="body" Text="{Binding AutoOffHint}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoOffInGame}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding AutoOffLabel}" />
+        </Grid>
+        <Border Classes="divider" />
+        <!-- Speeds, two columns -->
+        <Grid ColumnDefinitions="*,40,*" RowDefinitions="Auto,16,Auto" Margin="0,16,0,18">
+          <StackPanel Spacing="2">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding PointerSpeedLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding PointerSpeedText}" />
+            </Grid>
+            <Slider Minimum="0.2" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding PointerSpeed}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="2">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding PointerAccelerationLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding PointerAccelerationText}" />
+            </Grid>
+            <Slider Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding PointerAcceleration}" />
+          </StackPanel>
+          <StackPanel Grid.Row="2" Spacing="2">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding TouchpadSpeedLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding TouchpadSpeedText}" />
+            </Grid>
+            <Slider Minimum="0.2" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding TouchpadSpeed}" />
+          </StackPanel>
+          <StackPanel Grid.Row="2" Grid.Column="2" Spacing="2">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding ScrollSpeedLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding ScrollSpeedText}" />
+            </Grid>
+            <Slider Minimum="0.2" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding ScrollSpeed}" />
+          </StackPanel>
+        </Grid>
+        <Border Classes="divider" />
+        <!-- Controls legend -->
+        <TextBlock Classes="label" Text="{Binding MappingTitle}" Margin="0,14,0,4" />
+        <ItemsControl ItemsSource="{Binding Mapping}" Margin="0,4,0,12">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ShortcutLegendItem">
+              <Grid ColumnDefinitions="240,*" Margin="0,5">
+                <Border Classes="chip" HorizontalAlignment="Left" Height="28" Padding="12,0">
+                  <TextBlock Text="{Binding Keys}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                </Border>
+                <TextBlock Grid.Column="1" Classes="body" Text="{Binding Does}" VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

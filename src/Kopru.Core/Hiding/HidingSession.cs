@@ -1,122 +1,66 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-using System.Text.Json;
+using Kopru.Core.Diagnostics;
 using Kopru.Core.Hid;
 
 namespace Kopru.Core.Hiding;
 
-// What one session changed in HidHide; exactly this is undone later.
-public sealed class HidingChanges
-{
-	public List<string> AddedDevices { get; set; } = [];
-	public List<string> AddedApps { get; set; } = [];
-	public bool TurnedCloakOn { get; set; }
-	// Our exe registered at app start (HidingSession.EnsureAppAllowedAsync); kept across sessions, undone on exit.
-	public List<string> EarlyApps { get; set; } = [];
-
-	public bool IsEmpty => AddedDevices.Count == 0 && AddedApps.Count == 0 && !TurnedCloakOn && EarlyApps.Count == 0;
-}
-
-// Small JSON file that survives a crash so the next start can undo our changes.
-public sealed class HidingStateStore(string path)
-{
-	public string Path { get; } = path;
-
-	public const string FileName = "hiding-state.json";
-
-	public static HidingStateStore CreateDefault() => new(System.IO.Path.Combine(AppPaths.DataDirectory, FileName));
-
-	// Where versions before the rename kept the file; only read for recovery.
-	public static HidingStateStore CreateLegacy() => new(System.IO.Path.Combine(
-		Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kopru", FileName));
-
-	public HidingChanges? Load()
-	{
-		try
-		{
-			return File.Exists(Path) ? JsonSerializer.Deserialize<HidingChanges>(File.ReadAllText(Path)) : null;
-		}
-		catch (JsonException)
-		{
-			return null;
-		}
-	}
-
-	public void Save(HidingChanges changes)
-	{
-		string? dir = System.IO.Path.GetDirectoryName(Path);
-		if (!string.IsNullOrEmpty(dir))
-		{
-			Directory.CreateDirectory(dir);
-		}
-		string temp = Path + ".tmp";
-		File.WriteAllText(temp, JsonSerializer.Serialize(changes));
-		File.Move(temp, Path, overwrite: true);
-	}
-
-	public void Delete()
-	{
-		if (File.Exists(Path))
-		{
-			File.Delete(Path);
-		}
-	}
-}
-
-// Hides the real Bluetooth controller from games while letting our own exe see it. Dispose restores only what
-// this session added; entries owned by other apps are left untouched.
+// Hides the real Bluetooth controller from games while letting our own exe see it. Every entry it adds is claimed in
+// the ledger (HidingStateStore) before HidHide is changed; Dispose undoes only entries no other claim still needs.
+// Entries that were already in HidHide without a claim of ours (another tool, the user) are never touched.
 public sealed class HidingSession : IDisposable, IAsyncDisposable
 {
 	private readonly HidHideControl _control;
 	private readonly HidingStateStore _store;
-	private readonly HidingChanges _changes;
+	private readonly List<string> _addedDevices = [];
+	private readonly List<string> _addedApps = [];
 	private bool _disposed;
 
-	private HidingSession(HidHideControl control, HidingStateStore store, HidingChanges changes)
+	private HidingSession(HidHideControl control, HidingStateStore store)
 	{
 		_control = control;
 		_store = store;
-		_changes = changes;
 	}
 
-	public IReadOnlyList<string> AddedDevices => _changes.AddedDevices;
-	public IReadOnlyList<string> AddedApps => _changes.AddedApps;
-	public bool TurnedCloakOn => _changes.TurnedCloakOn;
+	// What this session itself put into HidHide (not entries it shares with another running copy).
+	public IReadOnlyList<string> AddedDevices => _addedDevices;
+	public IReadOnlyList<string> AddedApps => _addedApps;
+	public bool TurnedCloakOn { get; private set; }
 
-	// Undoes a previous run that did not restore (crash). Safe to call on every start.
-	public static async Task RecoverAsync(HidHideControl control, HidingStateStore store, CancellationToken cancellationToken = default)
+	// Undoes what exited runs left behind (crash, kill, a build in another folder). Claims of copies that still run
+	// are kept. Flat files of older versions are imported into the ledger first, then removed. Safe on every start.
+	public static async Task RecoverAsync(HidHideControl control, HidingStateStore store, IEnumerable<string>? legacyPaths = null,
+		CancellationToken cancellationToken = default)
 	{
-		HidingChanges? leftover = store.Load();
-		if (leftover is null)
-		{
-			store.Delete();
-			return;
-		}
-		await RestoreAsync(control, leftover, includeEarly: true, cancellationToken).ConfigureAwait(false);
-		store.Delete();
+		using IDisposable _ = await store.LockAsync(cancellationToken).ConfigureAwait(false);
+		HidingLedger ledger = store.Load();
+		ImportLegacy(store, ledger, legacyPaths ?? []);
+		await ReleaseAsync(control, store, ledger, c => !store.IsRunning(c.Owner), "recovery (left by an exited run)", cancellationToken)
+			.ConfigureAwait(false);
 	}
 
-	// Undoes leftover session changes only, keeping this run's early app registration.
-	private static async Task RecoverSessionAsync(HidHideControl control, HidingStateStore store, CancellationToken cancellationToken)
+	private static void ImportLegacy(HidingStateStore store, HidingLedger ledger, IEnumerable<string> legacyPaths)
 	{
-		HidingChanges? leftover = store.Load();
-		if (leftover is null)
+		foreach (string path in legacyPaths)
 		{
-			store.Delete();
-			return;
-		}
-		await RestoreAsync(control, leftover, includeEarly: false, cancellationToken).ConfigureAwait(false);
-		SaveEarlyOnly(store, leftover.EarlyApps);
-	}
-
-	internal static void SaveEarlyOnly(HidingStateStore store, List<string> earlyApps)
-	{
-		if (earlyApps.Count == 0)
-		{
-			store.Delete();
-		}
-		else
-		{
-			store.Save(new HidingChanges { EarlyApps = [.. earlyApps] });
+			if (string.Equals(Path.GetFullPath(path), Path.GetFullPath(store.Path), StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+			{
+				continue;
+			}
+			HidingChanges? old = HidingChanges.Load(path);
+			if (old is { IsEmpty: false })
+			{
+				ledger.Claims.AddRange(old.ToClaims(HidingOwner.Unknown));
+				store.Save(ledger); // owned by the ledger before the old file goes
+				AppLog.Write("hiding: imported the record of an older version: " + Describe(old.ToClaims(HidingOwner.Unknown)));
+			}
+			try
+			{
+				File.Delete(path);
+			}
+			catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+			{
+				// Imported already; a second import only adds claims for the same entries.
+			}
 		}
 	}
 
@@ -128,93 +72,102 @@ public sealed class HidingSession : IDisposable, IAsyncDisposable
 		{
 			throw new HidHideException(Localization.Text.HidHideNotInstalled());
 		}
-		await RecoverSessionAsync(control, store, cancellationToken).ConfigureAwait(false);
 		appPath ??= Environment.ProcessPath ?? throw new HidHideException(Localization.Text.HidHideNoAppPath());
+		var session = new HidingSession(control, store);
+		using (await store.LockAsync(cancellationToken).ConfigureAwait(false))
+		{
+			HidingLedger ledger = store.Load();
+			// Recovery first, so a fresh "already hidden" decision never hides an exited run's entries as foreign.
+			// Our own session claims here are leftovers of a stop that could not undo them.
+			await ReleaseAsync(control, store, ledger,
+				c => !store.IsRunning(c.Owner) || (c.Owner == store.Owner && c.Scope == HidingClaimScope.Session),
+				"recovery before start", cancellationToken).ConfigureAwait(false);
 
-		HidHideState state = await control.GetStateAsync(cancellationToken).ConfigureAwait(false);
-		var planned = new HidingChanges
-		{
-			TurnedCloakOn = !state.CloakOn,
-			EarlyApps = store.Load()?.EarlyApps ?? []
-		};
-		if (!state.AllowedApps.Contains(appPath, StringComparer.OrdinalIgnoreCase))
-		{
-			planned.AddedApps.Add(appPath);
-		}
-		foreach (string id in deviceInstanceIds.Distinct(StringComparer.OrdinalIgnoreCase))
-		{
-			if (!DeviceInstance.IsBluetoothHid(id) || DeviceInstance.IsUsbDevice(id))
+			HidHideState state = await control.GetStateAsync(cancellationToken).ConfigureAwait(false);
+			var plan = new Plan(store, ledger, state);
+			plan.Want(HidingClaimKind.App, appPath);
+			foreach (string id in BluetoothOnly(deviceInstanceIds))
 			{
-				continue; // never hide the virtual (USB) pad or anything that is not the BT controller
+				plan.Want(HidingClaimKind.Device, id);
 			}
-			if (!state.HiddenDevices.Contains(id, StringComparer.OrdinalIgnoreCase))
-			{
-				planned.AddedDevices.Add(id);
-			}
-		}
+			plan.Want(HidingClaimKind.Cloak, "");
+			plan.Log("start");
 
-		// Persist the plan first: a crash mid-way is still undone (undoing a not-yet-applied entry is harmless).
-		if (!planned.IsEmpty)
-		{
-			store.Save(planned);
-		}
-		var session = new HidingSession(control, store, planned);
-		try
-		{
-			// Allow our app before hiding anything so we never lose the controller ourselves.
-			foreach (string app in planned.AddedApps)
-			{
-				await control.AllowAppAsync(app, cancellationToken).ConfigureAwait(false);
-			}
-			foreach (string id in planned.AddedDevices)
-			{
-				await control.HideAsync(id, cancellationToken).ConfigureAwait(false);
-			}
-			if (planned.TurnedCloakOn)
-			{
-				await control.CloakOnAsync(cancellationToken).ConfigureAwait(false);
-			}
-		}
-		catch (Exception e)
-		{
+			// Claimed in the ledger first: a crash mid-way is still undone (undoing a not-yet-applied entry is skipped).
+			ledger.Claims.AddRange(plan.Claims);
+			store.Save(ledger);
 			try
 			{
-				await session.DisposeAsync().ConfigureAwait(false);
+				// Allow our app before hiding anything so we never lose the controller ourselves.
+				foreach (string app in plan.Add(HidingClaimKind.App))
+				{
+					await control.AllowAppAsync(app, cancellationToken).ConfigureAwait(false);
+					session._addedApps.Add(app);
+				}
+				foreach (string id in plan.Add(HidingClaimKind.Device))
+				{
+					await control.HideAsync(id, cancellationToken).ConfigureAwait(false);
+					session._addedDevices.Add(id);
+				}
+				if (plan.Add(HidingClaimKind.Cloak).Count > 0)
+				{
+					await control.CloakOnAsync(cancellationToken).ConfigureAwait(false);
+					session.TurnedCloakOn = true;
+				}
 			}
-			catch (HidHideException)
+			catch (Exception e)
 			{
-				// Keep the state file; the next start retries.
+				session._disposed = true;
+				try
+				{
+					await ReleaseAsync(control, store, ledger, session.Mine, "rollback after a failed start", CancellationToken.None)
+						.ConfigureAwait(false);
+				}
+				catch (HidHideException)
+				{
+					// The claims stay in the ledger; the next start retries.
+				}
+				throw e is HidHideException ? e : new HidHideException(Localization.Text.HidHideHideFailed(e.Message));
 			}
-			throw e is HidHideException ? e : new HidHideException(Localization.Text.HidHideHideFailed(e.Message));
 		}
 		return session;
 	}
+
+	private bool Mine(HidingClaim c) => c.Owner == _store.Owner && c.Scope == HidingClaimScope.Session;
+
+	private static IEnumerable<string> BluetoothOnly(IEnumerable<string> ids) =>
+		ids.Distinct(StringComparer.OrdinalIgnoreCase)
+			.Where(id => DeviceInstance.IsBluetoothHid(id) && !DeviceInstance.IsUsbDevice(id)); // never the virtual (USB) pad
 
 	// Hides more Bluetooth controllers in this session (e.g. one found after the session started).
 	public async Task AddDevicesAsync(IEnumerable<string> deviceInstanceIds, CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
-		HidHideState state = await _control.GetStateAsync(cancellationToken).ConfigureAwait(false);
-		var added = new List<string>();
-		foreach (string id in deviceInstanceIds.Distinct(StringComparer.OrdinalIgnoreCase))
-		{
-			if (!DeviceInstance.IsBluetoothHid(id) || DeviceInstance.IsUsbDevice(id) ||
-				_changes.AddedDevices.Contains(id, StringComparer.OrdinalIgnoreCase) ||
-				state.HiddenDevices.Contains(id, StringComparer.OrdinalIgnoreCase))
-			{
-				continue;
-			}
-			added.Add(id);
-		}
-		if (added.Count == 0)
+		List<string> ids = BluetoothOnly(deviceInstanceIds).ToList();
+		if (ids.Count == 0)
 		{
 			return;
 		}
-		_changes.AddedDevices.AddRange(added);
-		_store.Save(_changes);
-		foreach (string id in added)
+		using IDisposable _ = await _store.LockAsync(cancellationToken).ConfigureAwait(false);
+		HidingLedger ledger = _store.Load();
+		ids.RemoveAll(id => ledger.Claims.Any(c => Mine(c) && c.SameEntry(HidingClaimKind.Device, id)));
+		if (ids.Count == 0)
+		{
+			return;
+		}
+		HidHideState state = await _control.GetStateAsync(cancellationToken).ConfigureAwait(false);
+		var plan = new Plan(_store, ledger, state);
+		foreach (string id in ids)
+		{
+			plan.Want(HidingClaimKind.Device, id);
+		}
+		plan.Log("add");
+		ledger.Claims.AddRange(plan.Claims);
+		_store.Save(ledger);
+		foreach (string id in plan.Add(HidingClaimKind.Device))
 		{
 			await _control.HideAsync(id, cancellationToken).ConfigureAwait(false);
+			_addedDevices.Add(id);
 		}
 	}
 
@@ -225,53 +178,138 @@ public sealed class HidingSession : IDisposable, IAsyncDisposable
 			return;
 		}
 		_disposed = true;
-		await RestoreAsync(_control, _changes, includeEarly: false, CancellationToken.None).ConfigureAwait(false);
-		SaveEarlyOnly(_store, _changes.EarlyApps);
+		using IDisposable _ = await _store.LockAsync().ConfigureAwait(false);
+		HidingLedger ledger = _store.Load();
+		await ReleaseAsync(_control, _store, ledger, Mine, "stop", CancellationToken.None).ConfigureAwait(false);
 	}
 
 	public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
 
-	// Reverse order: cloak off first (games see the controller again), then unhide, then unregister the app.
-	internal static async Task RestoreAsync(HidHideControl control, HidingChanges changes, bool includeEarly, CancellationToken cancellationToken)
+	// Drops the selected claims (call under the store lock). An entry is undone only when no other claim needs it and
+	// it is still in HidHide; claims whose undo failed stay in the ledger so a later start retries. Reverse order:
+	// cloak off first (games see the controller again), then unhide, then unregister apps.
+	internal static async Task ReleaseAsync(HidHideControl control, HidingStateStore store, HidingLedger ledger,
+		Func<HidingClaim, bool> releasing, string why, CancellationToken cancellationToken)
 	{
-		if (changes.IsEmpty)
+		List<HidingClaim> released = ledger.Claims.Where(releasing).ToList();
+		if (released.Count == 0)
 		{
 			return;
 		}
+		List<HidingClaim> kept = ledger.Claims.Except(released).ToList();
+		var entries = released
+			.Select(c => (c.Kind, c.Value))
+			.DistinctBy(e => (e.Kind, e.Value.ToUpperInvariant()))
+			.OrderBy(e => e.Kind)
+			.ToList();
+		HidHideState state = await control.GetStateAsync(cancellationToken).ConfigureAwait(false);
+		List<HidingClaim> undone = [], shared = [], gone = [], failed = [];
 		HidHideException? failure = null;
-		async Task Try(Func<Task> step)
+		foreach ((HidingClaimKind kind, string value) in entries)
 		{
+			List<HidingClaim> claims = released.Where(c => c.SameEntry(kind, value)).ToList();
+			if (kept.Any(c => c.SameEntry(kind, value)))
+			{
+				shared.AddRange(claims); // another claim of ours (a running copy, or this run's other scope) still needs it
+				continue;
+			}
+			bool present = kind switch
+			{
+				HidingClaimKind.Cloak => state.CloakOn,
+				HidingClaimKind.Device => state.HiddenDevices.Contains(value, StringComparer.OrdinalIgnoreCase),
+				_ => state.AllowedApps.Contains(value, StringComparer.OrdinalIgnoreCase)
+			};
+			if (!present)
+			{
+				gone.AddRange(claims); // already undone (before a kill, or by hand)
+				continue;
+			}
 			try
 			{
-				await step().ConfigureAwait(false);
+				await (kind switch
+				{
+					HidingClaimKind.Cloak => control.CloakOffAsync(cancellationToken),
+					HidingClaimKind.Device => control.UnhideAsync(value, cancellationToken),
+					_ => control.DisallowAppAsync(value, cancellationToken)
+				}).ConfigureAwait(false);
+				undone.AddRange(claims);
 			}
 			catch (HidHideException e)
 			{
 				failure ??= e;
+				failed.AddRange(claims);
 			}
 		}
-		if (changes.TurnedCloakOn)
-		{
-			await Try(() => control.CloakOffAsync(cancellationToken)).ConfigureAwait(false);
-		}
-		foreach (string id in changes.AddedDevices)
-		{
-			await Try(() => control.UnhideAsync(id, cancellationToken)).ConfigureAwait(false);
-		}
-		foreach (string app in changes.AddedApps)
-		{
-			await Try(() => control.DisallowAppAsync(app, cancellationToken)).ConfigureAwait(false);
-		}
-		if (includeEarly)
-		{
-			foreach (string app in changes.EarlyApps)
-			{
-				await Try(() => control.DisallowAppAsync(app, cancellationToken)).ConfigureAwait(false);
-			}
-		}
+		ledger.Claims = [.. kept, .. failed];
+		store.Save(ledger);
+		AppLog.Write($"hiding: {why}: undid {Describe(undone)}; kept for another claim of ours {Describe(shared)}; " +
+			$"already gone {Describe(gone)}" + (failed.Count > 0 ? $"; FAILED {Describe(failed)} (kept in the ledger, retried later)" : ""));
 		if (failure is not null)
 		{
 			throw new HidHideException(Localization.Text.HidHideRestoreFailed(failure.Message));
 		}
+	}
+
+	// "1 device, 1 app entry, cloak" without ids or paths; "nothing" when empty.
+	internal static string Describe(IEnumerable<HidingClaim> claims)
+	{
+		var distinct = claims.DistinctBy(c => (c.Kind, c.Value.ToUpperInvariant())).ToList();
+		int devices = distinct.Count(c => c.Kind == HidingClaimKind.Device);
+		int apps = distinct.Count(c => c.Kind == HidingClaimKind.App);
+		bool cloak = distinct.Any(c => c.Kind == HidingClaimKind.Cloak);
+		var parts = new List<string>();
+		if (devices > 0)
+		{
+			parts.Add(devices == 1 ? "1 device" : $"{devices} devices");
+		}
+		if (apps > 0)
+		{
+			parts.Add(apps == 1 ? "1 app entry" : $"{apps} app entries");
+		}
+		if (cloak)
+		{
+			parts.Add("cloak");
+		}
+		return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
+	}
+
+	// Decides, per wanted entry, whether this run adds it, shares it with another claim of ours, or leaves it alone.
+	private sealed class Plan(HidingStateStore store, HidingLedger ledger, HidHideState state)
+	{
+		public readonly List<HidingClaim> Claims = [];
+		private readonly List<HidingClaim> _added = [];
+		private readonly List<HidingClaim> _shared = [];
+		private readonly List<HidingClaim> _foreign = [];
+
+		public void Want(HidingClaimKind kind, string value)
+		{
+			HidingClaim claim = HidingClaim.For(store.Owner, HidingClaimScope.Session, kind, value);
+			bool present = kind switch
+			{
+				HidingClaimKind.Cloak => state.CloakOn,
+				HidingClaimKind.Device => state.HiddenDevices.Contains(value, StringComparer.OrdinalIgnoreCase),
+				_ => state.AllowedApps.Contains(value, StringComparer.OrdinalIgnoreCase)
+			};
+			if (!present)
+			{
+				Claims.Add(claim);
+				_added.Add(claim);
+			}
+			else if (ledger.IsClaimed(kind, value))
+			{
+				Claims.Add(claim); // put there by another running copy of ours (or this run's early registration)
+				_shared.Add(claim);
+			}
+			else
+			{
+				_foreign.Add(claim); // there without any claim of ours: another tool or the user; never undone by us
+			}
+		}
+
+		public List<string> Add(HidingClaimKind kind) => _added.Where(c => c.Kind == kind).Select(c => c.Value).ToList();
+
+		public void Log(string what) =>
+			AppLog.Write($"hiding: {what}: adding {Describe(_added)}; shared with another claim of ours {Describe(_shared)}; " +
+				$"already set by another tool or the user, left alone {Describe(_foreign)}");
 	}
 }

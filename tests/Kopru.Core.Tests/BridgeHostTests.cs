@@ -227,6 +227,7 @@ public class BridgeHostTests
 
 		first.Remove();
 		WaitUntil(() => host.Status.LastError == BridgeError.ControllerLost && host.State == BridgeState.WaitingForController);
+		Assert.Equal("input reads failed", host.Status.LastErrorDetail);
 		List<string> entries = [.. log];
 		Assert.True(entries.IndexOf("detach 1") < entries.IndexOf("dispose a"), string.Join(", ", entries));
 
@@ -247,6 +248,43 @@ public class BridgeHostTests
 
 		WaitUntil(() => log.Contains("dispose a"));
 		Assert.Contains("detach 1", log);
+		WaitUntil(() => host.Status.LastError == BridgeError.ControllerLost);
+		Assert.StartsWith("no input for 4.0 s", host.Status.LastErrorDetail);
+	}
+
+	// Every stop and power-off says who asked, and the power-off line comes before the disconnect line.
+	[Fact]
+	public async Task StopAndPowerOff_LogWhoAsked()
+	{
+		ConcurrentQueue<string> lines = new();
+		void Watch(string line)
+		{
+			if (line.Contains("test-reason-7f3", StringComparison.Ordinal) || line.StartsWith("power off: controller disconnected", StringComparison.Ordinal))
+			{
+				lines.Enqueue(line);
+			}
+		}
+		Diagnostics.AppLog.Written += Watch;
+		try
+		{
+			await using BridgeHost host = Host();
+			host.Power = new FakePower();
+			controllers.Links.Enqueue(new RemovableLink(log, "a"));
+			await host.StartAsync("test-reason-7f3 start");
+			WaitUntil(() => host.State == BridgeState.Running);
+
+			Assert.True(await host.PowerOffAsync("test-reason-7f3 power"));
+			WaitUntil(() => host.State == BridgeState.WaitingForController);
+			await host.StopAsync("test-reason-7f3 stop");
+			await host.StopAsync("test-reason-7f3 second stop");
+
+			List<string> got = [.. lines.Where(l => l.Contains("test-reason-7f3", StringComparison.Ordinal))];
+			Assert.Equal(["bridge start: test-reason-7f3 start", "power off requested: test-reason-7f3 power", "bridge stop: test-reason-7f3 stop"], got);
+		}
+		finally
+		{
+			Diagnostics.AppLog.Written -= Watch;
+		}
 	}
 
 	[Fact]

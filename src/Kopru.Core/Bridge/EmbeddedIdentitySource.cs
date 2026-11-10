@@ -4,7 +4,7 @@ using Kopru.Core.Virtual;
 namespace Kopru.Core.Bridge;
 
 // The DualSense identity shipped inside the app (Virtual/Identity/dualsense.json): works on any PC without a capture.
-// TODO: there is no DualSense Edge capture yet, so Edge controllers are presented with this DualSense identity too.
+// A connected DualSense Edge is presented with EdgeIdentity instead (unless "Present as Edge" is off).
 public sealed class EmbeddedIdentitySource : IIdentitySource
 {
 	public const string ResourceName = "Kopru.Core.Virtual.Identity.dualsense.json";

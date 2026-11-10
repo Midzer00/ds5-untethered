@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels"
+             xmlns:c="using:Kopru.App.Controls"
+             x:Class="Kopru.App.Views.ControllerSelector" x:DataType="vm:ControllerPickerViewModel" IsVisible="{Binding IsMulti}">
+  <!-- Several controllers: one chip per controller (slot and battery); a click selects the one the page shows -->
+  <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="{Binding Help}">
+    <ItemsControl ItemsSource="{Binding Items}" AutomationProperties.Name="{Binding Label}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ControllerChipViewModel">
+          <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsSelected, Mode=OneWay}" Command="{Binding SelectCommand}"
+                        ToolTip.Tip="{Binding Name}" AutomationProperties.Name="{Binding SlotText}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <TextBlock Text="{Binding SlotText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+              <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}"
+                              Width="18" Height="9" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

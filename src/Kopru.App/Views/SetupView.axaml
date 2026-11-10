@@ -1,23 +1,51 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.SetupView" x:DataType="vm:SetupViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.SetupView" x:DataType="vm:SetupViewModel">
   <ScrollViewer Classes="page">
     <StackPanel Spacing="0" MaxWidth="1500" Margin="32,28,32,28">
       <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-        <TextBlock Classes="h1" Text="{Binding Title}" />
-        <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CloseText}" Command="{Binding CloseCommand}" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="14">
+          <Image Source="/Assets/icon-256.png" Width="44" Height="44" RenderOptions.BitmapInterpolationMode="HighQuality" VerticalAlignment="Center" />
+          <TextBlock Classes="h1" Text="{Binding Title}" VerticalAlignment="Center" />
+        </StackPanel>
+        <!-- Required steps done: one primary button to the Overview instead of Close -->
+        <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CloseText}" Command="{Binding CloseCommand}" VerticalAlignment="Center"
+                IsVisible="{Binding !IsComplete}" />
+        <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Content="{Binding GoToOverviewText}" Command="{Binding GoToOverviewCommand}"
+                VerticalAlignment="Center" IsVisible="{Binding IsComplete}" />
       </Grid>
       <TextBlock Classes="body" Text="{Binding Intro}" Margin="0,0,0,20" />
 
       <Border Classes="panel" Padding="20,0">
-        <ItemsControl ItemsSource="{Binding Steps}">
+        <ItemsControl x:Name="StepList" ItemsSource="{Binding Steps}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SetupStepItem">
-              <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1" Padding="0,16">
-                <Grid ColumnDefinitions="20,*">
-                  <Ellipse Classes="indicator" Classes.on="{Binding IsDone}" Classes.waiting="{Binding IsWarning}" VerticalAlignment="Top" Margin="0,5,0,0" />
-                  <StackPanel Grid.Column="1" Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <TextBlock Classes="label" Text="{Binding Title}" />
-                      <TextBlock Classes="caption" Text="{Binding StatusText}" VerticalAlignment="Center" />
+              <!-- Numbered stepper row: circle column (done / current / upcoming) joined by a 1 px connector, content on the right -->
+              <Grid ColumnDefinitions="24,*">
+                <Grid RowDefinitions="16,24,*">
+                  <Rectangle Width="1" Fill="{StaticResource BorderBrush}" HorizontalAlignment="Center" IsVisible="{Binding HasConnectorAbove}" />
+                  <Border Grid.Row="1" Width="24" Height="24" CornerRadius="12" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" IsVisible="{Binding IsDone}">
+                    <Path Data="{x:Static c:IconPaths.Check}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Stroke="{StaticResource MutedBrush}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round" />
+                  </Border>
+                  <Border Grid.Row="1" Width="24" Height="24" CornerRadius="12" Background="{StaticResource AccentFillBrush}" IsVisible="{Binding IsCurrent}">
+                    <TextBlock Text="{Binding Number}" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Border Grid.Row="1" Width="24" Height="24" CornerRadius="12" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" IsVisible="{Binding ShowsNumber}">
+                    <TextBlock Text="{Binding Number}" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource MutedBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Rectangle Grid.Row="2" Width="1" Fill="{StaticResource BorderBrush}" HorizontalAlignment="Center" IsVisible="{Binding HasConnector}" />
+                </Grid>
+                <Border Grid.Column="1" Margin="12,0,0,0" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1" Padding="0,16">
+                  <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="24" Margin="0,0,0,2">
+                      <Grid VerticalAlignment="Center">
+                        <TextBlock Classes="label" Text="{Binding Title}" VerticalAlignment="Center" IsVisible="{Binding !IsDone}" />
+                        <TextBlock Classes="label" Text="{Binding Title}" VerticalAlignment="Center" IsVisible="{Binding IsDone}"
+                                   Foreground="{StaticResource MutedBrush}" FontWeight="Normal" />
+                      </Grid>
+                      <TextBlock Text="{Binding OptionalText}" IsVisible="{Binding IsOptional}" FontSize="{StaticResource FontCaption}"
+                                 Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                     <TextBlock Classes="body" Text="{Binding Instructions}" />
                     <TextBlock Classes="body" Text="{Binding Notes}" IsVisible="{Binding HasNotes}" Foreground="{StaticResource IndicatorWaitBrush}" />
@@ -31,9 +59,22 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <!-- Adapter test running: determinate bar over both phases, the phase and the seconds left, Cancel -->
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,10,0,0" Width="560" HorizontalAlignment="Left"
+                          IsVisible="{Binding AdapterTest.IsTesting, FallbackValue=False}">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,16,8">
+                        <TextBlock Classes="label" Text="{Binding AdapterTest.TestPhase, FallbackValue=''}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Classes="body" Text="{Binding AdapterTest.TestRemaining, FallbackValue=''}" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                      <ProgressBar Grid.Row="1" Classes="meter" Value="{Binding AdapterTest.TestProgress, FallbackValue=0}" HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Center" Margin="0,0,16,0" />
+                      <Button Grid.Column="1" Grid.RowSpan="2" Theme="{StaticResource QuietButton}" Content="{Binding AdapterTest.CancelText, FallbackValue=''}"
+                              Command="{Binding AdapterTest.CancelTestCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                    </Grid>
                   </StackPanel>
-                </Grid>
-              </Border>
+                </Border>
+              </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

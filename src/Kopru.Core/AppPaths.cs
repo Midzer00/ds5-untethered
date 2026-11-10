@@ -12,4 +12,7 @@ public static class AppPaths
 	public static string Captures => Path.Combine(DataDirectory, "captures");
 
 	public static string Settings => Path.Combine(DataDirectory, "settings.json");
+
+	// The supported games list downloaded by GameCatalogUpdater (used when newer than the embedded one).
+	public static string GameList => Path.Combine(DataDirectory, "supported-games.json");
 }

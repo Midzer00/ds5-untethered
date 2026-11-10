@@ -19,69 +19,96 @@ public static class GameModeText
 
 	public static string Reason(ModeReason reason) => reason switch
 	{
-		ModeReason.Catalog => Text.ReasonCatalog(),
-		ModeReason.Detected => Text.ReasonDetected(),
+		ModeReason.Game => Text.ReasonGame(),
+		ModeReason.Always => Text.ReasonAlways(),
 		ModeReason.User => Text.ReasonUser(),
 		_ => Text.ReasonDefault()
 	};
 
-	// "Cyberpunk 2077 · DualSense supported · from the list", or "No game detected yet".
+	// "Cyberpunk 2077 · DualSense supported · turned on for this game", or "DualSense supported · your choice" without a game.
 	public static string Line(GameModeState state) => state.Name == null
-		? Text.NoGameYet()
+		? GameModeText.Join(Mode(state.Mode), Reason(state.Reason))
 		: GameModeText.Join(GameModeText.Join(state.Name, Mode(state.Mode)), Reason(state.Reason));
 }
 
-public sealed class OverrideOption(GameOverride value, Func<string> name)
-{
-	public GameOverride Value { get; } = value;
-	public string Name => name();
-
-	public static IReadOnlyList<OverrideOption> Build() =>
-	[
-		new(GameOverride.Auto, () => Text.OverrideAuto()),
-		new(GameOverride.Supported, () => Text.OverrideSupported()),
-		new(GameOverride.Unsupported, () => Text.OverrideUnsupported()),
-	];
-}
-
-// One row of the supported games list; changing the override goes straight to the game mode controller.
+// One row of the supported games list: features, the "always" / "never ask" marks (each removable) and, for a game the
+// user added, a remove button.
 public sealed partial class GameItemViewModel : ObservableObject
 {
 	private readonly GameModeController _games;
 
-	public GameItemViewModel(KnownGame game, GameModeController games, IReadOnlyList<OverrideOption> options)
+	public GameItemViewModel(KnownGame game, GameModeController games)
 	{
 		_games = games;
 		Game = game;
-		Overrides = options;
-		_selectedOverride = options.First(o => o.Value == games.GetOverride(game.Exe));
 	}
 
 	public KnownGame Game { get; }
 	public string Name => Game.Name;
 	public string Exe => Game.Exe;
+	public string Key => Game.Key;
 	public bool HasHaptics => Game.Haptics;
 	public bool HasTriggers => Game.AdaptiveTriggers;
-	public bool IsLearned => Game.IsLearned;
+	public bool IsUserAdded => Game.IsUserAdded;
+	public bool IsAlways => _games.IsAlways(Key);
+	public bool IsNeverAsk => _games.IsNeverAsk(Key);
 	public string HapticsText => Text.BadgeHaptics();
 	public string TriggersText => Text.BadgeTriggers();
-	public string DetectedText => Text.DetectedHere();
-	public IReadOnlyList<OverrideOption> Overrides { get; }
+	public string UserAddedText => Text.MarkUserAdded();
+	public string AlwaysText => Text.MarkAlways();
+	public string AlwaysTip => Text.MarkAlwaysTip();
+	public string NeverAskText => Text.MarkNeverAsk();
+	public string NeverAskTip => Text.MarkNeverAskTip();
+	public string RemoveMarkText => Text.RemoveMark();
+	public string RemoveGameText => Text.RemoveGame();
+	public string PathTip => Game.Path ?? Game.Exe;
 
-	[ObservableProperty]
-	private OverrideOption _selectedOverride;
+	// The profile used while this game is recognised.
+	public GameProfilePicker? Profile { get; init; }
 
-	partial void OnSelectedOverrideChanged(OverrideOption value)
+	// The controller type games see while this game is in front (DualSense unless chosen).
+	public GamePadTypePicker? PadType { get; init; }
+
+	[RelayCommand]
+	private void RemoveAlways()
 	{
-		if (value != null)
+		_games.SetAlways(Key, false);
+		Refresh();
+	}
+
+	[RelayCommand]
+	private void RemoveNeverAsk()
+	{
+		_games.SetNeverAsk(Key, false);
+		Refresh();
+	}
+
+	[RelayCommand]
+	private void RemoveGame()
+	{
+		if (Game.Path != null)
 		{
-			_games.SetOverride(Game.Exe, value.Value);
+			_games.RemoveUserGame(Game.Path);
 		}
+	}
+
+	public void Refresh()
+	{
+		OnPropertyChanged(nameof(IsAlways));
+		OnPropertyChanged(nameof(IsNeverAsk));
 	}
 
 	public bool Matches(string query) => query.Length == 0
 		|| CultureInfo.InvariantCulture.CompareInfo.IndexOf(Name, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0
 		|| Exe.Contains(query, StringComparison.OrdinalIgnoreCase);
+}
+
+// A running app offered by "Add game".
+public sealed class RunningAppItem(ProcessInfo process)
+{
+	public ProcessInfo Process { get; } = process;
+	public string Name => ForegroundGame.DisplayName(Process.Exe);
+	public string Tip => Process.Path ?? Process.Exe;
 }
 
 // Shared by both game pages: the foreground game line and whether this page's mode is the active one.
@@ -106,10 +133,12 @@ public abstract class GameModePageViewModel : PageViewModel
 	protected IControllerService Service { get; }
 	public SettingsState Settings { get; }
 	public GameMode Mode { get; }
-	// "Cyberpunk 2077 · DualSense supported" (the reason is in CurrentGameDetail).
-	public string CurrentGameText => Service.Games.State is { Name: { } name } state ? GameModeText.Join(name, GameModeText.Mode(state.Mode)) : Text.NoGameYet();
+	// "Cyberpunk 2077 · DualSense supported", or the mode alone without a known game (the reason is in CurrentGameDetail).
+	public string CurrentGameText => Service.Games.State is { Name: { } name } state
+		? GameModeText.Join(name, GameModeText.Mode(state.Mode))
+		: GameModeText.Mode(Service.Games.State.Mode);
 	public string CurrentGameDetail => GameModeText.Line(Service.Games.State);
-	public bool IsActive => Service.Games.State.Name != null && Service.Games.State.Mode == Mode;
+	public bool IsActive => Service.Games.State.Mode == Mode;
 	public string ActiveText => Text.ActiveNow();
 	public string ProfileLabel => Text.ProfileSettings();
 
@@ -126,14 +155,121 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	private IReadOnlyList<GameItemViewModel> _all = [];
 	private int _knownCount = -1;
 
-	public SupportedGamesViewModel(IControllerService service, SettingsState settings) : base(service, settings, GameMode.Supported)
+	private readonly GameCatalogUpdater? _updater;
+	private readonly Func<DateTimeOffset> _now;
+	private CatalogUpdateResult? _lastResult;
+
+	public SupportedGamesViewModel(IControllerService service, SettingsState settings, GameCatalogUpdater? updater = null,
+		Func<DateTimeOffset>? now = null) : base(service, settings, GameMode.Supported)
 	{
+		_updater = updater;
+		_now = now ?? (() => DateTimeOffset.Now);
 		Rebuild();
 		service.Games.MemoryChanged += () => RunOnUi(() =>
 		{
 			if (Service.Games.KnownGames().Count != _knownCount)
 			{
 				Rebuild();
+			}
+			else
+			{
+				foreach (GameItemViewModel item in _all)
+				{
+					item.Refresh();
+				}
+			}
+		});
+		settings.ProfilesChanged += () =>
+		{
+			foreach (GameItemViewModel item in _all)
+			{
+				item.Profile?.Refresh();
+			}
+		};
+		service.Games.CatalogChanged += () => RunOnUi(() =>
+		{
+			Rebuild();
+			OnPropertyChanged(nameof(ListStatusText));
+		});
+	}
+
+	// The automatic check found new games (the count); raised on the UI thread.
+	public event Action<int>? ListUpdatedAutomatically;
+
+	public bool CanUpdateList => _updater != null;
+	public string UpdateListText => IsUpdatingList ? Text.UpdatingGameList() : Text.UpdateGameList();
+	public string AutoUpdateLabel => Text.AutoUpdateGameList();
+	public bool HasListError => _lastResult?.Status == CatalogUpdateStatus.Failed;
+
+	// "72 games · updated 9 Nov 2026", then the outcome of the last check.
+	public string ListStatusText
+	{
+		get
+		{
+			GameCatalog catalog = Service.Games.Catalog;
+			string info = Text.GameListInfo(catalog.Games.Count, catalog.Updated ?? string.Empty);
+			return _lastResult switch
+			{
+				{ Status: CatalogUpdateStatus.UpToDate } => GameModeText.Join(info, Text.GameListUpToDate()),
+				{ Status: CatalogUpdateStatus.Updated, Added.Count: > 0 } r => GameModeText.Join(info, Text.GameListAdded(r.Added.Count)),
+				{ Status: CatalogUpdateStatus.Failed } r => Text.GameListFailed(r.Reason),
+				_ => info
+			};
+		}
+	}
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(UpdateListText))]
+	[NotifyCanExecuteChangedFor(nameof(UpdateListCommand))]
+	private bool _isUpdatingList;
+
+	private bool CanRunUpdate() => _updater != null && !IsUpdatingList;
+
+	[RelayCommand(CanExecute = nameof(CanRunUpdate))]
+	private Task UpdateList() => CheckListAsync(automatic: false);
+
+	// The weekly automatic check (when on); silent unless it added games.
+	public Task AutoUpdateAsync() =>
+		GameCatalogUpdater.ShouldAutoCheck(_updater != null && Settings.AutoUpdateGameList, Settings.GameListCheckedAt, _now())
+			? CheckListAsync(automatic: true)
+			: Task.CompletedTask;
+
+	private async Task CheckListAsync(bool automatic)
+	{
+		if (_updater == null || IsUpdatingList)
+		{
+			return;
+		}
+		IsUpdatingList = true;
+		CatalogUpdateResult result;
+		try
+		{
+			result = await _updater.CheckAsync(Service.Games.Catalog);
+		}
+		finally
+		{
+			IsUpdatingList = false;
+		}
+		if (result.Status != CatalogUpdateStatus.Failed)
+		{
+			Settings.GameListCheckedAt = _now();
+		}
+		if (result.Status == CatalogUpdateStatus.Updated)
+		{
+			Service.Games.SetCatalog(result.Catalog);
+		}
+		if (!automatic)
+		{
+			_lastResult = result;
+		}
+		RunOnUi(() =>
+		{
+			Rebuild();
+			OnPropertyChanged(nameof(ListStatusText));
+			OnPropertyChanged(nameof(HasListError));
+			if (automatic && result.Added.Count > 0)
+			{
+				ListUpdatedAutomatically?.Invoke(result.Added.Count);
 			}
 		});
 	}
@@ -148,7 +284,44 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	public string LightHint => Text.LightFromGameHint();
 	public string ListLabel => Text.SupportedGameList();
 	public string SearchWatermark => Text.SearchGames();
-	public string OverrideHint => Text.OverrideHint();
+	public string ListHint => Text.GameListHint();
+	public string AskLabel => Text.AskOnKnownGame();
+	public string AskHint => Text.AskOnKnownGameHint();
+	public string AddGameText => Text.AddGame();
+	public string AddFromFileText => Text.AddGameFromFile();
+	public string RunningHeader => Text.AddGameRunningHeader();
+	public string NoRunningText => Text.AddGameNoRunning();
+
+	// Running apps for "Add game" (filled when its menu opens).
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasNoRunningApps))]
+	private IReadOnlyList<RunningAppItem> _runningApps = [];
+
+	public bool HasNoRunningApps => RunningApps.Count == 0;
+
+	public void RefreshRunningApps() => RunningApps = Service.Games.RunningApps().Select(p => new RunningAppItem(p)).ToList();
+
+	// Asks for an exe file (local path out; null when cancelled). Set by the view.
+	public Func<Task<string?>>? PickExe { get; set; }
+
+	[RelayCommand]
+	private void AddRunning(RunningAppItem? app)
+	{
+		if (app != null)
+		{
+			Service.Games.AddUserGame(new UserGame(app.Name, app.Process.Path ?? app.Process.Exe));
+		}
+	}
+
+	[RelayCommand]
+	private async Task AddFromFile()
+	{
+		if (PickExe == null || await PickExe() is not { Length: > 0 } path)
+		{
+			return;
+		}
+		Service.Games.AddUserGame(new UserGame(Path.GetFileNameWithoutExtension(path), path));
+	}
 	public string CountText => Text.GameCount(Games.Count);
 	public string NoMatchText => Text.NoMatchingGames();
 	public bool HasNoMatch => Games.Count == 0;
@@ -170,10 +343,9 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 
 	private void Rebuild()
 	{
-		IReadOnlyList<OverrideOption> options = OverrideOption.Build();
 		IReadOnlyList<KnownGame> known = Service.Games.KnownGames();
 		_knownCount = known.Count;
-		_all = known.Select(g => new GameItemViewModel(g, Service.Games, options)).ToList();
+		_all = known.Select(g => new GameItemViewModel(g, Service.Games) { Profile = new GameProfilePicker(Settings, g.Key), PadType = new GamePadTypePicker(Service.Games, g.Key) }).ToList();
 		OnPropertyChanged(nameof(Games));
 		OnPropertyChanged(nameof(CountText));
 		OnPropertyChanged(nameof(HasNoMatch));

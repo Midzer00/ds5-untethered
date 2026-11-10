@@ -6,18 +6,38 @@ namespace Kopru.App.Views;
 
 public partial class MainWindow : Window
 {
-	public MainWindow() => InitializeComponent();
+	private bool _systemBackdrop;
 
-	// The "glass" class switches to translucent surfaces when the system backdrop (acrylic or mica) is active;
-	// without it the window keeps its opaque graphite background.
+	public MainWindow()
+	{
+		InitializeComponent();
+		// A transparent surface for the system acrylic where Windows can draw it; opaque graphite elsewhere.
+		TransparencyLevelHint = SystemBackdrop.IsSupported ? [WindowTransparencyLevel.Transparent] : [WindowTransparencyLevel.None];
+	}
+
+	protected override void OnOpened(EventArgs e)
+	{
+		base.OnOpened(e);
+		_systemBackdrop = TryGetPlatformHandle() is { } handle && SystemBackdrop.TryApply(handle.Handle);
+		if (!_systemBackdrop)
+		{
+			TransparencyLevelHint = [WindowTransparencyLevel.None];
+		}
+		UpdateGlass();
+	}
+
+	// The "glass" class switches to a translucent tint when the system acrylic is behind the window; without it the
+	// window keeps its opaque graphite background.
 	protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
 	{
 		base.OnPropertyChanged(change);
 		if (change.Property == ActualTransparencyLevelProperty)
 		{
-			Classes.Set("glass", ActualTransparencyLevel != WindowTransparencyLevel.None);
+			UpdateGlass();
 		}
 	}
+
+	private void UpdateGlass() => Classes.Set("glass", _systemBackdrop && ActualTransparencyLevel == WindowTransparencyLevel.Transparent);
 
 	// Sizes the window to a share of the screen it opens on, so larger and high-resolution screens get a
 	// larger window instead of a small one surrounded by empty desktop.

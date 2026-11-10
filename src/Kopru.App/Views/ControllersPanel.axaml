@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
+             x:Class="Kopru.App.Views.ControllersPanel" x:DataType="vm:ControllersPanelViewModel">
+  <UserControl.Styles>
+    <!-- One remembered controller: a bordered row; plain muted text for its state (no dots or badges) -->
+    <Style Selector="Border.knownRow">
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="MinHeight" Value="58" />
+    </Style>
+    <Style Selector="Border.knownRow TextBlock.caption">
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.knownRow Button">
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+      <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <TextBlock Classes="section" Text="{Binding Title}" Margin="0,24,0,8" />
+    <Border Classes="panel" Padding="20,14,20,16" Name="ControllersGroup">
+      <StackPanel Spacing="{StaticResource GapSmall}">
+        <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" Margin="0,0,0,4" />
+        <TextBlock Classes="caption" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
+        <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding HasRows}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:KnownControllerRowViewModel">
+              <Border Classes="knownRow">
+                <Panel>
+                  <!-- Name (renamed in place) over the model; state, last battery and profile; Forget -->
+                  <Grid ColumnDefinitions="2*,16,3*,12,Auto" IsVisible="{Binding IsNotConfirming}">
+                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                      <v:ControllerNameEditor DataContext="{Binding NameEditor}" />
+                      <TextBlock Classes="caption" Text="{Binding ModelText}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
+                      <TextBlock Classes="caption" Text="{Binding StatusText}" />
+                      <TextBlock Classes="caption" Text="{Binding BatteryText}" IsVisible="{Binding HasBattery}" />
+                      <TextBlock Classes="caption" Text="{Binding ProfileText}" IsVisible="{Binding HasProfile}" />
+                    </StackPanel>
+                    <Button Grid.Column="4" Theme="{StaticResource QuietButton}" Height="30" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ForgetCommand}"
+                            IsEnabled="{Binding CanForget}" ToolTip.Tip="{Binding ForgetTip}" VerticalAlignment="Center" />
+                  </Grid>
+                  <!-- Forget pressed: ask first -->
+                  <Grid ColumnDefinitions="*,Auto,8,Auto" IsVisible="{Binding IsConfirming}">
+                    <TextBlock Classes="label" Text="{Binding ForgetAsk}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="30" Content="{Binding CancelText}" Command="{Binding CancelForgetCommand}"
+                            VerticalAlignment="Center" />
+                    <Button Grid.Column="3" Theme="{StaticResource QuietButton}" Height="30" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ConfirmForgetCommand}"
+                            Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </Panel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

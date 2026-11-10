@@ -61,6 +61,9 @@ public static class WindowsHid
 
 	public static HidConnection Open(HidDevice device) => new(device, OpenHandle(device.Path, Native.GenericRead | Native.GenericWrite));
 
+	// Shared read access only: input reports and feature reads; Write throws.
+	public static ReadOnlyHidConnection OpenReadOnly(HidDevice device) => new(device, OpenHandle(device.Path, Native.GenericRead));
+
 	// The feature report IDs a device declares (from its value and button capabilities).
 	public static IReadOnlyList<byte> FeatureReportIds(HidDevice device)
 	{
@@ -246,14 +249,90 @@ public sealed class HidConnection : IHidLink
 		return buffer;
 	}
 
-	// Unblocks a pending Read (it throws), e.g. when stopping a reader thread.
-	public void CancelRead() => Native.CancelIoEx(readHandle, IntPtr.Zero);
+	private int disposed;
 
+	// Unblocks a pending Read (it throws), e.g. when stopping a reader thread. No-op once disposed.
+	public void CancelRead()
+	{
+		if (Volatile.Read(ref disposed) == 0)
+		{
+			Native.CancelIoEx(readHandle, IntPtr.Zero);
+		}
+	}
+
+	// Safe to call more than once (a session and its owner may both dispose the link).
 	public void Dispose()
 	{
 		CancelRead();
+		if (Interlocked.Exchange(ref disposed, 1) != 0)
+		{
+			return;
+		}
 		readHandle.Dispose();
 		writeHandle.Dispose();
+	}
+}
+
+// A controller opened for reading only (no write access to the device at all).
+public sealed class ReadOnlyHidConnection : IHidLink
+{
+	private readonly SafeFileHandle handle;
+
+	internal ReadOnlyHidConnection(HidDevice device, SafeFileHandle handle)
+	{
+		Device = device;
+		this.handle = handle;
+	}
+
+	public HidDevice Device { get; }
+
+	public int Read(Span<byte> buffer)
+	{
+		unsafe
+		{
+			fixed (byte* p = buffer)
+			{
+				if (!Native.ReadFile(handle, p, buffer.Length, out int read, IntPtr.Zero))
+				{
+					throw new Win32Exception(Marshal.GetLastWin32Error());
+				}
+				return read;
+			}
+		}
+	}
+
+	public void Write(ReadOnlySpan<byte> report) => throw new NotSupportedException("Opened read-only");
+
+	public byte[] GetFeature(byte reportId)
+	{
+		byte[] buffer = new byte[Device.FeatureLength];
+		buffer[0] = reportId;
+		if (!Native.HidD_GetFeature(handle, buffer, buffer.Length))
+		{
+			throw new Win32Exception(Marshal.GetLastWin32Error());
+		}
+		return buffer;
+	}
+
+	private int disposed;
+
+	public void CancelRead()
+	{
+		if (Volatile.Read(ref disposed) == 0)
+		{
+			Native.CancelIoEx(handle, IntPtr.Zero);
+		}
+	}
+
+	// Safe to call more than once.
+	public void Dispose()
+	{
+		CancelRead();
+		if (Interlocked.Exchange(ref disposed, 1) != 0)
+		{
+			return;
+		}
+		handle.Dispose();
 	}
 }
 

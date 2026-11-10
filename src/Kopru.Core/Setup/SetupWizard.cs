@@ -37,7 +37,8 @@ public sealed record SetupStep(
 	Func<Language?, string> Title,
 	Func<Language?, string> Instructions,
 	IReadOnlyList<Func<Language?, string>> Notes,
-	IReadOnlyList<SetupAction> Actions);
+	IReadOnlyList<SetupAction> Actions,
+	bool IsOptional = false);
 
 // First-run setup model: steps derived from a SystemCheck snapshot plus the user's choices.
 public sealed class SetupWizard(SystemCheck check, IUrlLauncher launcher)
@@ -55,11 +56,12 @@ public sealed class SetupWizard(SystemCheck check, IUrlLauncher launcher)
 
 	public IReadOnlyList<SetupStep> Steps => Build(Status);
 
-	public SetupStep? FirstIncomplete => Steps.FirstOrDefault(s => s.Id != SetupStepId.Done && s.Status == StepStatus.Needed);
+	// The first required step still to do; optional steps (the adapter test) never count.
+	public SetupStep? FirstIncomplete => Steps.FirstOrDefault(s => s.Id != SetupStepId.Done && !s.IsOptional && s.Status == StepStatus.Needed);
 
-	// Finishing needs a language, both drivers, a controller on Bluetooth and an adapter test that ran;
+	// Finishing needs a language, both drivers and a controller on Bluetooth; the adapter test is optional and
 	// warnings (restart pending, borderline adapter) do not block.
-	public bool CanFinish => Steps.Where(s => s.Id != SetupStepId.Done).All(s => s.Status != StepStatus.Needed);
+	public bool CanFinish => FirstIncomplete == null;
 
 	// Runs an action; returns true when the caller must start the adapter test itself.
 	public bool Execute(SetupAction action)
@@ -141,10 +143,10 @@ public sealed class SetupWizard(SystemCheck check, IUrlLauncher launcher)
 			? new List<Func<Language?, string>> { Text.SetupAdapterWeak }
 			: [];
 		var adapter = new SetupStep(SetupStepId.AdapterTest, adapterStatus, Text.SetupAdapterTitle, Text.SetupAdapterInstructions,
-			adapterNotes, paired ? [new SetupAction(SetupActionKind.RunAdapterTest, Text.SetupActionRunAdapterTest)] : []);
+			adapterNotes, paired ? [new SetupAction(SetupActionKind.RunAdapterTest, Text.SetupActionRunAdapterTest)] : [], IsOptional: true);
 
 		var steps = new List<SetupStep> { language, drivers, pair, adapter };
-		bool finish = steps.All(x => x.Status != StepStatus.Needed);
+		bool finish = steps.All(x => x.IsOptional || x.Status != StepStatus.Needed);
 		steps.Add(new SetupStep(SetupStepId.Done, finish ? StepStatus.Done : StepStatus.Needed,
 			Text.SetupDoneTitle, finish ? Text.SetupDoneInstructions : Text.SetupNotDoneInstructions, [], []));
 		return steps;

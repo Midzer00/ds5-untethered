@@ -1,0 +1,14 @@
+Imported USB devices
+====================
+Port 01: <Port in Use> at Full Speed(12Mbps)
+       Sony Interactive Entertainment : DualSense Wireless Controller (054c:0ce6)
+       ?-? -> usbip://127.0.0.1:52144/1-1
+           -> remote bus/dev 001/001
+Port 02: <Port in Use> at High Speed(480Mbps)
+       SanDisk Corp. : Cruzer Blade (0781:5567)
+       ?-? -> usbip://192.168.1.20:3240/1-1
+           -> remote bus/dev 001/004
+Port 03: <Port in Use> at High Speed(480Mbps)
+       Logitech, Inc. : unknown product (046d:c52b)
+       ?-? -> usbip://127.0.0.1:3240/2-4
+           -> remote bus/dev 002/004

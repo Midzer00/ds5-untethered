@@ -20,7 +20,7 @@ public class GamesTests
 		}
 		""";
 
-	private static GameCatalog Catalog => GameCatalog.Parse(Fixture);
+	internal static GameCatalog Catalog => GameCatalog.Parse(Fixture);
 
 	[Fact]
 	public void Catalog_Parses()
@@ -60,37 +60,6 @@ public class GamesTests
 	}
 
 	[Fact]
-	public void Watcher_IgnoresShellAndReportsMatch()
-	{
-		string? exe = "explorer.exe";
-		var watcher = new GameWatcher(Catalog, () => exe);
-		Assert.Null(watcher.Poll());
-		exe = null;
-		Assert.Null(watcher.Poll());
-		exe = "returnal-win64-shipping.exe";
-		ForegroundGame? game = watcher.Poll();
-		Assert.Equal("Returnal", game?.Name);
-		exe = "Tetris.exe";
-		Assert.Equal("Tetris", watcher.Poll()?.Name);
-		Assert.Null(watcher.Poll()?.Match);
-		exe = Path.GetFileName(Environment.ProcessPath);
-		Assert.Null(watcher.Poll());
-	}
-
-	[Theory]
-	[InlineData(GameOverride.Supported, false, false, GameMode.Supported, ModeReason.User)]
-	[InlineData(GameOverride.Unsupported, true, true, GameMode.Unsupported, ModeReason.User)]
-	[InlineData(GameOverride.Auto, true, false, GameMode.Supported, ModeReason.Catalog)]
-	[InlineData(GameOverride.Auto, false, true, GameMode.Supported, ModeReason.Detected)]
-	[InlineData(GameOverride.Auto, false, false, GameMode.Unsupported, ModeReason.Detected)]
-	[InlineData(GameOverride.Auto, false, null, GameMode.Unsupported, ModeReason.Default)]
-	public void Resolve_Order(GameOverride choice, bool inCatalog, bool? learned, GameMode mode, ModeReason reason)
-	{
-		CatalogGame? match = inCatalog ? Catalog.Games[0] : null;
-		Assert.Equal((mode, reason), GameModeController.Resolve(choice, match, learned));
-	}
-
-	[Fact]
 	public void Detector_LearnsNative_NeverDowngrades()
 	{
 		var d = new NativeSupportDetector();
@@ -107,79 +76,6 @@ public class GamesTests
 	}
 
 	[Fact]
-	public void Controller_SwitchesProfiles_KeepsLastModeWithoutGame_AndRemembers()
-	{
-		var bridge = new FakeBridge();
-		string? exe = "Indie.exe";
-		var games = new GameModeController(Catalog, new GameWatcher(Catalog, () => exe), bridge);
-		games.SetProfiles(new SupportedProfile(2.0, 0.5, true), new UnsupportedProfile(0.8, RumbleFeel.Punchy, FallbackTrigger.Weapon, 1));
-		int memory = 0;
-		games.MemoryChanged += () => memory++;
-
-		games.Tick();
-		Assert.Equal(new GameModeState("Indie.exe", "Indie", GameMode.Unsupported, ModeReason.Default), games.State);
-		BridgeProfile p = bridge.Applied[^1];
-		Assert.Equal(1, p.TriggerIntensity);
-		Assert.False(p.LightFromGame);
-		Assert.Equal(RumbleFeel.Punchy, p.Feel);
-		Assert.Equal(TriggerEffects.Weapon(2, 6, 8), p.FallbackTrigger);
-		Assert.Equal(2.0, p.GameHapticsLevel);
-
-		// The game sends haptics audio: learned as native, switched to supported.
-		bridge.Signals = new GameSignals(true, false, false);
-		games.Tick();
-		Assert.Equal((GameMode.Supported, ModeReason.Detected), (games.State.Mode, games.State.Reason));
-		Assert.Equal(1, memory);
-		p = bridge.Applied[^1];
-		Assert.Equal(0.5, p.TriggerIntensity);
-		Assert.True(p.LightFromGame);
-		Assert.Null(p.FallbackTrigger);
-		int applied = bridge.Applied.Count;
-
-		// Desktop in front: the mode stays; nothing new is applied.
-		exe = "explorer.exe";
-		games.Tick();
-		Assert.Equal(GameMode.Supported, games.State.Mode);
-		Assert.Equal(applied, bridge.Applied.Count);
-
-		// The user overrides; a catalog game resolves from the catalog.
-		exe = "Indie.exe";
-		games.SetOverride("indie.exe", GameOverride.Unsupported);
-		Assert.Equal((GameMode.Unsupported, ModeReason.User), (games.State.Mode, games.State.Reason));
-		Assert.Equal(2, memory);
-		exe = "acc.exe";
-		games.Tick();
-		Assert.Equal(new GameModeState("acc.exe", "Assetto Corsa Competizione", GameMode.Supported, ModeReason.Catalog, Catalog.Find("acc.exe")).Mode, games.State.Mode);
-		Assert.Equal(ModeReason.Catalog, games.State.Reason);
-
-		Assert.True(games.SnapshotLearned()["indie.exe"]);
-		Assert.Equal(GameOverride.Unsupported, games.SnapshotOverrides()["Indie.exe"]);
-		Assert.Contains(games.KnownGames(), g => g.IsLearned && g.Exe == "Indie.exe");
-		Assert.Equal(3, games.KnownGames().Count);
-
-		// Saved memory loads into a new controller.
-		var again = new GameModeController(Catalog, new GameWatcher(Catalog, () => "Indie.exe"), new FakeBridge());
-		again.LoadMemory(games.SnapshotOverrides(), games.SnapshotLearned());
-		again.Tick();
-		Assert.Equal(ModeReason.User, again.State.Reason);
-		again.SetOverride("Indie.exe", GameOverride.Auto);
-		Assert.Equal((GameMode.Supported, ModeReason.Detected), (again.State.Mode, again.State.Reason));
-	}
-
-	[Fact]
-	public void Profiles_ChangeAppliesAtOnce()
-	{
-		var bridge = new FakeBridge();
-		var games = new GameModeController(Catalog, new GameWatcher(Catalog, () => "Returnal-Win64-Shipping.exe"), bridge);
-		games.Tick();
-		games.SetProfiles(new SupportedProfile(1.5, 0, true), new UnsupportedProfile());
-		Assert.Equal(0, bridge.Applied[^1].TriggerIntensity);
-		int count = bridge.Applied.Count;
-		games.SetProfiles(new SupportedProfile(1.5, 0, true), new UnsupportedProfile());
-		Assert.Equal(count, bridge.Applied.Count);
-	}
-
-	[Fact]
 	public void Scale_Feedback_ScalesEveryZone()
 	{
 		byte[] full = TriggerEffects.Feedback(3, 8);
@@ -187,14 +83,14 @@ public class GamesTests
 		Assert.Equal(TriggerEffects.Feedback(3, 4), TriggerEffects.Scale(full, 0.5));
 		Assert.Equal(TriggerEffects.Feedback(3, 1), TriggerEffects.Scale(full, 0.1));
 		Assert.Equal(TriggerEffects.Off(), TriggerEffects.Scale(full, 0));
-		Assert.Equal(TriggerEffects.Off(), TriggerEffects.Scale(TriggerEffects.Feedback(0, 1), 0.2));
+		Assert.Equal(TriggerEffects.Feedback(0, 1), TriggerEffects.Scale(TriggerEffects.Feedback(0, 1), 0.2)); // never below 1
 	}
 
 	[Fact]
 	public void Scale_WeaponAndVibration()
 	{
 		Assert.Equal(TriggerEffects.Weapon(2, 6, 4), TriggerEffects.Scale(TriggerEffects.Weapon(2, 6, 8), 0.5));
-		Assert.Equal(TriggerEffects.Off(), TriggerEffects.Scale(TriggerEffects.Weapon(2, 6, 1), 0.3));
+		Assert.Equal(TriggerEffects.Weapon(2, 6, 1), TriggerEffects.Scale(TriggerEffects.Weapon(2, 6, 1), 0.3));
 		byte[] v = TriggerEffects.Scale(TriggerEffects.Vibration(2, 8, 30), 0.25);
 		Assert.Equal(TriggerEffects.Vibration(2, 2, 30), v);
 		Assert.Equal(30, v[9]);
@@ -203,7 +99,7 @@ public class GamesTests
 	[Fact]
 	public void Scale_UnknownModePassesThrough()
 	{
-		byte[] legacy = [0x01, 0x40, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0];
+		byte[] legacy = [0x7E, 0x40, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0];
 		Assert.Equal(legacy, TriggerEffects.Scale(legacy, 0.5));
 		Assert.Equal(TriggerEffects.Off(), TriggerEffects.Scale(legacy, 0));
 		Assert.True(TriggerEffects.IsOff(TriggerEffects.Off()));
@@ -255,7 +151,7 @@ public class GamesTests
 		Assert.False(a.SameAs(b with { Feel = RumbleFeel.Punchy }));
 	}
 
-	private sealed class FakeBridge : IGameBridge
+	internal sealed class FakeBridge : IGameBridge
 	{
 		public List<BridgeProfile> Applied { get; } = [];
 

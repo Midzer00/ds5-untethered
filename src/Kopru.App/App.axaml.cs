@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -33,12 +33,28 @@ public partial class App : Application
 		// Undo HidHide changes a crashed run left behind, then allow our exe early (a controller hidden by another
 		// tool stays visible to us). Undone in the reverse order on exit (RealControllerService.ShutdownAsync).
 		_ = Task.Run(() => HidingLifecycle.StartAsync(hiding));
-		var service = new RealControllerService(Kopru.Core.Bridge.BridgeHost.CreateDefault(), hiding, new HidControllerFinder(),
+		var host = Kopru.Core.Bridge.BridgeHost.CreateDefault();
+		// Up to four controllers: host is slot 1, the manager adds the others and is the game mode's bridge.
+		var manager = Kopru.Core.Bridge.BridgeManager.CreateDefault(host);
+		var catalog = Kopru.Core.Games.GameCatalog.Load(Kopru.Core.AppPaths.GameList);
+		var games = new Kopru.Core.Games.GameModeController(catalog,
+			new Kopru.Core.Games.GameWatcher(catalog, steam: Kopru.Core.Steam.SteamLibrary.CreateDefault()), manager);
+		// Unplug virtual pads a crashed run left attached (every slot); attaches wait for this (BridgeHostRecovery).
+		_ = Task.Run(() => manager.CleanupStaleAsync());
+		// Tear the bridge down before sleep and start it again after resume.
+		if (Kopru.Core.Bridge.WindowsPowerEvents.TryCreate() is { } powerEvents)
+		{
+			_ = new Kopru.Core.Bridge.BridgeSleepGuard(powerEvents, host);
+		}
+		var service = new RealControllerService(host, hiding, new HidControllerFinder(), games: games,
 			steamCheck: Kopru.Core.Steam.SteamInputCheck.CreateDefault().Check,
-			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, Kopru.Core.Diagnostics.DiagnosticsExport.AdapterResultFileName));
+			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, Kopru.Core.Diagnostics.DiagnosticsExport.AdapterResultFileName),
+			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault());
+		service.UseManager(manager);
 		var startup = new RunKeyStartupRegistration();
 		var environment = new AppEnvironment(JsonSettingsStore.CreateDefault(), startup,
-			() => new SetupWizard(SystemCheck.CreateDefault(), new ShellUrlLauncher()), FullScreenDetector.IsForegroundFullScreen);
+			() => new SetupWizard(SystemCheck.CreateDefault(), new ShellUrlLauncher()), FullScreenDetector.IsForegroundFullScreen,
+			GameList: Kopru.Core.Games.GameCatalogUpdater.CreateDefault());
 		var vm = new MainWindowViewModel(service, environment);
 		if (vm.Settings.StartWithWindows)
 		{
@@ -59,6 +75,8 @@ public partial class App : Application
 		var toasts = new ToastHost(page => shell.ShowMainWindow(page), FullScreenDetector.IsForegroundFullScreen);
 		vm.Notifications.Raised += toasts.Show;
 		CreateTrayIcon(new TrayViewModel(service, vm.Settings, shell), shell);
+		// Starts the bridge once a controller is connected and nothing blocks it ("Start The Bridge Automatically").
+		vm.AttachAutoStart();
 
 		int shutDown = 0;
 		void Shutdown()
@@ -105,9 +123,12 @@ public partial class App : Application
 		NativeMenuItem open = new() { Command = tray.OpenCommand };
 		NativeMenuItem bridge = new() { Command = tray.ToggleBridgeCommand };
 		NativeMenuItem powerOff = new() { Command = tray.PowerOffCommand };
+		NativeMenuItem reconnect = new() { Command = tray.ReconnectCommand };
+		NativeMenuItem supportedMode = new() { Command = tray.ToggleSupportedModeCommand, ToggleType = NativeMenuItemToggleType.CheckBox };
+		NativeMenuItem desktopMode = new() { Command = tray.ToggleDesktopModeCommand, ToggleType = NativeMenuItemToggleType.CheckBox };
 		NativeMenuItem notifications = new() { Command = tray.ToggleNotificationsCommand };
 		NativeMenuItem exit = new() { Command = tray.ExitCommand };
-		NativeMenu menu = [open, new NativeMenuItemSeparator(), bridge, powerOff, new NativeMenuItemSeparator(), notifications,
+		NativeMenu menu = [open, new NativeMenuItemSeparator(), bridge, reconnect, powerOff, new NativeMenuItemSeparator(), supportedMode, desktopMode, notifications,
 			new NativeMenuItemSeparator(), exit];
 		var icon = new TrayIcon
 		{
@@ -122,6 +143,12 @@ public partial class App : Application
 			bridge.Header = tray.BridgeText;
 			powerOff.Header = tray.PowerOffText;
 			powerOff.IsEnabled = tray.CanPowerOff;
+			reconnect.Header = tray.ReconnectText;
+			reconnect.IsEnabled = tray.CanReconnect;
+			supportedMode.Header = tray.SupportedModeText;
+			supportedMode.IsChecked = tray.IsSupportedModeOn;
+			desktopMode.Header = tray.DesktopModeText;
+			desktopMode.IsChecked = tray.IsDesktopModeOn;
 			notifications.Header = tray.NotificationsText;
 			exit.Header = tray.ExitText;
 		}

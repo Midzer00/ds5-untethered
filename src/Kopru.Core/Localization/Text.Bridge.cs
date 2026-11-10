@@ -45,8 +45,8 @@ public static partial class Text
 		Pick(l, $"Kumanda {minutes:F0} dakikadır kullanılmıyor", $"The controller has not been used for {minutes:F0} minutes");
 
 	public static string HidingUnavailable(Language? l = null) => Pick(l,
-		$"HidHide kurulu değil: köprü çalışıyor ama oyunlar kumandayı iki kez görebilir.",
-		$"HidHide isn't installed: the bridge runs, but games may see the controller twice.");
+		$"HidHide kurulu değil: sanal kumanda çalışıyor ama oyunlar kumandayı iki kez görebilir.",
+		$"HidHide isn't installed: the virtual controller runs, but games may see the controller twice.");
 
 	public static string HidingFailed(string detail, Language? l = null) => Pick(l,
 		$"Kumanda gizlenemedi: {detail}",

@@ -23,11 +23,18 @@ public sealed class ControllerBridge : IDisposable
 	// While the game streams audio, rumble is mixed into it; otherwise a pump keeps this many frames buffered.
 	public const int RumbleAheadFrames = 64;
 
+	// The game's speaker channels (1-2) silent for longer than this: speaker audio stops, so the controller stream goes
+	// back from 0x36 to plain haptics (0x32) once the buffered speaker audio has played.
+	public const int SpeakerTailMs = 200;
+	// Speaker samples quieter than this (16-bit) count as silence: games stream digital zeros or near-zero dither.
+	public const int SpeakerSilenceThreshold = 32;
+	public const int SpeakerTailFrames = Audio.SpeakerAudioSender.InputRate * SpeakerTailMs / 1000;
+
 	private static readonly long AudioIdleTicks = Stopwatch.Frequency / 20;
 
 	private readonly BluetoothSession session;
 
-	private readonly VirtualDualSense pad;
+	private readonly IVirtualPad pad;
 
 	private readonly HapticsConverter converter = new();
 
@@ -44,6 +51,20 @@ public sealed class ControllerBridge : IDisposable
 	// Stick/trigger tuning applied to input before games see it; swap live (atomic reference write).
 	public volatile Input.InputTransform InputTransform = Input.InputTransform.Identity;
 
+	// Controller shortcuts (PS held as a modifier), applied before the tuning; null = none.
+	public volatile Input.ShortcutProcessor? Shortcuts;
+
+	// Desktop mode (replaces the game's input with a neutral one while on) and gyro to mouse; null = none.
+	public volatile Input.DesktopMode? Desktop;
+
+	public volatile Input.GyroMouse? GyroMouse;
+
+	// The mic button as the microphone switch (BridgeHostMic); null = the button goes to the game as usual.
+	public volatile Audio.MicButton? MicButton;
+
+	// The app drives the mute LED (it follows our mic mute): the game's mute LED bits are dropped.
+	public volatile bool KeepMuteLed;
+
 	private bool hasBlock;
 
 	private bool resendNext;
@@ -58,11 +79,21 @@ public sealed class ControllerBridge : IDisposable
 
 	private byte[]? fallbackTrigger;
 
+	// The game's last effect per trigger (as sent, unscaled; null until it sets one). Guarded by lastBlock.
+	private byte[]? gameRight, gameLeft;
+
+	private long unknownTriggerEffects;
+
 	private long lastAudio = long.MinValue / 2;
 
-	private long inputs, outputs, audioBytes;
+	private long inputs, outputs, audioBytes, speakerBytes;
 
-	public ControllerBridge(BluetoothSession session, VirtualDualSense pad)
+	// 48 kHz frames of speaker silence since the last sound (starts beyond the tail: nothing to send yet).
+	private long speakerSilentFrames = SpeakerTailFrames + 1;
+
+	private volatile bool speakerEnabled;
+
+	public ControllerBridge(BluetoothSession session, IVirtualPad pad)
 	{
 		this.session = session;
 		this.pad = pad;
@@ -86,6 +117,11 @@ public sealed class ControllerBridge : IDisposable
 	// Lets the game's light colour through; false keeps the user's light.
 	public bool LightFromGame { get; set; } = true;
 
+	private volatile bool gameSetLight;
+
+	// The game set the light bar since the last profile change and may: the user's light effect stays out of its way.
+	public bool GameControlsLight => LightFromGame && gameSetLight;
+
 	// 0..1: scales the game's trigger effects (TriggerEffects.Scale).
 	public double TriggerIntensity
 	{
@@ -107,22 +143,42 @@ public sealed class ControllerBridge : IDisposable
 		RumbleLevel = profile.RumbleLevel;
 		RumbleFeel = profile.Feel;
 		LightFromGame = profile.LightFromGame;
+		gameSetLight = false;
 		TriggerIntensity = profile.TriggerIntensity;
 		FallbackTrigger = profile.FallbackTrigger;
-		(byte[] Right, byte[] Left)? game = GameTriggers;
-		byte[] right, left;
-		if (game is { } g)
-		{
-			right = TriggerEffects.Scale(g.Right, TriggerIntensity);
-			left = TriggerEffects.Scale(g.Left, TriggerIntensity);
-		}
-		else
-		{
-			right = left = profile.FallbackTrigger ?? TriggerEffects.Off();
-		}
+		(byte[] right, byte[] left) = ControllerTriggers();
 		session.UpdateOutput(b => OutputBlock.SetTriggers(b, right, left));
 		ResendGameOutput();
 	}
+
+	// The trigger effects (right, left) the controller should have now: the game's last effect per trigger at the
+	// current strength, or the fallback (else off) for a trigger the game has not set or has turned off.
+	public (byte[] Right, byte[] Left) ControllerTriggers()
+	{
+		byte[] block = new byte[OutputBlock.Size];
+		lock (lastBlock)
+		{
+			if (gameRight != null)
+			{
+				gameRight.CopyTo(block, OutputBlock.RightTrigger);
+				block[OutputBlock.Flag0] |= OutputBlock.RightTriggerEffect;
+			}
+			if (gameLeft != null)
+			{
+				gameLeft.CopyTo(block, OutputBlock.LeftTrigger);
+				block[OutputBlock.Flag0] |= OutputBlock.LeftTriggerEffect;
+			}
+		}
+		ApplyTriggers(block, false);
+		byte[] right = (block[OutputBlock.Flag0] & OutputBlock.RightTriggerEffect) != 0
+			? block.AsSpan(OutputBlock.RightTrigger, TriggerEffects.Size).ToArray() : TriggerEffects.Off();
+		byte[] left = (block[OutputBlock.Flag0] & OutputBlock.LeftTriggerEffect) != 0
+			? block.AsSpan(OutputBlock.LeftTrigger, TriggerEffects.Size).ToArray() : TriggerEffects.Off();
+		return (right, left);
+	}
+
+	// Game trigger effects in a mode TriggerEffects.Scale does not know (passed through unscaled), for diagnostics.
+	public long UnknownTriggerEffects => Interlocked.Read(ref unknownTriggerEffects);
 
 	// What the game sent since the last call (native support detection).
 	public GameSignals TakeGameSignals() => new(Interlocked.Exchange(ref sawHaptics, 0) != 0,
@@ -133,6 +189,21 @@ public sealed class ControllerBridge : IDisposable
 	public long Outputs => Interlocked.Read(ref outputs);
 
 	public long AudioBytes => Interlocked.Read(ref audioBytes);
+
+	// Game audio bytes handed to the controller speaker (all 4 channels; the session uses channels 1-2).
+	public long SpeakerBytes => Interlocked.Read(ref speakerBytes);
+
+	// EXPERIMENTAL, off by default: sends the game's speaker channels (1-2) to session.PushSpeakerAudio (the session needs
+	// a Speaker for them to play). Haptics (channels 3-4) are not affected.
+	public bool SpeakerEnabled
+	{
+		get => speakerEnabled;
+		set
+		{
+			speakerEnabled = value;
+			Interlocked.Exchange(ref speakerSilentFrames, SpeakerTailFrames + 1);
+		}
+	}
 
 	public (byte Left, byte Right) Motors
 	{
@@ -185,7 +256,15 @@ public sealed class ControllerBridge : IDisposable
 		Span<byte> report = stackalloc byte[UsbReports.InputSize];
 		report[0] = UsbReports.InputId;
 		body[..Math.Min(body.Length, InputState.BodySize)].CopyTo(report[1..]);
-		InputTransform.Apply(report.Slice(1, InputState.BodySize));
+		Span<byte> input = report.Slice(1, InputState.BodySize);
+		MicButton?.Process(input);
+		Shortcuts?.Apply(input);
+		if (Desktop?.Apply(input) != true)
+		{
+			Input.InputTransform transform = InputTransform;
+			transform.Apply(input);
+			GyroMouse?.Apply(transform.Gyro, input);
+		}
 		pad.PushInput(report);
 		Interlocked.Increment(ref inputs);
 	}
@@ -197,6 +276,10 @@ public sealed class ControllerBridge : IDisposable
 			return;
 		}
 		ReadOnlySpan<byte> block = report.AsSpan(1, OutputBlock.Size);
+		if ((block[OutputBlock.Flag1] & OutputBlock.LightbarControl) != 0)
+		{
+			gameSetLight = true;
+		}
 		byte[] sent;
 		lock (lastBlock)
 		{
@@ -209,6 +292,14 @@ public sealed class ControllerBridge : IDisposable
 			block.CopyTo(lastBlock);
 			hasBlock = true;
 			sent = block.ToArray();
+			if ((sent[OutputBlock.Flag0] & OutputBlock.RightTriggerEffect) != 0)
+			{
+				gameRight = sent.AsSpan(OutputBlock.RightTrigger, TriggerEffects.Size).ToArray();
+			}
+			if ((sent[OutputBlock.Flag0] & OutputBlock.LeftTriggerEffect) != 0)
+			{
+				gameLeft = sent.AsSpan(OutputBlock.LeftTrigger, TriggerEffects.Size).ToArray();
+			}
 		}
 		if ((sent[OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect)) != 0)
 		{
@@ -222,29 +313,47 @@ public sealed class ControllerBridge : IDisposable
 				Interlocked.Exchange(ref sawRumble, 1);
 			}
 		}
-		ApplyTriggers(sent);
+		ApplyTriggers(sent, true);
 		if (!LightFromGame)
 		{
-			sent[OutputBlock.Flag1] &= unchecked((byte)~(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl));
-			sent[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.LightbarSetupControl);
+			sent[OutputBlock.Flag1] &= unchecked((byte)~(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl));
+			sent[OutputBlock.Flag2] &= unchecked((byte)~(OutputBlock.LightbarSetupControl | OutputBlock.LedBrightnessControl));
+		}
+		if (KeepMuteLed)
+		{
+			sent[OutputBlock.Flag1] &= unchecked((byte)~OutputBlock.MuteLedControl);
 		}
 		sent[OutputBlock.Flag0] &= unchecked((byte)~(OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
 		sent[OutputBlock.MotorLeft] = sent[OutputBlock.MotorRight] = 0;
 		sent[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.ImprovedRumble);
-		session.UpdateOutput(b => sent.CopyTo(b, 0));
+		session.UpdateOutput(b =>
+		{
+			sent.CopyTo(b, 0);
+			// The game's audio fields are for a wired pad; keep the speaker route while the speaker is on.
+			session.WriteSpeakerRoute(b);
+		});
 		Interlocked.Increment(ref outputs);
 	}
 
-	// Scales the game's trigger effects, or puts the fallback effect on when the game sets none.
-	private void ApplyTriggers(byte[] block)
+	// Scales the game's trigger effects, or puts the fallback effect on when the game sets none. fromGame: a new game
+	// report (counts the native signal and unknown modes), not a re-apply of the last one.
+	private void ApplyTriggers(byte[] block, bool fromGame)
 	{
 		Span<byte> right = block.AsSpan(OutputBlock.RightTrigger, TriggerEffects.Size);
 		Span<byte> left = block.AsSpan(OutputBlock.LeftTrigger, TriggerEffects.Size);
 		bool rightSet = (block[OutputBlock.Flag0] & OutputBlock.RightTriggerEffect) != 0;
 		bool leftSet = (block[OutputBlock.Flag0] & OutputBlock.LeftTriggerEffect) != 0;
-		if ((rightSet && !TriggerEffects.IsOff(right)) || (leftSet && !TriggerEffects.IsOff(left)))
+		if (fromGame && ((rightSet && !TriggerEffects.IsOff(right)) || (leftSet && !TriggerEffects.IsOff(left))))
 		{
 			Interlocked.Exchange(ref sawTriggers, 1);
+		}
+		if (fromGame)
+		{
+			int unknown = (rightSet && !TriggerEffects.IsKnown(right) ? 1 : 0) + (leftSet && !TriggerEffects.IsKnown(left) ? 1 : 0);
+			if (unknown != 0)
+			{
+				Interlocked.Add(ref unknownTriggerEffects, unknown);
+			}
 		}
 		double k = TriggerIntensity;
 		if (rightSet && k < 1)
@@ -300,6 +409,41 @@ public sealed class ControllerBridge : IDisposable
 			});
 		}
 		session.WakeHaptics();
+		if (speakerEnabled)
+		{
+			FeedSpeaker(audio.Span);
+		}
+	}
+
+	// Sound on channels 1-2 goes to the speaker, then up to SpeakerTailMs of silence (so the end isn't cut off); longer
+	// silence is not sent, so the session's speaker buffer runs dry and the stream falls back to haptics-only reports.
+	private void FeedSpeaker(ReadOnlySpan<byte> audio)
+	{
+		int frames = audio.Length / (HapticsConverter.Channels * 2);
+		long silent = HasSpeakerSound(audio) ? 0 : Interlocked.Add(ref speakerSilentFrames, frames);
+		if (silent == 0)
+		{
+			Interlocked.Exchange(ref speakerSilentFrames, 0);
+		}
+		if (silent - frames > SpeakerTailFrames)
+		{
+			return;
+		}
+		session.PushSpeakerAudio(audio);
+		Interlocked.Add(ref speakerBytes, audio.Length);
+	}
+
+	private static bool HasSpeakerSound(ReadOnlySpan<byte> audio)
+	{
+		for (int i = 0; i + 3 < audio.Length; i += HapticsConverter.Channels * 2)
+		{
+			if (Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[i..])) > SpeakerSilenceThreshold
+				|| Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[(i + 2)..])) > SpeakerSilenceThreshold)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void PumpRumble()

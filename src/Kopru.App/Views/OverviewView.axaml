@@ -1,230 +1,489 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:s="using:Kopru.App.Services" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.OverviewView" x:DataType="vm:OverviewViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.OverviewView" x:DataType="vm:OverviewViewModel">
   <UserControl.Styles>
-    <!-- Status card body: label on the left, value on the right -->
-    <Style Selector="Grid.rows">
-      <Setter Property="RowSpacing" Value="10" />
+    <Style Selector="TextBlock.rowValue.poor"><Setter Property="Foreground" Value="{StaticResource DangerBrush}" /></Style>
+    <!-- Vertical level bar in the live card (triggers accent, haptics in the meter gradient) -->
+    <Style Selector="ProgressBar.vmeter">
+      <Setter Property="Orientation" Value="Vertical" />
+      <Setter Property="Width" Value="12" />
+      <Setter Property="MinWidth" Value="12" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="MaxHeight" Value="150" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Maximum" Value="100" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Background" Value="#14FFFFFF" />
+      <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
     </Style>
-    <!-- Quick action: icon and label, full cell width -->
-    <Style Selector="Button.action">
-      <Setter Property="Height" Value="44" />
+    <Style Selector="ProgressBar.vmeter.haptic">
+      <Setter Property="Foreground" Value="#7AB0FF" />
+    </Style>
+    <!-- Big line in the hero: the game, the controller or "no controller" -->
+    <Style Selector="TextBlock.hero">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- Battery under the hero name: glyph and plain number, amber number when low; no background -->
+    <Style Selector="StackPanel.heroBattery">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="8" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+    </Style>
+    <Style Selector="StackPanel.heroBattery > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FontBody}" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.heroBattery > TextBlock.low">
+      <Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" />
+    </Style>
+    <!-- Click target over a health chip that has a fix -->
+    <Style Selector="Button.chipHit">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.chipHit:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#12FFFFFF" />
+    </Style>
+    <Style Selector="Button.chipHit:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1CFFFFFF" />
+    </Style>
+    <!-- Health chip state words: amber when it needs a look, red when it blocks -->
+    <Style Selector="TextBlock.chipState.attention"><Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" /></Style>
+    <Style Selector="TextBlock.chipState.problem"><Setter Property="Foreground" Value="{StaticResource DangerBrush}" /></Style>
+
+    <!-- Quick settings tiles: label over a muted state word (On / Off picked by the tile's own state) -->
+    <Style Selector="ToggleButton StackPanel.tileText">
+      <Setter Property="Spacing" Value="2" />
+    </Style>
+    <Style Selector="ToggleButton TextBlock.tileLabel">
+      <Setter Property="FontSize" Value="{StaticResource FontBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="ToggleButton TextBlock.tileState">
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="ToggleButton:checked TextBlock.tileState">
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="ToggleButton:checked TextBlock.tileState.off"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector="ToggleButton:unchecked TextBlock.tileState.on"><Setter Property="IsVisible" Value="False" /></Style>
+    <!-- Four rows of tiles share the card with the stepped rows: a little lower than the tile's default -->
+    <Style Selector="Grid.tiles ToggleButton">
+      <Setter Property="MinHeight" Value="50" />
+    </Style>
+    <!-- The small quiet button on the shortcuts tile (opens the shortcuts list): nothing at rest, a faint fill on hover,
+         sinks when pressed, accent edge on keyboard focus -->
+    <Style Selector="Button.tileAction">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+    </Style>
+    <Style Selector="Button.tileAction:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" /></Style>
+    <Style Selector="Button.tileAction:pressed"><Setter Property="Background" Value="{StaticResource QuietFillPressedBrush}" /></Style>
+    <Style Selector="Button.tileAction:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
+    <Style Selector="Button.tileAction > Path">
+      <Setter Property="Stroke" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="StrokeThickness" Value="1.8" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="StrokeJoin" Value="Round" />
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Stretch" Value="Uniform" />
+    </Style>
+    <Style Selector="Button.tileAction:pointerover > Path"><Setter Property="Stroke" Value="{StaticResource TextBrush}" /></Style>
+    <!-- Tooltips of the card: the same short delay everywhere, also over a row Low Power dims -->
+    <Style Selector="UniformGrid.levels > Grid">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+    </Style>
+    <Style Selector="ToggleButton, Grid.quickRow">
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+      <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
+    </Style>
+    <Style Selector="ToolTip">
+      <Setter Property="MaxWidth" Value="280" />
+      <Setter Property="Background" Value="{StaticResource ToastBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+    <Style Selector="ToolTip TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- Quick settings rows: icon and label left, control right; every control ends on the card's right edge and has the same width -->
+    <Style Selector="Grid.quickRow">
+      <Setter Property="MinHeight" Value="42" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Grid.quickRow:disabled">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Grid.quickRow > Path.rowIcon">
+      <Setter Property="Stroke" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="StrokeThickness" Value="1.6" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="StrokeJoin" Value="Round" />
+      <Setter Property="Width" Value="17" />
+      <Setter Property="Height" Value="17" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid.quickRow > TextBlock.label">
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Margin" Value="0,0,12,0" />
+    </Style>
+    <Style Selector="Grid.quickRow ListBox, Grid.quickRow ComboBox">
+      <Setter Property="Width" Value="192" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid.quickRow ComboBox">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <Style Selector="Grid.quickRow > TextBlock.caption">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Margin" Value="0,3,0,0" />
+    </Style>
+    <!-- Quiet text link (to the Settings page) -->
+    <Style Selector="Button.link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.link /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.link TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+    <Style Selector="Button.link:pointerover TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
     </Style>
   </UserControl.Styles>
 
-  <!-- Fills the window: the middle row takes the free height (the drawing in it scales to fit) -->
-  <Border Padding="32,26,32,28">
-    <Grid RowDefinitions="Auto,20,Auto,14,*,14,Auto" MaxWidth="1500">
+  <!-- One screen by state: header with a plain status line and the one action, the controller and the live link on the
+       left, the quick settings on the right, and the health of everything the bridge needs at the bottom -->
+  <Border Padding="32,24,32,24">
+    <Grid RowDefinitions="Auto,18,*,12,Auto" MaxWidth="1500">
 
-      <!-- Header: title, one line of context, overall state and the bridge action -->
-      <Grid ColumnDefinitions="*,Auto,12,Auto,12,Auto">
+      <!-- Header: title with the status line under it, turn off (with a controller) and the main action -->
+      <Grid ColumnDefinitions="*,Auto,10,Auto">
         <StackPanel Spacing="4" VerticalAlignment="Center">
           <TextBlock Classes="display" Text="{Binding Title}" />
-          <TextBlock Classes="body" Text="{Binding Intro}" />
-          <!-- Outcome of "Turn off controller" -->
+          <TextBlock Classes="body" Text="{Binding StatusLine}" ToolTip.Tip="{Binding Warning}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
           <TextBlock Classes="caption" Text="{Binding PowerOffResult}" IsVisible="{Binding HasPowerOffResult}" />
+          <v:ControllerSelector DataContext="{Binding Picker}" Margin="0,6,0,0" />
         </StackPanel>
-        <Border Grid.Column="1" Classes="statusChip" VerticalAlignment="Center">
-          <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-            <Ellipse Classes="indicator" Classes.on="{Binding IsOverallOk}" Classes.waiting="{Binding IsOverallAttention}" />
-            <TextBlock Text="{Binding OverallText}" FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" VerticalAlignment="Center" />
-          </StackPanel>
-        </Border>
-        <!-- Turn the controller off (Bluetooth disconnect) -->
-        <Button Grid.Column="3" Theme="{StaticResource QuietButton}" Height="40" Padding="14,0" Command="{Binding PowerOffCommand}" IsEnabled="{Binding CanPowerOff}"
-                ToolTip.Tip="{Binding PowerOffText}" VerticalAlignment="Center">
+        <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="40" Padding="14,0" Command="{Binding PowerOffCommand}" IsEnabled="{Binding CanPowerOff}"
+                IsVisible="{Binding IsConnected}" ToolTip.Tip="{Binding PowerOffText}" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Path Classes="icon small" Data="{x:Static c:IconPaths.Power}" />
             <TextBlock Text="{Binding PowerOffText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
           </StackPanel>
         </Button>
-        <Button Grid.Column="5" Theme="{StaticResource PrimaryButton}" Classes.quiet="{Binding IsBridgeRunning}" Command="{Binding ToggleBridgeCommand}"
-                Content="{Binding BridgeButtonText}" MinWidth="170" VerticalAlignment="Center" />
+        <Button Grid.Column="3" Theme="{StaticResource PrimaryButton}" Classes.quiet="{Binding IsPrimaryQuiet}" Command="{Binding PrimaryCommand}"
+                Content="{Binding PrimaryText}" MinWidth="170" VerticalAlignment="Center" IsEnabled="{Binding CanPrimary}"
+                ToolTip.Tip="{Binding PrimaryTip}" ToolTip.ShowOnDisabled="True" />
       </Grid>
 
-      <!-- Steam Input warning (when it may take the controller), then the status cards -->
-      <StackPanel Grid.Row="2" Spacing="14">
-      <!-- One line here (full advice as a tooltip and on the supported games page) -->
-      <Border Classes="panel" Padding="16,10" IsVisible="{Binding HasSteamWarning}" ToolTip.Tip="{Binding SteamWarning}">
-        <Grid ColumnDefinitions="Auto,10,Auto,12,*">
-          <Ellipse Classes="indicator waiting" />
-          <TextBlock Grid.Column="2" Classes="label" FontWeight="SemiBold" Text="{Binding SteamTitle}" TextWrapping="NoWrap" />
-          <TextBlock Grid.Column="4" Classes="body" Text="{Binding SteamWarning}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-        </Grid>
-      </Border>
-      <UniformGrid Columns="4" ColumnSpacing="14">
-        <Border Classes="panel" Padding="16,16">
-          <StackPanel Spacing="16">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Pulse}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding CardConnectionLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <Grid Classes="rows" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-              <TextBlock Classes="rowLabel" Text="{Binding RowLinkLabel}" />
-              <TextBlock Grid.Column="1" Classes="rowValue" Classes.good="{Binding IsConnected}" Classes.warn="{Binding !IsConnected}" Text="{Binding ConnectionValue}" />
-              <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding StatRateLabel}" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Classes="rowValue" Text="{Binding RateValue}" />
-              <TextBlock Grid.Row="2" Classes="rowLabel" Text="{Binding StatLatencyLabel}" ToolTip.Tip="{Binding LatencyTip}" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Classes="rowValue" Text="{Binding LatencyValue}" ToolTip.Tip="{Binding LatencyTip}" />
-            </Grid>
-          </StackPanel>
-        </Border>
+      <Grid Grid.Row="2" ColumnDefinitions="10*,14,11*">
+        <Grid RowDefinitions="Auto,14,*">
+          <!-- Hero: the controller drawing (light in the chosen colour, buttons lit while pressed) and what it is doing -->
+          <Border Classes="panel" Padding="20,16">
+            <Grid ColumnDefinitions="2*,16,3*">
+              <Viewbox Stretch="Uniform" MaxHeight="200" VerticalAlignment="Center">
+                <Panel Width="204" Height="136" Opacity="{Binding ArtOpacity}">
+                  <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding ArtLightIntensity}"
+                                   PlayerLeds="{Binding ArtPlayerLeds}" />
+                  <c:ControllerInputOverlay Pressed="{Binding LivePressed}" IsEdge="{Binding IsEdge}" Accent="{StaticResource AccentBrush}" />
+                </Panel>
+              </Viewbox>
 
-        <Border Classes="panel" Padding="16,16">
-          <StackPanel Spacing="16">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Bridge}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding CardBridgeLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <!-- The foreground game and the mode the bridge runs in for it (full line as a tooltip) -->
-            <Grid Classes="rows" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ToolTip.Tip="{Binding GameDetail}">
-              <TextBlock Classes="rowLabel" Text="{Binding RowStatusLabel}" />
-              <TextBlock Grid.Column="1" Classes="rowValue" Classes.good="{Binding IsRunning}" Classes.warn="{Binding IsWaiting}" Text="{Binding BridgeStateText}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding RowGameLabel}" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Classes="rowValue" Text="{Binding GameValue}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Row="2" Classes="rowLabel" Text="{Binding RowModeLabel}" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Classes="rowValue" Classes.good="{Binding IsSupportedMode}" Text="{Binding ModeValue}" TextTrimming="CharacterEllipsis" />
-            </Grid>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="panel" Padding="16,16">
-          <StackPanel Spacing="16">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Haptics}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding HapticsLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <Grid Classes="rows" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-              <TextBlock Classes="rowLabel" Text="{Binding RowStatusLabel}" />
-              <TextBlock Grid.Column="1" Classes="rowValue" Classes.good="{Binding IsHapticsActive}" Text="{Binding HapticsValue}" />
-              <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding GameHapticsLabel}" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Classes="rowValue" Text="{Binding Settings.GameHapticsText}" />
-              <TextBlock Grid.Row="2" Classes="rowLabel" Text="{Binding RumbleLabel}" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Classes="rowValue" Text="{Binding Settings.RumbleText}" />
-            </Grid>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="panel" Padding="16,16">
-          <StackPanel Spacing="16">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Gamepad}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding CardControllerLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <Grid Classes="rows" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-              <TextBlock Classes="rowLabel" Text="{Binding RowModelLabel}" />
-              <TextBlock Grid.Column="1" Classes="rowValue" Text="{Binding ModelValue}" />
-              <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding BatteryLabel}" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Classes="rowValue" Classes.warn="{Binding IsBatteryLow}" Text="{Binding BatteryShort}" />
-              <TextBlock Grid.Row="2" Classes="rowLabel" Text="{Binding RowPowerLabel}" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Classes="rowValue" Classes.good="{Binding IsCharging}" Text="{Binding BatteryDetail}" />
-            </Grid>
-          </StackPanel>
-        </Border>
-      </UniformGrid>
-      </StackPanel>
-
-      <!-- Quick actions and quick controls -->
-      <Grid Grid.Row="4" ColumnDefinitions="2*,14,3*">
-        <Border Classes="panel" Padding="18,16">
-          <Grid RowDefinitions="Auto,12,*,12,Auto">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Bolt}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding QuickActionsLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <!-- The controller the tests play on; grows with the window -->
-            <c:ControllerArt Grid.Row="2" IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
-                             PlayerLeds="{Binding Settings.PlayerLeds}" MaxHeight="340" />
-            <UniformGrid Grid.Row="4" Columns="2" ColumnSpacing="10" RowSpacing="10">
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Left}" />
-                  <TextBlock Text="{Binding HapticsLeftText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+              <StackPanel Grid.Column="2" Spacing="12" VerticalAlignment="Center">
+                <!-- A game runs: its name first, then its mode -->
+                <StackPanel Spacing="8" IsVisible="{Binding ShowsGame}">
+                  <StackPanel Spacing="2">
+                    <TextBlock Classes="caption" Text="{Binding GameCaption}" />
+                    <TextBlock Classes="hero" Text="{Binding GameValue}" ToolTip.Tip="{Binding GameDetail}" />
+                    <StackPanel Classes="heroBattery" IsVisible="{Binding ShowsBattery}" ToolTip.Tip="{Binding BatteryTip}">
+                      <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}" Width="20" Height="10" VerticalAlignment="Center" />
+                      <TextBlock Classes.low="{Binding IsBatteryLow}" Text="{Binding BatteryText}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <!-- The DualSense Mode switch lives in the quick settings tiles (and the sidebar); here only what it gives -->
+                  <TextBlock Classes="caption" Text="{Binding SupportedModeHelper}" IsVisible="{Binding IsSupportedModeOn}" ToolTip.Tip="{Binding SupportedModeTip}"
+                             TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="caption" Text="{Binding ModeValue}" IsVisible="{Binding !IsSupportedModeOn}" ToolTip.Tip="{Binding SupportedModeTip}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Right}" />
-                  <TextBlock Text="{Binding HapticsRightText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                <!-- Connected: the controller -->
+                <StackPanel Spacing="2" IsVisible="{Binding ShowsDevice}">
+                  <TextBlock Classes="caption" Text="{Binding DeviceCaption}" />
+                  <TextBlock Classes="hero" Text="{Binding Picker.SelectedName}" ToolTip.Tip="{Binding Picker.SelectedName}" />
+                  <StackPanel Classes="heroBattery" IsVisible="{Binding ShowsBattery}" ToolTip.Tip="{Binding BatteryTip}">
+                      <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}" Width="20" Height="10" VerticalAlignment="Center" />
+                      <TextBlock Classes.low="{Binding IsBatteryLow}" Text="{Binding BatteryText}" />
+                    </StackPanel>
                 </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestTriggerCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Trigger}" />
-                  <TextBlock Text="{Binding TriggerText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                <!-- No controller: why, and what to do -->
+                <StackPanel Spacing="6" IsVisible="{Binding ShowsNoController}">
+                  <TextBlock Classes="hero" Text="{Binding NoControllerTitle}" TextWrapping="Wrap" MaxLines="2" />
+                  <TextBlock Classes="body" Text="{Binding NoControllerReason}" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="caption" Text="{Binding LastBatteryText}" IsVisible="{Binding ShowsLastBatteryInHero}" />
+                  <Button Theme="{StaticResource QuietButton}" Height="28" MinHeight="28" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left" Margin="0,4,0,0"
+                          Content="{Binding HeroActionText}" Command="{Binding HeroActionCommand}" IsVisible="{Binding HasHeroAction}" />
                 </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestLightCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Light}" />
-                  <TextBlock Text="{Binding LightText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                <!-- Several controllers: the selected one can run its own profile instead of the global settings -->
+                <StackPanel Spacing="6" IsVisible="{Binding Picker.IsMulti}">
+                  <TextBlock Classes="caption" Text="{Binding Picker.ProfileLabel}" />
+                  <ComboBox ItemsSource="{Binding Picker.ProfileOptions}" SelectedItem="{Binding Picker.SelectedProfile}" MinWidth="150" MaxWidth="240"
+                            HorizontalAlignment="Left" AutomationProperties.Name="{Binding Picker.ProfileLabel}" />
                 </StackPanel>
-              </Button>
-            </UniformGrid>
-          </Grid>
-        </Border>
-
-        <Border Grid.Column="2" Classes="panel" Padding="18,16">
-          <Grid RowDefinitions="Auto,14,*">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Sliders}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding QuickControlsLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <Grid Grid.Row="2" ColumnDefinitions="Auto,16,*,12,Auto" RowDefinitions="*,*,*,*" MinHeight="150" MaxHeight="340" VerticalAlignment="Center">
-              <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding GameHapticsLabel}" />
-              <Slider Grid.Column="2" VerticalAlignment="Center" Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" TickPlacement="BottomRight" Value="{Binding Settings.GameHapticsLevel}" />
-              <TextBlock Grid.Column="4" Classes="value" Text="{Binding Settings.GameHapticsText}" />
-
-              <TextBlock Grid.Row="1" Classes="label" FontWeight="SemiBold" Text="{Binding RumbleLabel}" />
-              <Slider Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" TickPlacement="BottomRight" Value="{Binding Settings.RumbleLevel}" />
-              <TextBlock Grid.Row="1" Grid.Column="4" Classes="value" Text="{Binding Settings.RumbleText}" />
-
-              <TextBlock Grid.Row="2" Classes="label" FontWeight="SemiBold" Text="{Binding TriggerStrengthLabel}" />
-              <Slider Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" TickPlacement="BottomRight" Value="{Binding Settings.TriggerStrength}" />
-              <TextBlock Grid.Row="2" Grid.Column="4" Classes="value" Text="{Binding Settings.TriggerStrengthText}" />
-
-              <TextBlock Grid.Row="3" Classes="label" FontWeight="SemiBold" Text="{Binding BrightnessLabel}" />
-              <Slider Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" TickPlacement="BottomRight" Value="{Binding Settings.Brightness}" />
-              <TextBlock Grid.Row="3" Grid.Column="4" Classes="value" Text="{Binding Settings.BrightnessText}" />
-            </Grid>
-          </Grid>
-        </Border>
-      </Grid>
-
-      <!-- Bottom strip: small groups of real settings -->
-      <Border Grid.Row="6" Classes="panel" Padding="18,14">
-        <UniformGrid Columns="3" ColumnSpacing="14">
-          <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Path Classes="icon small" Data="{x:Static c:IconPaths.Power}" />
-              <TextBlock Classes="h2" Text="{Binding StartupLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <ToggleButton Theme="{StaticResource ChipToggle}" HorizontalAlignment="Left" IsChecked="{Binding Settings.StartWithWindows}"
-                          Content="{Binding StartWithWindowsLabel}" />
-          </StackPanel>
-          <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Path Classes="icon small" Data="{x:Static c:IconPaths.Battery}" />
-              <TextBlock Classes="h2" Text="{Binding PowerSavingLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <Border Classes="chip" HorizontalAlignment="Left">
-              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock Text="{Binding IdlePowerOffLabel}" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="NoWrap" />
-                <TextBlock Text="{Binding Settings.IdlePowerOffText}" FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" />
               </StackPanel>
-            </Border>
-          </StackPanel>
-          <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Path Classes="icon small" Data="{x:Static c:IconPaths.Light}" />
-              <TextBlock Classes="h2" Text="{Binding LightGroupLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <ToggleButton Theme="{StaticResource ChipToggle}" HorizontalAlignment="Left" IsChecked="{Binding Settings.PlayerLeds}"
-                          Content="{Binding PlayerLedsLabel}" />
-          </StackPanel>
-        </UniformGrid>
-      </Border>
+            </Grid>
+          </Border>
+
+          <!-- Live: link delay with the last 30 s as a graph, input rate with its low and average, L2 / haptics / R2 levels laid
+               out like the controller -->
+          <Border Grid.Row="2" Classes="panel" Padding="20,16">
+            <Grid RowDefinitions="Auto,10,*">
+              <TextBlock Classes="h2" Text="{Binding LiveTitle}" VerticalAlignment="Center" />
+              <TextBlock Grid.Row="2" Classes="body" Text="{Binding LiveIdle}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"
+                         TextAlignment="Center" IsVisible="{Binding IsNotLive}" />
+              <!-- The graph and the level bars share the free height (3:2), so the card stays filled in a tall window -->
+              <Grid Grid.Row="2" IsVisible="{Binding IsLive}">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="6" />
+                  <RowDefinition Height="3*" MinHeight="36" />
+                  <RowDefinition Height="8" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="8" />
+                  <RowDefinition Height="2*" MinHeight="56" />
+                </Grid.RowDefinitions>
+                <!-- Delay now, then its last 30 seconds -->
+                <Grid ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding LatencyTip}">
+                  <TextBlock Classes="rowLabel" Text="{Binding Live.LatencyLabel}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="rowValue" Classes.good="{Binding IsLatencyGood}" Classes.warn="{Binding IsLatencyFair}" Classes.poor="{Binding IsLatencyPoor}"
+                             Text="{Binding LatencyValue}" TextWrapping="NoWrap" />
+                </Grid>
+                <Panel Grid.Row="2" ToolTip.Tip="{Binding Live.GraphTip}">
+                  <c:Sparkline Values="{Binding Live.TypicalHistory}" Secondary="{Binding Live.WorstHistory}" Capacity="30" MinScale="2"
+                               Stroke="{StaticResource AccentBrush}" />
+                  <TextBlock Classes="caption" Text="{Binding Live.GraphCaption}" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                </Panel>
+                <!-- Input rate now, with the low and the average of the same 30 seconds -->
+                <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto">
+                  <TextBlock Classes="rowLabel" Text="{Binding Live.RateLabel}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Live.RateRange}" IsVisible="{Binding Live.HasRateRange}"
+                             VerticalAlignment="Center" TextWrapping="NoWrap" />
+                  <TextBlock Grid.Column="2" Classes="rowValue" Text="{Binding Live.RateValue}" TextWrapping="NoWrap" />
+                </Grid>
+                <!-- L2, left and right haptics, R2: like the controller seen from the front -->
+                <UniformGrid Grid.Row="6" Columns="4" Classes="levels">
+                  <Grid RowDefinitions="*,5,Auto" ToolTip.Tip="{Binding Live.TriggersTip}">
+                    <ProgressBar Classes="vmeter" Value="{Binding Live.L2}" />
+                    <TextBlock Grid.Row="2" Classes="caption" Text="{Binding Live.L2Label}" HorizontalAlignment="Center" />
+                  </Grid>
+                  <Grid RowDefinitions="*,5,Auto" ToolTip.Tip="{Binding Live.LeftHapticsTip}">
+                    <ProgressBar Classes="vmeter haptic" Value="{Binding Live.HapticsLeft}" />
+                    <TextBlock Grid.Row="2" Classes="caption" Text="{Binding Live.LeftLabel}" HorizontalAlignment="Center" TextWrapping="NoWrap" />
+                  </Grid>
+                  <Grid RowDefinitions="*,5,Auto" ToolTip.Tip="{Binding Live.RightHapticsTip}">
+                    <ProgressBar Classes="vmeter haptic" Value="{Binding Live.HapticsRight}" />
+                    <TextBlock Grid.Row="2" Classes="caption" Text="{Binding Live.RightLabel}" HorizontalAlignment="Center" TextWrapping="NoWrap" />
+                  </Grid>
+                  <Grid RowDefinitions="*,5,Auto" ToolTip.Tip="{Binding Live.TriggersTip}">
+                    <ProgressBar Classes="vmeter" Value="{Binding Live.R2}" />
+                    <TextBlock Grid.Row="2" Classes="caption" Text="{Binding Live.R2Label}" HorizontalAlignment="Center" />
+                  </Grid>
+                </UniformGrid>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <!-- Quick settings: the same settings the detailed pages edit. On/off tiles first (Low Power across the full width),
+             then the stepped settings and the profile, then the link to the detailed settings. The gaps between the groups
+             grow a little in a tall window instead of leaving one empty block. -->
+        <Border Grid.Column="2" Classes="panel" Padding="20,16">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" MinHeight="12" MaxHeight="28" />
+              <RowDefinition Height="4*" MinHeight="224" MaxHeight="300" />
+              <RowDefinition Height="*" MinHeight="10" MaxHeight="40" />
+              <RowDefinition Height="4*" MinHeight="186" MaxHeight="276" />
+              <RowDefinition Height="*" MinHeight="6" MaxHeight="28" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <!-- Title, with the link to the detailed settings on the right (always inside the card) -->
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="h2" Text="{Binding Quick.Title}" />
+                <TextBlock Classes="caption" Text="{Binding Quick.DisconnectedNote}" IsVisible="{Binding Quick.ShowsDisconnectedNote}" />
+              </StackPanel>
+              <Button Grid.Column="1" Classes="link" VerticalAlignment="Top" Command="{Binding Quick.AdvancedCommand}">
+                <TextBlock Text="{Binding Quick.AdvancedText}" />
+              </Button>
+            </Grid>
+
+            <!-- On/off tiles: the whole tile is the switch; Speaker and Microphone keep the saved state while Low Power overrides them -->
+            <Grid Grid.Row="2" Classes="tiles" ColumnDefinitions="*,8,*" RowDefinitions="*,8,*,8,*,8,*">
+              <ToggleButton Grid.ColumnSpan="3" Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Leaf}" IsChecked="{Binding Quick.LowPowerOn}"
+                            ToolTip.Tip="{Binding Quick.LowPowerTip}" AutomationProperties.Name="{Binding Quick.LowPowerLabel}">
+                <StackPanel Classes="tileText">
+                  <TextBlock Classes="tileLabel" Text="{Binding Quick.LowPowerLabel}" />
+                  <TextBlock Classes="tileState" Text="{Binding Quick.LowPowerState}" />
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="2" Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Gamepad}" IsChecked="{Binding IsSupportedModeOn}"
+                            ToolTip.Tip="{Binding Quick.SupportedModeTip}" AutomationProperties.Name="{Binding Quick.SupportedModeLabel}">
+                <StackPanel Classes="tileText">
+                  <TextBlock Classes="tileLabel" Text="{Binding Quick.SupportedModeLabel}" />
+                  <TextBlock Classes="tileState on" Text="{Binding Quick.OnText}" />
+                  <TextBlock Classes="tileState off" Text="{Binding Quick.OffText}" />
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="2" Grid.Column="2" Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Mouse}" IsChecked="{Binding Quick.MouseModeOn}"
+                            ToolTip.Tip="{Binding Quick.MouseModeTip}" AutomationProperties.Name="{Binding Quick.MouseModeLabel}">
+                <StackPanel Classes="tileText">
+                  <TextBlock Classes="tileLabel" Text="{Binding Quick.MouseModeLabel}" />
+                  <TextBlock Classes="tileState on" Text="{Binding Quick.OnText}" />
+                  <TextBlock Classes="tileState off" Text="{Binding Quick.OffText}" />
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="4" Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Speaker}" IsChecked="{Binding Quick.SpeakerOn}"
+                            IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.SpeakerTip}" AutomationProperties.Name="{Binding Quick.SpeakerLabel}">
+                <StackPanel Classes="tileText">
+                  <TextBlock Classes="tileLabel" Text="{Binding Quick.SpeakerLabel}" />
+                  <TextBlock Classes="tileState on" Text="{Binding Quick.OnText}" />
+                  <TextBlock Classes="tileState off" Text="{Binding Quick.OffText}" />
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="4" Grid.Column="2" Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Microphone}" IsChecked="{Binding Quick.MicOn}"
+                            IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.MicTip}" AutomationProperties.Name="{Binding Quick.MicLabel}">
+                <StackPanel Classes="tileText">
+                  <TextBlock Classes="tileLabel" Text="{Binding Quick.MicLabel}" />
+                  <TextBlock Classes="tileState on" Text="{Binding Quick.OnText}" />
+                  <TextBlock Classes="tileState off" Text="{Binding Quick.OffText}" />
+                </StackPanel>
+              </ToggleButton>
+              <!-- Controller Shortcuts across the full width; the small button on its right opens the shortcuts list without switching -->
+              <Panel Grid.Row="6" Grid.ColumnSpan="3">
+                <ToggleButton Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Shortcut}" IsChecked="{Binding Quick.ShortcutsOn}"
+                              ToolTip.Tip="{Binding Quick.ShortcutsTip}" AutomationProperties.Name="{Binding Quick.ShortcutsLabel}">
+                  <StackPanel Classes="tileText" Margin="0,0,40,0">
+                    <TextBlock Classes="tileLabel" Text="{Binding Quick.ShortcutsLabel}" />
+                    <TextBlock Classes="tileState on" Text="{Binding Quick.OnText}" />
+                    <TextBlock Classes="tileState off" Text="{Binding Quick.OffText}" />
+                  </StackPanel>
+                </ToggleButton>
+                <Button Classes="tileAction" Theme="{StaticResource QuietButton}" Margin="0,0,10,0" Command="{Binding Quick.EditShortcutsCommand}"
+                        ToolTip.Tip="{Binding Quick.EditShortcutsTip}" AutomationProperties.Name="{Binding Quick.EditShortcutsTip}">
+                  <Path Data="{x:Static c:IconPaths.ChevronRight}" />
+                </Button>
+              </Panel>
+            </Grid>
+
+            <!-- Stepped settings and the profile: icon and label left, the control on the card's right edge -->
+            <Grid Grid.Row="4" RowDefinitions="*,*,*,*">
+              <Grid Classes="quickRow" ColumnDefinitions="Auto,10,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.HapticsTip}">
+                <Path Classes="rowIcon" Data="{x:Static c:IconPaths.Haptics}" />
+                <TextBlock Grid.Column="2" Classes="label" Text="{Binding Quick.HapticsLabel}" />
+                <ListBox Grid.Column="3" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.StrengthSteps}" SelectedIndex="{Binding Quick.HapticsIndex}"
+                         AutomationProperties.Name="{Binding Quick.HapticsLabel}" />
+                <TextBlock Grid.Row="1" Grid.Column="3" Classes="caption" Text="{Binding Quick.HapticsCustom}" IsVisible="{Binding Quick.HasHapticsCustom}" />
+              </Grid>
+              <Grid Grid.Row="1" Classes="quickRow" ColumnDefinitions="Auto,10,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.TriggerTip}">
+                <Path Classes="rowIcon" Data="{x:Static c:IconPaths.Trigger}" />
+                <TextBlock Grid.Column="2" Classes="label" Text="{Binding Quick.TriggerLabel}" />
+                <ListBox Grid.Column="3" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.StrengthSteps}" SelectedIndex="{Binding Quick.TriggerIndex}"
+                         AutomationProperties.Name="{Binding Quick.TriggerLabel}" />
+                <TextBlock Grid.Row="1" Grid.Column="3" Classes="caption" Text="{Binding Quick.TriggerCustom}" IsVisible="{Binding Quick.HasTriggerCustom}" />
+              </Grid>
+              <Grid Grid.Row="2" Classes="quickRow" ColumnDefinitions="Auto,10,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.LightTip}">
+                <Path Classes="rowIcon" Data="{x:Static c:IconPaths.Light}" />
+                <TextBlock Grid.Column="2" Classes="label" Text="{Binding Quick.LightLabel}" />
+                <ListBox Grid.Column="3" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.LightSteps}" SelectedIndex="{Binding Quick.LightIndex}"
+                         AutomationProperties.Name="{Binding Quick.LightLabel}" />
+                <TextBlock Grid.Row="1" Grid.Column="3" Classes="caption" Text="{Binding Quick.LightCustom}" IsVisible="{Binding Quick.HasLightCustom}" />
+              </Grid>
+              <Grid Grid.Row="3" Classes="quickRow" ColumnDefinitions="Auto,10,*,Auto" ToolTip.Tip="{Binding Quick.ProfileTip}">
+                <Path Classes="rowIcon" Data="{x:Static c:IconPaths.Profile}" />
+                <TextBlock Grid.Column="2" Classes="label" Text="{Binding ProfileLabel}" />
+                <ComboBox Grid.Column="3" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" AutomationProperties.Name="{Binding ProfileLabel}" />
+              </Grid>
+            </Grid>
+
+          </Grid>
+        </Border>
+      </Grid>
+
+      <!-- Health: one quiet line while everything is fine; the items (with a fix where there is one) when something needs a look -->
+      <TextBlock Grid.Row="4" Classes="caption" Text="{Binding HealthSummary}" IsVisible="{Binding IsHealthAllGood}" TextWrapping="NoWrap"
+                 TextTrimming="CharacterEllipsis" Margin="4,0,0,0" />
+      <ItemsControl Grid.Row="4" ItemsSource="{Binding HealthChips}" IsVisible="{Binding ShowsHealthChips}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" ColumnSpacing="10" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:HealthChipViewModel">
+            <!-- A panel; when there is a fix the whole chip is its button (a "›" shows it, the tooltip names it) -->
+            <Panel>
+              <Border Classes="panel" Padding="12,0" Height="50" ToolTip.Tip="{Binding Reason}">
+                <!-- The name has the full width (long names like "Sanal Kumanda" fit); the fix sits next to the state -->
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                  <TextBlock Grid.ColumnSpan="2" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Row="1" Classes="caption chipState" Classes.attention="{Binding IsAttention}" Classes.problem="{Binding IsProblem}"
+                             Text="{Binding StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="5" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasAction}">
+                    <TextBlock Text="{Binding ActionText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                    <Path Data="M1,1 L5,5 L1,9" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
+                          Width="6" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+              <Button Classes="chipHit" Command="{Binding RunCommand}" IsVisible="{Binding HasAction}" ToolTip.Tip="{Binding ActionTip}" />
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </Grid>
   </Border>
 </UserControl>

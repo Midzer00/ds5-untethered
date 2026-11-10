@@ -6,21 +6,21 @@ using Kopru.Core.Protocol;
 
 namespace Kopru.Core.Bridge;
 
-// The user's light choice. Brightness 0..1 scales the colour; PlayerLeds lights the middle player LED.
+// The user's light choice. Brightness 0..1 scales the colour; PlayerLeds false turns the player LEDs off, otherwise
+// Options.PlayerPattern lights them. Options: the effect (LightAnimator), player LED brightness and the mute LED.
 public sealed record LightSettings(byte Red, byte Green, byte Blue, double Brightness = 1, bool PlayerLeds = true)
 {
 	public const byte PlayerOneLed = 0x04;
 
+	public Lighting.LightOptions Options { get; init; } = Lighting.LightOptions.Default;
+
+	public byte PlayerMask => PlayerLeds ? Lighting.LightAnimator.PatternMask(Options.PlayerPattern) : (byte)0;
+
 	public static LightSettings FromRgb(uint rgb, double brightness = 1, bool playerLeds = true) =>
 		new((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb, brightness, playerLeds);
 
-	public void WriteTo(byte[] block)
-	{
-		double k = Math.Clamp(Brightness, 0, 1);
-		OutputBlock.SetLightbar(block, (byte)Math.Round(Red * k), (byte)Math.Round(Green * k), (byte)Math.Round(Blue * k));
-		block[OutputBlock.Flag1] |= OutputBlock.PlayerLedControl;
-		block[OutputBlock.PlayerLeds] = PlayerLeds ? PlayerOneLed : (byte)0;
-	}
+	// The light at the start of the effect.
+	public void WriteTo(byte[] block) => Lighting.LightAnimator.FrameAt(this, TimeSpan.Zero).WriteTo(block);
 }
 
 // Light, quick tests and the adapter check: they use the running bridge's controller session, or, while the bridge is
@@ -55,6 +55,10 @@ public sealed partial class BridgeHost
 		light = settings;
 		Connection? c = current;
 		if (c != null)
+		{
+			c.Bridge.KeepMuteLed = settings.Options.MuteLed == Lighting.MuteLedMode.FollowMic;
+		}
+		if (c != null && !InvalidateLightSender())
 		{
 			ApplyLightTo(c.Session);
 		}
@@ -113,7 +117,8 @@ public sealed partial class BridgeHost
 			{
 				// Restore below.
 			}
-			(byte[] Right, byte[] Left)? game = bridge?.GameTriggers;
+			// The game's effects at the current trigger strength (or the fallback), not the raw ones.
+			(byte[] Right, byte[] Left)? game = bridge?.ControllerTriggers();
 			session.UpdateOutput(b => OutputBlock.SetTriggers(b, game?.Right ?? TriggerEffects.Off(), game?.Left ?? TriggerEffects.Off()));
 			bridge?.ResendGameOutput();
 		}, cancel);
@@ -129,7 +134,7 @@ public sealed partial class BridgeHost
 
 	private void ApplyLightTo(BluetoothSession session)
 	{
-		LightSettings l = light;
+		LightSettings l = EffectiveLight();
 		try
 		{
 			session.UpdateOutput(l.WriteTo);
@@ -148,6 +153,7 @@ public sealed partial class BridgeHost
 			await action(c.Session, c.Bridge).ConfigureAwait(false);
 			return true;
 		}
+		CancelReadOnlyUse();
 		await sessionGate.WaitAsync(cancel).ConfigureAwait(false);
 		try
 		{

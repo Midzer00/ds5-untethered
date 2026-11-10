@@ -1,8 +1,31 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.SupportedGamesView" x:DataType="vm:SupportedGamesViewModel">
+  <UserControl.Styles>
+    <!-- Remove button inside a mark: a quiet round 22px button, like the toast's close button -->
+    <Style Selector="Button.markRemove">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.markRemove:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1CFFFFFF" />
+    </Style>
+    <Style Selector="Button.markRemove Path">
+      <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="Button.markRemove:pointerover Path">
+      <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
+    </Style>
+  </UserControl.Styles>
   <!-- Fills the window: the game list takes the free height and scrolls itself -->
   <Grid RowDefinitions="Auto,16,Auto,*" MaxWidth="1500" Margin="32,28,32,28">
     <!-- Header: title, intro and the game in the foreground -->
-    <Grid ColumnDefinitions="*,16,Auto">
+    <Grid ColumnDefinitions="*,16,Auto" RowDefinitions="Auto,Auto">
       <StackPanel Spacing="4" VerticalAlignment="Center">
         <TextBlock Classes="h1" Text="{Binding Title}" />
         <TextBlock Classes="body" Text="{Binding Intro}" />
@@ -13,6 +36,19 @@
           <TextBlock Grid.Column="2" Text="{Binding CurrentGameText}" FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         </Grid>
       </Border>
+        <!-- Online update of the list: button (busy while checking), the list's size and date or the outcome, auto check -->
+        <WrapPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,12,0,0" IsVisible="{Binding CanUpdateList}">
+          <Button Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Margin="0,0,12,0" Command="{Binding UpdateListCommand}"
+                  Content="{Binding UpdateListText}" VerticalAlignment="Center" />
+          <TextBlock Classes="caption" Text="{Binding ListStatusText}" IsVisible="{Binding !HasListError}" VerticalAlignment="Center" Margin="0,0,16,0" />
+          <TextBlock Classes="caption" Foreground="{StaticResource IndicatorWaitBrush}" Text="{Binding ListStatusText}" IsVisible="{Binding HasListError}" VerticalAlignment="Center" Margin="0,0,16,0" />
+          <CheckBox IsChecked="{Binding Settings.AutoUpdateGameList}" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Classes="caption" Text="{Binding AutoUpdateLabel}" />
+          </CheckBox>
+          <CheckBox IsChecked="{Binding Settings.AskOnKnownGame}" VerticalAlignment="Center" ToolTip.Tip="{Binding AskHint}">
+            <TextBlock Classes="caption" Text="{Binding AskLabel}" />
+          </CheckBox>
+        </WrapPanel>
     </Grid>
 
     <!-- Steam Input: a warning when it may take the controller, a muted note when it could not be read -->
@@ -65,25 +101,62 @@
       <!-- Supported games: search, then one row per game with its features and the mode choice -->
       <Border Grid.Column="2" Classes="panel" Padding="20,16,8,8">
         <Grid RowDefinitions="Auto,10,Auto,6,Auto,8,*">
-          <Grid ColumnDefinitions="*,Auto" Margin="0,0,12,0">
+          <Grid ColumnDefinitions="*,Auto,12,Auto" Margin="0,0,12,0">
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Gamepad}" /></Border>
               <TextBlock Classes="h2" Text="{Binding ListLabel}" VerticalAlignment="Center" />
             </StackPanel>
-            <TextBlock Grid.Column="1" Classes="value" Text="{Binding CountText}" />
+            <TextBlock Grid.Column="1" Classes="value" Text="{Binding CountText}" VerticalAlignment="Center" />
+            <!-- Add a game: one of the running apps, or an exe file -->
+            <Button Grid.Column="3" Name="AddGameButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Content="{Binding AddGameText}" VerticalAlignment="Center">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <StackPanel Width="280" Spacing="6">
+                    <TextBlock Classes="caption" Text="{Binding RunningHeader}" Margin="4,0,0,2" />
+                    <TextBlock Classes="body" Text="{Binding NoRunningText}" IsVisible="{Binding HasNoRunningApps}" Margin="4,0,0,4" />
+                    <ScrollViewer MaxHeight="260" HorizontalScrollBarVisibility="Disabled">
+                      <ItemsControl ItemsSource="{Binding RunningApps}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:RunningAppItem">
+                            <Button Theme="{StaticResource QuietButton}" Height="32" Padding="10,0" Margin="0,0,0,4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Command="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).AddRunningCommand}" CommandParameter="{Binding}"
+                                    ToolTip.Tip="{Binding Tip}">
+                              <TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                    <Border Classes="divider" />
+                    <Button Theme="{StaticResource QuietButton}" Height="32" Padding="10,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Command="{Binding AddFromFileCommand}" Content="{Binding AddFromFileText}" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
           </Grid>
           <TextBox Grid.Row="2" Margin="0,0,12,0" Text="{Binding SearchText}" Watermark="{Binding SearchWatermark}" />
-          <TextBlock Grid.Row="4" Classes="caption" Margin="0,0,12,0" Text="{Binding OverrideHint}" />
-          <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="0,0,12,0">
-              <TextBlock Classes="body" Text="{Binding NoMatchText}" IsVisible="{Binding HasNoMatch}" Margin="0,8" />
+          <TextBlock Grid.Row="4" Classes="caption" Margin="0,0,12,0" Text="{Binding ListHint}" />
+          <!-- The list scrolls itself and only builds the rows in view (the full catalog has hundreds of games) -->
+          <DockPanel Grid.Row="6">
+              <TextBlock DockPanel.Dock="Top" Classes="body" Text="{Binding NoMatchText}" IsVisible="{Binding HasNoMatch}" Margin="0,8,12,8" />
               <ItemsControl ItemsSource="{Binding Games}">
+                <ItemsControl.Template>
+                  <ControlTemplate>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                      <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="0,0,12,0" />
+                    </ScrollViewer>
+                  </ControlTemplate>
+                </ItemsControl.Template>
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:GameItemViewModel">
                     <StackPanel>
                       <Grid ColumnDefinitions="*,12,Auto" Margin="0,9">
                         <StackPanel Spacing="4" VerticalAlignment="Center">
-                          <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding PathTip}" />
                           <StackPanel Orientation="Horizontal" Spacing="12">
                             <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasHaptics}">
                               <Path Classes="icon small" Data="{x:Static c:IconPaths.Haptics}" Width="12" Height="12" />
@@ -93,27 +166,56 @@
                               <Path Classes="icon small" Data="{x:Static c:IconPaths.Trigger}" Width="12" Height="12" />
                               <TextBlock Classes="caption" Text="{Binding TriggersText}" TextWrapping="NoWrap" />
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsLearned}">
+                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsUserAdded}">
                               <Ellipse Classes="indicator on" VerticalAlignment="Center" />
-                              <TextBlock Classes="caption" Foreground="{StaticResource IndicatorOnBrush}" Text="{Binding DetectedText}" TextWrapping="NoWrap" />
+                              <TextBlock Classes="caption" Foreground="{StaticResource IndicatorOnBrush}" Text="{Binding UserAddedText}" TextWrapping="NoWrap" />
                             </StackPanel>
                           </StackPanel>
                         </StackPanel>
-                        <ComboBox Grid.Column="2" Width="140" VerticalAlignment="Center" ItemsSource="{Binding Overrides}" SelectedItem="{Binding SelectedOverride}">
-                          <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:OverrideOption">
-                              <TextBlock Text="{Binding Name}" TextWrapping="NoWrap" />
-                            </DataTemplate>
-                          </ComboBox.ItemTemplate>
-                        </ComboBox>
+                        <!-- Marks (Auto: turns the mode on without asking; never ask), each removable; added games can be removed -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                          <Border Classes="chip" Padding="10,0,4,0" IsVisible="{Binding IsAlways}" ToolTip.Tip="{Binding AlwaysTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                              <Ellipse Classes="indicator on" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding AlwaysText}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                              <Button Classes="markRemove" Command="{Binding RemoveAlwaysCommand}" ToolTip.Tip="{Binding RemoveMarkText}">
+                                <Path Data="M1,1 L9,9 M9,1 L1,9" StrokeThickness="1.4" StrokeLineCap="Round" Width="10" Height="10" />
+                              </Button>
+                            </StackPanel>
+                          </Border>
+                          <Border Classes="chip" Padding="10,0,4,0" IsVisible="{Binding IsNeverAsk}" ToolTip.Tip="{Binding NeverAskTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding NeverAskText}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                              <Button Classes="markRemove" Command="{Binding RemoveNeverAskCommand}" ToolTip.Tip="{Binding RemoveMarkText}">
+                                <Path Data="M1,1 L9,9 M9,1 L1,9" StrokeThickness="1.4" StrokeLineCap="Round" Width="10" Height="10" />
+                              </Button>
+                            </StackPanel>
+                          </Border>
+                          <Button Theme="{StaticResource QuietButton}" Height="30" Padding="12,0" IsVisible="{Binding IsUserAdded}" Command="{Binding RemoveGameCommand}"
+                                  Content="{Binding RemoveGameText}" />
+                          <!-- Controller type (DualSense unless chosen) above the profile for this game (Default unless chosen) -->
+                          <StackPanel Spacing="4" VerticalAlignment="Center">
+                          <ComboBox ItemsSource="{Binding PadType.Options}" SelectedItem="{Binding PadType.Selected}" Width="132" Height="30" MinHeight="30"
+                                    FontSize="12.5" VerticalAlignment="Center" ToolTip.Tip="{Binding PadType.Tip}" AutomationProperties.Name="{Binding PadType.Label}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                          <ComboBox ItemsSource="{Binding Profile.Options}" SelectedItem="{Binding Profile.Selected}" Width="132" Height="30" MinHeight="30"
+                                    FontSize="12.5" VerticalAlignment="Center" ToolTip.Tip="{Binding Profile.Tip}" AutomationProperties.Name="{Binding Profile.Tip}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                          </StackPanel>
+                        </StackPanel>
                       </Grid>
                       <Border Classes="divider" />
                     </StackPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-            </StackPanel>
-          </ScrollViewer>
+          </DockPanel>
         </Grid>
       </Border>
     </Grid>

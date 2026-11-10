@@ -17,5 +17,15 @@ public static class IconPaths
 	public static Geometry Left { get; } = Geometry.Parse("M10,5 L3,12 L10,19 M3,12 H14 M17,8 V16 M20.5,10 V14");
 	public static Geometry Right { get; } = Geometry.Parse("M14,5 L21,12 L14,19 M21,12 H10 M7,8 V16 M3.5,10 V14");
 	public static Geometry Power { get; } = Geometry.Parse("M12,3 V11 M6.6,6.6 A7.5,7.5 0 1 0 17.4,6.6");
+	public static Geometry Check { get; } = Geometry.Parse("M4.5,12.5 L9.5,17.5 L19.5,6.5");
+	public static Geometry Leaf { get; } = Geometry.Parse("M5,19 C5,10.5 10,5 19,5 C19,13.5 13.5,19 5,19 Z M5,19 L12.5,11.5");
+	public static Geometry Mouse { get; } = Geometry.Parse("M12,3 C15.6,3 18,5.4 18,9 V15 C18,18.6 15.6,21 12,21 C8.4,21 6,18.6 6,15 V9 C6,5.4 8.4,3 12,3 Z M12,6.5 V9.5");
+	public static Geometry Speaker { get; } = Geometry.Parse("M4,9.5 H7.5 L12,5.5 V18.5 L7.5,14.5 H4 Z M15.5,9.2 C16.6,10.8 16.6,13.2 15.5,14.8 M18.5,6.5 C20.8,9.6 20.8,14.4 18.5,17.5");
+	public static Geometry Microphone { get; } = Geometry.Parse("M12,3 C13.7,3 15,4.3 15,6 V11.5 C15,13.2 13.7,14.5 12,14.5 C10.3,14.5 9,13.2 9,11.5 V6 C9,4.3 10.3,3 12,3 Z M5.5,11 C5.5,14.8 8.4,17.5 12,17.5 C15.6,17.5 18.5,14.8 18.5,11 M12,17.5 V21 M9,21 H15");
+	public static Geometry Profile { get; } = Geometry.Parse("M12,4 A4,4 0 1 1 11.99,4 Z M4.5,20.5 C5.3,16.6 8.3,14.5 12,14.5 C15.7,14.5 18.7,16.6 19.5,20.5");
+	public static Geometry Pencil { get; } = Geometry.Parse("M4.5,19.5 L5.3,15.7 L15.6,5.4 C16.4,4.6 17.8,4.6 18.6,5.4 C19.4,6.2 19.4,7.6 18.6,8.4 L8.3,18.7 Z M13.8,7.2 L16.8,10.2");
+	// Command-key loops: button-combo shortcuts.
+	public static Geometry Shortcut { get; } = Geometry.Parse("M9,9 H15 V15 H9 Z M9,9 H6.5 A2.5,2.5 0 1 1 9,6.5 Z M15,9 V6.5 A2.5,2.5 0 1 1 17.5,9 Z M15,15 H17.5 A2.5,2.5 0 1 1 15,17.5 Z M9,15 V17.5 A2.5,2.5 0 1 1 6.5,15 Z");
+	public static Geometry ChevronRight { get; } = Geometry.Parse("M9.5,6 L15.5,12 L9.5,18");
 	public static Geometry Battery { get; } = Geometry.Parse("M4,7.5 H17 C18.1,7.5 19,8.4 19,9.5 V14.5 C19,15.6 18.1,16.5 17,16.5 H4 C2.9,16.5 2,15.6 2,14.5 V9.5 C2,8.4 2.9,7.5 4,7.5 Z M22,10.5 V13.5 M5.5,10.5 V13.5 M9,10.5 V13.5");
 }

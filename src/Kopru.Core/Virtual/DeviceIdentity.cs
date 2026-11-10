@@ -22,6 +22,30 @@ public sealed class DeviceIdentity
 	// The virtual controller's own Bluetooth address, so it is never taken for the real one.
 	public static readonly byte[] VirtualAddress = [0x02, 0x4B, 0x50, 0x52, 0x55, 0x01];
 
+	// The virtual address of the pad in a player slot (1-4): 02:4B:50:52:55:0N.
+	public static byte[] VirtualAddressFor(int slot) => [.. VirtualAddress[..5], (byte)Math.Clamp(slot, 1, 4)];
+
+	// This identity with the slot's virtual address in the pairing feature; slot 1 (or no pairing report) is this one.
+	public DeviceIdentity ForSlot(int slot)
+	{
+		if (slot <= 1 || !FeatureReports.TryGetValue(PairingFeature, out byte[]? pairing) || pairing.Length < 7)
+		{
+			return this;
+		}
+		Dictionary<byte, byte[]> features = FeatureReports.ToDictionary(p => p.Key, p => p.Value);
+		byte[] copy = (byte[])pairing.Clone();
+		VirtualAddressFor(slot).CopyTo(copy, 1);
+		features[PairingFeature] = copy;
+		return new DeviceIdentity
+		{
+			DeviceDescriptor = DeviceDescriptor,
+			ConfigurationDescriptor = ConfigurationDescriptor,
+			HidReportDescriptor = HidReportDescriptor,
+			Strings = Strings,
+			FeatureReports = features
+		};
+	}
+
 	public static DeviceIdentity FromCaptureFile(string path) => FromCaptureJson(File.ReadAllText(path));
 
 	// The capture format (also used by the built-in identity under Virtual/Identity).

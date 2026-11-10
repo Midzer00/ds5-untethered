@@ -227,6 +227,18 @@ public class DiagnosticsExportTests : IDisposable
 	}
 
 	[Fact]
+	public void Scrub_MasksTheAddressInAJsonEscapedInstanceId()
+	{
+		// settings.json writes "&" as \u0026 (the address here is fake).
+		string text = """{"Id":"BTHENUM\\{00001124-0000-1000-8000-00805F9B34FB}_VID\u00260002054C_PID\u00260CE6\\7\u00261D1B1AD6\u00260\u002600DEADBEEF01_C00000000"}""";
+
+		string scrubbed = DiagnosticsExport.Scrub(text);
+
+		Assert.DoesNotContain("DEADBEEF", scrubbed, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("00805F9B34FB", scrubbed, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public async Task CreateZip_HasAllParts_Scrubbed()
 	{
 		string settings = Path.Combine(dir, "settings.json");

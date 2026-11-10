@@ -18,6 +18,12 @@ public interface IControllerSource
 {
 	// Null while no Bluetooth DualSense can be opened.
 	IHidLink? TryOpen();
+
+	// Every Bluetooth DualSense present now, in a stable order (see BridgeManager).
+	IReadOnlyList<ControllerPresence> Enumerate() => [];
+
+	// Opens the controller with that id; null while it can't be opened.
+	IHidLink? TryOpen(string id) => null;
 }
 
 // Plugs the USB/IP device served on the loopback into Windows and unplugs it.
@@ -27,6 +33,9 @@ public interface IUsbIpAttacher
 	Task<int> AttachAsync(int tcpPort, string busId, CancellationToken cancel);
 
 	Task DetachAsync(int port);
+
+	// The devices the client has imported (all of them, not only ours). Throws when the listing failed.
+	Task<IReadOnlyList<UsbIp.UsbIpImport>> ListAsync(CancellationToken cancel) => Task.FromResult<IReadOnlyList<UsbIp.UsbIpImport>>([]);
 }
 
 // The newest captures/*.json (made by "Kopru.Probe capture"), looked up in the app's data folder, the working directory,
@@ -58,8 +67,49 @@ public sealed class CaptureIdentitySource : IIdentitySource
 	}
 }
 
-public sealed class WindowsControllerSource : IControllerSource
+public sealed class WindowsControllerSource : IControllerSource, IReadOnlyControllerSource
 {
+	public IHidLink? TryOpenReadOnly()
+	{
+		try
+		{
+			HidDevice? bt = WindowsHid.FindDualSenses().FirstOrDefault(d => d.Transport == Transport.Bluetooth);
+			return bt == null ? null : WindowsHid.OpenReadOnly(bt);
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+	}
+
+	// The device instance id (stable while paired), or the interface path when it can't be read.
+	public static string IdOf(HidDevice device) => DeviceInstance.FromInterfacePath(device.Path) ?? device.Path;
+
+	public IReadOnlyList<ControllerPresence> Enumerate()
+	{
+		try
+		{
+			return [.. WindowsHid.FindDualSenses().Where(d => d.Transport == Transport.Bluetooth).Select(d => new ControllerPresence(IdOf(d), d))];
+		}
+		catch (Exception)
+		{
+			return [];
+		}
+	}
+
+	public IHidLink? TryOpen(string id)
+	{
+		try
+		{
+			HidDevice? bt = WindowsHid.FindDualSenses().FirstOrDefault(d => d.Transport == Transport.Bluetooth && IdOf(d) == id);
+			return bt == null ? null : WindowsHid.Open(bt);
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+	}
+
 	public IHidLink? TryOpen()
 	{
 		try
@@ -140,6 +190,16 @@ public sealed class UsbIpExeAttacher : IUsbIpAttacher
 	public async Task DetachAsync(int port)
 	{
 		await RunAsync(Executable(), string.Create(CultureInfo.InvariantCulture, $"detach -p {port}"), CancellationToken.None);
+	}
+
+	public async Task<IReadOnlyList<UsbIp.UsbIpImport>> ListAsync(CancellationToken cancel)
+	{
+		(int exit, string output, string error) = await RunAsync(Executable(), "port", cancel);
+		if (exit != 0)
+		{
+			throw new InvalidOperationException($"usbip port failed (exit {exit}): {error.Trim()} {output.Trim()}");
+		}
+		return UsbIp.UsbIpPortList.Parse(output);
 	}
 
 	private string Executable() => path ?? Locate() ?? throw new FileNotFoundException("usbip.exe not found", DefaultPath);

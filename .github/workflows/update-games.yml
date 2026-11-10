@@ -1,0 +1,56 @@
+# Refreshes src/Kopru.Core/Games/supported-games.json from PCGamingWiki's DualSense lists every week (and on demand)
+# and opens a pull request when anything changed. The app downloads the file from the default branch once merged.
+name: Update supported games
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Refresh the list from PCGamingWiki
+        id: refresh
+        run: |
+          set -o pipefail
+          if ! dotnet run --project tools/Kopru.GameList -c Release | tee summary.txt; then
+            echo "PCGamingWiki API failed; trying the Internet Archive snapshots"
+            dotnet run --project tools/Kopru.GameList -c Release -- --from-archive | tee summary.txt
+          fi
+          {
+            echo "summary<<EOF"
+            cat summary.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check that the list still loads
+        run: dotnet test tests/Kopru.Core.Tests -c Release --filter "FullyQualifiedName~GameCatalog"
+
+      - name: Open a pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: automation/update-games
+          delete-branch: true
+          add-paths: |
+            src/Kopru.Core/Games/supported-games.json
+            src/Kopru.Core/Games/SOURCES.md
+          commit-message: Update supported games from PCGamingWiki
+          title: Update supported games from PCGamingWiki
+          body: |
+            Weekly refresh by tools/Kopru.GameList. New entries have no exe name yet; fill them in before merging if known.
+
+            ```
+            ${{ steps.refresh.outputs.summary }}
+            ```

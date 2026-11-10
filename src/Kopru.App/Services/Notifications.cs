@@ -1,5 +1,6 @@
-﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 using Kopru.App.ViewModels;
+using Kopru.Core.Bridge;
 using Kopru.Core.Games;
 using Kopru.Core.Localization;
 using Kopru.Core.Steam;
@@ -27,7 +28,14 @@ public enum NotificationType
 	PoweredOffIdle,
 	BridgeError,
 	HidHideMissing,
-	TrayHint
+	TrayHint,
+	GameListUpdated,
+	// A known game started with the supported mode off: turn it on? (with buttons)
+	GameAsk,
+	// Feedback after a controller shortcut (profile, haptics level, mode)
+	Shortcut,
+	// The bridged controller was plugged in by cable
+	CableConnected
 }
 
 // The page a click on a toast opens.
@@ -39,21 +47,27 @@ public enum AppPage
 	Settings
 }
 
+// A button on a toast; Run is called on the UI thread, then the toast closes. The primary one is drawn in the accent.
+public sealed record NotificationAction(string Label, Action Run, bool IsPrimary = false);
+
 // One toast. Value (0-100) is the controller's battery level, shown as a battery glyph; IsEdge picks the controller drawing
-// and IsCharging shows the battery as charging.
+// and IsCharging shows the battery as charging. A toast with actions stays up longer (ActionDuration).
 public sealed record AppNotification(NotificationType Type, NotificationKind Kind, string Title, string Body, AppPage Page, double? Value = null,
 	bool IsEdge = false, bool IsCharging = false)
 {
 	public static readonly TimeSpan NormalDuration = TimeSpan.FromSeconds(5);
 	public static readonly TimeSpan ErrorDuration = TimeSpan.FromSeconds(8);
+	public static readonly TimeSpan ActionDuration = TimeSpan.FromSeconds(20);
 
-	public TimeSpan Duration => Kind == NotificationKind.Error ? ErrorDuration : NormalDuration;
+	public IReadOnlyList<NotificationAction> Actions { get; init; } = [];
+
+	public TimeSpan Duration => Actions.Count > 0 ? ActionDuration : Kind == NotificationKind.Error ? ErrorDuration : NormalDuration;
 }
 
 // Turns service state changes and notices into notifications: tracks transitions (connected, battery thresholds once per
 // discharge, game changes, Steam Input once per game), applies the per-type switches and "don't notify while playing",
 // and drops repeats (same type within TypeCooldown, same text within RepeatCooldown, more than BurstLimit per BurstWindow).
-public sealed class NotificationCenter
+public sealed partial class NotificationCenter
 {
 	public static readonly TimeSpan TypeCooldown = TimeSpan.FromSeconds(20);
 	public static readonly TimeSpan RepeatCooldown = TimeSpan.FromMinutes(2);
@@ -72,6 +86,9 @@ public sealed class NotificationCenter
 	private readonly Dictionary<NotificationType, long> _lastByType = [];
 	private readonly Dictionary<(NotificationType, string), long> _lastByText = [];
 	private readonly Queue<long> _recent = new();
+	private readonly HashSet<string> _announced = new(StringComparer.OrdinalIgnoreCase);
+	// Games asked about in their current launch (answering "always" there is no news).
+	private readonly HashSet<string> _asked = new(StringComparer.OrdinalIgnoreCase);
 
 	private bool _connected;
 	private string? _gameExe;
@@ -90,10 +107,30 @@ public sealed class NotificationCenter
 		_clockMs = clockMs ?? (() => Environment.TickCount64);
 		// What is true at start is the baseline, not news.
 		_connected = service.IsConnected;
+		InitControllers();
 		_gameExe = service.Games.State.Exe;
+		if (_gameExe != null && service.Games.State.Mode == GameMode.Supported)
+		{
+			_announced.Add(_gameExe);
+		}
 		_wasCharging = service.IsCharging;
 		service.StateChanged += (_, _) => Evaluate();
 		service.Notice += (_, notice) => OnNotice(notice);
+		settings.ShortcutFeedback += (title, body) =>
+		{
+			if (_settings.NotificationsEnabled)
+			{
+				Post(new AppNotification(NotificationType.Shortcut, NotificationKind.Info, title, body, AppPage.Settings, IsEdge: IsEdge), force: true);
+			}
+		};
+		service.Games.AskRequested += game =>
+		{
+			lock (_gate)
+			{
+				_asked.Add(game.Exe);
+			}
+			Post(Ask(service.Games, game, IsEdge), force: true);
+		};
 	}
 
 	// Raised for every notification that passed the filters; may be raised on any thread.
@@ -124,8 +161,11 @@ public sealed class NotificationCenter
 			ServiceNoticeKind.PoweredOffIdle => new AppNotification(NotificationType.PoweredOffIdle, NotificationKind.Info,
 				Text.NotifyPoweredOffTitle(), Text.NotifyPoweredOffBody(), AppPage.Settings, IsEdge: IsEdge),
 			ServiceNoticeKind.BridgeError => new AppNotification(NotificationType.BridgeError, NotificationKind.Error,
-				Text.NotifyBridgeErrorTitle(), notice.Detail ?? Text.BridgeError(), AppPage.Overview, IsEdge: IsEdge),
+				Text.NotifyBridgeErrorTitle(), notice.Detail ?? Text.NotifyBridgeOther(), AppPage.Overview, IsEdge: IsEdge),
 			ServiceNoticeKind.HidHideMissing => HidHideOnce(),
+			ServiceNoticeKind.CableConnected => new AppNotification(NotificationType.CableConnected, NotificationKind.Info,
+				Text.NotifyCableTitle(), Text.NotifyCableBody(), AppPage.Overview, IsEdge: IsEdge),
+			ServiceNoticeKind.PadTypeChanged => PadTypeNotice(notice.Detail, IsEdge),
 			_ => null
 		};
 		if (n != null)
@@ -147,7 +187,7 @@ public sealed class NotificationCenter
 			lock (_gate)
 			{
 				long now = _clockMs();
-				if (Within(_lastByType, n.Type, now, TypeCooldown) || Within(_lastByText, (n.Type, n.Title + "\n" + n.Body), now, RepeatCooldown))
+				if ((Within(_lastByType, n.Type, now, TypeCooldown) && !IsSlotNotice(n)) || Within(_lastByText, (n.Type, n.Title + "\n" + n.Body), now, RepeatCooldown))
 				{
 					return false;
 				}
@@ -180,6 +220,34 @@ public sealed class NotificationCenter
 		_ => true
 	};
 
+	public static AppNotification GameListUpdated(int added) =>
+		new(NotificationType.GameListUpdated, NotificationKind.Success, Text.NotifyGameListTitle(), Text.NotifyGameListBody(added), AppPage.SupportedGames);
+
+	// "Cyberpunk 2077 Started · Turn on DualSense supported mode?" with Turn On / Not Now / Always. Shown whatever the
+	// filters say: the controller only raises it once per launch, and only when "ask" is on.
+	public static AppNotification Ask(GameModeController games, ForegroundGame game, bool isEdge = false) =>
+		new(NotificationType.GameAsk, NotificationKind.Info, game.Name, Text.AskGameBody(), AppPage.SupportedGames, IsEdge: isEdge)
+		{
+			Actions =
+			[
+				new(Text.AskNotNow(), () => games.Answer(game, AskAnswer.NotNow)),
+				new(Text.AskAlways(), () => games.Answer(game, AskAnswer.Always)),
+				new(Text.AskTurnOn(), () => games.Answer(game, AskAnswer.TurnOn), IsPrimary: true),
+			]
+		};
+
+	// The short reason a bridge error toast shows; the full text is on the Overview page.
+	public static string BridgeReason(BridgeError error) => error switch
+	{
+		BridgeError.NoCapture => Text.NotifyBridgeNoIdentity(),
+		BridgeError.CaptureInvalid => Text.NotifyBridgeIdentityUnreadable(),
+		BridgeError.UsbIpMissing => Text.NotifyBridgeUsbIpMissing(),
+		BridgeError.AttachFailed => Text.NotifyBridgeAttachFailed(),
+		BridgeError.ControllerOpenFailed => Text.NotifyBridgeOpenFailed(),
+		BridgeError.ControllerLost => Text.NotifyBridgeLost(),
+		_ => Text.NotifyBridgeOther()
+	};
+
 	public static AppNotification TrayHint() =>
 		new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(), Text.NotifyTrayBody(), AppPage.Settings);
 
@@ -199,6 +267,10 @@ public sealed class NotificationCenter
 
 	private void CheckConnection(List<AppNotification> pending)
 	{
+		if (CheckControllers(pending))
+		{
+			return;
+		}
 		bool connected = _service.IsConnected;
 		if (connected == _connected)
 		{
@@ -210,7 +282,7 @@ public sealed class NotificationCenter
 			bool battery = _service.HasBattery;
 			double percent = Math.Round(_service.BatteryPercent);
 			pending.Add(new AppNotification(NotificationType.Connected, NotificationKind.Success, Text.NotifyConnectedTitle(),
-				battery ? Text.NotifyConnectedBattery(_service.DeviceName, percent) : Text.NotifyConnectedBody(_service.DeviceName),
+				Text.NotifyConnectedBody(_service.DeviceName),
 				AppPage.Overview, battery ? percent : null, IsEdge, _service.IsCharging));
 		}
 		else if (!RecentlyRaised(NotificationType.PoweredOffIdle))
@@ -261,16 +333,23 @@ public sealed class NotificationCenter
 	private void CheckGame(List<AppNotification> pending)
 	{
 		GameModeState state = _service.Games.State;
+		if (state.Exe == null)
+		{
+			_asked.Clear();
+		}
 		if (state.Exe != null && !string.Equals(state.Exe, _gameExe, StringComparison.OrdinalIgnoreCase))
 		{
-			// Only a different game is news (switching away and back is not).
 			_gameExe = state.Exe;
 			_steamWarnedFor = null;
+		}
+		// A game that turned the supported mode on by itself ("always") is announced once per session (switching away and
+		// back is not news); one the user was asked about or turned on is not.
+		if (state.Exe != null && state.Mode == GameMode.Supported && state.Reason == ModeReason.Always && !_asked.Contains(state.Exe)
+			&& _announced.Add(state.Exe))
+		{
 			string name = state.Name ?? Path.GetFileNameWithoutExtension(state.Exe);
-			bool supported = state.Mode == GameMode.Supported;
-			pending.Add(new AppNotification(NotificationType.GameDetected, NotificationKind.Info, Text.NotifyGameTitle(),
-				supported ? Text.NotifyGameSupported(name) : Text.NotifyGameClassic(name),
-				supported ? AppPage.SupportedGames : AppPage.OtherGames, Battery, IsEdge, Charging));
+			pending.Add(new AppNotification(NotificationType.GameDetected, NotificationKind.Info, name,
+				Text.NotifyGameSupported(), AppPage.SupportedGames, Battery, IsEdge, Charging));
 		}
 		if (_gameExe != null && _steamWarnedFor == null && _service.SteamInput is { Status: SteamInputStatus.OnGlobally or SteamInputStatus.OnForApp })
 		{

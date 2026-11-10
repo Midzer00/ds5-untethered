@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Kopru.Core.Audio;
 using Kopru.Core.Haptics;
 using Kopru.Core.Hid;
 using Kopru.Core.Protocol;
@@ -57,6 +58,160 @@ public sealed class BluetoothSession : IDisposable
 
 	public InputState LastInput { get; private set; }
 
+	// EXPERIMENTAL Bluetooth speaker / headset audio (null = off, the default). While it has audio, the haptics stream
+	// sends report 0x36 (haptics + one Opus frame) instead of 0x32; route and volume follow the headphone jack.
+	public SpeakerAudioSender? Speaker
+	{
+		get => speaker;
+		set
+		{
+			if (value != null)
+			{
+				value.Headset = HeadphonesPlugged;
+			}
+			bool was = speaker != null;
+			speaker = value;
+			if (was != (value != null))
+			{
+				Diagnostics.AppLog.Write(value != null ? "bt: speaker stream attached" : $"bt: speaker stream detached ({SpeakerReports} speaker reports)");
+			}
+			ApplySpeakerRoute();
+		}
+	}
+
+	private SpeakerAudioSender? speaker;
+
+	public long SpeakerReports => Interlocked.Read(ref speakerReports);
+
+	private long speakerReports;
+
+	// Feeds the game's 4-channel audio (channels 1-2 used) to Speaker and wakes the stream; no-op when Speaker is off.
+	public void PushSpeakerAudio(ReadOnlySpan<byte> audio)
+	{
+		SpeakerAudioSender? s = speaker;
+		if (s == null)
+		{
+			return;
+		}
+		s.Push(audio);
+		WakeHaptics();
+	}
+
+	// Sends the current speaker volume and route (call after changing Speaker.Volume or HeadphoneVolume).
+	public void ApplySpeakerRoute()
+	{
+		SpeakerAudioSender? s = speaker;
+		UpdateOutput(b =>
+		{
+			if (s == null)
+			{
+				AudioOutput.Clear(b);
+			}
+			else
+			{
+				AudioOutput.SetRoute(b, s.Headset, s.OutputVolume);
+			}
+		});
+	}
+
+	// Puts the speaker route and volume into an output block about to be sent (e.g. the game's own output, which would
+	// otherwise overwrite them); no change while Speaker is off.
+	public void WriteSpeakerRoute(Span<byte> block)
+	{
+		SpeakerAudioSender? s = speaker;
+		if (s != null)
+		{
+			AudioOutput.SetRoute(block, s.Headset, s.OutputVolume);
+		}
+	}
+
+	// EXPERIMENTAL Bluetooth microphone (off by default): asks for the mic in the stream-control sub-packet of every
+	// 0x32 / 0x36 report and keeps that stream running while on; reports marked as mic audio (MicPackets) go to
+	// MicReportReceived. Mic reports (MicPackets: id 0x31, byte-1 type 2) are NEVER read as gamepad input, whether or
+	// not the mic is on: measured on hardware, a controller asked once keeps sending them (about 100/s, valid input CRC)
+	// in later sessions too, and read as input they move the left stick and press random buttons.
+	// Switching off sends MicOffReports stream reports with the off value before the stream may stop (before, the stream
+	// stopped at once and the controller never heard "off"). Mic reports arriving while the mic is off trigger the same
+	// burst, at most once per StrayMicOffInterval (StopStrayMic).
+	public bool MicStreamEnabled
+	{
+		get => micStreamEnabled;
+		set
+		{
+			bool was = micStreamEnabled;
+			micStreamEnabled = value;
+			if (value != was)
+			{
+				Diagnostics.AppLog.Write(value
+					? $"bt: mic stream on (streaming {IsHapticsStreaming})"
+					: $"bt: mic stream off, sending mic off ({MicReports} mic reports, {StrayMicReports} while off, {InputReports} inputs, {RejectedReports} rejected)");
+			}
+			if (value)
+			{
+				WakeHaptics();
+			}
+			else if (was)
+			{
+				SendMicOff(MicOffReports);
+			}
+		}
+	}
+
+	// Stream reports carrying the mic-off value after the mic is switched off (about 250 ms).
+	public const int MicOffReports = SilentReportsBeforeStop;
+
+	public static readonly TimeSpan StrayMicOffInterval = TimeSpan.FromSeconds(2);
+
+	// Mic reports while the mic is off make the session send "mic off" (bounded, see MicStreamEnabled). The probe's
+	// control run turns this off to watch the controller untouched.
+	public bool StopStrayMic { get; set; } = true;
+
+	// Sends this many stream reports with the mic-off value (the stream runs at least that long) while the mic is off.
+	public void SendMicOff(int reports)
+	{
+		Volatile.Write(ref micOffToSend, Math.Max(0, reports));
+		WakeHaptics();
+	}
+
+	// Stream reports with the mic-off value still to send.
+	public int MicOffPending => Volatile.Read(ref micOffToSend);
+
+	// Mic-off stream reports sent in all (diagnostics, tests).
+	public long MicOffSent => Interlocked.Read(ref micOffSent);
+
+	private long micOffSent;
+
+	private volatile bool micStreamEnabled;
+
+	private int micOffToSend;
+
+	private long lastStrayOff = long.MinValue;
+
+	private int strayLogged;
+
+	// Raised on the reader thread with each raw mic report (only while MicStreamEnabled).
+	public event InputBodyHandler? MicReportReceived;
+
+	// Every report read, before any filtering (diagnostics: Kopru.Probe mic dumps the unknown ones).
+	public event InputBodyHandler? RawReportReceived;
+
+	public long MicReports => Interlocked.Read(ref micReports);
+
+	private long micReports;
+
+	// Mic reports read while the mic was off (kept out of the input path, not decoded).
+	public long StrayMicReports => Interlocked.Read(ref strayMicReports);
+
+	private long strayMicReports;
+
+	// Reports that were neither mic audio nor gamepad input with a valid CRC (dropped).
+	public long RejectedReports => Interlocked.Read(ref rejectedReports);
+
+	private long rejectedReports;
+
+	// Headphones in the controller's jack (input status bit), tracked whether or not the speaker is on.
+	public bool HeadphonesPlugged { get; private set; }
+
 	public long InputReports => Interlocked.Read(ref inputReports);
 
 	private long inputReports;
@@ -67,6 +222,18 @@ public sealed class BluetoothSession : IDisposable
 	public long HapticsReports => Interlocked.Read(ref hapticsReports);
 
 	private long hapticsReports;
+
+	// True while the haptics thread runs (it stops itself after a silent stretch).
+	public bool IsHapticsStreaming
+	{
+		get
+		{
+			lock (hapticsGate)
+			{
+				return hapticsThread != null;
+			}
+		}
+	}
 
 	// Raised on the reader thread for every full input report.
 	public event Action<InputState>? InputReceived;
@@ -159,7 +326,7 @@ public sealed class BluetoothSession : IDisposable
 			{
 				length = link.Read(buffer);
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
 				if (stopping)
 				{
@@ -167,6 +334,7 @@ public sealed class BluetoothSession : IDisposable
 				}
 				if (++failures >= LostAfterFailures)
 				{
+					Diagnostics.AppLog.Write($"bt: {failures} reads failed in a row, controller lost ({e.GetType().Name}: {e.Message})");
 					Lost?.Invoke();
 					return;
 				}
@@ -176,12 +344,35 @@ public sealed class BluetoothSession : IDisposable
 			failures = 0;
 			LastReadTicks = Stopwatch.GetTimestamp();
 			ReadOnlySpan<byte> report = buffer.AsSpan(0, length);
+			RawReportReceived?.Invoke(report);
+			if (MicPackets.IsMicReport(report))
+			{
+				if (micStreamEnabled)
+				{
+					Interlocked.Increment(ref micReports);
+					MicReportReceived?.Invoke(report);
+				}
+				else
+				{
+					OnStrayMicReport();
+				}
+				continue;
+			}
 			if (!BluetoothReports.InputCrcValid(report))
 			{
+				Interlocked.Increment(ref rejectedReports);
 				continue;
 			}
 			ReadOnlySpan<byte> body = InputState.Body(report);
 			LastInput = InputState.Parse(body);
+			bool plugged = AudioOutput.HeadphonesPlugged(body);
+			HeadphonesPlugged = plugged;
+			SpeakerAudioSender? s = speaker;
+			if (s != null && plugged != s.Headset)
+			{
+				s.Headset = !s.Headset;
+				ApplySpeakerRoute();
+			}
 			Interlocked.Increment(ref inputReports);
 			InputBodyReceived?.Invoke(body);
 			InputReceived?.Invoke(LastInput);
@@ -192,7 +383,8 @@ public sealed class BluetoothSession : IDisposable
 	{
 		sbyte[] left = new sbyte[BluetoothReports.HapticsFrames];
 		sbyte[] right = new sbyte[BluetoothReports.HapticsFrames];
-		byte[] report = new byte[Math.Max(link.Device.OutputLength, BluetoothReports.HapticsSize)];
+		byte[] report = new byte[Math.Max(link.Device.OutputLength, Audio.SpeakerReports.Size)];
+		byte[] opus = new byte[Audio.SpeakerReports.OpusFrameBytes];
 		long interval = (long)(BluetoothReports.HapticsInterval.TotalSeconds * Stopwatch.Frequency);
 		long next = Stopwatch.GetTimestamp();
 		int silent = 0;
@@ -203,12 +395,39 @@ public sealed class BluetoothSession : IDisposable
 			while (!stopping)
 			{
 				bool sound = Haptics.Take(left, right);
+				SpeakerAudioSender? s = speaker;
+				bool speech = s != null && s.TakeFrame(opus);
+				sound |= speech;
 				silent = sound ? 0 : silent + 1;
-				if (silent > SilentReportsBeforeStop)
+				bool micOn = micStreamEnabled;
+				bool sendingOff = !micOn && Volatile.Read(ref micOffToSend) > 0;
+				if (silent > SilentReportsBeforeStop && !micOn && !sendingOff)
 				{
 					break;
 				}
-				BluetoothReports.BuildHaptics(left, right, NextSequence(), counter++, HapticsBufferDepth, report);
+				if (speech)
+				{
+					Audio.SpeakerReports.Build(left, right, opus, s!.Headset, NextSequence(), counter++, HapticsBufferDepth, report);
+					Interlocked.Increment(ref speakerReports);
+				}
+				else
+				{
+					report.AsSpan(BluetoothReports.HapticsSize).Clear();
+					BluetoothReports.BuildHaptics(left, right, NextSequence(), counter++, HapticsBufferDepth, report);
+				}
+				if (sendingOff)
+				{
+					// Both builders write the off value (MicPackets.StreamMicOff) into the stream-control byte.
+					Interlocked.Decrement(ref micOffToSend);
+					Interlocked.Increment(ref micOffSent);
+				}
+				if (micOn)
+				{
+					MicPackets.SetStreamControl(report, true);
+					int crcAt = speech ? Audio.SpeakerReports.CrcOffset : BluetoothReports.HapticsSize - 4;
+					System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(report.AsSpan(crcAt),
+						Crc.Compute(Crc.OutputSeed, report.AsSpan(0, crcAt)));
+				}
 				try
 				{
 					link.Write(report);
@@ -230,11 +449,34 @@ public sealed class BluetoothSession : IDisposable
 				hapticsThread = null;
 			}
 		}
-		// Frames pushed while the stream was ending start it again.
-		if (!stopping && Haptics.Buffered > 0)
+		// Frames pushed while the stream was ending start it again; so does the mic stream switched on in that moment (its
+		// WakeHaptics still saw this thread and started nothing).
+		if (!stopping && (Haptics.Buffered > 0 || speaker?.Buffered > 0 || micStreamEnabled || Volatile.Read(ref micOffToSend) > 0))
 		{
 			WakeHaptics();
 		}
+	}
+
+	// A mic report while the mic is off: counted, never input; asks the controller to stop (bounded, see MicStreamEnabled).
+	private void OnStrayMicReport()
+	{
+		Interlocked.Increment(ref strayMicReports);
+		if (!StopStrayMic)
+		{
+			return;
+		}
+		long now = Stopwatch.GetTimestamp();
+		long last = Interlocked.Read(ref lastStrayOff);
+		if (last != long.MinValue && Stopwatch.GetElapsedTime(last, now) < StrayMicOffInterval)
+		{
+			return;
+		}
+		Interlocked.Exchange(ref lastStrayOff, now);
+		if (Interlocked.Exchange(ref strayLogged, 1) == 0)
+		{
+			Diagnostics.AppLog.Write($"bt: mic reports arriving while the mic is off, sending mic off (at most every {StrayMicOffInterval.TotalSeconds:F0} s)");
+		}
+		SendMicOff(MicOffReports);
 	}
 
 	private static void WaitUntil(long timestamp)

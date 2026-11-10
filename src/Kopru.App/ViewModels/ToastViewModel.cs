@@ -1,5 +1,6 @@
-﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia.Media;
+using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
 using Kopru.Core.Localization;
 
@@ -8,23 +9,38 @@ namespace Kopru.App.ViewModels;
 // One toast card: the controller drawing, title, one-line body and, when the controller's
 // battery is known, a battery glyph with the level. Warnings and errors carry a small status mark before the title; the card
 // itself stays neutral.
-public sealed class ToastViewModel(AppNotification notification, bool compact = false) : ViewModelBase
+public sealed class ToastViewModel : ViewModelBase
 {
-	public AppNotification Notification { get; } = notification;
+	public ToastViewModel(AppNotification notification, bool compact = false)
+	{
+		Notification = notification;
+		IsCompact = compact;
+		Actions = notification.Actions.Select(a => new ToastActionViewModel(a, () => ActionInvoked?.Invoke())).ToList();
+	}
 
-	// Smaller card without the header line (a full-screen app is in front).
-	public bool IsCompact { get; } = compact;
-	public bool ShowHeader => !IsCompact;
+	public AppNotification Notification { get; }
+
+	// Buttons under the text (e.g. Not Now / Always / Turn On); a click runs the action, then the toast closes.
+	public IReadOnlyList<ToastActionViewModel> Actions { get; }
+	public bool HasActions => Actions.Count > 0;
+
+	// One of the buttons was clicked (its action already ran).
+	public event Action? ActionInvoked;
+
+	// Shown while a full-screen app is in front; the card itself looks the same.
+	public bool IsCompact { get; }
 	public string AppName => AppInfo.Name;
 	public string Title => Notification.Title;
 	public string Body => Notification.Body;
 	public string CloseText => Text.NotifyClose();
-	public double CardWidth => IsCompact ? 344 : 368;
+	// Every toast has the same size; the question's buttons fit in it too.
+	public double CardWidth => 380;
+	public double CardHeight => 132;
 
 	// Visual on the left: the controller as the app draws it (the Edge drawing for an Edge).
 	public bool IsEdge => Notification.IsEdge;
-	public double ArtWidth => IsCompact ? 58 : 72;
-	public double ArtHeight => IsCompact ? 38 : 48;
+	public double ArtWidth => 90;
+	public double ArtHeight => 60;
 	// A controller that has gone away is drawn faded with its light off.
 	public bool IsControllerGone => Notification.Type is NotificationType.Disconnected or NotificationType.PoweredOffIdle;
 	public double ArtOpacity => IsControllerGone ? 0.45 : 1;
@@ -33,8 +49,8 @@ public sealed class ToastViewModel(AppNotification notification, bool compact = 
 	public bool HasBattery => Notification.Value != null;
 	public double BatteryLevel => Math.Clamp(Notification.Value ?? 0, 0, 100);
 	public bool IsCharging => Notification.IsCharging;
-	// The glyph fills green while charging; the text says so too until the battery is full.
-	public string BatteryText => IsCharging && BatteryLevel < 100 ? Text.BatteryCharging(Math.Round(BatteryLevel)) : Text.BatteryValue(Math.Round(BatteryLevel));
+	// Just the level; the glyph fills green while charging.
+	public string BatteryText => Text.BatteryValue(Math.Round(BatteryLevel));
 
 	// Status mark before the title: amber for warnings, red for errors, none otherwise.
 	public bool HasStatusMark => Notification.Kind is NotificationKind.Warning or NotificationKind.Error;
@@ -45,6 +61,18 @@ public sealed class ToastViewModel(AppNotification notification, bool compact = 
 		_ => null
 	};
 	public IBrush StatusBrush => new SolidColorBrush(Notification.Kind == NotificationKind.Error ? Color.Parse("#E5534B") : Color.Parse("#C9A24A"));
+}
+
+// One toast button.
+public sealed class ToastActionViewModel(NotificationAction action, Action done)
+{
+	public string Label => action.Label;
+	public bool IsPrimary => action.IsPrimary;
+	public IRelayCommand Command { get; } = new RelayCommand(() =>
+	{
+		action.Run();
+		done();
+	});
 }
 
 // 12x12 filled status marks (own drawings): a triangle and a circle, each with a cut-out exclamation mark.

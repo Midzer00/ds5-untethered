@@ -23,7 +23,7 @@ public static partial class Text
 		$"Sürücülerin çalışması için bilgisayarı yeniden başlatmanız gerekebilir.",
 		$"You may need to restart the computer for the drivers to work.");
 
-	public static string SetupPairTitle(Language? l = null) => Pick(l, $"Kumandayı eşleştir", $"Pair the controller");
+	public static string SetupPairTitle(Language? l = null) => Pick(l, $"Kumandayı Eşleştir", $"Pair the Controller");
 	public static string SetupPairInstructions(Language? l = null) => Pick(l,
 		$"Kumanda kapalıyken PS ve Create tuşlarına birlikte basılı tutun; ışık çubuğu hızlı hızlı yanıp sönmeye başlayınca bırakın. Sonra Windows Bluetooth ayarlarında \"Cihaz ekle\" ile kumandayı ekleyin.",
 		$"With the controller off, hold PS and Create together until the light bar flashes quickly, then let go. Then add the controller with \"Add device\" in the Windows Bluetooth settings.");
@@ -43,7 +43,7 @@ public static partial class Text
 		$"DualSense Edge bağlı.",
 		$"DualSense Edge connected.");
 
-	public static string SetupAdapterTitle(Language? l = null) => Pick(l, $"Bluetooth adaptör testi", $"Bluetooth adapter test");
+	public static string SetupAdapterTitle(Language? l = null) => Pick(l, $"Bluetooth Adaptör Testi", $"Bluetooth Adapter Test");
 	public static string SetupAdapterInstructions(Language? l = null) => Pick(l,
 		$"Kısa bir test, Bluetooth adaptörünüzün titreşim ve tetik verisini yeterince hızlı taşıyıp taşımadığını ölçer. Test sırasında kumandayı yakında tutun.",
 		$"A short test measures whether your Bluetooth adapter carries haptics and trigger data fast enough. Keep the controller close during the test.");
@@ -59,9 +59,18 @@ public static partial class Text
 		$"Bitirmek için önceki adımları tamamlayın.",
 		$"Complete the previous steps to finish.");
 
-	public static string SetupActionRecheck(Language? l = null) => Pick(l, $"Yeniden kontrol et", $"Check again");
-	public static string SetupActionDownloadUsbIp(Language? l = null) => Pick(l, $"usbip-win2'yi indir", $"Download usbip-win2");
-	public static string SetupActionDownloadHidHide(Language? l = null) => Pick(l, $"HidHide'ı indir", $"Download HidHide");
-	public static string SetupActionOpenBluetooth(Language? l = null) => Pick(l, $"Bluetooth ayarlarını aç", $"Open Bluetooth settings");
-	public static string SetupActionRunAdapterTest(Language? l = null) => Pick(l, $"Testi başlat", $"Start test");
+	public static string SetupActionRecheck(Language? l = null) => Pick(l, $"Yeniden Kontrol Et", $"Check Again");
+	public static string SetupActionDownloadUsbIp(Language? l = null) => Pick(l, $"usbip-win2'yi İndir", $"Download usbip-win2");
+	public static string SetupActionDownloadHidHide(Language? l = null) => Pick(l, $"HidHide'ı İndir", $"Download HidHide");
+	public static string SetupActionOpenBluetooth(Language? l = null) => Pick(l, $"Bluetooth Ayarlarını Aç", $"Open Bluetooth Settings");
+	public static string SetupActionRunAdapterTest(Language? l = null) => Pick(l, $"Testi Başlat", $"Start Test");
+
+	public static string SetupOptional(Language? l = null) => Pick(l, $"İsteğe Bağlı", $"Optional");
+	public static string SetupGoToOverview(Language? l = null) => Pick(l, $"Genel Bakışa Geç", $"Go To Overview");
+	public static string AdapterTestIdlePhase(Language? l = null) => Pick(l, $"Boşta Ölçülüyor…", $"Measuring At Rest…");
+	public static string AdapterTestLoadPhase(Language? l = null) => Pick(l, $"Titreşimle Ölçülüyor…", $"Measuring With Vibration…");
+	public static string AdapterTestFinishing(Language? l = null) => Pick(l, $"Sonuç Hazırlanıyor…", $"Preparing The Result…");
+	public static string AdapterTestSecondsLeft(int seconds, Language? l = null) => Pick(l, $"{seconds} sn kaldı", $"{seconds} s left");
+	public static string AdapterTestCancel(Language? l = null) => Pick(l, $"İptal", $"Cancel");
+	public static string AdapterTestCancelled(Language? l = null) => Pick(l, $"Test iptal edildi.", $"The test was cancelled.");
 }

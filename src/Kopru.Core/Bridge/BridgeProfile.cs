@@ -45,6 +45,11 @@ public interface IGameBridge
 	void ApplyProfile(BridgeProfile profile);
 
 	GameSignals TakeGameSignals();
+
+	// The virtual controller type for the game in front (per-game choice); bridges without emulation ignore it.
+	void UsePad(Kopru.Core.Virtual.VirtualPadType type)
+	{
+	}
 }
 
 // Plays the two rumble motors as haptics tones, one 3 kHz frame at a time. Not thread-safe.

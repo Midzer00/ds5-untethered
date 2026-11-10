@@ -12,12 +12,14 @@ public static class OutputBlock
 	public const int Flag1 = 1;
 	public const int MotorRight = 2;
 	public const int MotorLeft = 3;
+	public const int MuteLed = 8;
 	public const int PowerSave = 9;
 	public const int RightTrigger = 10;
 	public const int LeftTrigger = 21;
 	public const int MotorPowerReduction = 36;
 	public const int Flag2 = 38;
 	public const int LightbarSetup = 41;
+	public const int LedBrightness = 42;
 	public const int PlayerLeds = 43;
 	public const int Red = 44;
 
@@ -28,6 +30,7 @@ public static class OutputBlock
 	public const byte LeftTriggerEffect = 0x08;
 
 	// Flag1
+	public const byte MuteLedControl = 0x01;
 	public const byte PowerSaveControl = 0x02;
 	public const byte LightbarControl = 0x04;
 	public const byte PlayerLedControl = 0x10;
@@ -35,10 +38,20 @@ public static class OutputBlock
 	public const byte MotorPowerControl = 0x40;
 
 	// Flag2
+	public const byte LedBrightnessControl = 0x01;
 	public const byte LightbarSetupControl = 0x02;
 	public const byte ImprovedRumble = 0x04;
 
 	public const byte LightOut = 0x02;
+
+	// Player LED brightness (byte 42) and mute LED (byte 8) values; public DualSense output layout (the Linux
+	// hid-playstation driver's dualsense_output_report_common struct names the bytes; flag2 bit 0 enabling byte 42 and
+	// its 0 high / 1 medium / 2 low scale are the community-documented values).
+	public const byte LedBrightnessHigh = 0;
+	public const byte LedBrightnessMedium = 1;
+	public const byte LedBrightnessLow = 2;
+	public const byte MuteLedOff = 0;
+	public const byte MuteLedOn = 1;
 
 	// Haptics over Bluetooth (report 0x32) play only while report 0x31 leaves the rumble bits off and turns on power-save
 	// control, the haptics low-pass filter and motor power reduction, all at 0 (found on hardware, 2026-11-09).
@@ -63,6 +76,21 @@ public static class OutputBlock
 		block[Red] = red;
 		block[Red + 1] = green;
 		block[Red + 2] = blue;
+	}
+
+	// Player LEDs: mask bits 0..4 left to right, with their brightness.
+	public static void SetPlayerLeds(Span<byte> block, byte mask, byte brightness)
+	{
+		block[Flag1] |= PlayerLedControl;
+		block[Flag2] |= LedBrightnessControl;
+		block[PlayerLeds] = (byte)(mask & 0x1F);
+		block[LedBrightness] = brightness;
+	}
+
+	public static void SetMuteLed(Span<byte> block, byte value)
+	{
+		block[Flag1] |= MuteLedControl;
+		block[MuteLed] = value;
 	}
 
 	// Classic rumble: large is the left (heavy) motor, small the right (light) one.

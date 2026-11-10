@@ -9,3 +9,13 @@ Entries were verified online on 2026-11-09: haptics/adaptiveTriggers flags again
 - https://www.gamereactor.eu/chatting-with-team-ninja-about-nioh-2-the-complete-edition/ (Nioh 2 developer claim; not on PCGW lists, so excluded)
 
 Not verified: executable names. No exe was confirmed against a source (PCGW game pages were unreachable), so no entry is marked exeConfidence "high"; treat all exe names as best-effort and confirm on real installs.
+
+<!-- gamelist:start -->
+## Last automatic refresh (tools/Kopru.GameList)
+
+2026-11-09: read 223 games via PCGamingWiki MediaWiki API (action=parse of the two list pages); flags follow the PCGamingWiki lists (true, limited and hackable all count as listed).
+Added 149, removed 0, flags changed 8. New entries have no exe name yet ("Added from PCGamingWiki; exe name unknown"); fill them in by hand.
+
+- https://www.pcgamingwiki.com/wiki/List_of_games_that_support_Dualsense_haptic_feedback
+- https://www.pcgamingwiki.com/wiki/List_of_games_that_support_PlayStation_adaptive_triggers
+<!-- gamelist:end -->

@@ -15,7 +15,8 @@ namespace Kopru.App.Views;
 // Shows notifications as toast windows at the bottom right of the primary screen's working area (above the taskbar):
 // borderless, topmost, not activated (a game keeps the focus), no taskbar entry. Up to MaxVisible stack upwards, the newest
 // on top; each slides and fades in over 200 ms, closes itself after its duration (paused while the pointer is over it),
-// and a click opens the main window on the related page.
+// and a click opens the main window on the related page. Toast windows never take the focus, not even when clicked
+// (WS_EX_NOACTIVATE): a button on a toast works while the game keeps the keyboard and stays in front.
 public sealed class ToastHost
 {
 	public const int MaxVisible = 3;
@@ -54,7 +55,8 @@ public sealed class ToastHost
 		{
 			Close(_entries[0]);
 		}
-		var view = new ToastView { DataContext = new ToastViewModel(notification, compact) };
+		var model = new ToastViewModel(notification, compact);
+		var view = new ToastView { DataContext = model };
 		var window = new Window
 		{
 			SystemDecorations = SystemDecorations.None,
@@ -84,12 +86,14 @@ public sealed class ToastHost
 			_open(notification.Page);
 		};
 		view.Dismissed += (_, _) => Close(entry);
+		model.ActionInvoked += () => Close(entry);
 		view.PointerEntered += (_, _) => entry.Pause();
 		view.PointerExited += (_, _) => entry.Resume();
 		entry.Expired += () => Close(entry);
 		_entries.Add(entry);
 		// Shown fully transparent first, so the size is known before it is placed and faded in.
 		window.Show();
+		NoActivate(window);
 		entry.Width = window.ClientSize.Width;
 		entry.Height = window.ClientSize.Height;
 		Layout();
@@ -100,6 +104,27 @@ public sealed class ToastHost
 		}, DispatcherPriority.Background);
 		entry.Start();
 	}
+
+	// Clicks on the toast don't activate it (and so don't take the focus from a game).
+	private static void NoActivate(Window window)
+	{
+		if (!OperatingSystem.IsWindows() || window.TryGetPlatformHandle() is not { } handle || handle.Handle == IntPtr.Zero)
+		{
+			return;
+		}
+		long style = GetWindowLongPtr(handle.Handle, ExStyle).ToInt64();
+		SetWindowLongPtr(handle.Handle, ExStyle, new IntPtr(style | NoActivateStyle | ToolWindowStyle));
+	}
+
+	private const int ExStyle = -20;
+	private const long NoActivateStyle = 0x08000000;
+	private const long ToolWindowStyle = 0x00000080;
+
+	[System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+	private static extern IntPtr GetWindowLongPtr(IntPtr window, int index);
+
+	[System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+	private static extern IntPtr SetWindowLongPtr(IntPtr window, int index, IntPtr value);
 
 	private void Close(ToastEntry entry)
 	{

@@ -75,33 +75,6 @@ public class WiringTests
 	}
 
 	[AvaloniaFact]
-	public void LivePreview_ShowsRawAndTunedPositions()
-	{
-		(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
-		SticksViewModel page = vm.Sticks;
-		fake.RawInput = null;
-		page.RefreshInput();
-		Assert.False(page.HasLiveInput);
-		Assert.Equal(Text.LivePreviewNeedsBridge(), page.PreviewHint);
-
-		fake.RawInput = [140, 128, 128, 128, 100, 255, 0, 0, 0];
-		page.RefreshInput();
-		Assert.True(page.HasLiveInput);
-		Assert.True(page.LeftStick.IsLive);
-		Assert.Equal(Text.StickPreviewHint(), page.PreviewHint);
-		Assert.True(page.LeftStick.RawX > 0.05);
-		Assert.Equal(page.LeftStick.RawX, page.LeftStick.TunedX, 3);
-		Assert.Equal(100 / 255.0 * 100, page.L2.RawLevel, 3);
-
-		// A big inner deadzone keeps the slightly moved stick at the center; a trigger start above the press reads 0.
-		page.LeftStick.Inner = 30;
-		page.L2.Start = 50;
-		Assert.True(page.LeftStick.RawX > 0.05);
-		Assert.Equal(0, page.LeftStick.TunedX, 2);
-		Assert.Equal(0, page.L2.TunedLevel);
-	}
-
-	[AvaloniaFact]
 	public async Task DriftCalibration_AppliesOffsetsAndDeadzone_OrReportsWhyNot()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
@@ -184,21 +157,21 @@ public class WiringTests
 	}
 
 	[AvaloniaFact]
-	public void Latency_ShowsTheMeasuredValues_OrADash()
+	public void Latency_ShowsTheMeasuredValues_OrUnknown()
 	{
 		WithLanguage(Language.English, () =>
 		{
 			(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
-			Assert.Equal("1.2 / 3.4 ms", vm.Overview.LatencyValue);
+			Assert.Equal("1.2 ms · worst 3.4", vm.Overview.LatencyValue);
 			Assert.StartsWith(Text.LatencyValue(1.2, 3.4, 0.05), vm.Overview.LatencyTip);
 			fake.Latency = null;
-			Assert.Equal("—", vm.Overview.LatencyValue);
+			Assert.Equal(Text.HealthUnknown(), vm.Overview.LatencyValue);
 			Assert.Equal(Text.LatencyHint(), vm.Overview.LatencyTip);
 		});
 		WithLanguage(Language.Turkish, () =>
 		{
 			(MainWindowViewModel vm, _) = NewViewModel();
-			Assert.Equal("1,2 / 3,4 ms", vm.Overview.LatencyValue);
+			Assert.Equal("1,2 ms · en kötü 3,4", vm.Overview.LatencyValue);
 		});
 	}
 
@@ -357,8 +330,8 @@ public class WiringTests
 		service.GameTick();
 		Assert.Single(calls); // not again within the interval
 
-		// Another game: checked at once. No Steam game and Steam not running: nothing to show.
-		watcher.Exe = "notepad.exe";
+		// The game exits: checked at once. No Steam game and Steam not running: nothing to show.
+		watcher.Exit("Cyberpunk2077.exe");
 		service.GameTick();
 		Assert.Equal(2, calls.Count);
 		Assert.Null(calls[^1]);

@@ -11,6 +11,11 @@
   <ItemGroup>
     <EmbeddedResource Include="Games\*.json" LogicalName="Kopru.Core.Games.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Virtual\Identity\dualsense.json" LogicalName="Kopru.Core.Virtual.Identity.dualsense.json" />
+    <EmbeddedResource Include="Virtual\Identity\dualsense-edge.json" LogicalName="Kopru.Core.Virtual.Identity.dualsense-edge.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Concentus" Version="2.2.2" />
   </ItemGroup>
 
 </Project>

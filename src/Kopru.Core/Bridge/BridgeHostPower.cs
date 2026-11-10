@@ -23,14 +23,22 @@ public sealed partial class BridgeHost
 	public event Action<bool, bool>? PoweredOff;
 
 	// Turns the running controller off. False when nothing is running, its address is unknown or the disconnect failed.
-	public Task<bool> PowerOffAsync()
+	public Task<bool> PowerOffAsync() => PowerOffAsync("unspecified");
+
+	// reason: who asked (logged).
+	public Task<bool> PowerOffAsync(string reason)
 	{
 		Connection? c = current;
+		AppLog.Write($"power off requested{LogSlot}: {reason}{(c == null ? " (nothing running)" : string.Empty)}");
 		return c == null ? Task.FromResult(false) : RequestPowerOff(c, false);
 	}
 
 	private Task<bool> RequestPowerOff(Connection c, bool idle)
 	{
+		if (idle)
+		{
+			AppLog.Write($"power off requested{LogSlot}: idle for {IdleMinutes} min");
+		}
 		ulong? address;
 		try
 		{

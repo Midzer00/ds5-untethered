@@ -24,7 +24,8 @@ public enum BridgeError
 	UsbIpMissing,
 	AttachFailed,
 	ControllerOpenFailed,
-	ControllerLost
+	ControllerLost,
+	Watchdog
 }
 
 // What the UI shows. Battery is null until the first input report.
@@ -48,7 +49,10 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 
 	public const int LowBatteryPercent = 15;
 
-	private readonly IControllerSource controllers;
+	// Log detail of BridgeError.NoCapture (not user-facing; the UI shows the localized error text).
+	public const string NoCaptureDetail = "no device identity found (no capture file and no embedded identity)";
+
+	private IControllerSource controllers;
 
 	private readonly IIdentitySource identities;
 
@@ -92,7 +96,14 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		this.time = time ?? TimeProvider.System;
 	}
 
-	public static BridgeHost CreateDefault() => new(new WindowsControllerSource(), IdentitySources.Default(), new UsbIpExeAttacher());
+	public static BridgeHost CreateDefault()
+	{
+		WindowsControllerSource source = new();
+		return new(source, IdentitySources.Default(), new UsbIpExeAttacher()) { BatteryProbe = new BatteryProbe(source), StateFile = BridgeStateFile.CreateDefault(), InputSink = new Input.WindowsInputSink() };
+	}
+
+	// A running haptics stream without a new report for this long trips the watchdog. Infinite turns it off.
+	public TimeSpan HapticsStallTimeout { get; set; } = BridgeWatchdog.DefaultStallTimeout;
 
 	// How often to look for the controller while waiting (and the pause after losing it).
 	public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(1);
@@ -140,7 +151,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			{
 				// The controller is going away; the profile is applied again on the next connect.
 			}
-			if (!value.LightFromGame)
+			if (!value.LightFromGame && !InvalidateLightSender())
 			{
 				ApplyLightTo(c.Session);
 			}
@@ -215,26 +226,39 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		BridgeError.AttachFailed => Text.BridgeAttachFailed(language),
 		BridgeError.ControllerOpenFailed => Text.BridgeControllerOpenFailed(language),
 		BridgeError.ControllerLost => Text.BridgeControllerLost(language),
+		BridgeError.Watchdog => Text.BridgeWatchdog(language),
 		_ => null
 	};
 
 	public string IdleMessage(Language? language = null) => Text.IdleTimeout(IdleMinutes, language);
 
 	// Starts the service; does nothing if it is already running or waiting. Waits for a running test to finish.
-	public async Task StartAsync()
+	// A battery probe in progress is cancelled and waited for.
+	public Task StartAsync() => StartAsync("unspecified");
+
+	// reason: who asked (logged when this actually starts the service).
+	public async Task StartAsync(string reason)
 	{
-		await sessionGate.WaitAsync().ConfigureAwait(false);
+		BeginStart();
 		try
 		{
-			await StartCore().ConfigureAwait(false);
+			await sessionGate.WaitAsync().ConfigureAwait(false);
+			try
+			{
+				await StartCore(reason).ConfigureAwait(false);
+			}
+			finally
+			{
+				sessionGate.Release();
+			}
 		}
 		finally
 		{
-			sessionGate.Release();
+			EndStart();
 		}
 	}
 
-	private Task StartCore()
+	private Task StartCore(string reason)
 	{
 		lock (gate)
 		{
@@ -257,7 +281,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		}
 		if (identity == null)
 		{
-			Fail(BridgeError.NoCapture, null);
+			// Only when no identity file exists (start attempts are serialized by sessionGate, so a restart cannot cause it).
+			Fail(BridgeError.NoCapture, NoCaptureDetail);
 			return Task.CompletedTask;
 		}
 		lock (gate)
@@ -270,11 +295,15 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			CancellationToken token = cancel.Token;
 			supervisor = Task.Run(() => SuperviseAsync(identity, token));
 		}
+		Diagnostics.AppLog.Write($"bridge start{LogSlot}: {reason}");
 		return Task.CompletedTask;
 	}
 
 	// Unplugs the virtual pad, closes the controller and returns to Stopped; does nothing when already stopped.
-	public async Task StopAsync()
+	public Task StopAsync() => StopAsync("unspecified");
+
+	// reason: who asked (logged when this actually stops a running service).
+	public async Task StopAsync(string reason)
 	{
 		Task? running;
 		CancellationTokenSource? stopping;
@@ -287,6 +316,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		}
 		if (running != null)
 		{
+			Diagnostics.AppLog.Write($"bridge stop{LogSlot}: {reason}");
 			stopping!.Cancel();
 			await running.ConfigureAwait(false);
 			stopping.Dispose();
@@ -294,7 +324,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		SetState(BridgeState.Stopped);
 	}
 
-	public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
+	public async ValueTask DisposeAsync() => await StopAsync("dispose").ConfigureAwait(false);
 
 	private async Task SuperviseAsync(DeviceIdentity identity, CancellationToken token)
 	{
@@ -326,7 +356,10 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 					await Task.Delay(PollInterval, token).ConfigureAwait(false);
 					continue;
 				}
+				ReadDetailsFrom(link);
 				ApplyLightTo(connection.Session);
+				ApplySpeakerTo(connection);
+				ApplyMicTo(connection);
 				if (profile.FallbackTrigger != null)
 				{
 					connection.Bridge.ApplyProfile(profile);
@@ -363,11 +396,13 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 					return;
 				}
 				current = connection;
+				StartLightSender(connection);
 				SetState(BridgeState.Running);
 				try
 				{
 					while (!token.IsCancellationRequested && !Monitor(connection))
 					{
+						await SwapPadIfNeededAsync(connection, token).ConfigureAwait(false);
 						await Task.Delay(MonitorInterval, token).ConfigureAwait(false);
 					}
 				}
@@ -375,6 +410,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				{
 					// Stopping.
 				}
+				StopLightSender();
 				current = null;
 				await connection.CloseAsync().ConfigureAwait(false);
 				if (connection.PowerOff is { } powerOff)
@@ -385,9 +421,13 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				{
 					return;
 				}
-				if (connection.PowerOff == null)
+				if (connection.WatchdogReason is { } reason)
 				{
-					Record(BridgeError.ControllerLost, null);
+					Record(BridgeError.Watchdog, reason);
+				}
+				else if (connection.PowerOff == null)
+				{
+					Record(BridgeError.ControllerLost, connection.LostReason ?? "unknown");
 				}
 				SetState(BridgeState.WaitingForController);
 				await Task.Delay(PollInterval, token).ConfigureAwait(false);
@@ -399,6 +439,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		}
 		finally
 		{
+			StopLightSender();
 			Connection? left = current;
 			current = null;
 			if (left != null)
@@ -420,8 +461,25 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			c.LastInputAt = now;
 		}
 		TimeSpan timeout = NoInputTimeout;
-		if (c.Lost || c.PowerOff != null || (timeout >= TimeSpan.Zero && now - c.LastInputAt > timeout))
+		if (c.PowerOff != null)
 		{
+			return true;
+		}
+		if (c.Lost)
+		{
+			c.LostReason ??= "input reads failed";
+			return true;
+		}
+		if (timeout >= TimeSpan.Zero && now - c.LastInputAt > timeout)
+		{
+			c.LostReason = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+				$"no input for {(now - c.LastInputAt).TotalSeconds:F1} s ({inputs} inputs, {c.Session.RejectedReports} rejected, mic stream {c.Session.MicStreamEnabled})");
+			return true;
+		}
+		LogMicCheck(c, now);
+		if (c.Watchdog.Check(now, c.ServerAlive, c.Session.IsHapticsStreaming, haptics) is { } reason)
+		{
+			c.WatchdogReason = reason;
 			return true;
 		}
 		double seconds = (now - c.RateSince).TotalSeconds;
@@ -482,8 +540,11 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			lastError = error;
 			lastErrorDetail = detail;
 		}
-		Diagnostics.AppLog.Write($"error {error}: {detail}");
+		Diagnostics.AppLog.Write($"error {error}{LogSlot}: {detail}");
 	}
+
+	// Slots 2-4 share the log with slot 1: their lines name the slot.
+	private string LogSlot => slot > 1 ? $" (slot {slot})" : string.Empty;
 
 	private void Fail(BridgeError error, string? detail)
 	{
@@ -506,17 +567,18 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				latency = null;
 			}
 		}
-		Diagnostics.AppLog.Write($"state {next}");
+		Diagnostics.AppLog.Write($"state {next}{LogSlot}");
 		StateChanged?.Invoke(next);
 		StatusUpdated?.Invoke(Status);
 	}
 
 	// One run of the bridge for one controller connection.
-	private sealed class Connection
+	private sealed partial class Connection
 	{
 		private readonly BridgeHost host;
 
-		private readonly VirtualDualSense pad;
+		private IVirtualPad pad;
+
 
 		private UsbIpServer? server;
 
@@ -529,29 +591,38 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		public Connection(IHidLink link, DeviceIdentity identity, BridgeHost host)
 		{
 			this.host = host;
-			pad = new VirtualDualSense(CalibrationOverlay.Apply(identity, link));
+			this.identity = CalibrationOverlay.Apply(
+				EdgeIdentity.Choose(identity, link.Device.IsEdge, host.inputTransform.RemapSettings.PresentAsEdge).ForSlot(host.Slot), link);
+			pad = CreatePad(host.padType);
 			Session = new BluetoothSession(link);
-			Bridge = new ControllerBridge(Session, pad)
-			{
-				RumbleFeel = host.profile.Feel,
-				LightFromGame = host.profile.LightFromGame,
-				TriggerIntensity = host.profile.TriggerIntensity,
-				FallbackTrigger = host.profile.FallbackTrigger,
-				GameHapticsLevel = host.gameHapticsLevel,
-				RumbleLevel = host.rumbleLevel,
-				InputTransform = host.inputTransform
-			};
+			Bridge = CreateBridge();
+			host.Shortcuts.Reset();
 			DateTimeOffset now = host.time.GetUtcNow();
 			LastInputAt = LastActivityAt = RateSince = now;
+			Watchdog = new BridgeWatchdog(host.HapticsStallTimeout, now);
 			Session.Lost += () => Lost = true;
 			Session.InputBodyReceived += OnInput;
 		}
 
 		public BluetoothSession Session { get; }
 
-		public ControllerBridge Bridge { get; }
+		public ControllerBridge Bridge { get; private set; }
+
+		// The virtual DualSense (null while games get another pad type, e.g. Xbox 360: no mic endpoint).
+		public VirtualDualSense? Pad => pad as VirtualDualSense;
+
+		// The mic pipeline of this connection while the mic feature is on (BridgeHostMic).
+		public volatile Audio.MicPipeline? Mic;
 
 		public volatile bool Lost;
+
+		// Why the connection counts as lost (logged with BridgeError.ControllerLost).
+		public string? LostReason;
+
+		// Mic stream check (BridgeHostMic): when to log what came back since the mic was asked for, and the counters then.
+		public DateTimeOffset? MicCheckAt;
+
+		public long MicCheckMic, MicCheckInputs, MicCheckRejected;
 
 		public long LastInputCount;
 
@@ -563,7 +634,16 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 
 		public PowerOffRequest? PowerOff;
 
+		public readonly BridgeWatchdog Watchdog;
+
+		public string? WatchdogReason;
+
+		public bool ServerAlive => server?.IsAlive ?? false;
+
 		public readonly Diagnostics.LatencyMeter Latency = new();
+
+		// Speaker senders made for this connection; disposed after the session (its stream thread may still use one).
+		public readonly List<Audio.SpeakerAudioSender> SpeakerSenders = [];
 
 		public DateTimeOffset RateSince;
 
@@ -571,9 +651,11 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 
 		public async Task AttachAsync(CancellationToken token)
 		{
+			await host.CleanupStaleAsync(token).ConfigureAwait(false);
 			server = new UsbIpServer(pad);
 			server.Start();
-			port = await host.attacher.AttachAsync(server.Port, VirtualDualSense.BusId, token).ConfigureAwait(false);
+			port = await host.attacher.AttachAsync(server.Port, host.BusId, token).ConfigureAwait(false);
+			host.RecordAttached(port.Value, server.Port);
 		}
 
 		// Unplug first, so games never see a pad that stopped answering; then the bridge, server, controller and pad.
@@ -588,6 +670,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				try
 				{
 					await host.attacher.DetachAsync(p).ConfigureAwait(false);
+					host.ClearAttached();
 				}
 				catch (Exception)
 				{
@@ -601,6 +684,12 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				await server.DisposeAsync().ConfigureAwait(false);
 			}
 			Session.Dispose();
+			Mic?.Dispose();
+			lock (SpeakerSenders)
+			{
+				SpeakerSenders.ForEach(s => s.Dispose());
+				SpeakerSenders.Clear();
+			}
 			pad.Dispose();
 		}
 

@@ -17,8 +17,8 @@ public static partial class Text
 		$"The controller was turned off after {minutes:F0} minutes without use.");
 
 	public static string PowerOffWhenIdleSetting(Language? l = null) => Pick(l,
-		$"Kullanılmadığında kumandayı kapat",
-		$"Turn off the controller when idle");
+		$"Kullanılmadığında Kumandayı Kapat",
+		$"Turn Off the Controller When Idle");
 
 	public static string LatencyValue(double p50, double p99, double relay, Language? l = null) => Pick(l,
 		$"Bağlantı gecikmesi {p50:F1} ms (en kötü {p99:F1} ms), aktarım {relay:F2} ms",

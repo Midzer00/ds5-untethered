@@ -79,6 +79,7 @@ public static partial class DiagnosticsExport
 	{
 		string result = SeparatedMac().Replace(text, "XX:XX:XX:XX:XX:XX");
 		result = BareMac().Replace(result, "XXXXXXXXXXXX");
+		result = JsonEscapedMac().Replace(result, "XXXXXXXXXXXX");
 		result = UserPath().Replace(result, "${prefix}<user>");
 		string user = Environment.UserName;
 		if (user.Length >= 2)
@@ -178,6 +179,10 @@ public static partial class DiagnosticsExport
 	// Not after "-" so the last group of a GUID ({...-00805F9B34FB}) stays readable.
 	[GeneratedRegex(@"(?<![0-9A-Fa-f-])[0-9A-Fa-f]{12}(?![0-9A-Fa-f])")]
 	private static partial Regex BareMac();
+
+	// The same after "&" written as & (settings.json escapes it in device instance ids).
+	[GeneratedRegex(@"(?<=\\u0026)[0-9A-Fa-f]{12}(?![0-9A-Fa-f])")]
+	private static partial Regex JsonEscapedMac();
 
 	[GeneratedRegex(@"(?<prefix>(?:\\{1,2}|/)Users(?:\\{1,2}|/))[^\\/""\r\n]+", RegexOptions.IgnoreCase)]
 	private static partial Regex UserPath();

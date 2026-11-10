@@ -2,13 +2,33 @@
 using Kopru.Core.Localization;
 
 using Kopru.App.Services;
+using Kopru.Core.Bridge;
 using Kopru.Core.Games;
 
 namespace Kopru.App.Tests;
 
 // Test-only fake controller for view-model tests and screenshots: simulated battery drain, input rate jitter and latency.
-public sealed class FakeControllerService : IControllerService, IDisposable
+public sealed partial class FakeControllerService : IControllerService, ILiveInputSource, IMicLevelSource, IDisposable
 {
+	// Controller mic level and mute state for the Settings meter.
+	public double MicLevel { get; set; }
+
+	// Live input for the controller test page: the open session's handler (null while closed) and how often it opened.
+	public Action<Kopru.Core.Input.InputSnapshot>? LiveHandler { get; private set; }
+	public int LiveOpens { get; private set; }
+
+	public IDisposable OpenLiveInput(Action<Kopru.Core.Input.InputSnapshot> onSnapshot)
+	{
+		LiveOpens++;
+		LiveHandler = onSnapshot;
+		return new LiveClose(() => LiveHandler = null);
+	}
+
+	private sealed class LiveClose(Action close) : IDisposable
+	{
+		public void Dispose() => close();
+	}
+
 	private readonly Random _random = new(1234);
 	private readonly Timer? _timer;
 	private readonly Timer? _meterTimer;
@@ -19,6 +39,7 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 		Kind = kind;
 		IsConnected = kind != ControllerKind.None;
 		Games = new GameModeController(SampleCatalog, Watcher, null);
+		Games.StateChanged += _ => StateChanged?.Invoke(this, EventArgs.Empty);
 		Games.Tick();
 		if (animate)
 		{
@@ -38,6 +59,7 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 	public double LatencyMs { get; private set; } = 4.2;
 	public bool IsBridgeRunning { get; private set; }
 	public bool IsHapticsActive => IsGameConnected;
+	public bool HeadphonesPlugged { get; set; }
 	public bool IsGameConnected { get; private set; }
 	public double HapticsLeftLevel { get; private set; }
 	public double HapticsRightLevel { get; private set; }
@@ -73,6 +95,39 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 		new CatalogGame("Returnal", ["Returnal-Win64-Shipping.exe"], 1649240, true, true, "high"),
 	]);
 
+	// Health: set Health (or Connection) directly; the "can" properties follow the report.
+	public Kopru.Core.Health.HealthReport Health { get; set; } = Kopru.Core.Health.HealthReport.Build(
+		new Kopru.Core.Health.HealthEnvironment(new Kopru.Core.Setup.ComponentInfo(true, "1.0", null, true),
+			new Kopru.Core.Setup.ComponentInfo(true, "1.6", null, true), Kopru.Core.Setup.RadioState.On, [], null, null),
+		new Kopru.Core.Health.HealthRuntime([new Kopru.Core.Hid.HidDevice(@"\?\hid#{00001124-0000-1000-8000-00805f9b34fb}_fake", 0x054C, 0x0CE6, 78, 547, 64)],
+			false, Kopru.Core.Bridge.BridgeState.Stopped, Kopru.Core.Bridge.BridgeError.None, null), DateTimeOffset.Now);
+
+	public Kopru.Core.Health.ConnectionState Connection => Health.Connection;
+	public Kopru.Core.Health.LastKnownBattery? LastKnownBattery { get; set; }
+	public bool CanStartBridge => Health.CanStartBridge;
+	public string CanStartBridgeReason => Health.CanStartBridgeReason;
+	public bool CanTest => Health.CanTest;
+	public string CanTestReason => Health.CanTestReason;
+
+	// Fixes asked for, in order.
+	public List<Kopru.Core.Health.FixAction> Fixes { get; } = [];
+
+	public event EventHandler<Kopru.Core.Health.FixAction>? FixRequested;
+
+	public async Task ExecuteFix(Kopru.Core.Health.FixAction fix)
+	{
+		Fixes.Add(fix);
+		if (fix == Kopru.Core.Health.FixAction.RestartBridge)
+		{
+			await StopBridgeAsync();
+			await StartBridgeAsync();
+		}
+		else if (fix != Kopru.Core.Health.FixAction.None && !Kopru.Core.Health.HealthReport.IsHandledByService(fix))
+		{
+			FixRequested?.Invoke(this, fix);
+		}
+	}
+
 	public FakeGameWatcher Watcher { get; } = new("Cyberpunk2077.exe");
 	public GameModeController Games { get; }
 
@@ -84,6 +139,16 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 	public void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 
 	public void RaiseNotice(ServiceNotice notice) => Notice?.Invoke(this, notice);
+
+	public event EventHandler<Kopru.Core.Input.ShortcutAction>? Shortcut;
+
+	// Simulates a controller shortcut (raised on the calling thread).
+	public void RaiseShortcut(Kopru.Core.Input.ShortcutAction action) => Shortcut?.Invoke(this, action);
+
+	// Profile numbers shown on the player LEDs.
+	public List<int> ProfileIndicators { get; } = [];
+
+	public void ShowProfileIndicator(int index) => ProfileIndicators.Add(index);
 
 	public int Starts { get; private set; }
 
@@ -114,8 +179,11 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 		Starts++;
 		IsBridgeRunning = true;
 		StateChanged?.Invoke(this, EventArgs.Empty);
-		return Task.CompletedTask;
+		// Set: the start stays under way (running, like the real service) until the test completes it.
+		return StartGate?.Task ?? Task.CompletedTask;
 	}
+
+	public TaskCompletionSource? StartGate { get; set; }
 
 	// Moves the simulated haptics meter (called by a faster timer while a game is connected).
 	public void MeterTick()
@@ -153,16 +221,30 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 		return Task.CompletedTask;
 	}
 
-	public void ApplySettings(ControllerSettings settings) => Settings = settings;
+	// How often settings were pushed (one user change should be one push).
+	public int Applies { get; private set; }
+
+	public void ApplySettings(ControllerSettings settings)
+	{
+		Applies++;
+		Settings = settings;
+	}
 	public void TestHaptics(HapticSide side) => TestCount++;
 	public void TestRumble() => TestCount++;
 	public void TestTrigger(TriggerTestEffect effect) => TestCount++;
 	public void TestFallbackTrigger() => TestCount++;
 	public void TestLight(uint rgb) => TestCount++;
 
-	public async Task<AdapterTestResult> TestAdapterAsync()
+	// When set, the adapter test waits for it (tests drive progress and cancellation).
+	public TaskCompletionSource<AdapterTestResult>? AdapterGate { get; set; }
+
+	public async Task<AdapterTestResult> TestAdapterAsync(CancellationToken cancel = default)
 	{
-		await Task.Delay(30).ConfigureAwait(false);
+		if (AdapterGate is { } gate)
+		{
+			return await gate.Task.WaitAsync(cancel).ConfigureAwait(false);
+		}
+		await Task.Delay(30, cancel).ConfigureAwait(false);
 		return new AdapterTestResult(Kopru.Core.Diagnostics.AdapterVerdict.Suitable, Text.AdapterAllGood(InputRateHz));
 	}
 
@@ -189,6 +271,16 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 
 	public Task ShutdownAsync() => StopBridgeAsync();
 
+	public Kopru.Core.Hid.ControllerDetails? Details { get; set; }
+	public DateTimeOffset? ConnectedSince { get; set; }
+	public int Reconnects { get; private set; }
+
+	public Task ReconnectAsync()
+	{
+		Reconnects++;
+		return Task.CompletedTask;
+	}
+
 	public void Dispose()
 	{
 		_timer?.Dispose();
@@ -196,10 +288,74 @@ public sealed class FakeControllerService : IControllerService, IDisposable
 	}
 }
 
-// The foreground app is whatever the test sets.
-public sealed class FakeGameWatcher(string? exe) : IGameWatcher
+// The foreground app is whatever the test sets (an exe file name, null for none); recognised like the real watcher does
+// (known games only). Each exe runs as its own process until the test exits it.
+public sealed class FakeGameWatcher : IGameWatcher
 {
-	public string? Exe { get; set; } = exe;
+	private readonly FakeProcessSource _source = new();
+	private readonly GameWatcher _inner;
 
-	public ForegroundGame? Poll() => Exe == null ? null : new ForegroundGame(Exe, FakeControllerService.SampleCatalog.Find(Exe));
+	public FakeGameWatcher(string? exe, GameCatalog? catalog = null)
+	{
+		_inner = new GameWatcher(catalog ?? FakeControllerService.SampleCatalog, _source);
+		Exe = exe;
+	}
+
+	public string? Exe
+	{
+		get => _source.Current?.Exe;
+		set => _source.Show(value);
+	}
+
+	public FakeProcessSource Source => _source;
+
+	// The exe's process ends (it is no longer in front either).
+	public void Exit(string exe) => _source.Exit(exe);
+
+	public ForegroundGame? Poll() => _inner.Poll();
+
+	public bool IsRunning(ForegroundGame game) => _inner.IsRunning(game);
+
+	public IReadOnlyList<ProcessInfo> RunningApps() => _inner.RunningApps();
+
+	public IReadOnlyList<UserGame> UserGames { get => _inner.UserGames; set => _inner.UserGames = value; }
+}
+
+// Processes by exe name: Show starts one (or brings it to the front), Exit ends it.
+public sealed class FakeProcessSource : IProcessSource
+{
+	private readonly Dictionary<string, ProcessInfo> _running = new(StringComparer.OrdinalIgnoreCase);
+	private int _nextId = 1000;
+
+	public ProcessInfo? Current { get; private set; }
+
+	public void Show(string? exe, string? path = null)
+	{
+		if (exe == null)
+		{
+			Current = null;
+			return;
+		}
+		if (!_running.TryGetValue(exe, out ProcessInfo? process))
+		{
+			process = new ProcessInfo(_nextId++, exe, path);
+			_running[exe] = process;
+		}
+		Current = process;
+	}
+
+	public void Exit(string exe)
+	{
+		_running.Remove(exe);
+		if (Current != null && string.Equals(Current.Exe, exe, StringComparison.OrdinalIgnoreCase))
+		{
+			Current = null;
+		}
+	}
+
+	public ProcessInfo? Foreground() => Current;
+
+	public bool IsRunning(ProcessInfo process) => _running.Values.Any(p => p.Id == process.Id);
+
+	public IReadOnlyList<ProcessInfo> WindowedApps() => _running.Values.ToList();
 }

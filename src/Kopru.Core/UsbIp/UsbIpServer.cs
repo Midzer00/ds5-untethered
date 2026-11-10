@@ -46,6 +46,9 @@ public sealed class UsbIpServer : IAsyncDisposable
 
 	public event Action? Released;
 
+	// False once the listening socket died (or the server was disposed).
+	public bool IsAlive => acceptLoop is { IsCompleted: false };
+
 	public void Start()
 	{
 		listener.Start();

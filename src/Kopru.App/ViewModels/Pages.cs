@@ -5,129 +5,331 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
 using Kopru.Core.Localization;
+using Kopru.Core.Setup;
+using Kopru.Core.Diagnostics;
+using Kopru.Core.Health;
 
 namespace Kopru.App.ViewModels;
 
 public sealed partial class OverviewViewModel : PageViewModel
 {
+	// How often the lit buttons on the drawing follow the controller while the page is shown and the bridge runs.
+	public static readonly TimeSpan InputInterval = TimeSpan.FromMilliseconds(33);
+
 	private readonly IControllerService _service;
+	private Func<DateTimeOffset> _now = () => DateTimeOffset.Now;
+	private Avalonia.Threading.DispatcherTimer? _inputTimer;
+	private Avalonia.Threading.DispatcherTimer? _sampleTimer;
+	private bool _syncingProfile;
 
 	public OverviewViewModel(IControllerService service, SettingsState settings)
 	{
 		_service = service;
 		Settings = settings;
-		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
+		Func<FixAction, Task> fix = service.ExecuteFix;
+		HealthChips = [.. Enum.GetValues<HealthChipKind>().Select(k => new HealthChipViewModel(k, fix))];
+		Live = new LivePanelViewModel(service);
+		Live.OnStateChanged();
+		Quick = new QuickSettingsViewModel(service, settings);
+		_service.StateChanged += (_, _) => RunOnUi(() =>
+		{
+			OnPropertyChanged(string.Empty);
+			UpdateHealth();
+			Live.OnStateChanged();
+		});
+		settings.ProfilesChanged += () => RunOnUi(SyncProfiles);
+		settings.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName is nameof(SettingsState.LightColor) or nameof(SettingsState.LightIntensity) or nameof(SettingsState.LowPowerOn))
+			{
+				OnPropertyChanged(nameof(ArtLightIntensity));
+				OnPropertyChanged(nameof(ArtPlayerLeds));
+			}
+		};
+		SyncProfiles();
+		UpdateHealth();
+	}
+
+	// The clock for the last-known battery's age (tests pass a fixed one).
+	public void Attach(Func<DateTimeOffset>? now = null)
+	{
+		_now = now ?? _now;
+		UpdateHealth();
+		OnPropertyChanged(string.Empty);
 	}
 
 	public SettingsState Settings { get; }
+
+	// The live card's contents (graph history, level bars).
+	public LivePanelViewModel Live { get; }
+
+	// The quick settings card (Low Power, haptics, triggers, light, profile, speaker, microphone).
+	public QuickSettingsViewModel Quick { get; }
 	public override string Title => Text.NavOverview();
-	public string Subtitle => Text.OverviewSubtitle();
 
-	public string ConnectionLabel => Text.CardConnection();
-	public string ConnectionValue => _service.IsConnected ? Text.ConnectionBluetooth() : Text.DeviceNotConnected();
-	public string ConnectionDetail => _service.IsConnected ? _service.DeviceName + " · Bluetooth" : string.Empty;
+	// State: no controller, connected with the bridge off, bridge waiting for a game, a game connected.
 	public bool IsConnected => _service.IsConnected;
-
-	public string LatencyLabel => Text.CardLatency();
-	// Measured link delay, median / worst 1 % ("1.2 / 3.4 ms"), or a dash until measured. Unit symbol only; the numbers
-	// use the UI language's culture.
-	public string LatencyValue => _service.Latency is { } r
-		? string.Create(Localizer.Culture(Localizer.Current), $"{r.LinkP50Ms:F1} / {r.LinkP99Ms:F1} ms")
-		: "—";
-	public string LatencyTip => _service.Latency is { } r
-		? Text.LatencyValue(r.LinkP50Ms, r.LinkP99Ms, r.RelayMs) + Environment.NewLine + Text.LatencyHint()
-		: Text.LatencyHint();
-	public string RateValue => Text.InputRate(Math.Round(_service.InputRateHz));
-
-	public string BatteryLabel => Text.CardBattery();
-	public string BatteryValue => Text.BatteryValue(Math.Round(_service.BatteryPercent));
-	public string BatteryDetail => _service.IsCharging ? Text.Charging() : Text.OnBattery();
-	public double BatteryPercent => _service.BatteryPercent;
-
-	public string HapticsLabel => Text.CardHaptics();
-	public string HapticsValue => _service.IsHapticsActive ? Text.HapticsActive() : Text.HapticsIdle();
-	public string HapticsDetail => Text.HapticsFromGame();
-
 	public bool IsBridgeRunning => _service.IsBridgeRunning;
-	public string Warning => _service.Warning;
-	public bool HasWarning => !string.IsNullOrEmpty(_service.Warning);
-	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 	public bool IsStopped => !_service.IsBridgeRunning;
 	public bool IsWaiting => _service.IsBridgeRunning && !_service.IsGameConnected;
 	public bool IsRunning => _service.IsBridgeRunning && _service.IsGameConnected;
-	public string BridgeStateText => IsStopped ? Text.BridgeStateStopped() : IsWaiting ? Text.BridgeStateWaiting() : Text.BridgeStateRunning();
-	public string BridgeHeadline => IsStopped ? Text.BridgeHeadlineStopped() : IsWaiting ? Text.BridgeHeadlineWaiting() : Text.BridgeHeadlineRunning();
-	public string BridgeDetail => IsStopped ? Text.OverviewSubtitle() : IsWaiting ? Text.BridgeDetailWaiting() : Text.BridgeDetailRunning();
-	public string StatLatencyLabel => Text.StatLatency();
-	public string StatRateLabel => Text.StatInputRate();
-	public string BridgeButtonText => _service.IsBridgeRunning ? Text.BridgeStop() : Text.BridgeStart();
-	public string BridgeStatus => _service.IsBridgeRunning ? Text.BridgeStatusRunning() : Text.BridgeStatusStopped();
-
-	public string QuickTestsLabel => Text.QuickTests();
-	public string QuickSettingsLabel => Text.QuickSettings();
-	public string HapticsLeftText => Text.TestHapticsLeft();
-	public string HapticsRightText => Text.TestHapticsRight();
-	public string TriggerText => Text.TestTrigger();
-	public string LightText => Text.TestLight();
-	public string GameHapticsLabel => Text.GameHapticsLevel();
-	public string RumbleLabel => Text.RumbleLevel();
-
-	// Dashboard: header and overall state (real state only: link, bridge, warnings).
-	public string Intro => Text.OverviewIntro();
-	public bool IsOverallOk => _service.IsConnected && !HasWarning && IsRunning;
-	public bool IsOverallAttention => !_service.IsConnected || HasWarning;
-	public string OverallText => !_service.IsConnected ? Text.OverallNoController()
-		: HasWarning ? Text.OverallAttention()
-		: IsRunning ? Text.OverallOk()
-		: BridgeStateText;
-
-	// Status cards
-	public string CardConnectionLabel => Text.CardConnection();
-	public string CardBridgeLabel => Text.CardBridge();
-	public string CardControllerLabel => Text.CardController();
-	public string RowLinkLabel => Text.RowLink();
-	public string RowStatusLabel => Text.RowStatus();
-	public string RowGameLabel => Text.RowGame();
-	public string RowVirtualPadLabel => Text.RowVirtualPad();
-	public string RowModelLabel => Text.RowModel();
-	public string RowPowerLabel => Text.RowPower();
 	public bool IsGameConnected => _service.IsGameConnected;
-	// The foreground game and its mode ("Cyberpunk 2077 · DualSense supported") once one was seen.
+	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
+	public string Warning => _service.Warning;
+	public bool HasWarning => !string.IsNullOrEmpty(_service.Warning);
+	public string BridgeButtonText => _service.IsBridgeRunning ? Text.BridgeStop() : Text.BridgeStart();
+
+	// The foreground game's name once one was seen.
+	public bool HasGame => _service.Games.State.Name != null;
 	public string GameValue => _service.Games.State.Name
 		?? (_service.IsGameConnected ? Text.ValueGameConnected() : Text.ValueNoGame());
-	public string RowModeLabel => Text.RowMode();
-	public bool HasGame => _service.Games.State.Name != null;
-	public bool IsSupportedMode => HasGame && _service.Games.State.Mode == Kopru.Core.Games.GameMode.Supported;
-	// Short for the narrow card: "Supported" / "Classic".
-	public string ModeValue => !HasGame ? Text.ValueNoGame() : IsSupportedMode ? Text.OverrideSupported() : Text.ModeShortClassic();
-	public string GameDetail => GameModeText.Line(_service.Games.State);
-	public string VirtualPadValue => _service.IsBridgeRunning ? Text.ValuePluggedIn() : Text.ValueUnplugged();
-	public bool IsHapticsActive => _service.IsHapticsActive;
-	public string ModelValue => _service.IsConnected ? _service.DeviceName : Text.DeviceNoController();
-	public bool HasBattery => _service.IsConnected && _service.HasBattery;
-	public string BatteryShort => HasBattery ? BatteryValue : Text.BatteryUnknown();
-	public bool IsBatteryLow => HasBattery && !_service.IsCharging && _service.BatteryPercent <= 15;
-	public bool IsCharging => _service.IsCharging;
 
-	// Quick actions / controls / bottom strip
-	public string QuickActionsLabel => Text.QuickActions();
-	public string QuickControlsLabel => Text.QuickControls();
-	public string TriggerStrengthLabel => Text.TriggerStrength();
-	public string BrightnessLabel => Text.Brightness();
-	public string StartupLabel => Text.GroupStartup();
-	public string StartWithWindowsLabel => Text.StartWithWindows();
-	public string PowerSavingLabel => Text.GroupPowerSaving();
-	public string IdlePowerOffLabel => Text.IdlePowerOff();
-	public string LightGroupLabel => Text.NavLight();
-	public string PlayerLedsLabel => Text.PlayerLeds();
+	// The controller sub-state from the health model; a live controller wins (the model refreshes every few seconds).
+	public ConnectionState Connection => _service.IsConnected || _service.Connection.Kind != ConnectionKind.ConnectedBluetooth
+		? _service.Connection : new ConnectionState(ConnectionKind.PairedNotConnected, _service.Connection.IsEdge);
+	private BlockingIssue? Blocking => _service.Health.BlockingIssue;
+	private bool HasProblemChip => _service.Health.Chips.Any(c => c.Level == HealthLevel.Error);
+
+	// On a cable the bridge has nothing to do: shown like "no controller" with the explanation.
+	public bool IsOnCable => _service.Connection.Kind == ConnectionKind.ConnectedUsb;
+
+	// Header: one plain status line under the title ("Running · Cyberpunk 2077").
+	public string StatusLine => IsOnCable ? Connection.Label()
+		: !_service.IsConnected
+		? (IsBridgeRunning && Blocking == null ? Text.OverviewWaitingController() : Connection.Label())
+		: HasWarning || HasProblemChip ? Text.OverallAttention()
+		: IsRunning && HasGame ? Text.OverviewPlaying(GameValue)
+		: IsRunning ? Text.BridgeStateRunning()
+		: IsWaiting ? Text.BridgeStateWaiting()
+		: Text.OverviewReady();
+
+	// Header: the one action that matters now. A blocking issue with a fix (install the driver, turn Bluetooth on, pair)
+	// replaces the bridge button; otherwise the bridge, disabled with the reason when it cannot start. Accent unless it
+	// stops the bridge.
+	private FixAction PrimaryFix => _service.IsBridgeRunning ? FixAction.None : Blocking?.Fix ?? FixAction.None;
+	public string PrimaryText => PrimaryFix != FixAction.None ? HealthFixes.Label(PrimaryFix) : BridgeButtonText;
+	public bool IsPrimaryQuiet => PrimaryFix == FixAction.None && _service.IsBridgeRunning;
+	public bool CanPrimary => PrimaryFix != FixAction.None || CanToggleBridge;
+	// The reason the bridge cannot start (null: no tooltip).
+	public string? PrimaryTip => !_service.IsBridgeRunning && Blocking is { } b ? b.Reason : null;
+
+	// Stopping is always possible; starting only when nothing blocks it. Never while a start or stop is under way.
+	public bool CanToggleBridge => !_bridgeBusy && (_service.IsBridgeRunning || _service.CanStartBridge);
+
+	// A start or stop from ToggleBridge is under way.
+	private bool _bridgeBusy;
+
+	// Sidebar controller card: the virtual controller's name with a short state below it ("Kapalı", "Bağlanıyor", "Açık",
+	// "Hata"); the tooltip says what is going on or why it cannot start.
+	private HealthChip BridgeHealth => _service.Health.Chip(HealthChipKind.Bridge);
+	private bool IsBridgeProblem => BridgeHealth.Level == HealthLevel.Error;
+	private bool IsBridgeStarting => _bridgeBusy && _service.IsBridgeRunning;
+	public string VirtualLabel => Text.RowVirtualPad();
+	public string VirtualStateText =>
+		IsBridgeProblem ? Text.HealthError()
+		: IsBridgeStarting ? Text.BridgeConnecting()
+		: _service.IsBridgeRunning ? Text.HealthOn()
+		: Text.HealthOff();
+	public bool IsVirtualStateOn => _service.IsBridgeRunning && !IsBridgeProblem && !IsBridgeStarting;
+	public bool IsVirtualStateProblem => IsBridgeProblem;
+	public string VirtualStatusTip =>
+		IsBridgeStarting ? Text.HealthBridgeConnecting()
+		: _service.IsBridgeRunning && !_service.IsConnected ? Text.HealthBridgeWaiting()
+		: BridgeHealth.Level is HealthLevel.Error or HealthLevel.Warning ? BridgeHealth.Reason
+		: !_service.IsBridgeRunning && !_service.CanStartBridge ? _service.CanStartBridgeReason
+		: _service.IsBridgeRunning ? Text.BridgeStatusRunning()
+		: Text.BridgeStatusStopped();
+
+	[RelayCommand]
+	private async Task Primary()
+	{
+		if (PrimaryFix != FixAction.None)
+		{
+			await _service.ExecuteFix(PrimaryFix);
+		}
+		else if (CanToggleBridge)
+		{
+			await ToggleBridge();
+		}
+	}
+
+	// Hero: the controller drawing, faded with its light off without a controller; lit buttons while the bridge runs.
+	public double ArtOpacity => _service.IsConnected ? 1 : 0.4;
+	// Low Power darkens the light bar and the player LEDs on the drawing too.
+	public double ArtLightIntensity => _service.IsConnected && !Settings.LowPowerOn ? Settings.LightIntensity : 0;
+	public bool ArtPlayerLeds => _service.IsConnected && !Settings.LowPowerOn;
+
+	[ObservableProperty]
+	private Kopru.Core.Input.PadButtons _livePressed;
+
+	// Hero text: the game while one runs, else the controller, else why there is none and what to do.
+	public bool ShowsGame => _service.IsConnected && _service.IsBridgeRunning && HasGame;
+	public bool ShowsDevice => _service.IsConnected && !IsOnCable && !ShowsGame;
+	public bool ShowsNoController => !_service.IsConnected || IsOnCable;
+	public string GameCaption => Text.HeroGame();
+	public string DeviceCaption => Text.CardController();
+	public string DeviceName => _service.IsConnected ? _service.DeviceName : Text.DeviceNoController();
+	public string NoControllerTitle => Connection.Label();
+	public string NoControllerReason => Connection.Reason();
+	// What to press for this state (pair, turn Bluetooth on); none when the reason says it all.
+	private FixAction HeroFix => Connection.Kind switch
+	{
+		ConnectionKind.NeverPaired => FixAction.PairController,
+		ConnectionKind.BluetoothOff => FixAction.OpenBluetoothSettings,
+		_ => FixAction.None
+	};
+	public bool HasHeroAction => ShowsNoController && HeroFix != FixAction.None && HeroFix != PrimaryFix;
+	public string HeroActionText => HealthFixes.Label(HeroFix);
+
+	[RelayCommand]
+	private Task HeroAction() => HeroFix == FixAction.None ? Task.CompletedTask : _service.ExecuteFix(HeroFix);
+
+	// Battery: the live reading is in the sidebar; without a controller the hero shows the last one seen
+	// ("Last: 62% · 2 h ago").
+	public bool HasBattery => _service.IsConnected && _service.HasBattery;
+	// The live reading in the hero, next to the name: the same values the sidebar card shows ("%78 · Charging").
+	public bool ShowsBattery => HasBattery && !ShowsNoController;
+	public double BatteryPercent => _service.BatteryPercent;
+	public bool IsCharging => _service.IsCharging;
+	public string BatteryText => !HasBattery ? string.Empty
+		: _service.IsCharging ? Text.BatteryValue(Math.Round(_service.BatteryPercent)) + " · " + Text.Charging()
+		: Text.BatteryValue(Math.Round(_service.BatteryPercent));
+	// Below 20 % while not charging: the number turns amber (the glyph colours itself).
+	public bool IsBatteryLow => HasBattery && !_service.IsCharging && _service.BatteryPercent < NotificationCenter.LowBatteryPercent;
+	public string BatteryTip => _service.IsCharging ? Text.HeroBatteryChargingTip() : Text.HeroBatteryTip();
+	public string LastBatteryText => !HasBattery && _service.LastKnownBattery is { } b ? b.Describe(_now()) : string.Empty;
+	public bool HasLastBattery => LastBatteryText.Length > 0;
+	public bool ShowsLastBatteryInHero => ShowsNoController && HasLastBattery;
+
+	// DualSense supported mode for the current game (off: the other games profile).
+	public string SupportedModeLabel => Text.SupportedMode();
+	public string SupportedModeHint => Text.SupportedModeHint();
+	public string SupportedModeHelper => Text.SupportedModeHelper();
+	public string SupportedModeTip => SupportedModeLabel + Environment.NewLine + SupportedModeHint + Environment.NewLine + GameDetail;
+	public bool IsSupportedMode => _service.Games.State.Mode == Kopru.Core.Games.GameMode.Supported;
+	public string ModeValue => IsSupportedMode ? Text.ModeShortSupported() : Text.ModeShortClassic();
+	public string GameDetail => GameModeText.Line(_service.Games.State);
+	public bool IsSupportedModeOn
+	{
+		get => _service.Games.IsSupportedModeOn;
+		set
+		{
+			_service.Games.SetSupportedMode(value);
+			OnPropertyChanged();
+		}
+	}
+
+	// Profile picker.
+	public string ProfileLabel => Text.ProfileLabel();
+	public ObservableCollection<ProfileOption> Profiles { get; } = [];
+
+	[ObservableProperty]
+	private ProfileOption? _selectedProfile;
+
+	partial void OnSelectedProfileChanged(ProfileOption? value)
+	{
+		if (!_syncingProfile && value != null && value.Id != Settings.Profiles.Active.Id)
+		{
+			Settings.ActivateProfile(value.Id);
+		}
+	}
+
+	private void SyncProfiles()
+	{
+		_syncingProfile = true;
+		try
+		{
+			Profiles.Clear();
+			foreach (var p in Settings.Profiles.Profiles)
+			{
+				Profiles.Add(new ProfileOption(p.Id, SettingsState.DisplayName(p)));
+			}
+			SelectedProfile = Profiles.FirstOrDefault(o => o.Id == Settings.Profiles.Active.Id);
+		}
+		finally
+		{
+			_syncingProfile = false;
+		}
+	}
+
+	// Live panel: input rate, link delay and haptics output while the bridge runs with a controller.
+	public bool IsLive => _service.IsConnected && _service.IsBridgeRunning;
+	public bool IsNotLive => !IsLive;
+	public string LiveTitle => Text.LiveTitle();
+	public string LiveIdle => Text.LiveIdle();
+	public string StatRateLabel => Text.StatInputRate();
+	public string StatLatencyLabel => Text.StatLatency();
+	public string RateValue => Text.InputRate(Math.Round(_service.InputRateHz));
+	public bool HasLatency => _service.Latency != null;
+	public string LatencyValue => _service.Latency is { } r ? Text.LatencyShort(r.LinkP50Ms, r.LinkP99Ms) : Text.HealthUnknown();
+	public string LatencyTip => _service.Latency is { } r
+		? Text.LatencyValue(r.LinkP50Ms, r.LinkP99Ms, r.RelayMs) + Environment.NewLine + Text.LatencyHint()
+		: Text.LatencyHint();
+	// Worst-case delay: green under 10 ms, amber under 20 ms, red above.
+	public bool IsLatencyGood => _service.Latency is { LinkP99Ms: < 10 };
+	public bool IsLatencyFair => _service.Latency is { LinkP99Ms: >= 10 and < 20 };
+	public bool IsLatencyPoor => _service.Latency is { LinkP99Ms: >= 20 };
+	public string HapticsLabel => Text.CardHaptics();
+	public string LeftShort => Text.LeftShort();
+	public string RightShort => Text.RightShort();
+	public double HapticsLeft => _service.HapticsLeftLevel * 100;
+	public double HapticsRight => _service.HapticsRightLevel * 100;
+
+	// Health strip: the model's five chips, shown one by one only when one needs attention; otherwise one quiet line.
+	public IReadOnlyList<HealthChipViewModel> HealthChips { get; }
+	public bool IsHealthAllGood => HealthChips.All(c => !c.IsAttention && !c.IsProblem);
+	public bool ShowsHealthChips => !IsHealthAllGood;
+	public string HealthSummary => Text.HealthAllGood(string.Join(", ", HealthChips.Select(c => c.Name.Trim()).Where(n => n.Length > 0)));
+
+	public HealthChipViewModel Chip(HealthChipKind kind) => HealthChips.First(c => c.Kind == kind);
 
 	// Steam Input warning (only when it may take the controller).
 	public bool HasSteamWarning => SteamInputText.IsWarning(_service.SteamInput);
 	public string SteamWarning => HasSteamWarning ? _service.SteamInput!.Advice : string.Empty;
-	// Product name, the same in every language.
-	public string SteamTitle => "Steam Input";
 
-	// Turn off controller quick action
+	private void UpdateHealth()
+	{
+		foreach (Kopru.Core.Health.HealthChip chip in _service.Health.Chips)
+		{
+			HealthChips.FirstOrDefault(c => c.Kind == chip.Kind)?.Set(chip);
+		}
+		OnPropertyChanged(nameof(IsHealthAllGood));
+		OnPropertyChanged(nameof(ShowsHealthChips));
+		OnPropertyChanged(nameof(HealthSummary));
+	}
+
+	// Shown or left: while shown, the drawing follows the controller's buttons (when the bridge runs).
+	public void SetVisible(bool visible)
+	{
+		if (visible && _inputTimer == null)
+		{
+			_inputTimer = new Avalonia.Threading.DispatcherTimer(InputInterval, Avalonia.Threading.DispatcherPriority.Background, (_, _) => ReadInput());
+			_inputTimer.Start();
+			// The graph covers the time the page is shown: one sample a second.
+			_sampleTimer = new Avalonia.Threading.DispatcherTimer(TimeSpan.FromSeconds(1), Avalonia.Threading.DispatcherPriority.Background, (_, _) => Live.Sample());
+			_sampleTimer.Start();
+			UpdateHealth();
+		}
+		else if (!visible && _inputTimer != null)
+		{
+			_inputTimer.Stop();
+			_inputTimer = null;
+			_sampleTimer?.Stop();
+			_sampleTimer = null;
+			LivePressed = Kopru.Core.Input.PadButtons.None;
+		}
+	}
+
+	private void ReadInput()
+	{
+		Live.Follow();
+		byte[]? raw = _service.IsBridgeRunning ? _service.RawInput : null;
+		LivePressed = raw is { Length: >= 9 }
+			? Kopru.Core.Input.InputSnapshot.DecodeButtons(raw[7], raw[8], raw.Length > 9 ? raw[9] : (byte)0)
+			: Kopru.Core.Input.PadButtons.None;
+	}
+
+	// Turn off controller (only offered with a controller).
 	public string PowerOffText => Text.TurnOffController();
 	public bool CanPowerOff => _service.IsConnected && !IsPoweringOff;
 	public bool HasPowerOffResult => !string.IsNullOrEmpty(PowerOffResult);
@@ -162,24 +364,31 @@ public sealed partial class OverviewViewModel : PageViewModel
 	[RelayCommand]
 	private async Task ToggleBridge()
 	{
-		if (_service.IsBridgeRunning)
+		// While a start or stop is under way a second press (the Overview button, the primary action) does nothing and the
+		// sidebar card says it is connecting.
+		if (_bridgeBusy)
 		{
-			await _service.StopBridgeAsync();
+			return;
 		}
-		else
+		_bridgeBusy = true;
+		OnPropertyChanged(string.Empty);
+		try
 		{
-			await _service.StartBridgeAsync();
+			if (_service.IsBridgeRunning)
+			{
+				await _service.StopBridgeAsync();
+			}
+			else
+			{
+				await _service.StartBridgeAsync();
+			}
+		}
+		finally
+		{
+			_bridgeBusy = false;
+			RunOnUi(() => OnPropertyChanged(string.Empty));
 		}
 	}
-
-	[RelayCommand]
-	private void TestHaptics(HapticSide side) => _service.TestHaptics(side);
-
-	[RelayCommand]
-	private void TestTrigger() => _service.TestTrigger(TriggerTestEffect.Weapon);
-
-	[RelayCommand]
-	private void TestLight() => _service.TestLight(Settings.LightbarColour);
 }
 
 public sealed class TriggerEffectItem(TriggerTestEffect effect, Func<string> name, Func<string> hint)
@@ -189,7 +398,8 @@ public sealed class TriggerEffectItem(TriggerTestEffect effect, Func<string> nam
 	public string Hint => hint();
 }
 
-public sealed partial class TriggersViewModel : PageViewModel
+// Trigger effects to try and the trigger strength: the Triggers tab of the controller page.
+public sealed partial class TriggersViewModel : ViewModelBase
 {
 	private readonly IControllerService _service;
 
@@ -209,11 +419,10 @@ public sealed partial class TriggersViewModel : PageViewModel
 
 	public SettingsState Settings { get; }
 	public IReadOnlyList<TriggerEffectItem> Effects { get; private set; }
-	public override string Title => Text.NavTriggers();
-	public string Intro => Text.TriggersIntro();
+	public string Intro => Text.TriggerEffectsHint();
 	public string StrengthLabel => Text.TriggerStrength();
 	public string StrengthHint => Text.TriggerStrengthHint();
-	public string EffectsLabel => Text.TriggerTestEffects();
+	public string EffectsLabel => Text.TesterTriggerEffects();
 
 	[ObservableProperty]
 	private TriggerTestEffect _activeEffect = TriggerTestEffect.Off;
@@ -273,6 +482,7 @@ public sealed partial class LightViewModel : PageViewModel
 			new(0xF2F2F2, () => Text.ColourWhite()),
 		];
 		_selectedPreset = Presets.FirstOrDefault(p => p.Rgb == settings.LightbarColour) ?? Presets[0];
+		InitEffects();
 	}
 
 	public SettingsState Settings { get; }
@@ -300,6 +510,7 @@ public sealed partial class LightViewModel : PageViewModel
 	{
 		ColourPreset selected = SelectedPreset;
 		Presets = Presets.ToList();
+		RefreshChoices();
 		base.OnLanguageChanged();
 		SelectedPreset = selected;
 	}
@@ -321,9 +532,12 @@ public sealed partial class SettingsViewModel : PageViewModel
 		_service = service;
 		_runWizard = runWizard;
 		Settings = settings;
+		Info = new ControllerInfoViewModel(service);
 		// Language names are shown in their own language (endonyms) on purpose.
 		Languages = BuildLanguages();
 		_selectedLanguage = Languages.First(o => o.Language == Localizer.Chosen);
+		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(nameof(HeadphonesPlugged)));
+		InitMic();
 	}
 
 	public SettingsState Settings { get; }
@@ -336,6 +550,12 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string IdlePowerOffLabel => Text.IdlePowerOff();
 	public string IdlePowerOffHint => Text.IdlePowerOffHint();
 	public string ToolsLabel => Text.Tools();
+	public string AboutLabel => Text.About();
+	public string AppName => AppInfo.Name;
+	public string VersionText => Text.AboutVersion(AppInfo.Version);
+	public string AboutTagline => Text.AboutTagline();
+	// The compact controller line under the version.
+	public ControllerInfoViewModel Info { get; }
 	public string RunWizardText => Text.RunSetupWizard();
 	public string TestAdapterText => Text.TestBluetoothAdapter();
 	public string ExportText => Text.ExportDiagnostics();
@@ -348,6 +568,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string ExportActionText => Text.ActionExport();
 	public string PowerOffWhenIdleLabel => Text.PowerOffWhenIdleSetting();
 	public string PowerOffWhenIdleHint => Text.PowerOffWhenIdleHint();
+	public string AutoLowPowerLabel => Text.AutoLowPower();
+	public string AutoLowPowerHint => Text.AutoLowPowerHint();
 	public string KeepInTrayLabel => Text.KeepInTray();
 	public string KeepInTrayHint => Text.KeepInTrayHint();
 	public string NotificationsLabel => Text.GroupNotifications();
@@ -369,6 +591,15 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string NotifyErrorsHint => Text.NotifyErrorsHint();
 	public string NotifyHidHideLabel => Text.NotifyHidHideSetting();
 	public string NotifyHidHideHint => Text.NotifyHidHideHint();
+	public string SpeakerGroupLabel => Text.GroupControllerSpeaker();
+	public string SpeakerSendLabel => Text.SpeakerSendGameAudio();
+	public string SpeakerSendHint => Text.SpeakerSendGameAudioHint();
+	public string SpeakerVolumeLabel => Text.SpeakerVolume();
+	public string HeadphoneVolumeLabel => Text.HeadphoneVolume();
+	public string HeadphonesPluggedText => Text.HeadphonesPlugged();
+
+	// Headphones detected in the controller's jack (shown under the speaker volumes).
+	public bool HeadphonesPlugged => _service.HeadphonesPlugged;
 
 	// Asks where to save a file (suggested name in, local path out; null when cancelled). Set by the view.
 	public Func<string, Task<string?>>? PickSavePath { get; set; }

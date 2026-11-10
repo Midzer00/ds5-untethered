@@ -8,9 +8,12 @@ namespace Kopru.Core.Virtual;
 // A wired DualSense made of software, served over USB/IP: answers the host's control requests from the captured
 // identity, hands games' output (triggers, lights, rumble) and audio (speaker + haptics, 4 channels) to the app, and
 // gives games the input the app pushes. Isochronous audio is paced on a 1 ms frame clock, as a real bus would.
-public sealed class VirtualDualSense : IUsbIpDevice, IDisposable
+public sealed class VirtualDualSense : IVirtualPad
 {
 	public const string BusId = "1-1";
+
+	// The bus id of the pad in a player slot (1-4): slot 1 keeps BusId, the others are "1-2".."1-4".
+	public static string BusIdFor(int slot) => slot <= 1 ? BusId : "1-" + slot.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
 	// USB/IP endpoint numbers (without the direction bit).
 	public const uint HidInEndpoint = 4;
@@ -20,7 +23,11 @@ public sealed class VirtualDualSense : IUsbIpDevice, IDisposable
 
 	public const int AudioChannels = 4;
 	public const int AudioRate = 48000;
-	public const int MicBytesPerFrame = 48 * 2 * 2;
+	public const int MicChannels = 2;
+	public const int MicBytesPerFrame = 48 * MicChannels * 2;
+
+	// Fills the mic endpoint's packets (null: silence, as before).
+	public volatile Audio.IMicFeed? Mic;
 
 	private readonly DeviceIdentity identity;
 
@@ -48,7 +55,7 @@ public sealed class VirtualDualSense : IUsbIpDevice, IDisposable
 
 	private sealed record IsoCompletion(uint Sequence, double DueMs, Action<SubmitResult> Complete, SubmitResult Result);
 
-	public VirtualDualSense(DeviceIdentity identity)
+	public VirtualDualSense(DeviceIdentity identity, string busId = BusId)
 	{
 		this.identity = identity;
 		latestInput = new byte[64];
@@ -56,13 +63,15 @@ public sealed class VirtualDualSense : IUsbIpDevice, IDisposable
 		latestInput[1] = latestInput[2] = latestInput[3] = latestInput[4] = 0x80;
 		latestInput[8] = 0x08;
 		byte[] d = identity.DeviceDescriptor;
-		Info = new UsbIpDeviceInfo("/kopru/dualsense", BusId, 1, 1, UsbIpCodes.SpeedFull, (ushort)(d[8] | (d[9] << 8)), (ushort)(d[10] | (d[11] << 8)),
+		Info = new UsbIpDeviceInfo("/kopru/dualsense", busId, 1, 1, UsbIpCodes.SpeedFull, (ushort)(d[8] | (d[9] << 8)), (ushort)(d[10] | (d[11] << 8)),
 			(ushort)(d[12] | (d[13] << 8)), d[4], d[5], d[6], identity.ConfigurationDescriptor[5], d[17], identity.Interfaces());
 		isoThread = new Thread(IsoLoop) { Name = "Virtual DualSense frames", IsBackground = true, Priority = ThreadPriority.AboveNormal };
 		isoThread.Start();
 	}
 
 	public UsbIpDeviceInfo Info { get; }
+
+	public VirtualPadType Type => VirtualPadType.DualSense;
 
 	// A game's output report (0x02: triggers, lights, rumble), by interrupt OUT or SET_REPORT.
 	public event Action<byte[]>? OutputReceived;
@@ -309,8 +318,17 @@ public sealed class VirtualDualSense : IUsbIpDevice, IDisposable
 			done[i] = command.Packets[i] with { ActualLength = actual, Status = 0 };
 			offset += actual;
 		}
+		byte[] data = new byte[offset];
+		try
+		{
+			Mic?.Fill(data, MicChannels);
+		}
+		catch (Exception)
+		{
+			Array.Clear(data);
+		}
 		int startFrame = NextFrames(command, out double dueMs);
-		Schedule(command.Sequence, dueMs, complete, new SubmitResult(0, offset, new byte[offset], startFrame, done));
+		Schedule(command.Sequence, dueMs, complete, new SubmitResult(0, offset, data, startFrame, done));
 	}
 
 	// Consecutive transfers get consecutive frames; a gap (the host was late) starts again from now.

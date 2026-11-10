@@ -24,6 +24,9 @@ public interface ISteamEnvironment
 	string ReadAllText(string path);
 	IEnumerable<string> GetDirectories(string path);
 	DateTime GetLastWriteTimeUtc(string path);
+
+	// Files in a folder matching a pattern such as "appmanifest_*.acf" (none when the folder is missing).
+	IEnumerable<string> GetFiles(string path, string pattern) => [];
 }
 
 public sealed class SystemSteamEnvironment : ISteamEnvironment
@@ -65,6 +68,7 @@ public sealed class SystemSteamEnvironment : ISteamEnvironment
 	public string ReadAllText(string path) => File.ReadAllText(path);
 	public IEnumerable<string> GetDirectories(string path) => Directory.Exists(path) ? Directory.GetDirectories(path) : [];
 	public DateTime GetLastWriteTimeUtc(string path) => File.GetLastWriteTimeUtc(path);
+	public IEnumerable<string> GetFiles(string path, string pattern) => Directory.Exists(path) ? Directory.GetFiles(path, pattern) : [];
 }
 
 // Detects whether Steam Input may grab the controller. What it relies on (from community knowledge of Steam's

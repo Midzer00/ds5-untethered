@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.ShortcutsPanel" x:DataType="vm:ShortcutsViewModel">
+  <StackPanel>
+    <TextBlock Classes="section" Text="{Binding Title}" Margin="0,24,0,8" />
+    <Border Classes="panel" Padding="20,0" Name="ShortcutsGroup">
+      <StackPanel>
+        <!-- The switch -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+          <StackPanel Spacing="3" Margin="0,0,24,0" VerticalAlignment="Center">
+            <TextBlock Classes="label" Text="{Binding Title}" />
+            <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.ShortcutsEnabled}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding Title}" />
+        </Grid>
+        <Border Classes="divider" />
+        <!-- Legend: the buttons on the left, what they do on the right -->
+        <ItemsControl ItemsSource="{Binding Legend}" Margin="0,8,0,10" IsEnabled="{Binding Settings.ShortcutsEnabled}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ShortcutLegendItem">
+              <Grid ColumnDefinitions="240,*" Margin="0,5">
+                <Border Classes="chip" HorizontalAlignment="Left" Height="28" Padding="12,0">
+                  <TextBlock Text="{Binding Keys}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                </Border>
+                <TextBlock Grid.Column="1" Classes="body" Text="{Binding Does}" VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

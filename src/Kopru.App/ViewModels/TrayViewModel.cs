@@ -15,7 +15,8 @@ public interface IAppShell
 	void Exit();
 }
 
-// The tray icon: tooltip and menu (open, start/stop bridge, turn off controller, notifications on/off, exit).
+// The tray icon: tooltip and menu (open, start/stop bridge, turn off controller, the supported mode switch, notifications
+// on/off, exit).
 public sealed partial class TrayViewModel : ViewModelBase
 {
 	private readonly IControllerService _service;
@@ -33,6 +34,10 @@ public sealed partial class TrayViewModel : ViewModelBase
 			if (e.PropertyName == nameof(SettingsState.NotificationsEnabled))
 			{
 				OnPropertyChanged(nameof(NotificationsText));
+			}
+			else if (e.PropertyName == nameof(SettingsState.DesktopModeOn))
+			{
+				OnPropertyChanged(nameof(IsDesktopModeOn));
 			}
 		};
 	}
@@ -53,8 +58,14 @@ public sealed partial class TrayViewModel : ViewModelBase
 	public string OpenText => Text.TrayOpen();
 	public string BridgeText => _service.IsBridgeRunning ? Text.BridgeStop() : Text.BridgeStart();
 	public string PowerOffText => Text.TurnOffController();
+	public string ReconnectText => Text.ReconnectController();
+	public bool CanReconnect => _service.IsConnected || _service.Details != null;
 	public bool CanPowerOff => _service.IsConnected && _service.IsBridgeRunning;
+	public string SupportedModeText => Text.TraySupportedMode();
+	public bool IsSupportedModeOn => _service.Games.IsSupportedModeOn;
 	public string NotificationsText => _settings.NotificationsEnabled ? Text.TrayNotificationsOff() : Text.TrayNotificationsOn();
+	public string DesktopModeText => Text.TrayDesktopMode();
+	public bool IsDesktopModeOn => _settings.DesktopModeOn;
 	public string ExitText => Text.TrayExit();
 
 	[RelayCommand]
@@ -65,6 +76,19 @@ public sealed partial class TrayViewModel : ViewModelBase
 
 	[RelayCommand]
 	private Task PowerOff() => _service.PowerOffAsync();
+
+	[RelayCommand]
+	private Task Reconnect() => _service.ReconnectAsync();
+
+	[RelayCommand]
+	private void ToggleSupportedMode()
+	{
+		_service.Games.SetSupportedMode(!_service.Games.IsSupportedModeOn);
+		OnPropertyChanged(nameof(IsSupportedModeOn));
+	}
+
+	[RelayCommand]
+	private void ToggleDesktopMode() => _settings.DesktopModeOn = !_settings.DesktopModeOn;
 
 	[RelayCommand]
 	private void ToggleNotifications() => _settings.NotificationsEnabled = !_settings.NotificationsEnabled;

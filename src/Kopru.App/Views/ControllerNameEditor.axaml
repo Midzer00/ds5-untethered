@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls"
+             x:Class="Kopru.App.Views.ControllerNameEditor" x:DataType="vm:ControllerNameViewModel">
+  <UserControl.Styles>
+    <!-- Small quiet icon button next to the name: nothing at rest, a faint fill on hover, sinks when pressed, accent edge on focus -->
+    <Style Selector="Button.pencil">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+    </Style>
+    <Style Selector="Button.pencil:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" /></Style>
+    <Style Selector="Button.pencil:pressed"><Setter Property="Background" Value="{StaticResource QuietFillPressedBrush}" /></Style>
+    <Style Selector="Button.pencil:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
+    <Style Selector="Button.pencil > Path">
+      <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
+      <Setter Property="StrokeThickness" Value="1.6" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="StrokeJoin" Value="Round" />
+      <Setter Property="Width" Value="13" />
+      <Setter Property="Height" Value="13" />
+      <Setter Property="Stretch" Value="Uniform" />
+    </Style>
+    <Style Selector="Button.pencil:pointerover > Path"><Setter Property="Stroke" Value="{StaticResource TextBrush}" /></Style>
+  </UserControl.Styles>
+  <Panel>
+    <!-- The name with the pencil right after it (the name wraps to two lines and trims, the pencil stays) -->
+    <DockPanel HorizontalAlignment="Left" IsVisible="{Binding IsShowing}">
+      <Button DockPanel.Dock="Right" Classes="pencil" Theme="{StaticResource QuietButton}" Margin="4,0,0,0" Command="{Binding EditCommand}"
+              IsVisible="{Binding CanEdit}" ToolTip.Tip="{Binding EditTip}" AutomationProperties.Name="{Binding EditTip}">
+        <Path Data="{x:Static c:IconPaths.Pencil}" />
+      </Button>
+      <TextBlock Name="NameText" Classes="label" FontWeight="SemiBold" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="Wrap"
+                 MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+    </DockPanel>
+    <TextBox Name="NameBox" IsVisible="{Binding IsEditing}" Text="{Binding Draft}" MaxLength="{Binding MaxLength}" Height="28" MinHeight="28"
+             Padding="8,0" FontSize="{StaticResource FontBody}" VerticalContentAlignment="Center" ToolTip.Tip="{Binding DraftHint}"
+             AutomationProperties.Name="{Binding EditTip}" />
+  </Panel>
+</UserControl>

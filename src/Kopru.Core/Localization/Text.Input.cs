@@ -30,15 +30,15 @@ public static partial class Text
 		_ => Pick(l, $"Doğrusal", $"Linear")
 	};
 
-	public static string InnerDeadzoneLabel(Language? l = null) => Pick(l, $"İç ölü bölge", $"Inner deadzone");
+	public static string InnerDeadzoneLabel(Language? l = null) => Pick(l, $"İç Ölü Bölge", $"Inner Deadzone");
 
-	public static string OuterDeadzoneLabel(Language? l = null) => Pick(l, $"Dış ölü bölge", $"Outer deadzone");
+	public static string OuterDeadzoneLabel(Language? l = null) => Pick(l, $"Dış Ölü Bölge", $"Outer Deadzone");
 
-	public static string AntiDeadzoneLabel(Language? l = null) => Pick(l, $"Ölü bölge telafisi", $"Anti-deadzone");
+	public static string AntiDeadzoneLabel(Language? l = null) => Pick(l, $"Ölü Bölge Telafisi", $"Anti-Deadzone");
 
-	public static string ResponseCurveLabel(Language? l = null) => Pick(l, $"Tepki eğrisi", $"Response curve");
+	public static string ResponseCurveLabel(Language? l = null) => Pick(l, $"Tepki Eğrisi", $"Response Curve");
 
-	public static string TriggerStartLabel(Language? l = null) => Pick(l, $"Tetik başlangıcı", $"Trigger start");
+	public static string TriggerStartLabel(Language? l = null) => Pick(l, $"Tetik Başlangıcı", $"Trigger Start");
 
-	public static string TriggerEndLabel(Language? l = null) => Pick(l, $"Tetik sonu", $"Trigger end");
+	public static string TriggerEndLabel(Language? l = null) => Pick(l, $"Tetik Sonu", $"Trigger End");
 }
