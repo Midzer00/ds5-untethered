@@ -5,7 +5,7 @@
       <Setter Property="Width" Value="28" />
       <Setter Property="Height" Value="28" />
       <Setter Property="CornerRadius" Value="14" />
-      <Setter Property="Background" Value="#10FFFFFF" />
+      <Setter Property="Background" Value="{StaticResource StageBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="VerticalAlignment" Value="Center" />
@@ -15,46 +15,44 @@
     </Style>
   </UserControl.Styles>
   <StackPanel>
-    <TextBlock Classes="section" Text="{Binding Title}" Margin="0,0,0,8" />
-    <Border Classes="panel" Padding="20,14,20,8" Name="ProfilesGroup">
+    <TextBlock Classes="section" Text="{Binding Title}" />
+    <Border Classes="panel" Padding="20,0" Name="ProfilesGroup">
       <StackPanel>
-        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-          <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" Margin="0,0,24,0" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-            <Button Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Command="{Binding ImportCommand}" Content="{Binding ImportText}" />
-            <Button Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Command="{Binding NewCommand}" Content="{Binding NewText}" />
+        <!-- What profiles are, the actions on the right -->
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
+            <TextBlock Classes="caption" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" Margin="0">
+            <Button Theme="{StaticResource QuietButton}" Command="{Binding ImportCommand}" Content="{Binding ImportText}" />
+            <Button Theme="{StaticResource QuietButton}" Command="{Binding NewCommand}" Content="{Binding NewText}" />
           </StackPanel>
         </Grid>
-        <TextBlock Classes="caption" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" Margin="0,0,0,8" />
-        <Border Classes="divider" />
         <ItemsControl ItemsSource="{Binding Items}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ProfileItemViewModel">
               <StackPanel>
-                <Grid ColumnDefinitions="Auto,12,*,12,Auto" Margin="0,10">
+                <Border Classes="divider" />
+                <Grid Classes="settingRow" ColumnDefinitions="Auto,*,Auto">
                   <Border Classes="profileIndex" Classes.active="{Binding IsActive}">
                     <TextBlock Text="{Binding IndexText}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   </Border>
                   <!-- Name and where it is used, or the rename box -->
-                  <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding IsShowingName}">
+                  <StackPanel Grid.Column="1" Spacing="2" IsVisible="{Binding IsShowingName}">
                     <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                     <TextBlock Classes="caption" Text="{Binding GamesText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsRenaming}">
-                    <TextBox Text="{Binding EditName}" Width="240" MaxLength="40" VerticalAlignment="Center" />
-                    <Button Theme="{StaticResource PrimaryButton}" Height="32" Padding="12,0" Command="{Binding CommitRenameCommand}" Content="{Binding SaveText}" IsDefault="True" />
-                    <Button Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Command="{Binding CancelRenameCommand}" Content="{Binding CancelText}" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" IsVisible="{Binding IsRenaming}">
+                    <TextBox Text="{Binding EditName}" Width="{StaticResource ControlWidth}" MaxLength="40" VerticalAlignment="Center" />
+                    <Button Theme="{StaticResource PrimaryButton}" Command="{Binding CommitRenameCommand}" Content="{Binding SaveText}" IsDefault="True" />
+                    <Button Theme="{StaticResource QuietButton}" Command="{Binding CancelRenameCommand}" Content="{Binding CancelText}" />
                   </StackPanel>
-                  <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Border Classes="chip" IsVisible="{Binding IsActive}">
-                      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <Ellipse Classes="indicator on" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding ActiveText}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      </StackPanel>
-                    </Border>
-                    <Button Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" IsVisible="{Binding IsInactive}" Command="{Binding ActivateCommand}"
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" Margin="0">
+                    <TextBlock Classes="stateText on" IsVisible="{Binding IsActive}" Text="{Binding ActiveText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <Button Theme="{StaticResource QuietButton}" IsVisible="{Binding IsInactive}" Command="{Binding ActivateCommand}"
                             Content="{Binding ActivateText}" />
-                    <Button Theme="{StaticResource QuietButton}" Height="32" Width="36" Padding="0" ToolTip.Tip="{Binding MoreText}"
+                    <Button Theme="{StaticResource QuietButton}" Width="34" MinWidth="34" Padding="0" ToolTip.Tip="{Binding MoreText}"
                             AutomationProperties.Name="{Binding MoreText}">
                       <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
@@ -72,7 +70,6 @@
                     </Button>
                   </StackPanel>
                 </Grid>
-                <Border Classes="divider" />
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

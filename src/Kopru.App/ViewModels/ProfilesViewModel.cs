@@ -315,6 +315,8 @@ public sealed class ShortcutsViewModel : ViewModelBase
 	public SettingsState Settings { get; }
 	public string Title => Text.ShortcutsSection();
 	public string Hint => Text.ShortcutsHint();
+	public string OpenAppLabel => Text.PsOpenApp();
+	public string OpenAppHint => Text.PsOpenAppHint();
 
 	public IReadOnlyList<ShortcutLegendItem> Legend =>
 	[

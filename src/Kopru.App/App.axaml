@@ -3,6 +3,7 @@
              xmlns:semi="https://irihi.tech/semi"
              xmlns:vm="using:Kopru.App.ViewModels"
              xmlns:views="using:Kopru.App.Views"
+             xmlns:c="using:Kopru.App.Controls"
              x:Class="Kopru.App.App"
              RequestedThemeVariant="Dark">
 
@@ -41,6 +42,31 @@
       <x:Double x:Key="FontH2">14</x:Double>
       <x:Double x:Key="FontBody">13</x:Double>
       <x:Double x:Key="FontCaption">12</x:Double>
+      <!--
+        Page layout rules (every page follows them):
+        - Column: a page's content sits in one centred column, at most PageMaxWidth wide (settings-like pages: forms, sliders,
+          rows) or PageMaxWidthWide (dashboards and lists). Use the "page" class (with "wide" for the wider column) on the page's
+          root panel instead of a MaxWidth/Margin of its own. The header (title, description, state, header buttons) lives in the
+          same column, so its right-hand items end on the cards' right edge.
+        - Height: cards size to their content and align to the top (Border.panel does this). A card is stretched to its row only
+          when it is deliberately marked "fill" and has something that grows with it (a list, a graph).
+        - Icons: row, tile and button icons use c:IconSlot (one 24-grid box, IconSize, one stroke weight), never a stretched Path.
+        - Setting rows: Grid.settingRow (label left, control right), at least SettingRowHeight high; the control column is
+          ControlWidth wide (sliders and wide pickers ControlWidthWide, dense cards ControlWidthCompact) and right-aligned, so
+          controls share one right edge within a card and across the cards of a page. The label and its caption go in a
+          StackPanel.text. Exceptions: a group of choice chips keeps its natural width (still right-aligned); in a narrow side
+          card (a preview beside the settings) a slider goes under its label at the card's full width.
+      -->
+      <x:Double x:Key="PageMaxWidth">1120</x:Double>
+      <x:Double x:Key="PageMaxWidthWide">1440</x:Double>
+      <x:Double x:Key="SettingRowHeight">52</x:Double>
+      <x:Double x:Key="ControlWidth">240</x:Double>
+      <x:Double x:Key="ControlWidthWide">320</x:Double>
+      <!-- Dense cards (Overview quick settings, two-column pickers): compact rows and controls -->
+      <x:Double x:Key="SettingRowHeightCompact">34</x:Double>
+      <x:Double x:Key="ControlWidthCompact">196</x:Double>
+      <x:Double x:Key="IconSize">20</x:Double>
+      <x:Double x:Key="IconSizeSmall">16</x:Double>
 
       <!-- Surfaces, darkest to lightest -->
       <Color x:Key="K.Bg0">#141619</Color>
@@ -111,10 +137,8 @@
         <GradientStop Color="#40FFFFFF" Offset="0" />
         <GradientStop Color="#00FFFFFF" Offset="0.5" />
       </LinearGradientBrush>
-      <LinearGradientBrush x:Key="MeterBrush" StartPoint="0%,0%" EndPoint="100%,0%">
-        <GradientStop Color="#2F6FD8" Offset="0" />
-        <GradientStop Color="#7AB0FF" Offset="1" />
-      </LinearGradientBrush>
+      <!-- Level meters: flat accent (no gradients) -->
+      <SolidColorBrush x:Key="MeterBrush" Color="#4A8BF5" />
 
       <!-- Semi palette overrides (dark only) -->
       <SolidColorBrush x:Key="SemiColorPrimary" Color="{StaticResource K.Accent}" />
@@ -308,8 +332,7 @@
             <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                     CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
               <Grid ColumnDefinitions="Auto,12,*" VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
-                <Path Name="PART_Icon" Data="{TemplateBinding Tag}" Stroke="{StaticResource TextSecondaryBrush}" StrokeThickness="1.6" StrokeLineCap="Round"
-                      StrokeJoin="Round" Width="19" Height="19" Stretch="Uniform" VerticalAlignment="Center" />
+                <c:IconSlot Name="PART_Icon" Data="{TemplateBinding Tag, Converter={x:Static c:GeometryTag.Converter}}" />
                 <ContentPresenter Name="PART_ContentPresenter" Grid.Column="2" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                   VerticalAlignment="Center" HorizontalContentAlignment="Stretch" Foreground="{TemplateBinding Foreground}" />
               </Grid>
@@ -322,7 +345,7 @@
           <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
           <Setter Property="BorderBrush" Value="{StaticResource AccentTintEdgeBrush}" />
         </Style>
-        <Style Selector="^:checked /template/ Path#PART_Icon"><Setter Property="Stroke" Value="{StaticResource AccentBrush}" /></Style>
+        <Style Selector="^:checked /template/ c|IconSlot#PART_Icon"><Setter Property="Stroke" Value="{StaticResource AccentBrush}" /></Style>
         <Style Selector="^:checked:pointerover"><Setter Property="Background" Value="{StaticResource AccentTintHoverBrush}" /></Style>
         <Style Selector="^:checked:pressed"><Setter Property="Background" Value="{StaticResource AccentTintBrush}" /></Style>
         <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
@@ -501,6 +524,91 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
       <Setter Property="Padding" Value="{StaticResource CardPadding}" />
+      <!-- Cards size to their content; "fill" stretches one to its row on purpose -->
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.panel.fill">
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- Page column (see the layout rules with the tokens) -->
+    <Style Selector="Panel.page, StackPanel.page, Grid.page, DockPanel.page">
+      <Setter Property="MaxWidth" Value="{StaticResource PageMaxWidth}" />
+      <Setter Property="Margin" Value="{StaticResource PagePadding}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Panel.page.wide, StackPanel.page.wide, Grid.page.wide, DockPanel.page.wide">
+      <Setter Property="MaxWidth" Value="{StaticResource PageMaxWidthWide}" />
+    </Style>
+    <!-- Page header: title and description left; state and header buttons right, centred on the title block -->
+    <Style Selector="Grid.pageHeader">
+      <Setter Property="ColumnSpacing" Value="{StaticResource GapLarge}" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="Grid.pageHeader > :is(Control)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Setting row: label (and a caption under it) left, the control right on the shared right edge -->
+    <Style Selector="Grid.settingRow">
+      <Setter Property="MinHeight" Value="{StaticResource SettingRowHeight}" />
+      <Setter Property="ColumnSpacing" Value="{StaticResource GapLarge}" />
+    </Style>
+    <Style Selector="Grid.settingRow > :is(Control)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid.settingRow > StackPanel.text">
+      <Setter Property="Margin" Value="0,10" />
+      <Setter Property="Spacing" Value="2" />
+    </Style>
+    <Style Selector="Grid.settingRow.compact">
+      <Setter Property="MinHeight" Value="{StaticResource SettingRowHeightCompact}" />
+    </Style>
+    <!-- A switch's template keeps room for on/off text right of the knob; with no text, drop it so the switch ends on the
+         shared right edge (its box, not only its knob) -->
+    <Style Selector="Grid.settingRow > ToggleSwitch">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Grid.settingRow > ToggleSwitch /template/ ContentPresenter#PART_OnContentPresenter, Grid.settingRow > ToggleSwitch /template/ ContentPresenter#PART_OffContentPresenter">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector=":is(Control).control.compact">
+      <Setter Property="Width" Value="{StaticResource ControlWidthCompact}" />
+    </Style>
+    <Style Selector=":is(Control).control">
+      <Setter Property="Width" Value="{StaticResource ControlWidth}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector=":is(Control).control.wide">
+      <Setter Property="Width" Value="{StaticResource ControlWidthWide}" />
+    </Style>
+
+    <!-- Popups (drop-downs, tooltips, menus) open in the window's overlay layer and scale their content by the window's content
+         scale, so they match the rest of the window; the scale is part of layout, so placement and flipping see the real size -->
+    <Style Selector="OverlayPopupHost">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <LayoutTransformControl LayoutTransform="{Binding Transform, Source={x:Static views:PopupScale.Instance}}">
+            <VisualLayerManager IsPopup="True">
+              <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Content="{TemplateBinding Content}" Padding="{TemplateBinding Padding}" />
+            </VisualLayerManager>
+          </LayoutTransformControl>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+
+    <!-- Icon slot (row, tile and button icons) -->
+    <Style Selector="c|IconSlot">
+      <Setter Property="Size" Value="{StaticResource IconSize}" />
+      <Setter Property="Stroke" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="c|IconSlot.small">
+      <Setter Property="Size" Value="{StaticResource IconSizeSmall}" />
+    </Style>
+    <Style Selector="c|IconSlot.accent">
+      <Setter Property="Stroke" Value="{StaticResource AccentBrush}" />
     </Style>
     <Style Selector="Border.stage">
       <Setter Property="Background" Value="{StaticResource StageBrush}" />
@@ -565,28 +673,14 @@
       <Setter Property="Height" Value="32" />
       <Setter Property="Padding" Value="14,0" />
     </Style>
-    <Style Selector="Border.statusChip">
-      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="20" />
-      <Setter Property="Height" Value="40" />
-      <Setter Property="Padding" Value="14,0" />
-    </Style>
 
     <Style Selector="Border.divider">
       <Setter Property="Height" Value="1" />
       <Setter Property="Background" Value="{StaticResource HairlineBrush}" />
     </Style>
-    <!-- Small static state indicator -->
-    <Style Selector="Ellipse.indicator">
-      <Setter Property="Width" Value="8" />
-      <Setter Property="Height" Value="8" />
-      <Setter Property="Fill" Value="{StaticResource IndicatorOffBrush}" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Ellipse.indicator.waiting"><Setter Property="Fill" Value="{StaticResource IndicatorWaitBrush}" /></Style>
-    <Style Selector="Ellipse.indicator.on"><Setter Property="Fill" Value="{StaticResource IndicatorOnBrush}" /></Style>
+    <!-- State as plain text (no coloured dots anywhere): muted, accent when on/active -->
+    <Style Selector="TextBlock.stateText"><Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" /></Style>
+    <Style Selector="TextBlock.stateText.on"><Setter Property="Foreground" Value="{StaticResource AccentBrush}" /></Style>
 
     <Style Selector="Slider">
       <Setter Property="Minimum" Value="0" />

@@ -22,6 +22,8 @@ public static class IconPaths
 	public static Geometry Mouse { get; } = Geometry.Parse("M12,3 C15.6,3 18,5.4 18,9 V15 C18,18.6 15.6,21 12,21 C8.4,21 6,18.6 6,15 V9 C6,5.4 8.4,3 12,3 Z M12,6.5 V9.5");
 	public static Geometry Speaker { get; } = Geometry.Parse("M4,9.5 H7.5 L12,5.5 V18.5 L7.5,14.5 H4 Z M15.5,9.2 C16.6,10.8 16.6,13.2 15.5,14.8 M18.5,6.5 C20.8,9.6 20.8,14.4 18.5,17.5");
 	public static Geometry Microphone { get; } = Geometry.Parse("M12,3 C13.7,3 15,4.3 15,6 V11.5 C15,13.2 13.7,14.5 12,14.5 C10.3,14.5 9,13.2 9,11.5 V6 C9,4.3 10.3,3 12,3 Z M5.5,11 C5.5,14.8 8.4,17.5 12,17.5 C15.6,17.5 18.5,14.8 18.5,11 M12,17.5 V21 M9,21 H15");
+	// The controller's mic button: a pill-shaped button with its light line.
+	public static Geometry MicButton { get; } = Geometry.Parse("M7,8 H17 C19.2,8 21,9.8 21,12 C21,14.2 19.2,16 17,16 H7 C4.8,16 3,14.2 3,12 C3,9.8 4.8,8 7,8 Z M9.5,12 H14.5");
 	public static Geometry Profile { get; } = Geometry.Parse("M12,4 A4,4 0 1 1 11.99,4 Z M4.5,20.5 C5.3,16.6 8.3,14.5 12,14.5 C15.7,14.5 18.7,16.6 19.5,20.5");
 	public static Geometry Pencil { get; } = Geometry.Parse("M4.5,19.5 L5.3,15.7 L15.6,5.4 C16.4,4.6 17.8,4.6 18.6,5.4 C19.4,6.2 19.4,7.6 18.6,8.4 L8.3,18.7 Z M13.8,7.2 L16.8,10.2");
 	// Command-key loops: button-combo shortcuts.

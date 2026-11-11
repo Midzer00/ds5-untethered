@@ -151,9 +151,6 @@ public static partial class Text
 		$"Test için kumanda bulunamadı. Kumandanın Bluetooth ile bağlı olduğundan emin olun.",
 		$"No controller found for the test. Make sure the controller is connected via Bluetooth.");
 	public static string AdapterTestRunning(Language? l = null) => Pick(l, $"Adaptör test ediliyor, yaklaşık 10 saniye sürer…", $"Testing the adapter, this takes about 10 seconds…");
-	public static string AdapterTestNoData(Language? l = null) => Pick(l,
-		$"Ölçüm yapılamadı: kumanda bulunamadı ya da yeterli rapor gelmedi.",
-		$"Could not measure: no controller found or too few reports arrived.");
 
 	// Setup wizard page
 	public static string SetupPageTitle(Language? l = null) => Pick(l, $"Kurulum", $"Setup");
@@ -202,7 +199,6 @@ public static partial class Text
 	public static string LiveTitle(Language? l = null) => Pick(l, $"Canlı", $"Live");
 	public static string LiveIdle(Language? l = null) => Pick(l, $"Sanal kumanda çalışırken burada görünür.", $"Shows here while the virtual controller runs.");
 	public static string LiveLast30s(Language? l = null) => Pick(l, $"Son 30 sn", $"Last 30 s");
-	public static string LiveGraphTip(Language? l = null) => Pick(l, $"Kalın çizgi: tipik gecikme; ince çizgi: en kötü.", $"Thick line: typical delay; thin line: worst.");
 	public static string LiveRateRange(double min, double avg, Language? l = null) => Pick(l, $"en düşük {min:F0} · ort. {avg:F0}", $"min {min:F0} · avg {avg:F0}");
 	public static string LiveBridgeUptime(string duration, Language? l = null) => Pick(l, $"Sanal kumanda açık · {duration}", $"Virtual controller on · {duration}");
 	public static string LiveConnectedFor(string duration, Language? l = null) => Pick(l, $"Bağlı · {duration}", $"Connected · {duration}");

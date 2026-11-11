@@ -36,6 +36,21 @@ public partial class App : Application
 		var host = Kopru.Core.Bridge.BridgeHost.CreateDefault();
 		// Up to four controllers: host is slot 1, the manager adds the others and is the game mode's bridge.
 		var manager = Kopru.Core.Bridge.BridgeManager.CreateDefault(host);
+		// Keeps Windows from making a virtual controller the default speaker or microphone (every slot, every attach); the
+		// sound device pickers and the mic button on a PC microphone use the same Windows audio access.
+		var windowsAudio = new Kopru.Core.Audio.WindowsAudioDefaults();
+		var audioGuard = Kopru.Core.Audio.DefaultAudioGuard.CreateDefault(windowsAudio);
+		var audioDevices = Kopru.Core.Audio.AudioDevices.CreateDefault(windowsAudio);
+		if (audioDevices != null)
+		{
+			audioDevices.Guard = audioGuard;
+			// The default microphone's mute switch has no notification here: read again every second (one Core Audio call).
+			_ = audioDevices.PollMute(TimeSpan.FromSeconds(1));
+		}
+		foreach (Kopru.Core.Bridge.BridgeHost slotHost in manager.Hosts)
+		{
+			slotHost.PadAudio = audioGuard;
+		}
 		var catalog = Kopru.Core.Games.GameCatalog.Load(Kopru.Core.AppPaths.GameList);
 		var games = new Kopru.Core.Games.GameModeController(catalog,
 			new Kopru.Core.Games.GameWatcher(catalog, steam: Kopru.Core.Steam.SteamLibrary.CreateDefault()), manager);
@@ -51,11 +66,20 @@ public partial class App : Application
 			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, Kopru.Core.Diagnostics.DiagnosticsExport.AdapterResultFileName),
 			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault());
 		service.UseManager(manager);
+		service.AudioDevices = audioDevices;
 		var startup = new RunKeyStartupRegistration();
+		// Game pictures: downloads follow the setting (read when a row loads; the view model exists by then).
+		MainWindowViewModel? created = null;
+		var images = new GameImageService(Kopru.Core.Games.GameImageResolver.CreateDefault(() => created?.Settings.DownloadGameImages == true));
 		var environment = new AppEnvironment(JsonSettingsStore.CreateDefault(), startup,
 			() => new SetupWizard(SystemCheck.CreateDefault(), new ShellUrlLauncher()), FullScreenDetector.IsForegroundFullScreen,
-			GameList: Kopru.Core.Games.GameCatalogUpdater.CreateDefault());
+			GameList: Kopru.Core.Games.GameCatalogUpdater.CreateDefault(), GameImages: images, Restart: RestartServices.CreateDefault());
 		var vm = new MainWindowViewModel(service, environment);
+		created = vm;
+		if (audioGuard != null)
+		{
+			vm.Settings.AttachAudioGuard(audioGuard);
+		}
 		if (vm.Settings.StartWithWindows)
 		{
 			// Older versions registered the exe without --minimized.
@@ -72,6 +96,14 @@ public partial class App : Application
 		var window = new MainWindow { DataContext = vm };
 		window.FitToScreen();
 		var shell = new DesktopShell(desktop, window, vm);
+		// After "Restart The Computer" on the setup page: the normal exit (settings saved, bridge and hiding undone).
+		vm.ExitApp = shell.Exit;
+		// For the PS tap ("PS: Open The App"), read on the input thread: kept in a field instead of asking the window.
+		bool windowActive = false;
+		window.Activated += (_, _) => Volatile.Write(ref windowActive, true);
+		window.Deactivated += (_, _) => Volatile.Write(ref windowActive, false);
+		service.IsAppInFront = () => Volatile.Read(ref windowActive);
+		service.IsForegroundFullScreen = FullScreenDetector.IsForegroundFullScreen;
 		// A second start (Start menu, the exe again) shows this copy's window on its current page; that copy then exits.
 		Program.Instance?.Listen(() => ShowFromOtherStart(shell));
 		var toasts = new ToastHost(page => shell.ShowMainWindow(page), FullScreenDetector.IsForegroundFullScreen);
@@ -189,6 +221,10 @@ public partial class App : Application
 
 		public void ShowMainWindow(AppPage? page = null)
 		{
+			if (IsExiting)
+			{
+				return;
+			}
 			if (page is { } p)
 			{
 				vm.Navigate(p);

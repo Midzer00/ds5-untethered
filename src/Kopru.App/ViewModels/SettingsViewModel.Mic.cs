@@ -18,8 +18,6 @@ public sealed partial class SettingsViewModel
 	public string MicGainLabel => Text.MicGain();
 	public string MicNoiseGateLabel => Text.MicNoiseGate();
 	public string MicNoiseGateHint => Text.MicNoiseGateHint();
-	public string MicMuteWindowsLabel => Text.MicMuteWindows();
-	public string MicMuteWindowsHint => Text.MicButtonMuteWindowsHint();
 	public string MicLevelLabel => Text.MicLevel();
 
 	// The level meter shows while the feature is on and the bridge runs.
@@ -50,6 +48,10 @@ public sealed partial class SettingsViewModel
 			if (e.PropertyName == nameof(SettingsState.MicEnabled))
 			{
 				RunOnUi(UpdateMicTimer);
+			}
+			else if (e.PropertyName == nameof(SettingsState.MicButtonMode))
+			{
+				OnPropertyChanged(nameof(MicButtonModeIndex));
 			}
 		};
 		_service.StateChanged += (_, _) => RunOnUi(UpdateMicTimer);

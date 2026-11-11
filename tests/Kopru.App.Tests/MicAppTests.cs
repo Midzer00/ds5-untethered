@@ -30,9 +30,8 @@ public class MicAppTests
 		state.MicEnabled = true;
 		state.MicGain = 150;
 		state.MicNoiseGate = false;
-		state.MicMuteWindows = true;
 
-		Assert.Equal(new MicSettings(true, 1.5, false, true), fake.Settings.Mic);
+		Assert.Equal(new MicSettings(true, 1.5, false), fake.Settings.Mic);
 		Assert.Equal(MuteLedMode.FollowMic, state.MuteLed);
 		Assert.Equal(MuteLedMode.FollowMic, fake.Settings.LightOptions.MuteLed);
 		Assert.Equal(Text.PercentValue(150), state.MicGainText);
@@ -56,7 +55,7 @@ public class MicAppTests
 			Assert.False(old.MicEnabled);
 			Assert.Equal(100, old.MicGain);
 			Assert.True(old.MicNoiseGate);
-			Assert.False(old.MicMuteWindows);
+			Assert.Equal(Kopru.Core.Audio.MicButtonMode.TurnOff, old.MicButtonMode);
 			Assert.Equal(MuteLedMode.On, old.MuteLed);
 
 			var state = new SettingsState(new FakeControllerService(animate: false), new JsonSettingsStore(path))
@@ -64,7 +63,7 @@ public class MicAppTests
 				MicEnabled = true,
 				MicGain = 250,
 				MicNoiseGate = false,
-				MicMuteWindows = true,
+				MicButtonMode = Kopru.Core.Audio.MicButtonMode.Mute,
 				MuteLed = MuteLedMode.FollowMic
 			};
 			state.SaveNow();
@@ -75,9 +74,9 @@ public class MicAppTests
 			Assert.True(loaded.MicEnabled);
 			Assert.Equal(250, loaded.MicGain);
 			Assert.False(loaded.MicNoiseGate);
-			Assert.True(loaded.MicMuteWindows);
+			Assert.Equal(Kopru.Core.Audio.MicButtonMode.Mute, loaded.MicButtonMode);
 			Assert.Equal(MuteLedMode.FollowMic, loaded.MuteLed);
-			Assert.Equal(new MicSettings(true, 2.5, false, true), fake.Settings.Mic);
+			Assert.Equal(new MicSettings(true, 2.5, false), fake.Settings.Mic);
 		}
 		finally
 		{
@@ -127,67 +126,6 @@ public class MicAppTests
 		Assert.Equal(42, vm.MicLevel);
 	}
 
-	// The controller's mic button (MicOn / MicOff from the service): the same switch as the tile and the Settings page,
-	// one push per press, the mute LED follows the mic, a toast, a log line; nothing under Low Power.
-	[AvaloniaFact]
-	public void MicButton_FlipsTheSameSwitch_WithAToast_ButNotUnderLowPower()
-	{
-		var fake = new FakeControllerService(animate: false);
-		var vm = new MainWindowViewModel(fake, new AppEnvironment(null));
-		SettingsState state = vm.Settings;
-		QuickSettingsViewModel quick = vm.Overview.Quick;
-		List<(string Title, string Body)> toasts = [];
-		state.ShortcutFeedback += (title, body) => toasts.Add((title, body));
-		ConcurrentQueue<string> lines = new();
-		void Watch(string line)
-		{
-			if (line.StartsWith("settings: mic switch", StringComparison.Ordinal))
-			{
-				lines.Enqueue(line);
-			}
-		}
-		Kopru.Core.Diagnostics.AppLog.Written += Watch;
-		try
-		{
-			Dispatcher.UIThread.RunJobs();
-			int applies = fake.Applies;
-
-			fake.RaiseShortcut(Kopru.Core.Input.ShortcutAction.MicOn);
-			Dispatcher.UIThread.RunJobs();
-			Assert.True(state.MicEnabled);
-			Assert.True(quick.MicOn);
-			Assert.True(fake.Settings.Mic.Enabled);
-			Assert.Equal(MuteLedMode.FollowMic, fake.Settings.LightOptions.MuteLed);
-			Assert.Equal(applies + 1, fake.Applies);
-			Assert.Equal((Text.MicButtonToastTitle(true), Text.MicButtonToastBody(true)), toasts.Single());
-
-			fake.RaiseShortcut(Kopru.Core.Input.ShortcutAction.MicOff);
-			Dispatcher.UIThread.RunJobs();
-			Assert.False(state.MicEnabled);
-			Assert.False(quick.MicOn);
-			Assert.False(fake.Settings.Mic.Enabled);
-			Assert.Equal(applies + 2, fake.Applies);
-			Assert.Equal(Text.MicButtonToastTitle(false), toasts.Last().Title);
-			Assert.Contains("settings: mic switch on (controller button)", lines);
-			Assert.Contains("settings: mic switch off (controller button)", lines);
-
-			// Low Power holds the mic off: a press changes nothing and shows nothing.
-			state.LowPowerOn = true;
-			Dispatcher.UIThread.RunJobs();
-			Assert.False(fake.Settings.Mic.Button);
-			int before = fake.Applies;
-			fake.RaiseShortcut(Kopru.Core.Input.ShortcutAction.MicOn);
-			Dispatcher.UIThread.RunJobs();
-			Assert.False(state.MicEnabled);
-			Assert.Equal(before, fake.Applies);
-			Assert.Equal(2, toasts.Count);
-		}
-		finally
-		{
-			Kopru.Core.Diagnostics.AppLog.Written -= Watch;
-		}
-	}
-
 	[AvaloniaFact]
 	public async Task SettingsPage_ShowsTheGroup_InBothLanguages()
 	{
@@ -210,7 +148,9 @@ public class MicAppTests
 				Assert.Contains(texts, t => t.Text == Text.MicSendToGame(language));
 				Assert.Contains(texts, t => t.Text == Text.MicGain(language));
 				Assert.Contains(texts, t => t.Text == Text.MicNoiseGate(language));
-				Assert.Contains(texts, t => t.Text == Text.MicMuteWindows(language));
+				Assert.Contains(texts, t => t.Text == Text.MicButtonModeLabel(language));
+				Assert.Contains(texts, t => t.Text == Text.AudioInput(language));
+				Assert.DoesNotContain(texts, t => t.Text?.Contains("Windows Mikrofonunu", StringComparison.Ordinal) == true);
 
 				Border panel = view.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "MicPanel");
 				ProgressBar meter = panel.GetLogicalDescendants().OfType<ProgressBar>().Single();

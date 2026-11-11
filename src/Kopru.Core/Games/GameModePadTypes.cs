@@ -44,11 +44,58 @@ public sealed class PadTypeMemory
 	public IReadOnlyDictionary<string, VirtualPadType> Snapshot() => new Dictionary<string, VirtualPadType>(types, StringComparer.OrdinalIgnoreCase);
 }
 
-// The per-game controller type: the game in front picks the virtual pad (DualSense unless the user chose otherwise).
+// The per-game controller type: the game in front picks the virtual pad (DualSense unless the user chose otherwise). A
+// controller type forced by the user ("Kumanda Türü" other than Automatic) wins over every per-game choice; the per-game
+// choices are kept and apply again once it is back on Automatic.
 public sealed partial class GameModeController
 {
 	private readonly PadTypeMemory padTypes = new();
 	private VirtualPadType? appliedPad;
+	private VirtualPadType? forcedPad;
+
+	// The type forced for every game and every controller (null: Automatic).
+	public VirtualPadType? ForcedPadType
+	{
+		get
+		{
+			lock (gate)
+			{
+				return forcedPad;
+			}
+		}
+	}
+
+	// The type the virtual controller has (or gets at the next connection) now.
+	public VirtualPadType CurrentPadType
+	{
+		get
+		{
+			lock (gate)
+			{
+				return ResolvePad();
+			}
+		}
+	}
+
+	// Null: Automatic. A change while the virtual controller runs swaps the pad the same way a game switch does.
+	public void SetForcedPadType(VirtualPadType? type)
+	{
+		if (type is { } t && !Enum.IsDefined(t))
+		{
+			type = null;
+		}
+		bool changed;
+		lock (gate)
+		{
+			changed = forcedPad != type;
+			forcedPad = type;
+		}
+		if (changed)
+		{
+			ApplyPad();
+			MemoryChanged?.Invoke();
+		}
+	}
 
 	public VirtualPadType PadTypeFor(string key)
 	{
@@ -73,18 +120,26 @@ public sealed partial class GameModeController
 	}
 
 	// Caller holds the lock.
-	private void LoadPadTypes(IReadOnlyDictionary<string, VirtualPadType>? saved) => padTypes.Load(saved);
+	private void LoadPadTypes(IReadOnlyDictionary<string, VirtualPadType>? saved, VirtualPadType? forced)
+	{
+		padTypes.Load(saved);
+		forcedPad = forced is { } f && Enum.IsDefined(f) ? f : null;
+	}
+
+	// The one place the pad type is decided: the forced type, else the game in front's choice (DualSense with no game).
+	// Caller holds the lock.
+	private VirtualPadType ResolvePad() => forcedPad ?? padTypes.For(active?.Key);
 
 	// Caller holds the lock.
 	private IReadOnlyDictionary<string, VirtualPadType> SnapshotPadTypes() => padTypes.Snapshot();
 
-	// Tells the bridge the pad for the game in front (only when it changes; DualSense with no game).
+	// Tells the bridge the pad to use (only when it changes; see ResolvePad).
 	private void ApplyPad()
 	{
 		VirtualPadType wanted;
 		lock (gate)
 		{
-			wanted = padTypes.For(active?.Key);
+			wanted = ResolvePad();
 			if (appliedPad == wanted)
 			{
 				return;

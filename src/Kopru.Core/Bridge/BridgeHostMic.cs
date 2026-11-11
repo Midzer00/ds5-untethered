@@ -8,13 +8,17 @@ using Kopru.Core.Protocol;
 namespace Kopru.Core.Bridge;
 
 // Controller microphone: while enabled the controller's Bluetooth mic audio is asked for, decoded and played on the
-// virtual pad's mic endpoint (gain 0..4). The controller's mic button is the switch (Button: it may switch; Low Power
-// turns that off): while the bridge runs with the virtual DualSense every press asks the app to turn the feature on or off
-// (MicButtonPressed) and the button never reaches the game. The mute LED in FollowMic mode is lit while the mic is on.
-// MuteWindows: a press that turns the mic off also mutes the default Windows capture device, one that turns it on unmutes it.
-public sealed record MicSettings(bool Enabled = false, double Gain = 1, bool NoiseGate = true, bool MuteWindows = false, bool Button = true)
+// virtual pad's mic endpoint (gain 0..4); Muted feeds silence instead (the stream keeps running). While the bridge runs
+// with the virtual DualSense every press of the controller's mic button is reported (MicButtonPressed) and never reaches
+// the game; the app decides what it does (Audio.MicButtonRules). Button: false passes the button to the game.
+// Live: whether the microphone the button acts on is live (the mute LED in FollowMic mode); null = Enabled and not Muted.
+public sealed record MicSettings(bool Enabled = false, double Gain = 1, bool NoiseGate = true, bool Muted = false, bool Button = true)
 {
 	public static MicSettings Off { get; } = new();
+
+	public bool? Live { get; init; }
+
+	public bool IsLive => Live ?? (Enabled && !Muted);
 }
 
 public sealed partial class BridgeHost
@@ -30,12 +34,10 @@ public sealed partial class BridgeHost
 
 	private MicButton? micButton;
 
-	// A press of the mic button while the bridge handles it; true = the press turns the mic on. Raised on the input thread.
-	public event Action<bool>? MicButtonPressed;
+	// A press of the mic button while the bridge handles it. Raised on the input thread.
+	public event Action? MicButtonPressed;
 
-	// Tests replace these.
-	public IWindowsMicMute WindowsMicMute { get; set; } = new CoreAudioMicMute();
-
+	// Tests replace this.
 	public Func<IMicDecoder> MicDecoderFactory { get; set; } = () => new ConcentusMicDecoder();
 
 	// Optional replacement for the controller's audio (e.g. a test tone); applied on the next ApplyMic / connect.
@@ -51,7 +53,7 @@ public sealed partial class BridgeHost
 	{
 		Connection? c = current;
 		Diagnostics.AppLog.Write(string.Create(CultureInfo.InvariantCulture,
-			$"mic apply{LogSlot}: {(settings.Enabled ? "on" : "off")} gain {settings.Gain:F2} gate {settings.NoiseGate} windows mute {settings.MuteWindows} ({(c != null ? "running" : "not running, kept for the next connect")})"));
+			$"mic apply{LogSlot}: {(settings.Enabled ? "on" : "off")} gain {settings.Gain:F2} gate {settings.NoiseGate} muted {settings.Muted} live {settings.IsLive} ({(c != null ? "running" : "not running, kept for the next connect")})"));
 		if (Interlocked.Exchange(ref micButtonHooked, 1) == 0)
 		{
 			MicButton.Pressed += OnMicButtonPressed;
@@ -87,7 +89,7 @@ public sealed partial class BridgeHost
 			$"mic check{LogSlot}: {MicCheckDelay.TotalSeconds:F0} s after mic on: {s.MicReports - c.MicCheckMic} mic reports, {s.InputReports - c.MicCheckInputs} inputs, {s.RejectedReports - c.MicCheckRejected} rejected, decoded {c.Mic?.Packets ?? 0}, stream running {s.IsHapticsStreaming}"));
 	}
 
-	// FollowMic resolved to on/off: lit while the mic feature is on.
+	// FollowMic resolved to on/off: lit while the microphone the button acts on is live (MicSettings.IsLive).
 	private LightSettings EffectiveLight()
 	{
 		LightSettings l = light;
@@ -95,7 +97,7 @@ public sealed partial class BridgeHost
 		{
 			return l;
 		}
-		bool on = micSettings.Enabled;
+		bool on = micSettings.IsLive;
 		return l with { Options = l.Options with { MuteLed = on ? MuteLedMode.On : MuteLedMode.Off } };
 	}
 
@@ -145,6 +147,7 @@ public sealed partial class BridgeHost
 			}
 			p.Gain = s.Gain;
 			p.NoiseGate = s.NoiseGate;
+			p.Muted = s.Muted;
 			p.Source = MicTestSource;
 			c.Session.MicReportReceived -= p.PushReport;
 			c.Session.MicReportReceived += p.PushReport;
@@ -163,28 +166,10 @@ public sealed partial class BridgeHost
 		}
 	}
 
-	// Input thread: the app decides (it flips the same setting as the tile); Windows' mic follows a press at once when
-	// asked to (off the input thread: Core Audio calls can be slow).
+	// Input thread: the app decides what the press does (Core Audio calls it may need are slow: never here).
 	private void OnMicButtonPressed()
 	{
-		MicSettings s = micSettings;
-		bool turnOn = !s.Enabled;
-		Diagnostics.AppLog.Write($"mic button{LogSlot}: turning the mic {(turnOn ? "on" : "off")}");
-		if (s.MuteWindows)
-		{
-			_ = Task.Run(() => SetWindowsMute(!turnOn));
-		}
-		MicButtonPressed?.Invoke(turnOn);
-	}
-	private void SetWindowsMute(bool muted)
-	{
-		try
-		{
-			WindowsMicMute.SetMuted(muted);
-		}
-		catch (Exception)
-		{
-			// No capture device, or Windows refused: our own mute still works.
-		}
+		Diagnostics.AppLog.Write($"mic button{LogSlot}: pressed");
+		MicButtonPressed?.Invoke();
 	}
 }

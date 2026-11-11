@@ -35,7 +35,9 @@ public enum NotificationType
 	// Feedback after a controller shortcut (profile, haptics level, mode)
 	Shortcut,
 	// The bridged controller was plugged in by cable
-	CableConnected
+	CableConnected,
+	// The Bluetooth link stayed weak long enough to feel (LinkQualityMonitor)
+	LinkWeak
 }
 
 // The page a click on a toast opens.
@@ -152,7 +154,28 @@ public sealed partial class NotificationCenter
 		{
 			Post(n);
 		}
+		CheckLink();
 	}
+
+	// The weak link warning, when the monitor says one is due (it already waited for the link to stay weak, skipped the
+	// first seconds after connecting and allows one per bad episode). It goes through the same filters as every toast,
+	// "Don't Notify While Playing" included: whoever asked for silence during games gets it, and since the warning stays
+	// due while the link is weak, it shows once the game is left if the link is still weak then. With that setting off
+	// (the default) it shows during games, which is when it matters. Acknowledged only when it was actually shown.
+	private void CheckLink()
+	{
+		if (_service.LinkQuality is not { WarningDue: true } || !_service.IsConnected)
+		{
+			return;
+		}
+		if (Post(LinkWeak(IsEdge)))
+		{
+			_service.AcknowledgeLinkWarning();
+		}
+	}
+
+	public static AppNotification LinkWeak(bool isEdge = false) =>
+		new(NotificationType.LinkWeak, NotificationKind.Warning, Text.NotifyLinkTitle(), Text.NotifyLinkBody(), AppPage.Overview, IsEdge: isEdge);
 
 	public void OnNotice(ServiceNotice notice)
 	{
@@ -165,7 +188,7 @@ public sealed partial class NotificationCenter
 			ServiceNoticeKind.HidHideMissing => HidHideOnce(),
 			ServiceNoticeKind.CableConnected => new AppNotification(NotificationType.CableConnected, NotificationKind.Info,
 				Text.NotifyCableTitle(), Text.NotifyCableBody(), AppPage.Overview, IsEdge: IsEdge),
-			ServiceNoticeKind.PadTypeChanged => PadTypeNotice(notice.Detail, IsEdge),
+			ServiceNoticeKind.PadTypeChanged => PadTypeNotice(notice.Detail, IsEdge, _service.Games.ForcedPadType != null),
 			_ => null
 		};
 		if (n != null)
@@ -217,6 +240,7 @@ public sealed partial class NotificationCenter
 		NotificationType.PoweredOffIdle => _settings.NotifyPowerOff,
 		NotificationType.BridgeError => _settings.NotifyErrors,
 		NotificationType.HidHideMissing => _settings.NotifyHidHide,
+		NotificationType.LinkWeak => _settings.NotifyLinkQuality,
 		_ => true
 	};
 

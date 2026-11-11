@@ -41,7 +41,10 @@ public sealed class AppSettings
 	public bool MicEnabled { get; set; }
 	public double MicGain { get; set; } = 100;
 	public bool MicNoiseGate { get; set; } = true;
-	public bool MicMuteWindows { get; set; }
+
+	// What the controller's mic button does (missing in older files: turn the controller microphone off, as before). The old
+	// MicMuteWindows option is gone: the button now mutes a selected PC microphone itself.
+	public Kopru.Core.Audio.MicButtonMode MicButtonMode { get; set; }
 
 	// Turn the controller off after IdlePowerOffMinutes (missing in older files: off).
 	public bool PowerOffWhenIdle { get; set; }
@@ -74,11 +77,18 @@ public sealed class AppSettings
 	public bool NotifyPowerOff { get; set; } = true;
 	public bool NotifyErrors { get; set; } = true;
 	public bool NotifyHidHide { get; set; } = true;
+	public bool NotifyLinkQuality { get; set; } = true;
 	public bool QuietWhilePlaying { get; set; }
 	public bool KeepInTray { get; set; } = true;
 
 	// Start the bridge by itself when the app starts and the controller connects (missing in older files: on).
 	public bool AutoStartBridge { get; set; } = true;
+
+	// Keep Windows from making the virtual controller the default speaker or microphone (missing in older files: on), and
+	// the flows where the user made the controller the default on purpose (Core DefaultAudioGuard keeps those).
+	public bool ProtectDefaultAudio { get; set; } = true;
+	public bool ControllerSpeakerChosen { get; set; }
+	public bool ControllerMicChosen { get; set; }
 
 	// The required setup steps were all done once (or the virtual controller ran): the setup page no longer opens by
 	// itself. Null = a file from before this setting (decided at the next start, see MainWindowViewModel).
@@ -89,6 +99,8 @@ public sealed class AppSettings
 	// Supported games list: the weekly automatic check and when it last ran.
 	public bool AutoUpdateGameList { get; set; } = true;
 	public DateTimeOffset? GameListCheckedAt { get; set; }
+	// Supported games list: download game pictures from Steam (else only pictures already on this PC).
+	public bool DownloadGameImages { get; set; } = true;
 
 	// DualSense supported mode: the switch when the user turned it on without a game, whether to ask when a known game
 	// starts, the games that turn it on without asking ("always", by game key), the games never asked about and the games
@@ -102,12 +114,17 @@ public sealed class AppSettings
 	// The controller type per game key, only games not on DualSense (missing in older files: DualSense everywhere).
 	public Dictionary<string, Kopru.Core.Virtual.VirtualPadType>? GamePadTypes { get; set; }
 
+	// The controller type forced for every game ("Kumanda Türü"; missing in older files: null = Automatic).
+	public Kopru.Core.Virtual.VirtualPadType? ForcedPadType { get; set; }
+
 	// Profiles (missing in older files: the settings above become the default profile), the active one, the profile per
 	// game key, and the controller shortcuts switch. The settings above always hold the active profile's values.
 	public List<Kopru.Core.Profiles.ControllerProfile>? Profiles { get; set; }
 	public string? ActiveProfile { get; set; }
 	public Dictionary<string, string>? GameProfiles { get; set; }
 	public bool ShortcutsEnabled { get; set; } = true;
+	// "PS: Open The App" (missing in older files: on).
+	public bool PsOpensApp { get; set; } = true;
 	// Controller id (device instance id) to the profile id it runs instead of the global settings.
 	public Dictionary<string, string>? ControllerProfiles { get; set; }
 	// The controllers the app has seen, by the same id, with the user's names (missing in older files: none yet).
@@ -152,7 +169,7 @@ public sealed class AppSettings
 				AddOnce(never, key);
 			}
 		}
-		return new GameMemory(SupportedModeOn, AskOnKnownGame, always, never, users, GamePadTypes);
+		return new GameMemory(SupportedModeOn, AskOnKnownGame, always, never, users, GamePadTypes, ForcedPadType);
 	}
 
 	// Takes the game memory to save (the old per-exe fields are left out from now on).
@@ -164,6 +181,7 @@ public sealed class AppSettings
 		NeverAskGames = memory.NeverAsk.ToList();
 		UserGames = memory.UserGames.ToList();
 		GamePadTypes = memory.PadTypes is { Count: > 0 } pads ? new(pads, StringComparer.OrdinalIgnoreCase) : null;
+		ForcedPadType = memory.ForcedPad;
 		GameOverrides = null;
 		LearnedGames = null;
 		return this;

@@ -42,14 +42,15 @@ public class AudioToggleTests
 		Settle();
 		Assert.Equal(applies + 1, fake.Applies);
 
-		// The mic switch also moves the mute LED to "follow the mic": still one push.
-		q.MicOn = true;
+		// The mic tile (a mic button press: the controller mic is selected) also moves the mute LED to "follow the mic":
+		// still one push.
+		q.MicTile = true;
 		Settle();
 		Assert.Equal(applies + 2, fake.Applies);
 		Assert.True(fake.Settings.Mic.Enabled);
 
 		q.SpeakerOn = false;
-		q.MicOn = false;
+		q.MicTile = false;
 		Settle();
 		Assert.Equal(applies + 4, fake.Applies);
 		Assert.Equal(1, fake.Starts);

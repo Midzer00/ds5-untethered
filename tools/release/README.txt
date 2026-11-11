@@ -34,7 +34,9 @@ This is a preview build. It is not signed.
    - Bluetooth adapter test (optional): measures whether your adapter is fast enough for haptics.
    When the required steps are done, the virtual controller starts by itself whenever the controller connects, and
    the Setup page no longer opens by itself (it stays available in Settings). If a driver is removed later, the
-   Overview page says so and its button opens the Setup page.
+   Overview page says so and its button opens the Setup page. To stop the virtual controller (for example to hand the
+   controller to another program), use Settings > General > Virtual Controller > Stop, or the menu of the app's icon
+   next to the clock; with automatic start on, it starts again when the controller reconnects.
 
 4. Settings and logs
    Settings, profiles and logs are stored in %LOCALAPPDATA%\Untethered (logs in its "logs" folder).
@@ -88,7 +90,9 @@ Bu bir ön sürümdür. İmzalı değildir.
    - Bluetooth adaptör testi (isteğe bağlı): adaptörünüzün titreşim için yeterince hızlı olup olmadığını ölçer.
    Gerekli adımlar tamamlanınca sanal kumanda, kumanda her bağlandığında kendiliğinden başlar ve Kurulum sayfası
    artık kendiliğinden açılmaz (Ayarlar'dan açılabilir). Bir sürücü sonradan kaldırılırsa Genel Bakış bunu söyler ve
-   düğmesi Kurulum sayfasını açar.
+   düğmesi Kurulum sayfasını açar. Sanal kumandayı durdurmak için (ör. kumandayı başka bir programa bırakmak)
+   Ayarlar > Genel > Sanal Kumanda > Durdur'u ya da uygulamanın saat yanındaki simgesinin menüsünü kullanın;
+   kendiliğinden başlatma açıksa kumanda yeniden bağlanınca yine başlar.
 
 4. Ayarlar ve günlükler
    Ayarlar, profiller ve günlükler %LOCALAPPDATA%\Untethered klasöründedir (günlükler "logs" klasöründe).

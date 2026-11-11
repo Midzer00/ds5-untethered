@@ -38,7 +38,7 @@ public class AppTests
 		o.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			.Where(p => p.PropertyType == typeof(string) && p.Name is not (nameof(SettingsViewModel.ToolResult) or nameof(OverviewViewModel.Warning) or nameof(SupportedGamesViewModel.SearchText)
 				or nameof(SticksViewModel.CalibrationText) or nameof(OverviewViewModel.PowerOffResult) or nameof(OverviewViewModel.SteamWarning)
-				or nameof(SupportedGamesViewModel.SteamText) or nameof(OverviewViewModel.PrimaryTip)
+				or nameof(SupportedGamesViewModel.SteamText) or nameof(OverviewViewModel.PrimaryTip) or nameof(OverviewViewModel.BridgeRowTip)
 				or nameof(OverviewViewModel.LastBatteryText) or nameof(OverviewViewModel.HeroActionText)))
 			.Select(p => (p.Name, (string?)p.GetValue(o)));
 
@@ -114,7 +114,7 @@ public class AppTests
 			Assert.Equal(Language.English, Localizer.Current);
 			Assert.NotEmpty(changed);
 			Assert.Equal("Overview", vm.Overview.Title);
-			Assert.Equal("Start Virtual Controller", vm.Overview.BridgeButtonText);
+			Assert.Equal("Start Virtual Controller", vm.Overview.PrimaryText);
 			Assert.Equal("Off", vm.Triggers.Effects[0].Name);
 			IReadOnlyList<string> texts = Texts(window);
 			Assert.Contains("Overview", texts);
@@ -154,6 +154,38 @@ public class AppTests
 				if (!Regex.IsMatch(m.Groups[1].Value, "^#[0-9A-Fa-f]{6,8}$") && !Regex.IsMatch(m.Groups[1].Value, @"^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){0,3}$"))
 				{
 					problems.Add($"{Path.GetFileName(file)}: {m.Groups[1].Value}");
+				}
+			}
+		}
+		Assert.Empty(problems);
+	}
+
+	// Design rule: no coloured status dots or dot-in-pill badges; state is plain text (accent when on).
+	// Scans the XAML for the removed patterns: the Ellipse.indicator class, any Ellipse whose Fill comes from an
+	// Indicator*/Accent/Danger brush, the statusChip pill, and a bullet character. It cannot see dots drawn in code
+	// (DrawEllipse in custom controls) or a dot built from a round Border; the allowed Ellipses (colour swatches, the
+	// "more" menu glyph) bind their Fill to data or use the plain text brush.
+	[Fact]
+	public void Views_HaveNoStatusDots()
+	{
+		string dir = Path.Combine(RepoRoot(), "src", "Kopru.App");
+		var patterns = new[]
+		{
+			new Regex(@"<Ellipse[^>]*Classes=""[^""]*indicator"),
+			new Regex(@"Ellipse\.indicator"),
+			new Regex(@"<Ellipse[^>]*Fill=""\{StaticResource (Indicator\w*|Accent|Danger)Brush\}"""),
+			new Regex(@"statusChip"),
+			new Regex("[●•]"),
+		};
+		var problems = new List<string>();
+		foreach (string file in Directory.EnumerateFiles(dir, "*.axaml", SearchOption.AllDirectories))
+		{
+			string text = File.ReadAllText(file);
+			foreach (var pattern in patterns)
+			{
+				foreach (Match m in pattern.Matches(text))
+				{
+					problems.Add($"{Path.GetFileName(file)}: {m.Value}");
 				}
 			}
 		}
@@ -259,9 +291,9 @@ public class AppTests
 							frame!.Save(Path.Combine(outDir, $"overview-running-{code}.png"));
 						}
 
-						// The same page in a large window: the layout grows with it.
-						window.Width = 1600;
-						window.Height = 1000;
+						// The same page in a large window: the layout grows with it (the delay graph keeps its small height).
+						window.Width = 1680;
+						window.Height = 1050;
 						Settle();
 						using var wide = window.CaptureRenderedFrame();
 						Assert.NotNull(wide);

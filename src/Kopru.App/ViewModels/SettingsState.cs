@@ -60,20 +60,24 @@ public sealed partial class SettingsState : ViewModelBase
 			NotifyPowerOff = saved.NotifyPowerOff;
 			NotifyErrors = saved.NotifyErrors;
 			NotifyHidHide = saved.NotifyHidHide;
+			NotifyLinkQuality = saved.NotifyLinkQuality;
 			QuietWhilePlaying = saved.QuietWhilePlaying;
 			KeepInTray = saved.KeepInTray;
 			TrayHintShown = saved.TrayHintShown;
 			AutoUpdateGameList = saved.AutoUpdateGameList;
 			GameListCheckedAt = saved.GameListCheckedAt;
+			DownloadGameImages = saved.DownloadGameImages;
 			AskOnKnownGame = saved.AskOnKnownGame;
 			LoadLight(saved);
 			ShortcutsEnabled = saved.ShortcutsEnabled;
+			PsOpensApp = saved.PsOpensApp;
 			SpeakerEnabled = saved.SpeakerEnabled;
 			SpeakerVolume = Math.Clamp(saved.SpeakerVolume, 0, 100);
 			HeadphoneVolume = Math.Clamp(saved.HeadphoneVolume, 0, 100);
 			DesktopMode = saved.DesktopMode ?? DesktopModeSettings.Default;
 			LoadMic(saved);
 			AutoStartBridge = saved.AutoStartBridge;
+			LoadAudioDefaults(saved);
 			_loading = false;
 			service.Games.LoadMemory(saved.ToGameMemory(service.Games.Catalog));
 		}
@@ -87,6 +91,7 @@ public sealed partial class SettingsState : ViewModelBase
 		InitControllerProfiles(saved);
 		InitLowPower();
 		InitDualSenseMode();
+		InitAudioDevices();
 		if (store != null)
 		{
 			_saveTimer = new Timer(_ => SaveNow());
@@ -173,6 +178,10 @@ public sealed partial class SettingsState : ViewModelBase
 	[ObservableProperty]
 	private bool _notifyHidHide = true;
 
+	// The weak link warning (LinkQualityMonitor).
+	[ObservableProperty]
+	private bool _notifyLinkQuality = true;
+
 	[ObservableProperty]
 	private bool _quietWhilePlaying;
 
@@ -191,6 +200,10 @@ public sealed partial class SettingsState : ViewModelBase
 
 	[ObservableProperty]
 	private DateTimeOffset? _gameListCheckedAt;
+
+	// Download game pictures from Steam for the supported games list.
+	[ObservableProperty]
+	private bool _downloadGameImages = true;
 
 	// Stick and trigger tuning (edited on the sticks & triggers page).
 	[ObservableProperty]
@@ -243,9 +256,14 @@ public sealed partial class SettingsState : ViewModelBase
 	{
 		base.OnPropertyChanged(e);
 		if (_loading || _applyingProfile || string.IsNullOrEmpty(e.PropertyName) || e.PropertyName.EndsWith("Text", StringComparison.Ordinal)
-			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity) or nameof(ActiveProfileName) or nameof(ActiveProfileLine))
+			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity) or nameof(ActiveProfileName) or nameof(ActiveProfileLine)
+			|| MicStateNames.Contains(e.PropertyName))
 		{
 			return;
+		}
+		if (e.PropertyName == nameof(LowPowerOn))
+		{
+			NotifyMicState();
 		}
 		CaptureProfileValue(e.PropertyName);
 		if (e.PropertyName == nameof(StartWithWindows))
@@ -277,6 +295,7 @@ public sealed partial class SettingsState : ViewModelBase
 		PowerOffWhenIdle = PowerOffWhenIdle,
 		LightOptions = LightOptions,
 		ShortcutsEnabled = ShortcutsEnabled,
+		PsOpensApp = PsOpensApp,
 		Speaker = new SpeakerSettings(SpeakerEnabled, Math.Clamp(SpeakerVolume / 100, 0, 1), Math.Clamp(HeadphoneVolume / 100, 0, 1)),
 		DesktopModeOn = DesktopModeOn,
 		Desktop = DesktopMode,
@@ -312,12 +331,15 @@ public sealed partial class SettingsState : ViewModelBase
 		NotifyPowerOff = NotifyPowerOff,
 		NotifyErrors = NotifyErrors,
 		NotifyHidHide = NotifyHidHide,
+		NotifyLinkQuality = NotifyLinkQuality,
 		QuietWhilePlaying = QuietWhilePlaying,
 		KeepInTray = KeepInTray,
 		TrayHintShown = TrayHintShown,
 		AutoUpdateGameList = AutoUpdateGameList,
 		GameListCheckedAt = GameListCheckedAt,
+		DownloadGameImages = DownloadGameImages,
 		ShortcutsEnabled = ShortcutsEnabled,
+		PsOpensApp = PsOpensApp,
 		SpeakerEnabled = SpeakerEnabled,
 		SpeakerVolume = SpeakerVolume,
 		HeadphoneVolume = HeadphoneVolume,
@@ -325,8 +347,11 @@ public sealed partial class SettingsState : ViewModelBase
 		MicEnabled = MicEnabled,
 		MicGain = MicGain,
 		MicNoiseGate = MicNoiseGate,
-		MicMuteWindows = MicMuteWindows,
 		AutoStartBridge = AutoStartBridge,
+		ProtectDefaultAudio = ProtectDefaultAudio,
+		MicButtonMode = MicButtonMode,
+		ControllerSpeakerChosen = AudioChoices.ControllerSpeakerChosen,
+		ControllerMicChosen = AudioChoices.ControllerMicChosen,
 		SetupCompleted = SetupCompleted,
 	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers));
 

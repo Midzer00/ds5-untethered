@@ -91,8 +91,8 @@ public static partial class Text
 	public static string ShortcutsSection(Language? l = null) => Pick(l, $"Kumanda Kısayolları", $"Controller Shortcuts");
 
 	public static string ShortcutsHint(Language? l = null) => Pick(l,
-		$"PS tuşunu basılı tutup aşağıdaki tuşlara bas. Kısayol sırasında PS ve kullanılan tuş oyuna gitmez; PS'ye tek başına kısa basmak oyuna her zamanki gibi ulaşır.",
-		$"Hold the PS button and press one of the buttons below. During a shortcut the game doesn't see PS or the button used; a plain short PS press still reaches the game.");
+		$"PS tuşunu basılı tutup aşağıdaki tuşlara bas. Kısayol sırasında PS ve kullanılan tuş oyuna gitmez; oyun açıkken PS'ye tek başına kısa basmak oyuna her zamanki gibi ulaşır.",
+		$"Hold the PS button and press one of the buttons below. During a shortcut the game doesn't see PS or the button used; in a game, a plain short PS press still reaches the game.");
 
 	public static string ShortcutKeysProfile(Language? l = null) => Pick(l, $"PS + Yön Sol / Sağ", $"PS + D-pad Left / Right");
 

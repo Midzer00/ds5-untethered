@@ -36,8 +36,9 @@ public interface IMicLevelSource
 	double MicLevel { get; }
 }
 
-// Outcome of the Bluetooth adapter test: verdict (null when nothing could be measured) and a localized summary.
-public sealed record AdapterTestResult(Kopru.Core.Diagnostics.AdapterVerdict? Verdict, string Text);
+// Outcome of the Bluetooth adapter test: verdict (null when nothing could be measured properly), a localized summary and
+// the measurement (null when nothing arrived), from which AdapterCheck.Explain words the result in any language.
+public sealed record AdapterTestResult(Kopru.Core.Diagnostics.AdapterVerdict? Verdict, string Text, AdapterReport? Report = null);
 
 // One-off happenings the state properties don't show (for notifications).
 public enum ServiceNoticeKind
@@ -72,6 +73,14 @@ public interface IControllerService
 
 	// Measured link delay and relay time; null until measured (bridge running with a controller).
 	LatencyReading? Latency { get; }
+
+	// How the link feels (good / borderline / weak, see LinkQualityMonitor); null while the bridge does not run.
+	LinkQualityReading? LinkQuality => null;
+
+	// The weak link warning was shown (one per bad episode, see LinkQualityMonitor.AcknowledgeWarning).
+	void AcknowledgeLinkWarning()
+	{
+	}
 
 	// The latest raw (untuned) input body while the bridge runs (at least the first 9 bytes, see InputTransform; 27 with the gyro, see GyroAim), or null.
 	byte[]? RawInput { get; }
@@ -182,4 +191,10 @@ public interface IControllerService
 	void SetControllerProfile(string id, ControllerSettings? settings)
 	{
 	}
+
+	// The Windows playback and recording devices (device pickers, the mic button on a PC microphone); null: none.
+	Kopru.Core.Audio.AudioDevices? AudioDevices => null;
+
+	// The player slot whose virtual pad sits on that virtual hub port (names several pads' audio devices), or null.
+	int? SlotOfAudioPort(int port) => null;
 }

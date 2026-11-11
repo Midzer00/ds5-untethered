@@ -37,6 +37,7 @@ public sealed partial class RealControllerService
 			other.ControllerOpened = HideOtherAsync;
 			other.RawInput += body => OnHostRawInput(s, body);
 			other.Shortcuts.Triggered += action => Shortcut?.Invoke(this, action);
+			other.Shortcuts.TapRoute = RoutePsTap;
 			other.MicButtonPressed += OnMicButton;
 			other.PoweredOff += (ok, idle) =>
 			{
@@ -138,7 +139,31 @@ public sealed partial class RealControllerService
 	}
 
 	// The controller's mic button: the settings flip the microphone switch (SettingsState.HandleShortcut).
-	private void OnMicButton(bool turnOn) => Shortcut?.Invoke(this, turnOn ? Kopru.Core.Input.ShortcutAction.MicOn : Kopru.Core.Input.ShortcutAction.MicOff);
+	private void OnMicButton() => Shortcut?.Invoke(this, Kopru.Core.Input.ShortcutAction.MicButton);
+
+	// The Windows playback and recording devices for the pickers and the mic button (set by the app; null in tests).
+	public Kopru.Core.Audio.AudioDevices? AudioDevices { get; set; }
+
+	// The player slot whose virtual pad sits on that virtual hub port, or null.
+	public int? SlotOfAudioPort(int port)
+	{
+		if (host.VirtualPort == port)
+		{
+			return 1;
+		}
+		BridgeManager? m = multi;
+		if (m != null)
+		{
+			for (int s = 2; s <= BridgeManager.MaxControllers; s++)
+			{
+				if (m.Host(s).VirtualPort == port)
+				{
+					return s;
+				}
+			}
+		}
+		return null;
+	}
 
 	// Speaker, mic and light workers of one host (see LatestValueWorker).
 	private sealed class HostAppliers(BridgeHost target)

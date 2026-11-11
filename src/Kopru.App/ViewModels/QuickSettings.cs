@@ -7,7 +7,7 @@ using Kopru.Core.Localization;
 namespace Kopru.App.ViewModels;
 
 // The Overview's quick settings card: Low Power, DualSense and Mouse Mode, speaker and microphone, controller shortcuts,
-// three-step haptics / trigger / light choices and the profile.
+// the controller type, three-step haptics / trigger / light choices and the profile.
 // Every row edits the same settings the detailed pages edit. While Low Power is on the rows it overrides are disabled
 // but keep showing the user's own values.
 public sealed partial class QuickSettingsViewModel : ViewModelBase
@@ -44,8 +44,15 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 				case nameof(SettingsState.SpeakerActive):
 					OnPropertyChanged(nameof(SpeakerOn));
 					break;
-				case nameof(SettingsState.MicEnabled):
-					OnPropertyChanged(nameof(MicOn));
+				case nameof(SettingsState.MicLive):
+					OnPropertyChanged(nameof(MicTile));
+					break;
+				case nameof(SettingsState.MicStateText):
+				case nameof(SettingsState.CanPressMic):
+				case nameof(SettingsState.MicButtonMode):
+					OnPropertyChanged(nameof(MicStateText));
+					OnPropertyChanged(nameof(CanPressMic));
+					OnPropertyChanged(nameof(MicButtonModeIndex));
 					break;
 			}
 		};
@@ -125,10 +132,45 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 		set => Settings.SpeakerActive = value;
 	}
 
-	public bool MicOn
+	// The Microphone tile mirrors the controller's mic button: a click is a press (the value clicked is not used), the tile
+	// shows whether the selected microphone is live.
+	public bool MicTile
 	{
-		get => Settings.MicEnabled;
-		set => Settings.MicEnabled = value;
+		get => Settings.MicLive;
+		set
+		{
+			Settings.PressMicButton(fromButton: false);
+			OnPropertyChanged();
+		}
+	}
+
+	public string MicStateText => Settings.MicStateText;
+
+	public bool CanPressMic => Settings.CanPressMic;
+
+	// The pickers (shared with the Settings page).
+	public AudioDevicesViewModel Audio => Settings.Audio;
+
+	// "Kumanda Türü": Automatic or one controller type for every game (shared with the Supported Games page).
+	public PadTypeChoiceViewModel PadType => Settings.PadType;
+
+	// "Mikrofon Tuşu": 0 = Sessize Al, 1 = Tamamen Kapat.
+	public string MicButtonLabel => Text.MicButtonModeLabel();
+	public string MicButtonTip => Text.QuickMicButtonTip();
+	public IReadOnlyList<string> MicButtonModes => _micButtonModes = Same(_micButtonModes, [Text.MicButtonMute(), Text.MicButtonTurnOffShort()]);
+
+	private IReadOnlyList<string>? _micButtonModes;
+
+	public int MicButtonModeIndex
+	{
+		get => Settings.MicButtonMode == Kopru.Core.Audio.MicButtonMode.Mute ? 0 : 1;
+		set
+		{
+			if (value is 0 or 1)
+			{
+				Settings.MicButtonMode = value == 0 ? Kopru.Core.Audio.MicButtonMode.Mute : Kopru.Core.Audio.MicButtonMode.TurnOff;
+			}
+		}
 	}
 
 	[RelayCommand]
@@ -156,7 +198,8 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	public string SupportedModeTip => Text.QuickSupportedModeTip();
 	public string MouseModeTip => Text.QuickMouseModeTip();
 	public string SpeakerTip => Overridden(Text.QuickSpeakerTip());
-	public string MicTip => Overridden(Text.QuickMicTip());
+	// Low Power holds the controller microphone off (a selected PC microphone can still be muted).
+	public string MicTip => Settings.ControllerMicSelected ? Overridden(Text.QuickMicTileTip()) : Text.QuickMicTileTip();
 	public string HapticsTip => Overridden(Text.QuickHapticsTip());
 	public string TriggerTip => Overridden(Text.QuickTriggerTip());
 	public string LightTip => Overridden(Text.QuickLightTip());
@@ -166,7 +209,7 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 
 	// Controller Shortcuts tile: the shortcuts master switch (the same one as the Settings group); its small button opens
 	// that group (set by the main window).
-	public string ShortcutsLabel => Text.QuickShortcuts();
+	public string ShortcutsLabel => Text.QuickShortcutsShort();
 	public string ShortcutsTip => Text.QuickShortcutsTip();
 	public string EditShortcutsTip => Text.QuickEditShortcuts();
 

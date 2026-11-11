@@ -31,5 +31,8 @@ internal static class Program
 		BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 	}
 
-	public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace();
+	// Popups (drop-downs, tooltips, menus) open inside the window, in the main window's scaled layer, so they grow with the
+	// content (see UiScale); as separate windows they would keep the unscaled size.
+	public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace()
+		.With(new Win32PlatformOptions { OverlayPopups = true });
 }

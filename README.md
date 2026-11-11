@@ -48,6 +48,9 @@ to be installed for the app itself.
   then guides Bluetooth pairing of the controller. Both drivers are required: the virtual controller does not start
   without them.
 - Settings, profiles and logs are stored in `%LOCALAPPDATA%\Untethered`.
+- Network: with "Download Pictures" on (Supported Games page, on by default), the app fetches game header pictures
+  from Steam's public CDN (and, for newer games, Steam's public app details) and keeps them only in
+  `%LOCALAPPDATA%\Untethered\cache\game-images`. A request names only the game's Steam app id; nothing about you is sent.
 - To uninstall: turn off "Start with Windows", exit the app from the tray icon, uninstall "DS5 Untethered" in Windows
   Settings → Apps (or delete the zip folder), and delete `%LOCALAPPDATA%\Untethered` if you want the settings gone.
   If nothing else uses them, uninstall "USBip" and "HidHide" too.
@@ -68,7 +71,8 @@ Done and verified on hardware:
 
 Done and tested in code, not yet verified on hardware:
 - The app: setup page, Overview, one Controller page (Test, Triggers, Remap and Gyro), Light, Supported Games,
-  Settings, tray icon and notifications; the bridge is shown as the "Virtual Controller" and starts by itself.
+  Settings, tray icon and notifications; the bridge is shown as the "Virtual Controller" and starts by itself
+  (stop it in Settings > General or from the menu of its icon next to the clock).
 - Hiding the real controller with HidHide; rumble to haptics for games without native haptics; reconnection,
   battery warning, idle power-off.
 - Profiles per game, trigger strength, remapping, gyro aim, light effects, mouse mode.
@@ -151,6 +155,10 @@ oyun --> tetikler, ışıklar, haptik sesi (48 kHz, 3-4. kanallar) --> DS5 Untet
   indirme sayfalarını açar (uygulama bunları kurmaz; kurulumları yönetici izni ister), ardından kumandanın Bluetooth
   ile eşleştirilmesine yol gösterir. İki sürücü de gerekli: onlar olmadan sanal kumanda başlamaz.
 - Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe tutulur.
+- İnternet: "Oyun Görsellerini İndir" açıkken (Desteklenen Oyunlar sayfası, varsayılan olarak açık) uygulama oyun
+  görsellerini Steam'in herkese açık CDN'inden (yeni oyunlarda Steam'in herkese açık oyun bilgisinden) indirir ve yalnızca
+  `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe saklar. İstekte yalnızca oyunun Steam numarası bulunur; sizinle
+  ilgili hiçbir bilgi gönderilmez.
 - Kaldırmak için: "Windows ile Başlat"ı kapatın, uygulamadan sistem tepsisindeki simgeden çıkın, Windows Ayarlar →
   Uygulamalar'dan "DS5 Untethered"ı kaldırın (ya da zip klasörünü silin), ayarların da gitmesini istiyorsanız
   `%LOCALAPPDATA%\Untethered` klasörünü silin. Başka bir şey kullanmıyorsa "USBip" ve "HidHide"ı da kaldırın.
@@ -171,7 +179,8 @@ Bitti ve donanımda doğrulandı:
 
 Kodda bitti ve testli, donanımda henüz doğrulanmadı:
 - Uygulama: kurulum sayfası, Genel Bakış, tek Kumanda sayfası (Test, Tuş Atama ve Gyro), Işık, Desteklenen
-  Oyunlar, Ayarlar, tepsi simgesi ve bildirimler; köprü "Sanal Kumanda" olarak görünür ve kendiliğinden başlar.
+  Oyunlar, Ayarlar, tepsi simgesi ve bildirimler; köprü "Sanal Kumanda" olarak görünür ve kendiliğinden başlar
+  (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
 - Gerçek kumandayı HidHide ile gizleme; yerel haptik desteği olmayan oyunlar için titreşimden haptiğe dönüşüm;
   yeniden bağlanma, pil uyarısı, boşta kapatma.
 - Oyuna göre profiller, tetik gücü, tuş atama, gyro ile nişan, ışık efektleri, fare modu.

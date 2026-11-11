@@ -20,8 +20,8 @@
     </Style>
   </UserControl.Styles>
   <StackPanel>
-    <TextBlock Classes="section" Text="{Binding Title}" Margin="0,24,0,8" />
-    <Border Classes="panel" Padding="20,14,20,16" Name="ControllersGroup">
+    <TextBlock Classes="section" Text="{Binding Title}" />
+    <Border Classes="panel" Name="ControllersGroup">
       <StackPanel Spacing="{StaticResource GapSmall}">
         <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" Margin="0,0,0,4" />
         <TextBlock Classes="caption" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
@@ -44,15 +44,15 @@
                       <TextBlock Classes="caption" Text="{Binding BatteryText}" IsVisible="{Binding HasBattery}" />
                       <TextBlock Classes="caption" Text="{Binding ProfileText}" IsVisible="{Binding HasProfile}" />
                     </StackPanel>
-                    <Button Grid.Column="4" Theme="{StaticResource QuietButton}" Height="30" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ForgetCommand}"
+                    <Button Grid.Column="4" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ForgetCommand}"
                             IsEnabled="{Binding CanForget}" ToolTip.Tip="{Binding ForgetTip}" VerticalAlignment="Center" />
                   </Grid>
                   <!-- Forget pressed: ask first -->
                   <Grid ColumnDefinitions="*,Auto,8,Auto" IsVisible="{Binding IsConfirming}">
                     <TextBlock Classes="label" Text="{Binding ForgetAsk}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="30" Content="{Binding CancelText}" Command="{Binding CancelForgetCommand}"
+                    <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CancelText}" Command="{Binding CancelForgetCommand}"
                             VerticalAlignment="Center" />
-                    <Button Grid.Column="3" Theme="{StaticResource QuietButton}" Height="30" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ConfirmForgetCommand}"
+                    <Button Grid.Column="3" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ConfirmForgetCommand}"
                             Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" />
                   </Grid>
                 </Panel>

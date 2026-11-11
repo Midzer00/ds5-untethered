@@ -18,8 +18,6 @@ public static partial class Text
 		$"Konuşmadığınızda hafif arka plan seslerini keser",
 		$"Cuts faint background noise while you are not speaking");
 
-	public static string MicMuteWindows(Language? l = null) => Pick(l, $"Windows Mikrofonunu da Sessize Al", $"Also Mute the Windows Microphone");
-
 	public static string MicLevel(Language? l = null) => Pick(l, $"Mikrofon Seviyesi", $"Microphone Level");
 
 	public static string MuteLedFollowMic(Language? l = null) => Pick(l, $"Mikrofonu İzle", $"Follow Microphone");

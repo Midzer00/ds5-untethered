@@ -74,7 +74,7 @@ public class SidebarStatusTests
 		Assert.Equal(Text.BatteryUnknown(), vm.BatteryRowTip);
 	}
 
-	// A start under way: the card says it is connecting, and a second press of the Overview button or the primary action
+	// A start under way: the card says it is connecting, and a second press (the bridge command, the header's action)
 	// neither stops nor starts again.
 	[AvaloniaFact]
 	public async Task BridgeCommand_WhileBusy_TakesNoSecondPress()
@@ -100,7 +100,8 @@ public class SidebarStatusTests
 		Assert.True(vm.Overview.CanToggleBridge);
 		Assert.Equal(Text.HealthOn(), vm.Overview.VirtualStateText);
 
-		await vm.Overview.PrimaryCommand.ExecuteAsync(null);
+		// Stopping (the Settings row and the tray use this command; the Overview header no longer offers it) still works.
+		await vm.Overview.ToggleBridgeCommand.ExecuteAsync(null);
 		Assert.Equal(1, fake.Stops);
 	}
 

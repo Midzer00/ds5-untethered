@@ -185,9 +185,14 @@ foreach ($t in $terms) {
 	$needles.Add(@($t, 'UTF-8', (New-Object regex ('(?<![A-Za-z0-9])' + $utf8 + '(?![A-Za-z0-9])'), $regexOptions)))
 	$needles.Add(@($t, 'UTF-16LE', (New-Object regex ('(?<![A-Za-z0-9]\x00)' + $utf16 + '(?![A-Za-z0-9]\x00)'), $regexOptions)))
 }
-# The installer inputs are scanned too (the script and its icon); the staging folder already holds LICENSE and the rest.
+# The installer inputs are scanned too (the script, its icon and wizard images); the staging folder already holds LICENSE
+# and the rest.
 $scan = @($files | ForEach-Object { @{ Path = $_.FullName; Label = $_.FullName.Substring($staging.Length + 1) } })
-foreach ($extra in @($iss, (Join-Path $repo 'src\Kopru.App\Assets\icon.ico'))) {
+$wizardImages = @(Get-ChildItem -File (Join-Path $PSScriptRoot 'installer\wizard') -Filter '*.bmp' | ForEach-Object { $_.FullName })
+if ($wizardImages.Count -eq 0) {
+	Fail 'The installer wizard images are missing (run tools\installer\make-wizard-images.ps1).'
+}
+foreach ($extra in @(@($iss, (Join-Path $repo 'src\Kopru.App\Assets\icon.ico')) + $wizardImages)) {
 	$scan += @{ Path = $extra; Label = $extra.Substring($repo.Length + 1) }
 }
 function Find-Leaks($items) {

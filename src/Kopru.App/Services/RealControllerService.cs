@@ -52,6 +52,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	private readonly TimeProvider time;
 	private DateTimeOffset? lastBatteryProbe;
 	private int batteryProbing;
+	private volatile bool psOpensApp = true;
 
 	public RealControllerService(BridgeHost host, IHidingService hiding, IControllerFinder finder, Action<Action>? post = null,
 		Func<HidDevice, string?>? instanceId = null, bool timers = true, GameModeController? games = null,
@@ -87,6 +88,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 			AppLog.Write("shortcut: " + action);
 			Shortcut?.Invoke(this, action);
 		};
+		host.Shortcuts.TapRoute = RoutePsTap;
 		host.MicButtonPressed += OnMicButton;
 		host.PoweredOff += (ok, idle) =>
 		{
@@ -134,6 +136,10 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 
 	// No end-to-end latency is measured yet; this is the average time between input reports.
 	public double LatencyMs => Status.InputRateHz > 1 ? 1000 / Status.InputRateHz : 0;
+
+	public LinkQualityReading? LinkQuality => Status.Link;
+
+	public void AcknowledgeLinkWarning() => Selected.AcknowledgeLinkWarning();
 
 	public LatencyReading? Latency => Status is { LinkLatencyP50Ms: double p50, LinkLatencyP99Ms: double p99, RelayMs: double relay }
 		? new LatencyReading(p50, p99, relay)
@@ -191,10 +197,10 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	// interleave their sequences; each one sees the state the previous one left.
 	private readonly SemaphoreSlim bridgeGate = new(1, 1);
 
-	// From the UI (Overview, sidebar, tray) or the automatic start; the app's own restarts pass their reason.
+	// From the UI (Overview, Settings, tray) or the automatic start; the app's own restarts pass their reason.
 	public Task StartBridgeAsync() => StartBridgeAsync("UI or auto start");
 
-	public Task StopBridgeAsync() => StopBridgeAsync("UI (Overview, sidebar or tray)");
+	public Task StopBridgeAsync() => StopBridgeAsync("UI (Settings or tray)");
 
 	public async Task StartBridgeAsync(string reason)
 	{
@@ -293,6 +299,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		host.IdleMinutes = value.IdlePowerOffMinutes;
 		host.PowerOffWhenIdle = value.PowerOffWhenIdle;
 		host.Shortcuts.Enabled = value.ShortcutsEnabled;
+		psOpensApp = value.PsOpensApp;
 		host.Desktop.Settings = value.Desktop;
 		host.Desktop.Active = value.DesktopModeOn;
 		InputTransform t = host.InputTransform;
@@ -365,6 +372,9 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 		cancel.ThrowIfCancellationRequested();
 		AdapterTestResult result = Describe(report);
+		AppLog.Write(report == null ? "adapter test: nothing measured"
+			: string.Create(System.Globalization.CultureInfo.InvariantCulture,
+				$"adapter test: {(report.IsComplete ? report.Verdict.ToString() : "incomplete")} ({string.Join(", ", report.Findings.Select(f => $"{f.Kind} {f.Value:F1} {f.Level}"))}, coverage {report.Coverage:F2})"));
 		if (adapterResultPath != null)
 		{
 			WriteAdapterResult(adapterResultPath, report, result);
@@ -383,11 +393,22 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 			{
 				Directory.CreateDirectory(dir);
 			}
+			// The same explanation the setup page shows (in the language of the test), and the raw measurement.
+			AdapterExplanation explanation = AdapterCheck.Explain(report);
 			var data = new
 			{
 				Time = DateTimeOffset.Now,
 				Verdict = result.Verdict?.ToString(),
 				result.Text,
+				Explanation = new
+				{
+					explanation.Headline,
+					Lines = explanation.Lines.Select(l => new { l.Measured, l.Needed, Level = l.Level.ToString(), l.Status }),
+					explanation.Advice
+				},
+				Complete = report?.IsComplete,
+				report?.Coverage,
+				Findings = report?.Findings.Select(f => new { Kind = f.Kind.ToString(), Level = f.Level.ToString(), f.Value, f.Value2 }),
 				Idle = report?.Idle,
 				Load = report?.Load,
 				report?.HapticsRateHz
@@ -452,9 +473,12 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	public Task ExportDiagnosticsAsync(string path) =>
 		DiagnosticsExport.CreateZipAsync(path, DiagnosticsSources.Default(Device is { } d ? ControllerInfo.From(d) : null));
 
-	public static AdapterTestResult Describe(AdapterReport? report) => report == null
-		? new AdapterTestResult(null, Text.AdapterTestNoData())
-		: new AdapterTestResult(report.Verdict, report.VerdictText + Environment.NewLine + string.Join(Environment.NewLine, report.Reasons));
+	// The verdict only when the test measured properly; the text is AdapterCheck.Explain's (verdict, values, advice).
+	public static AdapterTestResult Describe(AdapterReport? report)
+	{
+		AdapterExplanation explanation = AdapterCheck.Explain(report);
+		return new AdapterTestResult(explanation.Verdict, explanation.ToText(), report);
+	}
 
 	public async Task ShutdownAsync()
 	{
@@ -558,6 +582,16 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 			Raise();
 		}
 	}
+
+	// Whether the app's main window is the active one, and whether the foreground window covers its monitor (set by the
+	// app; read on the input thread, so both must be cheap).
+	public Func<bool>? IsAppInFront { get; set; }
+	public Func<bool>? IsForegroundFullScreen { get; set; }
+
+	// Where a single short PS tap goes ("PS: Open The App"): a game counts as in front when the foreground window was a
+	// known game at the last game tick (GameModeController.IsGameInFront) or anything covers its whole monitor.
+	public PsTapRoute RoutePsTap() =>
+		PsTapRule.Decide(psOpensApp, IsAppInFront?.Invoke() == true, Games.IsGameInFront || IsForegroundFullScreen?.Invoke() == true);
 
 	// Looks at the foreground game and applies its mode (once a second).
 	public void GameTick()

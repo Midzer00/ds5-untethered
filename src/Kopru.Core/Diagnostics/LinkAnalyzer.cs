@@ -8,7 +8,9 @@ public readonly record struct LinkSample(long ArrivalTicks, byte Sequence, uint 
 
 public sealed record Spread(double P50, double P95, double P99, double Max);
 
-public sealed record LinkResult(int Reports, double Seconds, double RateHz, Spread IntervalMs, Spread ExtraDelayMs, int Lost)
+// LongGaps / VeryLongGaps: intervals of at least LinkLimits.LongGapMs / VeryLongGapMs between two reports.
+public sealed record LinkResult(int Reports, double Seconds, double RateHz, Spread IntervalMs, Spread ExtraDelayMs, int Lost, int LongGaps = 0,
+	int VeryLongGaps = 0)
 {
 	public double LostShare => Reports + Lost == 0 ? 0 : (double)Lost / (Reports + Lost);
 }
@@ -83,7 +85,9 @@ public static class LinkAnalyzer
 			extra[i] -= floor;
 		}
 		double seconds = arrival[^1] / 1000;
-		return new LinkResult(n, seconds, seconds > 0 ? (n - 1) / seconds : 0, SpreadOf(intervals), SpreadOf(extra), lost);
+		int longGaps = intervals.Count(i => i >= LinkLimits.LongGapMs);
+		int veryLongGaps = intervals.Count(i => i >= LinkLimits.VeryLongGapMs);
+		return new LinkResult(n, seconds, seconds > 0 ? (n - 1) / seconds : 0, SpreadOf(intervals), SpreadOf(extra), lost, longGaps, veryLongGaps);
 	}
 
 	public static double Percentile(double[] sorted, double p)

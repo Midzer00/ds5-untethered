@@ -11,16 +11,39 @@ public enum ShortcutAction
 	PowerOff,
 	ToggleSupportedMode,
 	ToggleDesktopMode,
-	// The controller's mic button (BridgeHostMic, not a PS combo): turn the microphone on / off.
-	MicOn,
-	MicOff
+	// The controller's mic button (BridgeHostMic, not a PS combo); the app decides what it does (Audio.MicButtonRules).
+	MicButton,
+	// A single short PS tap with no game in front (TapRoute): bring the app's window to the front.
+	OpenApp
+}
+
+// Where a single short PS tap (no combo) goes.
+public enum PsTapRoute
+{
+	// Passed on to the game as a short tap (today's behaviour).
+	Game,
+	// Not passed on; OpenApp is raised.
+	OpenApp,
+	// Not passed on and nothing happens (the app's window is already in front).
+	Nothing
+}
+
+public static class PsTapRule
+{
+	// "PS: Open The App" on: the app's window already in front swallows the tap; a game (or anything full-screen) in front
+	// gets it as before; otherwise the tap opens the app. Off: always the game.
+	public static PsTapRoute Decide(bool opensApp, bool appInFront, bool gameInFront) =>
+		!opensApp ? PsTapRoute.Game
+		: appInFront ? PsTapRoute.Nothing
+		: gameInFront ? PsTapRoute.Game
+		: PsTapRoute.OpenApp;
 }
 
 // Controller shortcuts with the PS button held as a modifier: PS + D-pad left/right = previous/next profile, PS + D-pad
 // up/down = game haptics level up/down, PS + Square = supported mode on/off, PS + Options = desktop mode on/off, PS + Triangle held PowerOffHold = turn the
 // controller off. Works on the 63-byte input body in place, before games see it:
 // - while PS is held it is hidden from the game; released without a combo, it is passed on as a short tap (TapLength),
-//   so a plain PS press still reaches the game;
+//   so a plain PS press still reaches the game; a short one (OpenAppMaxHold) asks TapRoute first and may open the app instead;
 // - a button used in a combo is hidden until it is released (even after PS is let go).
 // Apply is called on the input thread only; Enabled and the Triggered handlers may be touched from any thread.
 // Triggered is raised on the input thread: handlers must be short (post the work elsewhere).
@@ -35,6 +58,8 @@ public sealed class ShortcutProcessor
 
 	public static readonly TimeSpan PowerOffHold = TimeSpan.FromSeconds(1);
 	public static readonly TimeSpan TapLength = TimeSpan.FromMilliseconds(100);
+	// A PS press held longer than this is not a "single tap" for TapRoute: it goes to the game as before.
+	public static readonly TimeSpan OpenAppMaxHold = TimeSpan.FromMilliseconds(600);
 
 	private readonly TimeProvider time;
 	private volatile bool enabled = true;
@@ -46,7 +71,7 @@ public sealed class ShortcutProcessor
 	private bool lastSquare, lastTriangle;
 	private bool hatMasked, squareMasked, triangleMasked;
 	private bool lastOptions, optionsMasked;
-	private long triangleSince;
+	private long triangleSince, psSince;
 	private bool triangleTiming, powerFired;
 
 	public ShortcutProcessor(TimeProvider? time = null)
@@ -62,6 +87,9 @@ public sealed class ShortcutProcessor
 	}
 
 	public event Action<ShortcutAction>? Triggered;
+
+	// Asked on the input thread when a single short PS tap ends (keep it cheap); null or a throw: the game gets the tap.
+	public Func<PsTapRoute>? TapRoute { get; set; }
 
 	// Forgets a combo in progress (a new connection).
 	public void Reset()
@@ -100,6 +128,7 @@ public sealed class ShortcutProcessor
 		{
 			// Buttons already down when PS goes down do not count as a combo.
 			psHeld = true;
+			psSince = now;
 			comboUsed = false;
 			tapPending = false;
 			triangleTiming = false;
@@ -139,8 +168,16 @@ public sealed class ShortcutProcessor
 				triangleTiming = false;
 				if (!comboUsed)
 				{
-					tapPending = true;
-					tapUntil = now + (long)(TapLength.TotalSeconds * time.TimestampFrequency);
+					PsTapRoute route = time.GetElapsedTime(psSince, now) <= OpenAppMaxHold ? RouteTap() : PsTapRoute.Game;
+					if (route == PsTapRoute.Game)
+					{
+						tapPending = true;
+						tapUntil = now + (long)(TapLength.TotalSeconds * time.TimestampFrequency);
+					}
+					else if (route == PsTapRoute.OpenApp)
+					{
+						Triggered?.Invoke(ShortcutAction.OpenApp);
+					}
 				}
 			}
 		}
@@ -200,6 +237,18 @@ public sealed class ShortcutProcessor
 		if (optionsMasked)
 		{
 			body[Buttons1] &= unchecked((byte)~OptionsBit);
+		}
+	}
+
+	private PsTapRoute RouteTap()
+	{
+		try
+		{
+			return TapRoute?.Invoke() ?? PsTapRoute.Game;
+		}
+		catch (Exception)
+		{
+			return PsTapRoute.Game;
 		}
 	}
 

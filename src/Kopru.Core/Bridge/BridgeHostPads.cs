@@ -44,6 +44,7 @@ public sealed partial class BridgeHost
 		ApplySpeakerTo(connection);
 		ApplyMicTo(connection);
 		Diagnostics.AppLog.Write($"virtual pad {wanted}");
+		linkQuality.Restart(NowMs, "virtual pad swap");
 		PadTypeChanged?.Invoke(wanted);
 	}
 
@@ -80,6 +81,7 @@ public sealed partial class BridgeHost
 			if (port is int p)
 			{
 				port = null;
+				host.NotifyPadAudio(a => a.PadDetaching(host.Slot));
 				try
 				{
 					await host.attacher.DetachAsync(p).ConfigureAwait(false);

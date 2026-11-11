@@ -12,12 +12,6 @@ using Kopru.Core.Virtual;
 
 namespace Kopru.Core.Tests;
 
-internal sealed class FakeWindowsMicMute : IWindowsMicMute
-{
-	public ConcurrentQueue<bool> Calls { get; } = new();
-
-	public void SetMuted(bool muted) => Calls.Enqueue(muted);
-}
 
 // Counts packets; every packet decodes to 480 samples of its first byte * 100.
 internal sealed class FakeMicDecoder : IMicDecoder
@@ -302,7 +296,7 @@ public class MicHostTests
 
 	private static void WaitUntil(Func<bool> condition) => Assert.True(SpinWait.SpinUntil(condition, 3000), "timed out");
 
-	private BridgeHost Host(FakeWindowsMicMute windows, TimeProvider? time = null) =>
+	private BridgeHost Host(TimeProvider? time = null) =>
 		new(controllers, new FakeIdentity(DeviceIdentity.Create(BridgeTests.Device, BridgeTests.Configuration,
 				[0x05, 0x01, 0x09, 0x05, 0xA1, 0x01, 0xC0, 0x00], new Dictionary<int, string> { [1] = "S", [2] = "D" },
 				new Dictionary<byte, byte[]> { [0x05] = [0x05, 1, 2, 3] })), new FakeAttacher(log), time)
@@ -311,8 +305,7 @@ public class MicHostTests
 			MonitorInterval = TimeSpan.FromMilliseconds(10),
 			NoInputTimeout = Timeout.InfiniteTimeSpan,
 			SpeakerEncoderFactory = () => new FakeOpusEncoder(),
-			MicDecoderFactory = () => new FakeMicDecoder(),
-			WindowsMicMute = windows
+			MicDecoderFactory = () => new FakeMicDecoder()
 		};
 
 	private static byte[] Input(bool mute, byte sequence)
@@ -326,11 +319,12 @@ public class MicHostTests
 		return report;
 	}
 
-	// The app's part in these tests: a press asks for the new state, the "app" applies it like SettingsState does.
+	// The app's part in these tests: a press switches the controller mic ("Turn Off" mode with the controller mic selected).
 	private static void ActLikeTheApp(BridgeHost host, ConcurrentQueue<bool> asked)
 	{
-		host.MicButtonPressed += on =>
+		host.MicButtonPressed += () =>
 		{
+			bool on = !host.Mic.Enabled;
 			asked.Enqueue(on);
 			_ = Task.Run(() => host.ApplyMic(host.Mic with { Enabled = on }));
 		};
@@ -343,21 +337,20 @@ public class MicHostTests
 		return () => Interlocked.Read(ref count);
 	}
 
-	// The mic button is the switch: each press asks for the other state, the LED (FollowMic) is lit while the mic is on,
-	// the stream asks for the mic while on, and Windows' mic is unmuted / muted with the press (MuteWindows).
+	// Each press is reported (the app switches the mic), the LED (FollowMic) is lit while the mic is on and the stream asks
+	// for the mic while on.
 	[Fact]
-	public async Task MicButton_SwitchesTheMic_LedFollows_WindowsFollowsThePress()
+	public async Task MicButton_IsReported_TheAppSwitchesTheMic_LedFollows()
 	{
-		FakeWindowsMicMute windows = new();
 		StepClock clock = new();
-		await using BridgeHost host = Host(windows, clock);
+		await using BridgeHost host = Host(clock);
 		ConcurrentQueue<bool> asked = new();
 		ActLikeTheApp(host, asked);
 		Func<long> inputs = CountInputs(host);
 		FakeLink link = new();
 		controllers.Links.Enqueue(link);
 		host.ApplyLight(host.Light with { Options = host.Light.Options with { MuteLed = MuteLedMode.FollowMic } });
-		host.ApplyMic(new MicSettings(false, MuteWindows: true));
+		host.ApplyMic(new MicSettings(false));
 		await host.StartAsync();
 		WaitUntil(() => host.State == BridgeState.Running);
 		Assert.Null(host.MicPipeline);
@@ -369,7 +362,6 @@ public class MicHostTests
 		link.Feed(Input(true, 2));
 		WaitUntil(() => host.Mic.Enabled && host.MicPipeline != null);
 		Assert.Equal([true], asked);
-		WaitUntil(() => windows.Calls.Contains(false));
 		WaitUntil(() => link.Writes.Any(w => w[0] == BluetoothReports.HapticsId && w[MicPackets.StreamControlOffset] == MicPackets.StreamMicOn));
 		byte[] stream = link.Writes.First(w => w[0] == BluetoothReports.HapticsId && w[MicPackets.StreamControlOffset] == MicPackets.StreamMicOn);
 		Assert.Equal(Crc.Compute(Crc.OutputSeed, stream.AsSpan(0, 138)), BinaryPrimitives.ReadUInt32LittleEndian(stream.AsSpan(138)));
@@ -392,31 +384,45 @@ public class MicHostTests
 		link.Feed(Input(true, 7));
 		WaitUntil(() => !host.Mic.Enabled);
 		Assert.Equal([true, false], asked);
-		WaitUntil(() => windows.Calls.Contains(true));
 		WaitUntil(() => link.Writes.Last(w => w[0] == 0x31)[3 + OutputBlock.MuteLed] == OutputBlock.MuteLedOff);
-		Assert.Equal(2, windows.Calls.Count);
+
+		// A selected PC microphone decides the LED (Live), whatever the controller mic does.
+		host.ApplyMic(new MicSettings(false) { Live = true });
+		WaitUntil(() => link.Writes.Last(w => w[0] == 0x31)[3 + OutputBlock.MuteLed] == OutputBlock.MuteLedOn);
+		host.ApplyMic(new MicSettings(true) { Live = false });
+		WaitUntil(() => link.Writes.Last(w => w[0] == 0x31)[3 + OutputBlock.MuteLed] == OutputBlock.MuteLedOff);
+
+		// "Mute" mode: the stream stays, the pipeline feeds silence, the LED is dark.
+		host.ApplyMic(new MicSettings(true, Muted: true));
+		WaitUntil(() => host.MicPipeline is { Muted: true });
+		Assert.False(host.Mic.IsLive);
+		host.ApplyMic(new MicSettings(true));
+		WaitUntil(() => host.MicPipeline is { Muted: false });
+		WaitUntil(() => link.Writes.Last(w => w[0] == 0x31)[3 + OutputBlock.MuteLed] == OutputBlock.MuteLedOn);
 	}
 
-	// Low Power (Button off) and the other pad types: a press switches nothing; back on the virtual DualSense it does.
+	// Low Power keeps the button (the app may still mute a PC microphone; it does not turn the controller mic on); the
+	// other pad types get the button and nothing is reported; back on the virtual DualSense it is reported again.
 	[Fact]
-	public async Task MicButton_DoesNothing_UnderLowPower_OrWithAnotherPadType()
+	public async Task MicButton_IsReportedUnderLowPower_NotWithAnotherPadType()
 	{
-		FakeWindowsMicMute windows = new();
 		StepClock clock = new();
-		await using BridgeHost host = Host(windows, clock);
-		ConcurrentQueue<bool> asked = new();
-		ActLikeTheApp(host, asked);
+		await using BridgeHost host = Host(clock);
+		ConcurrentQueue<int> asked = new();
+		host.MicButtonPressed += () => asked.Enqueue(1);
 		Func<long> inputs = CountInputs(host);
 		FakeLink link = new();
 		controllers.Links.Enqueue(link);
-		host.ApplyMic(LowPower.Apply(new ControllerSettings { Mic = new MicSettings(true, MuteWindows: true) }, true).Mic);
-		Assert.False(host.Mic.Button);
+		host.ApplyMic(LowPower.Apply(new ControllerSettings { Mic = new MicSettings(true) }, true).Mic);
+		Assert.True(host.Mic.Button);
+		Assert.False(host.Mic.Enabled);
 		await host.StartAsync();
 		WaitUntil(() => host.State == BridgeState.Running);
 		link.Feed(Input(false, 1));
 		link.Feed(Input(true, 2));
 		link.Feed(Input(false, 3));
 		WaitUntil(() => inputs() == 3);
+		WaitUntil(() => asked.Count == 1);
 		clock.Advance(MicButton.Debounce);
 
 		host.ApplyMic(new MicSettings(false));
@@ -426,14 +432,12 @@ public class MicHostTests
 		link.Feed(Input(false, 5));
 		WaitUntil(() => inputs() == 5);
 		clock.Advance(MicButton.Debounce);
-		Assert.Empty(asked);
+		Assert.Single(asked);
 
 		host.UsePad(Kopru.Core.Virtual.VirtualPadType.DualSense);
 		WaitUntil(() => log.Count(e => e.StartsWith("attach", StringComparison.Ordinal)) == 3);
 		link.Feed(Input(true, 6));
-		WaitUntil(() => asked.Count == 1);
-		Assert.Equal([true], asked);
-		Assert.Empty(windows.Calls);
+		WaitUntil(() => asked.Count == 2);
 	}
 	// Measured: a controller asked for its mic once keeps sending mic reports later, also into a session that never asked.
 	// They are never gamepad input; while the mic is off they make the session send "mic off" (bounded).

@@ -70,13 +70,13 @@ public class QuickSettingsAppTests
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
 		QuickSettingsViewModel q = vm.Overview.Quick;
 		q.SpeakerOn = true;
-		q.MicOn = true;
+		q.MicTile = true;
 		Assert.True(vm.Settings.SpeakerEnabled);
 		Assert.True(vm.Settings.MicEnabled);
 		Assert.True(fake.Settings.Speaker.Enabled);
 		Assert.True(fake.Settings.Mic.Enabled);
 		vm.Settings.MicEnabled = false;
-		Assert.False(q.MicOn);
+		Assert.False(q.MicTile);
 	}
 
 	// The Speaker tile shows the speaker as DualSense Mode makes it (SpeakerActive), next to the shortcuts tile.
@@ -214,7 +214,7 @@ public class QuickSettingsAppTests
 				(MainWindowViewModel vm, _) = Create();
 				QuickSettingsViewModel q = vm.Overview.Quick;
 				string[] tips = [q.LowPowerTip, q.SupportedModeTip, q.MouseModeTip, q.SpeakerTip, q.MicTip, q.ShortcutsTip, q.EditShortcutsTip, q.HapticsTip,
-					q.TriggerTip, q.LightTip, q.ProfileTip, vm.Overview.Live.LeftHapticsTip, vm.Overview.Live.RightHapticsTip, vm.Overview.Live.TriggersTip];
+					q.TriggerTip, q.LightTip, q.ProfileTip, q.MicButtonTip, q.Audio.OutputTip, q.Audio.InputTip, vm.Overview.Live.LeftHapticsTip, vm.Overview.Live.RightHapticsTip, vm.Overview.Live.TriggersTip];
 				Assert.All(tips, t => Assert.False(string.IsNullOrWhiteSpace(t)));
 				Assert.Equal(tips.Length, tips.Distinct().Count());
 				Assert.DoesNotContain(Text.QuickOverriddenByLowPower(), q.SpeakerTip);
@@ -328,7 +328,10 @@ public class QuickSettingsAppTests
 		// The card and the profile keep the user's own values.
 		Assert.Equal(130, vm.Settings.GameHapticsLevel);
 		Assert.True(q.SpeakerOn);
-		Assert.True(q.MicOn);
+		// The microphone tile shows the controller mic as it is (held off), the user's switch stays on.
+		Assert.True(vm.Settings.MicEnabled);
+		Assert.False(q.MicTile);
+		Assert.False(q.CanPressMic);
 		Assert.Equal(-1, q.HapticsIndex);
 		Assert.Equal(profileBefore, vm.Settings.Profiles.Active.Values);
 		Assert.Equal(0, vm.Overview.ArtLightIntensity);

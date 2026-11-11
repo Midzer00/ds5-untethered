@@ -26,6 +26,10 @@ public sealed partial class SettingsState
 	[ObservableProperty]
 	private bool _shortcutsEnabled = true;
 
+	// "PS: Open The App": a single PS tap with no game in front brings the window up (only with the shortcuts switch on).
+	[ObservableProperty]
+	private bool _psOpensApp = true;
+
 	public ProfileBook Profiles => _profiles;
 
 	// The profiles and shortcuts groups on the Settings page.
@@ -75,8 +79,7 @@ public sealed partial class SettingsState
 		HeadphoneVolume = HeadphoneVolume,
 		MicEnabled = MicEnabled,
 		MicGain = MicGain,
-		MicNoiseGate = MicNoiseGate,
-		MicMuteWindows = MicMuteWindows
+		MicNoiseGate = MicNoiseGate
 	};
 
 	// Makes a profile the active one and loads its values. feedback: show its number on the player LEDs and a toast.
@@ -125,9 +128,8 @@ public sealed partial class SettingsState
 			case ShortcutAction.PowerOff:
 				_ = _service.PowerOffAsync();
 				break;
-			case ShortcutAction.MicOn:
-			case ShortcutAction.MicOff:
-				ApplyMicButton(action == ShortcutAction.MicOn);
+			case ShortcutAction.MicButton:
+				PressMicButton();
 				break;
 		}
 	}
@@ -185,7 +187,7 @@ public sealed partial class SettingsState
 			or nameof(Brightness) or nameof(PlayerLeds) or nameof(Remap) or nameof(Gyro) or nameof(LightMode) or nameof(BreathingPeriod)
 			or nameof(BreathingMin) or nameof(BreathingMax) or nameof(RainbowSpeed) or nameof(PlayerLedPattern) or nameof(PlayerLedBrightness)
 			or nameof(MuteLed) or nameof(SpeakerEnabled) or nameof(SpeakerVolume) or nameof(HeadphoneVolume)
-			or nameof(MicEnabled) or nameof(MicGain) or nameof(MicNoiseGate) or nameof(MicMuteWindows))
+			or nameof(MicEnabled) or nameof(MicGain) or nameof(MicNoiseGate))
 		{
 			_profiles.Update(_profiles.ActiveId, CaptureValues());
 		}
@@ -249,7 +251,6 @@ public sealed partial class SettingsState
 		MicEnabled = v.MicEnabled;
 		MicGain = Math.Clamp(v.MicGain, 0, MaxMicGain);
 		MicNoiseGate = v.MicNoiseGate;
-		MicMuteWindows = v.MicMuteWindows;
 	}
 }
 

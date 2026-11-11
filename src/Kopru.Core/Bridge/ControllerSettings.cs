@@ -44,6 +44,9 @@ public sealed record ControllerSettings(
 	// Controller shortcuts with the PS button held (see ShortcutProcessor).
 	public bool ShortcutsEnabled { get; init; } = true;
 
+	// A single short PS tap with no game in front brings the app's window up (PsTapRule; under ShortcutsEnabled).
+	public bool PsOpensApp { get; init; } = true;
+
 	// Experimental controller speaker (game audio to the controller; off by default).
 	public SpeakerSettings Speaker { get; init; } = SpeakerSettings.Off;
 	// Desktop mode: on (the controller drives Windows, games get a neutral pad) and its tuning.

@@ -57,7 +57,14 @@ UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
+; Light or dark like Windows. The logo (tools\installer\make-wizard-images.ps1 regenerates the images): the tall Welcome /
+; Finished image is the logo on the app's graphite backdrop (a dark side panel in both appearances); the small top-right
+; image is the controller mark on a transparent background (32-bit, straight alpha), so it fits the light or dark header.
+; Every size Inno Setup documents for 100-250 % DPI; Setup picks the best fit.
+WizardStyle=modern dynamic
+WizardImageFile=wizard\WizardImage-164x314.bmp,wizard\WizardImage-192x386.bmp,wizard\WizardImage-246x459.bmp,wizard\WizardImage-273x556.bmp,wizard\WizardImage-328x604.bmp,wizard\WizardImage-355x700.bmp,wizard\WizardImage-410x797.bmp
+WizardSmallImageFile=wizard\WizardSmall-55x55.bmp,wizard\WizardSmall-64x68.bmp,wizard\WizardSmall-83x80.bmp,wizard\WizardSmall-92x97.bmp,wizard\WizardSmall-110x106.bmp,wizard\WizardSmall-119x123.bmp,wizard\WizardSmall-138x140.bmp
+WizardImageAlphaFormat=defined
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763

@@ -261,7 +261,8 @@ public class RealServiceTests
 	{
 		AdapterTestResult r = RealControllerService.Describe(null);
 		Assert.Null(r.Verdict);
-		Assert.Equal(Text.AdapterTestNoData(), r.Text);
+		Assert.StartsWith(Text.AdapterHeadlineNoData(), r.Text);
+		Assert.Contains(Text.AdapterAdviceRetry(), r.Text);
 	}
 
 	[AvaloniaFact]
@@ -314,14 +315,16 @@ public class RealServiceTests
 		Directory.Delete(dir, true);
 	}
 
-	internal sealed class Probes(bool drivers) : IInstallRegistry, IBluetoothRadio, IControllerFinder, IRestartProbe
+	internal sealed class Probes(bool drivers, bool restart = false) : IInstallRegistry, IBluetoothRadio, IControllerFinder, IRestartProbe
 	{
+		// What Windows reports about a pending restart (changed by tests between checks).
+		public bool Restart { get; set; } = restart;
 		public (string? Version, string? Location)? FindProgram(string displayNamePrefix) => drivers ? ("1.0", @"C:\x") : null;
 		public bool ServiceExists(string serviceName) => drivers;
 		public bool FileExists(string path) => drivers;
 		public RadioState Query() => RadioState.On;
 		public IReadOnlyList<HidDevice> Find() => [new HidDevice(TestLink.BtPath, 0x054C, 0x0CE6, 78, 547, 64)];
-		public bool? IsRestartPending() => false;
+		public bool? IsRestartPending() => Restart;
 	}
 
 	internal sealed class Links : IUrlLauncher
@@ -348,7 +351,9 @@ public class RealServiceTests
 		SetupStepItem adapter = setup.Steps.Single(s => s.Id == SetupStepId.AdapterTest);
 		await adapter.Actions[0].Command.ExecuteAsync(null);
 		Assert.Equal(StepStatus.Done, setup.Steps.Single(s => s.Id == SetupStepId.AdapterTest).Status);
-		Assert.True(setup.HasMessage);
+		// The result shows inside the adapter step (verdict, values, advice), not as the page's bottom message.
+		Assert.True(setup.HasAdapterResult);
+		Assert.False(setup.HasMessage);
 
 		setup.CloseCommand.Execute(null);
 		Assert.Same(vm.Overview, vm.CurrentPage);

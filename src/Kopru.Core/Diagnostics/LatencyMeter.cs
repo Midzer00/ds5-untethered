@@ -8,6 +8,10 @@ namespace Kopru.Core.Diagnostics;
 // the virtual pad having it (median).
 public sealed record LatencyReading(double LinkP50Ms, double LinkP99Ms, double RelayMs);
 
+// What arrived since the previous LatencyMeter.TakeCounts: reports, reports missing from the sequence, and gaps between
+// two reports of at least LinkLimits.LongGapMs / VeryLongGapMs.
+public readonly record struct LinkCounts(int Reports, int Lost, int LongGaps, int VeryLongGaps);
+
 // Rolling window of the last input reports (thread safe: recorded on the reader thread, read by the monitor).
 public sealed class LatencyMeter
 {
@@ -21,6 +25,8 @@ public sealed class LatencyMeter
 
 	private int next, count;
 
+	private int countedReports, countedLost, countedLongGaps, countedVeryLongGaps;
+
 	public LatencyMeter(int capacity = DefaultCapacity)
 	{
 		samples = new LinkSample[capacity];
@@ -32,10 +38,36 @@ public sealed class LatencyMeter
 	{
 		lock (gate)
 		{
+			if (count > 0)
+			{
+				LinkSample previous = samples[(next - 1 + samples.Length) % samples.Length];
+				countedLost += Math.Max(0, ((sequence - previous.Sequence) & 0xFF) - 1);
+				double gapMs = (arrivalTicks - previous.ArrivalTicks) * 1000.0 / Stopwatch.Frequency;
+				if (gapMs >= LinkLimits.LongGapMs)
+				{
+					countedLongGaps++;
+				}
+				if (gapMs >= LinkLimits.VeryLongGapMs)
+				{
+					countedVeryLongGaps++;
+				}
+			}
+			countedReports++;
 			samples[next] = new LinkSample(arrivalTicks, sequence, sensorTicks);
 			relays[next] = Math.Max(0, relayDoneTicks - arrivalTicks);
 			next = (next + 1) % samples.Length;
 			count = Math.Min(count + 1, samples.Length);
+		}
+	}
+
+	// The counts since the previous call (LinkQualityMonitor's per-second sample), and starts counting again.
+	public LinkCounts TakeCounts()
+	{
+		lock (gate)
+		{
+			LinkCounts counts = new(countedReports, countedLost, countedLongGaps, countedVeryLongGaps);
+			countedReports = countedLost = countedLongGaps = countedVeryLongGaps = 0;
+			return counts;
 		}
 	}
 

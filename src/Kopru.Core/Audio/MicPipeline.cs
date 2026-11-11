@@ -163,6 +163,9 @@ public sealed class MicPipeline : IMicFeed, IDisposable
 
 	public volatile bool NoiseGate;
 
+	// Games get silence while set (the mic button in "Mute" mode); the stream and the level meter keep running.
+	public volatile bool Muted;
+
 	// Replaces the controller's audio (test tone) while set.
 	public volatile IMicSource? Source;
 
@@ -237,6 +240,11 @@ public sealed class MicPipeline : IMicFeed, IDisposable
 		double peak = Process(m);
 		Volatile.Write(ref level, Math.Max(peak, Level * 0.9));
 		pcm.Clear();
+		if (Muted)
+		{
+			// "Mute" mode of the mic button: the stream keeps running, games get silence (the meter still moves).
+			return;
+		}
 		for (int i = 0; i < samples; i++)
 		{
 			for (int c = 0; c < channels; c++)

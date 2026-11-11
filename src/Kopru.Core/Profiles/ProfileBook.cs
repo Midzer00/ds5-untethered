@@ -44,7 +44,6 @@ public sealed record ProfileValues
 	public bool MicEnabled { get; init; }
 	public double MicGain { get; init; } = 100;
 	public bool MicNoiseGate { get; init; } = true;
-	public bool MicMuteWindows { get; init; }
 }
 
 // A named settings bundle. The default profile (Id "default") always exists; its name is shown localized.

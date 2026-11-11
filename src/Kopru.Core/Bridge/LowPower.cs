@@ -55,9 +55,9 @@ public static class LowPower
 			PlayerLeds = false,
 			LightFromGame = false,
 			LightOptions = s.LightOptions with { Mode = LightMode.Static, PlayerPattern = PlayerLedPattern.Off },
-			// Speaker and microphone off; the mic button does not switch the mic back on (it goes to the game as before).
+			// Speaker and controller microphone off; the mic button can not switch it back on (it may still mute a PC microphone).
 			Speaker = s.Speaker with { Enabled = false },
-			Mic = s.Mic with { Enabled = false, Button = false },
+			Mic = s.Mic with { Enabled = false },
 			// The controller turns itself off sooner when it is left alone.
 			IdlePowerOffMinutes = idle,
 			PowerOffWhenIdle = true

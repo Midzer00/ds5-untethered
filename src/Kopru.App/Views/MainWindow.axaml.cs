@@ -2,6 +2,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Threading;
 
 namespace Kopru.App.Views;
@@ -16,7 +17,38 @@ public partial class MainWindow : Window
 		// A transparent surface for the system acrylic where Windows can draw it; opaque graphite elsewhere.
 		TransparencyLevelHint = SystemBackdrop.IsSupported ? [WindowTransparencyLevel.Transparent] : [WindowTransparencyLevel.None];
 		DragBand.PointerPressed += OnDragBandPressed;
+		// On Windows the base constructor already sets ClientSize (and may set other window properties) before
+		// InitializeComponent has created the named parts, so the property handlers skip until now; apply what they
+		// skipped once here, and again when the window opens with its real size.
+		ApplyLayoutState(force: true);
 	}
+
+	// The current content scale (see UiScale).
+	public double ContentScale { get; private set; } = 1;
+
+	// True once the named parts exist (InitializeComponent has run).
+	private bool PartsReady => ScaleHost != null && Pages != null && Root != null;
+
+	// Scale for the current client size, and the maximized off-screen margin. Safe to call at any time.
+	private void ApplyLayoutState(bool force = false)
+	{
+		if (!PartsReady)
+		{
+			return;
+		}
+		double factor = UiScale.Factor(ClientSize.Width, ClientSize.Height);
+		if (force || Math.Abs(factor - ContentScale) > 0.001)
+		{
+			ContentScale = factor;
+			ScaleHost.LayoutTransform = new ScaleTransform(factor, factor);
+			PopupScale.Instance.Set(factor);
+			// The top inset clears Windows' caption buttons, which do not scale: keep it 32 DIPs on screen.
+			Pages.Margin = new Thickness(0, CaptionHeight / factor, 0, 0);
+		}
+		Root.Margin = OffScreenMargin;
+	}
+
+	private const double CaptionHeight = 32;
 
 	// The top band stands in for the title bar: a drag moves the window (Windows snaps it as usual), a double click
 	// maximizes or restores it. The caption buttons above it are Windows' own and take their clicks first.
@@ -49,6 +81,7 @@ public partial class MainWindow : Window
 			TransparencyLevelHint = [WindowTransparencyLevel.None];
 		}
 		UpdateGlass();
+		ApplyLayoutState(force: true);
 	}
 
 	// The "glass" class switches to a translucent tint when the system acrylic is behind the window; without it the
@@ -56,6 +89,10 @@ public partial class MainWindow : Window
 	protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
 	{
 		base.OnPropertyChanged(change);
+		if (change.Property == ClientSizeProperty)
+		{
+			ApplyLayoutState();
+		}
 		if (change.Property == ActualTransparencyLevelProperty)
 		{
 			UpdateGlass();
@@ -63,7 +100,7 @@ public partial class MainWindow : Window
 		else if (change.Property == OffScreenMarginProperty)
 		{
 			// Maximized, Windows places the window's edges off the screen; the layout stays inside the visible part.
-			Root.Margin = OffScreenMargin;
+			ApplyLayoutState();
 		}
 		else if (change.Property == WindowStateProperty && _systemBackdrop)
 		{

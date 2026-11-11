@@ -1,101 +1,119 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.SettingsView" x:DataType="vm:SettingsViewModel">
+﻿<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.SettingsView" x:DataType="vm:SettingsViewModel">
   <UserControl.Styles>
-    <!-- Setting row: title and description on the left, the control on the right -->
-    <Style Selector="Grid.row">
-      <Setter Property="Margin" Value="0,14" />
-    </Style>
-    <Style Selector="Grid.kind">
+    <!-- Setting rows (Grid.settingRow, shared): this page's vertical rhythm, the text stack and the right-hand controls.
+         These also reach the panels hosted below (profiles, controllers, shortcuts, mouse mode). -->
+    <Style Selector="Grid.settingRow">
       <Setter Property="Margin" Value="0,10" />
     </Style>
-    <Style Selector="Grid.kind > StackPanel">
-      <Setter Property="Spacing" Value="2" />
-      <Setter Property="Margin" Value="0,0,16,0" />
+    <Style Selector="Grid.settingRow > StackPanel">
+      <Setter Property="Spacing" Value="3" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <!-- Row action buttons: one width so a column of them reads as one -->
+    <Style Selector="Grid.settingRow > Button">
+      <Setter Property="MinWidth" Value="104" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <!-- Slider with its value: the value ends on the shared right edge -->
+    <Style Selector="Grid.sliderValue">
+      <Setter Property="ColumnSpacing" Value="{StaticResource Gap}" />
+    </Style>
+    <Style Selector="Grid.sliderValue > Slider">
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <!-- The switch template keeps empty space right of the knob; pull it onto the same right edge as values and buttons -->
-    <Style Selector="ToggleSwitch">
-      <Setter Property="Margin" Value="0,0,-16,0" />
+    <Style Selector="TextBlock.section">
+      <Setter Property="Margin" Value="0,24,0,8" />
     </Style>
     <Style Selector=":disabled TextBlock">
       <Setter Property="Opacity" Value="0.5" />
     </Style>
-    <Style Selector="Grid.row > StackPanel">
-      <Setter Property="Spacing" Value="3" />
-      <Setter Property="Margin" Value="0,0,24,0" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
   </UserControl.Styles>
   <ScrollViewer Classes="page">
-    <StackPanel Spacing="0" MaxWidth="1500" Margin="32,28,32,28">
-      <TextBlock Classes="h1" Text="{Binding Title}" Margin="0,0,0,20" />
+    <StackPanel Spacing="0" Classes="page">
+      <TextBlock Classes="h1" Text="{Binding Title}" Margin="0,0,0,-4" />
 
-      <v:ProfilesPanel DataContext="{Binding Settings.ProfilesPanel}" Margin="0,0,0,24" />
+      <v:ProfilesPanel DataContext="{Binding Settings.ProfilesPanel}" />
 
-      <TextBlock Classes="section" Text="{Binding GeneralLabel}" Margin="0,0,0,8" />
+      <TextBlock Classes="section" Text="{Binding GeneralLabel}" />
       <Border Classes="panel" Padding="20,0">
         <StackPanel>
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding LanguageLabel}" />
               <TextBlock Classes="body" Text="{Binding LanguageHint}" />
             </StackPanel>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" Width="272" VerticalAlignment="Center">
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" Classes="control wide">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:LanguageOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding StartWithWindowsLabel}" />
               <TextBlock Classes="body" Text="{Binding StartWithWindowsHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.StartWithWindows}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.StartWithWindows}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding AutoStartBridgeLabel}" />
               <TextBlock Classes="body" Text="{Binding AutoStartBridgeHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.AutoStartBridge}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.AutoStartBridge}" OnContent="{x:Null}" OffContent="{x:Null}"
                           AutomationProperties.Name="{Binding AutoStartBridgeLabel}" />
           </Grid>
+          <!-- The virtual controller: when to stop it, its state and a small Stop / Start (the Overview's command) -->
+          <Border Classes="divider" IsVisible="{Binding HasBridge}" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="BridgeRow" IsVisible="{Binding HasBridge}">
+            <StackPanel>
+              <TextBlock Classes="label" Text="{Binding Bridge.BridgeRowLabel, FallbackValue=''}" />
+              <TextBlock Classes="body" Text="{Binding Bridge.BridgeRowHint, FallbackValue=''}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Gap}" Margin="0" HorizontalAlignment="Right">
+              <TextBlock Classes="value" Name="BridgeRowState" Text="{Binding Bridge.BridgeRowState, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+              <Button Theme="{StaticResource QuietButton}" Name="BridgeRowButton" MinWidth="104" Content="{Binding Bridge.BridgeRowButtonText, FallbackValue=''}"
+                      Command="{Binding Bridge.ToggleBridgeCommand, FallbackValue={x:Null}}" IsEnabled="{Binding Bridge.CanToggleBridge, FallbackValue=False}"
+                      ToolTip.Tip="{Binding Bridge.BridgeRowTip, FallbackValue={x:Null}}" ToolTip.ShowOnDisabled="True"
+                      AutomationProperties.Name="{Binding Bridge.BridgeRowLabel, FallbackValue=''}" />
+            </StackPanel>
+          </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding KeepInTrayLabel}" />
               <TextBlock Classes="body" Text="{Binding KeepInTrayHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.KeepInTray}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.KeepInTray}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding IdlePowerOffLabel}" />
               <TextBlock Classes="body" Text="{Binding IdlePowerOffHint}" />
             </StackPanel>
-            <Grid Grid.Column="1" ColumnDefinitions="200,Auto" VerticalAlignment="Center">
-              <Slider Maximum="60" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.IdlePowerOffMinutes}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Classes="value" Margin="12,0,0,0" MinWidth="60" Text="{Binding Settings.IdlePowerOffText}" />
+            <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+              <Slider Maximum="60" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.IdlePowerOffMinutes}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.IdlePowerOffText}" />
             </Grid>
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding PowerOffWhenIdleLabel}" />
               <TextBlock Classes="body" Text="{Binding PowerOffWhenIdleHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PowerOffWhenIdle}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PowerOffWhenIdle}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding AutoLowPowerLabel}" />
               <TextBlock Classes="body" Text="{Binding AutoLowPowerHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.AutoLowPower}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.AutoLowPower}" OnContent="{x:Null}" OffContent="{x:Null}"
                           AutomationProperties.Name="{Binding AutoLowPowerLabel}" />
           </Grid>
         </StackPanel>
@@ -103,83 +121,127 @@
 
       <v:ControllersPanel DataContext="{Binding Settings.ControllersPanel}" />
 
-      <TextBlock Classes="section" Text="{Binding SpeakerGroupLabel}" Margin="0,24,0,8" />
+      <TextBlock Classes="section" Text="{Binding SpeakerGroupLabel}" />
       <Border Classes="panel" Padding="20,0" Name="SpeakerPanel">
         <StackPanel>
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Classes="label" Text="{Binding Settings.Audio.OutputLabel}" />
+              <TextBlock Classes="body" Text="{Binding Settings.Audio.OutputHint}" TextWrapping="Wrap" />
+              <TextBlock Classes="caption" Text="{Binding Settings.Audio.UnavailableText}" IsVisible="{Binding Settings.Audio.ShowsUnavailable}" TextWrapping="Wrap" />
+              <TextBlock Classes="caption" Foreground="{StaticResource DangerBrush}" Text="{Binding Settings.Audio.ErrorText}" IsVisible="{Binding Settings.Audio.HasOutputError}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Name="OutputPicker" ItemsSource="{Binding Settings.Audio.Outputs}" SelectedItem="{Binding Settings.Audio.SelectedOutput}"
+                      IsEnabled="{Binding Settings.Audio.CanChoose}" Classes="control wide" AutomationProperties.Name="{Binding Settings.Audio.OutputLabel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:AudioDeviceItem">
+                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding FullName}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding SpeakerSendLabel}" />
               <TextBlock Classes="body" Text="{Binding SpeakerSendHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.SpeakerActive}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.SpeakerActive}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.SpeakerActive}">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.SpeakerActive}">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding SpeakerVolumeLabel}" />
             </StackPanel>
-            <Grid Grid.Column="1" ColumnDefinitions="200,Auto" VerticalAlignment="Center">
-              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.SpeakerVolume}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Classes="value" Margin="12,0,0,0" MinWidth="60" Text="{Binding Settings.SpeakerVolumeText}" />
+            <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.SpeakerVolume}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.SpeakerVolumeText}" />
             </Grid>
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.SpeakerActive}">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.SpeakerActive}">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding HeadphoneVolumeLabel}" />
               <TextBlock Classes="caption" Text="{Binding HeadphonesPluggedText}" IsVisible="{Binding HeadphonesPlugged}" />
             </StackPanel>
-            <Grid Grid.Column="1" ColumnDefinitions="200,Auto" VerticalAlignment="Center">
-              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.HeadphoneVolume}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Classes="value" Margin="12,0,0,0" MinWidth="60" Text="{Binding Settings.HeadphoneVolumeText}" />
+            <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.HeadphoneVolume}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.HeadphoneVolumeText}" />
             </Grid>
           </Grid>
         </StackPanel>
       </Border>
 
-      <TextBlock Classes="section" Text="{Binding MicGroupLabel}" Margin="0,24,0,8" />
+      <TextBlock Classes="section" Text="{Binding MicGroupLabel}" />
       <Border Classes="panel" Padding="20,0" Name="MicPanel">
         <StackPanel>
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Classes="label" Text="{Binding Settings.Audio.InputLabel}" />
+              <TextBlock Classes="body" Text="{Binding Settings.Audio.InputHint}" TextWrapping="Wrap" />
+              <TextBlock Classes="caption" Text="{Binding Settings.Audio.UnavailableText}" IsVisible="{Binding Settings.Audio.ShowsUnavailable}" TextWrapping="Wrap" />
+              <TextBlock Classes="caption" Foreground="{StaticResource DangerBrush}" Text="{Binding Settings.Audio.ErrorText}" IsVisible="{Binding Settings.Audio.HasInputError}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Name="InputPicker" ItemsSource="{Binding Settings.Audio.Inputs}" SelectedItem="{Binding Settings.Audio.SelectedInput}"
+                      IsEnabled="{Binding Settings.Audio.CanChoose}" Classes="control wide" AutomationProperties.Name="{Binding Settings.Audio.InputLabel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:AudioDeviceItem">
+                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding FullName}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding MicSendLabel}" />
               <TextBlock Classes="body" Text="{Binding MicSendHint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" Name="MicSwitch" IsChecked="{Binding Settings.MicEnabled}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" Name="MicSwitch" IsChecked="{Binding Settings.MicEnabled}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.MicEnabled}">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.MicEnabled}">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding MicGainLabel}" />
             </StackPanel>
-            <Grid Grid.Column="1" ColumnDefinitions="200,Auto" VerticalAlignment="Center">
-              <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Settings.MicGain}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Classes="value" Margin="12,0,0,0" MinWidth="60" Text="{Binding Settings.MicGainText}" />
+            <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+              <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Settings.MicGain}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.MicGainText}" />
             </Grid>
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.MicEnabled}">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.MicEnabled}">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding MicNoiseGateLabel}" />
               <TextBlock Classes="body" Text="{Binding MicNoiseGateHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.MicNoiseGate}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.MicNoiseGate}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
-              <TextBlock Classes="label" Text="{Binding MicMuteWindowsLabel}" />
-              <TextBlock Classes="body" Text="{Binding MicMuteWindowsHint}" TextWrapping="Wrap" />
+              <TextBlock Classes="label" Text="{Binding MicButtonModeLabel}" />
+              <TextBlock Classes="body" Text="{Binding MicButtonModeHint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.MicMuteWindows}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ListBox Grid.Column="1" Theme="{StaticResource Segmented}" ItemsSource="{Binding MicButtonModes}" SelectedIndex="{Binding MicButtonModeIndex}"
+                     Classes="control wide" AutomationProperties.Name="{Binding MicButtonModeLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Classes="label" Text="{Binding ProtectDefaultAudioLabel}" />
+              <TextBlock Classes="body" Text="{Binding ProtectDefaultAudioHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.ProtectDefaultAudio}" OnContent="{x:Null}" OffContent="{x:Null}"
+                          AutomationProperties.Name="{Binding ProtectDefaultAudioLabel}" />
           </Grid>
           <StackPanel IsVisible="{Binding MicActive}">
             <Border Classes="divider" />
-            <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding MicLevelLabel}" />
               </StackPanel>
-              <ProgressBar Grid.Column="1" Name="MicMeter" Width="272" Minimum="0" Maximum="100" Value="{Binding MicLevel}" VerticalAlignment="Center" />
+              <ProgressBar Grid.Column="1" Name="MicMeter" Classes="control wide" Minimum="0" Maximum="100" Value="{Binding MicLevel}" VerticalAlignment="Center" />
             </Grid>
           </StackPanel>
         </StackPanel>
@@ -189,115 +251,137 @@
 
       <v:DesktopModePanel DataContext="{Binding Settings.DesktopPanel}" />
 
-      <TextBlock Classes="section" Text="{Binding NotificationsLabel}" Margin="0,24,0,8" />
+      <TextBlock Classes="section" Text="{Binding NotificationsLabel}" />
       <Border Classes="panel" Padding="20,0" Name="NotificationsPanel">
         <StackPanel>
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding NotificationsShowLabel}" />
               <TextBlock Classes="body" Text="{Binding NotificationsShowHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotificationsEnabled}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotificationsEnabled}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.NotificationsEnabled}">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.NotificationsEnabled}">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding QuietWhilePlayingLabel}" />
               <TextBlock Classes="body" Text="{Binding QuietWhilePlayingHint}" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.QuietWhilePlaying}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.QuietWhilePlaying}" OnContent="{x:Null}" OffContent="{x:Null}" />
           </Grid>
           <Border Classes="divider" />
-          <!-- One switch per kind, two columns -->
-          <Grid ColumnDefinitions="*,40,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,6,0,10" IsEnabled="{Binding Settings.NotificationsEnabled}">
-            <Grid Grid.Row="0" Grid.Column="0" Classes="kind" ColumnDefinitions="*,Auto">
+          <!-- One switch per kind -->
+          <StackPanel IsEnabled="{Binding Settings.NotificationsEnabled}">
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifyConnectionLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifyConnectionHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifyConnectionHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyConnection}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyConnection}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyConnectionLabel}" />
             </Grid>
-            <Grid Grid.Row="0" Grid.Column="2" Classes="kind" ColumnDefinitions="*,Auto">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifyBatteryLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifyBatteryHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifyBatteryHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyBattery}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyBattery}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyBatteryLabel}" />
             </Grid>
-            <Grid Grid.Row="1" Grid.Column="0" Classes="kind" ColumnDefinitions="*,Auto">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifyGameLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifyGameHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifyGameHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyGame}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyGame}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyGameLabel}" />
             </Grid>
-            <Grid Grid.Row="1" Grid.Column="2" Classes="kind" ColumnDefinitions="*,Auto">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifySteamInputLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifySteamInputHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifySteamInputHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifySteamInput}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifySteamInput}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifySteamInputLabel}" />
             </Grid>
-            <Grid Grid.Row="2" Grid.Column="0" Classes="kind" ColumnDefinitions="*,Auto">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifyPowerOffLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifyPowerOffHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifyPowerOffHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyPowerOff}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyPowerOff}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyPowerOffLabel}" />
             </Grid>
-            <Grid Grid.Row="2" Grid.Column="2" Classes="kind" ColumnDefinitions="*,Auto">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifyErrorsLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifyErrorsHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifyErrorsHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyErrors}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyErrors}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyErrorsLabel}" />
             </Grid>
-            <Grid Grid.Row="3" Grid.Column="0" Classes="kind" ColumnDefinitions="*,Auto">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
               <StackPanel>
                 <TextBlock Classes="label" Text="{Binding NotifyHidHideLabel}" />
-                <TextBlock Classes="caption" Text="{Binding NotifyHidHideHint}" />
+                <TextBlock Classes="body" Text="{Binding NotifyHidHideHint}" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyHidHide}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyHidHide}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyHidHideLabel}" />
             </Grid>
-          </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Classes="label" Text="{Binding NotifyLinkLabel}" />
+                <TextBlock Classes="body" Text="{Binding NotifyLinkHint}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyLinkQuality}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding NotifyLinkLabel}" />
+            </Grid>
+          </StackPanel>
         </StackPanel>
       </Border>
 
-      <TextBlock Classes="section" Text="{Binding ToolsLabel}" Margin="0,24,0,8" />
+      <TextBlock Classes="section" Text="{Binding ToolsLabel}" />
       <Border Classes="panel" Padding="20,0">
         <StackPanel>
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding RunWizardText}" />
               <TextBlock Classes="body" Text="{Binding RunWizardHint}" />
             </StackPanel>
-            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding RunActionText}" Command="{Binding RunWizardCommand}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding RunActionText}" Command="{Binding RunWizardCommand}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding TestAdapterText}" />
               <TextBlock Classes="body" Text="{Binding TestAdapterHint}" />
             </StackPanel>
-            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding TestActionText}" Command="{Binding TestAdapterCommand}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding TestActionText}" Command="{Binding TestAdapterCommand}" />
           </Grid>
           <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Classes="label" Text="{Binding ExportText}" />
               <TextBlock Classes="body" Text="{Binding ExportHint}" />
             </StackPanel>
-            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding ExportActionText}" Command="{Binding ExportCommand}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding ExportActionText}" Command="{Binding ExportCommand}" />
           </Grid>
         </StackPanel>
       </Border>
-      <Border Margin="0,16,0,0" IsVisible="{Binding HasToolResult}">
+      <Border Margin="0,12,0,0" IsVisible="{Binding HasToolResult}">
         <TextBlock Classes="body" Text="{Binding ToolResult}" />
       </Border>
 
       <!-- About: the logo with the name, version and what the app does -->
-      <TextBlock Classes="section" Text="{Binding AboutLabel}" Margin="0,24,0,8" />
-      <Border Classes="panel" Padding="20,18">
+      <TextBlock Classes="section" Text="{Binding AboutLabel}" />
+      <Border Classes="panel">
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20">
           <Image Source="/Assets/logo.png" Height="84" RenderOptions.BitmapInterpolationMode="HighQuality" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">

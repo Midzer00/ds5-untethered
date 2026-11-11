@@ -77,7 +77,6 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 	public string Warning => _service.Warning;
 	public bool HasWarning => !string.IsNullOrEmpty(_service.Warning);
-	public string BridgeButtonText => _service.IsBridgeRunning ? Text.BridgeStop() : Text.BridgeStart();
 
 	// The foreground game's name once one was seen.
 	public bool HasGame => _service.Games.State.Name != null;
@@ -103,13 +102,14 @@ public sealed partial class OverviewViewModel : PageViewModel
 		: IsWaiting ? Text.BridgeStateWaiting()
 		: Text.OverviewReady();
 
-	// Header: the one action that matters now. A blocking issue with a fix (install the driver, turn Bluetooth on, pair)
-	// replaces the bridge button; otherwise the bridge, disabled with the reason when it cannot start. Accent unless it
-	// stops the bridge.
+	// Header: the one action the user needs while the virtual controller is off. A blocking issue with a fix (install the
+	// driver, turn Bluetooth on, pair) replaces the start button; otherwise start, disabled with the reason when it cannot
+	// start. Nothing while it runs or a start or stop is under way: it starts by itself, so stopping is a rare action and
+	// lives in Settings (BridgeRow*) and the tray menu.
+	public bool ShowsPrimary => !_service.IsBridgeRunning && !_bridgeBusy;
 	private FixAction PrimaryFix => _service.IsBridgeRunning ? FixAction.None : Blocking?.Fix ?? FixAction.None;
-	public string PrimaryText => PrimaryFix != FixAction.None ? HealthFixes.Label(PrimaryFix) : BridgeButtonText;
-	public bool IsPrimaryQuiet => PrimaryFix == FixAction.None && _service.IsBridgeRunning;
-	public bool CanPrimary => PrimaryFix != FixAction.None || CanToggleBridge;
+	public string PrimaryText => PrimaryFix != FixAction.None ? HealthFixes.Label(PrimaryFix) : Text.BridgeStart();
+	public bool CanPrimary => PrimaryFix != FixAction.None || (!_service.IsBridgeRunning && CanToggleBridge);
 	// The reason the bridge cannot start (null: no tooltip).
 	public string? PrimaryTip => !_service.IsBridgeRunning && Blocking is { } b ? b.Reason : null;
 
@@ -125,14 +125,16 @@ public sealed partial class OverviewViewModel : PageViewModel
 	private bool IsBridgeProblem => BridgeHealth.Level == HealthLevel.Error;
 	private bool IsBridgeStarting => _bridgeBusy && _service.IsBridgeRunning;
 	public string VirtualLabel => Text.RowVirtualPad();
+	// Running as a DualShock 4 or an Xbox 360 controller: "Açık · DS4" / "Açık · Xbox" (what games lose is in the tooltip).
 	public string VirtualStateText =>
 		IsBridgeProblem ? Text.HealthError()
 		: IsBridgeStarting ? Text.BridgeConnecting()
-		: _service.IsBridgeRunning ? Text.HealthOn()
+		: _service.IsBridgeRunning ? PadTypeChoiceViewModel.ShortName(PadNow) is { } pad ? GameModeText.Join(Text.HealthOn(), pad) : Text.HealthOn()
 		: Text.HealthOff();
 	public bool IsVirtualStateOn => _service.IsBridgeRunning && !IsBridgeProblem && !IsBridgeStarting;
 	public bool IsVirtualStateProblem => IsBridgeProblem;
-	public string VirtualStatusTip =>
+	public string VirtualStatusTip => PadTypeChoiceViewModel.ShownAs(PadNow) is { } shown ? BridgeStatusTip + Environment.NewLine + shown : BridgeStatusTip;
+	private string BridgeStatusTip =>
 		IsBridgeStarting ? Text.HealthBridgeConnecting()
 		: _service.IsBridgeRunning && !_service.IsConnected ? Text.HealthBridgeWaiting()
 		: BridgeHealth.Level is HealthLevel.Error or HealthLevel.Warning ? BridgeHealth.Reason
@@ -147,11 +149,19 @@ public sealed partial class OverviewViewModel : PageViewModel
 		{
 			await _service.ExecuteFix(PrimaryFix);
 		}
-		else if (CanToggleBridge)
+		else if (!_service.IsBridgeRunning && CanToggleBridge)
 		{
 			await ToggleBridge();
 		}
 	}
+
+	// Settings → General, "Virtual Controller" row: when to stop it, its state and a small Stop / Start button bound to
+	// ToggleBridge (the same busy guard; disabled with the reason while something blocks the start).
+	public string BridgeRowLabel => Text.RowVirtualPad();
+	public string BridgeRowHint => Text.BridgeRowHint();
+	public string BridgeRowState => VirtualStateText;
+	public string BridgeRowButtonText => _service.IsBridgeRunning ? Text.BridgeRowStop() : Text.BridgeRowStart();
+	public string? BridgeRowTip => !_service.IsBridgeRunning && !_service.CanStartBridge ? _service.CanStartBridgeReason : null;
 
 	// Hero: the controller drawing, faded with its light off without a controller; lit buttons while the bridge runs.
 	public double ArtOpacity => _service.IsConnected ? 1 : 0.4;
@@ -204,10 +214,17 @@ public sealed partial class OverviewViewModel : PageViewModel
 	// DualSense supported mode for the current game (off: the other games profile).
 	public string SupportedModeLabel => Text.SupportedMode();
 	public string SupportedModeHint => Text.SupportedModeHint();
-	public string SupportedModeHelper => Text.SupportedModeHelper();
-	public string SupportedModeTip => SupportedModeLabel + Environment.NewLine + SupportedModeHint + Environment.NewLine + GameDetail;
+	// The virtual controller's type now (forced, or the game in front's choice): as a DualShock 4 or an Xbox 360
+	// controller the hero says what games get instead of the DualSense features.
+	private Kopru.Core.Virtual.VirtualPadType PadNow => _service.Games.CurrentPadType;
+	public string SupportedModeHelper => PadTypeChoiceViewModel.ShownAs(PadNow) ?? Text.SupportedModeHelper();
+	public string SupportedModeTip => PadTypeChoiceViewModel.ShownAs(PadNow) is { } shown
+		? SupportedModeLabel + Environment.NewLine + SupportedModeHint + Environment.NewLine + GameDetail + Environment.NewLine + shown
+		: SupportedModeLabel + Environment.NewLine + SupportedModeHint + Environment.NewLine + GameDetail;
 	public bool IsSupportedMode => _service.Games.State.Mode == Kopru.Core.Games.GameMode.Supported;
-	public string ModeValue => IsSupportedMode ? Text.ModeShortSupported() : Text.ModeShortClassic();
+	public string ModeValue => PadTypeChoiceViewModel.ShortName(PadNow) is { } pad
+		? GameModeText.Join(IsSupportedMode ? Text.ModeShortSupported() : Text.ModeShortClassic(), pad)
+		: IsSupportedMode ? Text.ModeShortSupported() : Text.ModeShortClassic();
 	public string GameDetail => GameModeText.Line(_service.Games.State);
 	public bool IsSupportedModeOn
 	{
@@ -265,10 +282,30 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public string LatencyTip => _service.Latency is { } r
 		? Text.LatencyValue(r.LinkP50Ms, r.LinkP99Ms, r.RelayMs) + Environment.NewLine + Text.LatencyHint()
 		: Text.LatencyHint();
-	// Worst-case delay: green under 10 ms, amber under 20 ms, red above.
-	public bool IsLatencyGood => _service.Latency is { LinkP99Ms: < 10 };
-	public bool IsLatencyFair => _service.Latency is { LinkP99Ms: >= 10 and < 20 };
-	public bool IsLatencyPoor => _service.Latency is { LinkP99Ms: >= 20 };
+	// How the link feels (LinkQualityMonitor), as a word in its colour and one sentence on what to do; the numbers stay
+	// beside the word and in the tooltip.
+	public LinkQuality LinkState => _service.LinkQuality?.State ?? LinkQuality.Measuring;
+	public string LinkLabel => Text.LinkLabel();
+	public string LinkStateText => LinkWord(LinkState);
+	public string LinkAdvice => LinkState switch
+	{
+		LinkQuality.Good => Text.LinkAdviceGood(),
+		LinkQuality.Borderline => Text.LinkAdviceBorderline(),
+		LinkQuality.Poor => Text.LinkAdvicePoor(),
+		_ => Text.LinkAdviceMeasuring()
+	};
+	public bool IsLinkGood => LinkState == LinkQuality.Good;
+	public bool IsLinkBorderline => LinkState == LinkQuality.Borderline;
+	public bool IsLinkPoor => LinkState == LinkQuality.Poor;
+	public bool IsLinkMeasuring => LinkState == LinkQuality.Measuring;
+
+	public static string LinkWord(LinkQuality state) => state switch
+	{
+		LinkQuality.Good => Text.LinkGood(),
+		LinkQuality.Borderline => Text.LinkBorderline(),
+		LinkQuality.Poor => Text.LinkPoor(),
+		_ => Text.LinkMeasuring()
+	};
 	public string HapticsLabel => Text.CardHaptics();
 	public string LeftShort => Text.LeftShort();
 	public string RightShort => Text.RightShort();
@@ -364,7 +401,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 	[RelayCommand]
 	private async Task ToggleBridge()
 	{
-		// While a start or stop is under way a second press (the Overview button, the primary action) does nothing and the
+		// While a start or stop is under way a second press (the Overview's start, the Settings row) does nothing and the
 		// sidebar card says it is connecting.
 		if (_bridgeBusy)
 		{
@@ -590,6 +627,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string NotifyErrorsHint => Text.NotifyErrorsHint();
 	public string NotifyHidHideLabel => Text.NotifyHidHideSetting();
 	public string NotifyHidHideHint => Text.NotifyHidHideHint();
+	public string NotifyLinkLabel => Text.NotifyLinkSetting();
+	public string NotifyLinkHint => Text.NotifyLinkHint();
 	public string SpeakerGroupLabel => Text.GroupControllerSpeaker();
 	public string SpeakerSendLabel => Text.SpeakerSendGameAudio();
 	public string SpeakerSendHint => Text.SpeakerSendGameAudioHint();

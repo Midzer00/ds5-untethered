@@ -14,9 +14,11 @@ public sealed record KnownGame(string Name, string Exe, bool Haptics, bool Adapt
 	string? Path = null);
 
 // What is saved: the switch when the user turned it on without a game, the question setting, the "always" and "never
-// ask" games (by key) and the games the user added.
+// ask" games (by key), the games the user added, the controller type per game and the controller type forced for every
+// game (null: Automatic, the per-game choice).
 public sealed record GameMemory(bool SupportedModeOn, bool AskOnKnownGame, IReadOnlyList<string> Always, IReadOnlyList<string> NeverAsk,
-	IReadOnlyList<UserGame> UserGames, IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null)
+	IReadOnlyList<UserGame> UserGames, IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null,
+	Kopru.Core.Virtual.VirtualPadType? ForcedPad = null)
 {
 	public static GameMemory Default { get; } = new(false, true, [], [], []);
 }
@@ -48,6 +50,7 @@ public sealed partial class GameModeController
 	// The key of the game the switch was turned on for (it turns off when that game ends); null: on without a game.
 	private string? onFor;
 	private bool askOnKnownGame = true;
+	private volatile bool gameInFront;
 	private GameModeState state = GameModeState.Initial;
 	private BridgeProfile? applied;
 
@@ -137,6 +140,10 @@ public sealed partial class GameModeController
 		}
 	}
 
+	// Whether the foreground window was a known game at the last Tick (about once a second). Unlike ActiveGame, false
+	// while the game still runs behind another window. Lock-free (read on the input thread).
+	public bool IsGameInFront => gameInFront;
+
 	public bool IsSupportedModeOn
 	{
 		get
@@ -189,6 +196,7 @@ public sealed partial class GameModeController
 	public void Tick()
 	{
 		ForegroundGame? seen = watcher.Poll();
+		gameInFront = seen != null;
 		ForegroundGame? ask = null;
 		lock (gate)
 		{
@@ -376,7 +384,7 @@ public sealed partial class GameModeController
 				.DistinctBy(g => g.Path, StringComparer.OrdinalIgnoreCase).ToList();
 			watcher.UserGames = userGames.ToList();
 			askOnKnownGame = memory.AskOnKnownGame;
-			LoadPadTypes(memory.PadTypes);
+			LoadPadTypes(memory.PadTypes, memory.ForcedPad);
 			if (memory.SupportedModeOn && !on)
 			{
 				SetOn(true, ModeReason.User, null);
@@ -391,7 +399,7 @@ public sealed partial class GameModeController
 		lock (gate)
 		{
 			return new GameMemory(on && onFor == null, askOnKnownGame, always.Order(StringComparer.OrdinalIgnoreCase).ToList(),
-				neverAsk.Order(StringComparer.OrdinalIgnoreCase).ToList(), userGames.ToList(), SnapshotPadTypes());
+				neverAsk.Order(StringComparer.OrdinalIgnoreCase).ToList(), userGames.ToList(), SnapshotPadTypes(), forcedPad);
 		}
 	}
 

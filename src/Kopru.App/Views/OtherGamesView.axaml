@@ -1,108 +1,137 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:s="using:Kopru.App.Services" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.OtherGamesView" x:DataType="vm:OtherGamesViewModel">
   <UserControl.Styles>
-    <!-- Test button: icon and label, full column width -->
-    <Style Selector="Button.action">
-      <Setter Property="Height" Value="44" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Padding" Value="16,0" />
+    <!-- Setting label and the caption under it -->
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Grid.settingRow TextBlock.body">
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Grid.settingRow">
+      <Setter Property="Margin" Value="0,6" />
+    </Style>
+    <!-- Try-it button: icon and label, as wide as its text -->
+    <Style Selector="Button.test">
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="14,0" />
+    </Style>
+    <Style Selector="Button.test TextBlock">
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
   </UserControl.Styles>
   <ScrollViewer Classes="page">
-    <StackPanel Spacing="16" MaxWidth="1500" Margin="32,28,32,28">
-      <!-- Header: title, intro and the game in the foreground -->
-      <Grid ColumnDefinitions="*,16,Auto">
-        <StackPanel Spacing="4" VerticalAlignment="Center">
+    <StackPanel Spacing="16" Classes="page">
+      <!-- Header: title and intro, the game in the foreground on the right -->
+      <Grid Classes="pageHeader" ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="4">
           <TextBlock Classes="h1" Text="{Binding Title}" />
-          <TextBlock Classes="body" Text="{Binding Intro}" />
+          <TextBlock Classes="body" Text="{Binding Intro}" TextWrapping="Wrap" />
         </StackPanel>
-        <Border Grid.Column="2" Classes="statusChip" VerticalAlignment="Center" MaxWidth="340">
-          <Grid ColumnDefinitions="Auto,9,*" VerticalAlignment="Center" ToolTip.Tip="{Binding CurrentGameDetail}">
-            <Ellipse Classes="indicator" Classes.on="{Binding IsActive}" />
-            <TextBlock Grid.Column="2" Text="{Binding CurrentGameText}" FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-          </Grid>
-        </Border>
+        <TextBlock Grid.Column="1" Classes="stateText" Classes.on="{Binding IsActive}" MaxWidth="340" ToolTip.Tip="{Binding CurrentGameDetail}"
+                   Text="{Binding CurrentGameText}" FontSize="13" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
       </Grid>
 
-      <Grid ColumnDefinitions="2*,14,*">
-        <!-- Profile for games without DualSense support -->
-        <Border Classes="panel" Padding="20,4" VerticalAlignment="Top">
-          <StackPanel>
-            <TextBlock Classes="section" Text="{Binding ProfileLabel}" Margin="0,16,0,0" />
-            <StackPanel Spacing="6" Margin="0,12,0,14">
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Classes="h2" Text="{Binding RumbleLabel}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.RumbleText}" />
-              </Grid>
-              <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Settings.RumbleLevel}" />
+      <!-- Rumble and haptics, with their tests -->
+      <Border Classes="panel">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
+            <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Haptics}" />
+            <TextBlock Classes="h2" Text="{Binding RumbleCardTitle}" VerticalAlignment="Center" />
+          </StackPanel>
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="{Binding RumbleLabel}" />
               <TextBlock Classes="body" Text="{Binding RumbleHint}" />
             </StackPanel>
-            <Border Classes="divider" />
-            <StackPanel Spacing="10" Margin="0,14">
-              <TextBlock Classes="h2" Text="{Binding FeelLabel}" />
-              <WrapPanel ItemSpacing="8" LineSpacing="8">
-                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsSoft}" Content="{Binding SoftText}" />
-                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsPunchy}" Content="{Binding PunchyText}" />
-              </WrapPanel>
+            <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Settings.RumbleLevel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.RumbleText}" />
+            </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="{Binding FeelLabel}" />
               <TextBlock Classes="body" Text="{Binding FeelHint}" />
             </StackPanel>
-            <Border Classes="divider" />
-            <StackPanel Spacing="10" Margin="0,14">
-              <TextBlock Classes="h2" Text="{Binding FallbackLabel}" />
-              <WrapPanel ItemSpacing="8" LineSpacing="8">
-                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackOff}" Content="{Binding OffText}" />
-                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackFeedback}" Content="{Binding FeedbackText}" />
-                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackWeapon}" Content="{Binding WeaponText}" />
-                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackVibration}" Content="{Binding VibrationText}" />
-              </WrapPanel>
-              <TextBlock Classes="body" Text="{Binding FallbackHint}" />
-              <StackPanel Spacing="6" IsEnabled="{Binding HasFallback}" Margin="0,4,0,0">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding FallbackStrengthLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.FallbackStrengthText}" />
-                </Grid>
-                <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.FallbackStrength}" />
-              </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsSoft}" Content="{Binding SoftText}" />
+              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsPunchy}" Content="{Binding PunchyText}" />
             </StackPanel>
-          </StackPanel>
-        </Border>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="{Binding TryLabel}" />
+              <TextBlock Classes="body" Text="{Binding RumbleTryHint}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestRumbleCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Haptics}" />
+                  <TextBlock Text="{Binding RumbleTestText}" />
+                </StackPanel>
+              </Button>
+              <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Left}" />
+                  <TextBlock Text="{Binding LeftText}" />
+                </StackPanel>
+              </Button>
+              <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Right}" />
+                  <TextBlock Text="{Binding RightText}" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
 
-        <!-- Tests with this profile -->
-        <Border Grid.Column="2" Classes="panel" Padding="18,16" VerticalAlignment="Top">
-          <StackPanel Spacing="12">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <Border Classes="iconTile"><Path Data="{x:Static c:IconPaths.Bolt}" /></Border>
-              <TextBlock Classes="h2" Text="{Binding TestsLabel}" VerticalAlignment="Center" />
-            </StackPanel>
-            <StackPanel Spacing="10">
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestRumbleCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Haptics}" />
-                  <TextBlock Text="{Binding RumbleTestText}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestTriggerCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Trigger}" />
-                  <TextBlock Text="{Binding TriggerTestText}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Left}" />
-                  <TextBlock Text="{Binding LeftText}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="action" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Path Classes="icon small" Data="{x:Static c:IconPaths.Right}" />
-                  <TextBlock Text="{Binding RightText}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-              </Button>
-            </StackPanel>
+      <!-- Fallback trigger effect, with its test -->
+      <Border Classes="panel">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,6">
+            <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Trigger}" />
+            <TextBlock Classes="h2" Text="{Binding TriggerCardTitle}" VerticalAlignment="Center" />
           </StackPanel>
-        </Border>
-      </Grid>
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="{Binding FallbackLabel}" />
+              <TextBlock Classes="body" Text="{Binding FallbackHint}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackOff}" Content="{Binding OffText}" />
+              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackFeedback}" Content="{Binding FeedbackText}" />
+              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackWeapon}" Content="{Binding WeaponText}" />
+              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding IsFallbackVibration}" Content="{Binding VibrationText}" />
+            </StackPanel>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding HasFallback}">
+            <TextBlock Classes="label" Text="{Binding FallbackStrengthLabel}" />
+            <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.FallbackStrength}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.FallbackStrengthText}" />
+            </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="{Binding TryLabel}" />
+              <TextBlock Classes="body" Text="{Binding TriggerTryHint}" />
+            </StackPanel>
+            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Classes="test" HorizontalAlignment="Right" Command="{Binding TestTriggerCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Trigger}" />
+                <TextBlock Text="{Binding TriggerTestText}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

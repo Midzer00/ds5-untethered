@@ -29,6 +29,14 @@ public sealed partial class TrayViewModel : ViewModelBase
 		_settings = settings;
 		_shell = shell;
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
+		// "PS: Open The App": the controller's PS tap shows the window like the tray icon does (on its current page).
+		_service.Shortcut += (_, action) =>
+		{
+			if (action == Kopru.Core.Input.ShortcutAction.OpenApp)
+			{
+				RunOnUi(() => _shell.ShowMainWindow());
+			}
+		};
 		_settings.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(SettingsState.NotificationsEnabled))

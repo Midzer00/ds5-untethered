@@ -47,9 +47,6 @@ public static partial class Text
 	public static string SetupAdapterInstructions(Language? l = null) => Pick(l,
 		$"Kısa bir test, Bluetooth adaptörünüzün titreşim ve tetik verisini yeterince hızlı taşıyıp taşımadığını ölçer. Test sırasında kumandayı yakında tutun.",
 		$"A short test measures whether your Bluetooth adapter carries haptics and trigger data fast enough. Keep the controller close during the test.");
-	public static string SetupAdapterWeak(Language? l = null) => Pick(l,
-		$"Adaptör zayıf; titreşim kesik kesik gelebilir. Kumandayı yaklaştırmayı ya da başka bir adaptör denemeyi düşünün.",
-		$"The adapter is weak; haptics may stutter. Try moving the controller closer or using another adapter.");
 
 	public static string SetupDoneTitle(Language? l = null) => Pick(l, $"Hazır", $"Done");
 	public static string SetupDoneInstructions(Language? l = null) => Pick(l,

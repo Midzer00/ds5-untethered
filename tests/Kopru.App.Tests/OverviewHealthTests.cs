@@ -187,11 +187,14 @@ public class OverviewHealthTests
 		await fake.ExecuteFix(FixAction.RunAdapterTest);
 		Settle();
 		Assert.Same(vm.SettingsPage, vm.CurrentPage);
-		for (int i = 0; i < 50 && vm.SettingsPage.ToolResult != Text.AdapterAllGood(fake.InputRateHz); i++)
+		// The result is the adapter test's explanation (verdict, measured values), as the setup page shows it.
+		string expected = FakeControllerService.GoodAdapter(fake.InputRateHz).Text;
+		for (int i = 0; i < 50 && vm.SettingsPage.ToolResult != expected; i++)
 		{
 			await Task.Delay(20);
 			Settle();
 		}
-		Assert.Equal(Text.AdapterAllGood(fake.InputRateHz), vm.SettingsPage.ToolResult);
+		Assert.Equal(expected, vm.SettingsPage.ToolResult);
+		Assert.StartsWith(Text.AdapterHeadlineSuitable(), vm.SettingsPage.ToolResult);
 	}
 }

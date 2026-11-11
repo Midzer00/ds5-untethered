@@ -67,6 +67,19 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 
 	public Kopru.Core.Diagnostics.LatencyReading? Latency { get; set; } = new(1.2, 3.4, 0.05);
 
+	// The link state the Overview shows (null: not running); WarningDue drives the weak link toast.
+	public Kopru.Core.Diagnostics.LinkQualityReading? LinkQuality { get; set; }
+	public int LinkWarningsAcknowledged { get; private set; }
+
+	public void AcknowledgeLinkWarning()
+	{
+		LinkWarningsAcknowledged++;
+		if (LinkQuality is { } r)
+		{
+			LinkQuality = r with { WarningDue = false };
+		}
+	}
+
 	// A stick slightly off center and the triggers part-way down (LX, LY, RX, RY, L2, R2, ..., buttons).
 	public byte[]? RawInput { get; set; } = [168, 96, 131, 125, 70, 210, 0, 0, 0];
 
@@ -245,7 +258,22 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 			return await gate.Task.WaitAsync(cancel).ConfigureAwait(false);
 		}
 		await Task.Delay(30, cancel).ConfigureAwait(false);
-		return new AdapterTestResult(Kopru.Core.Diagnostics.AdapterVerdict.Suitable, Text.AdapterAllGood(InputRateHz));
+		return AdapterResult ?? GoodAdapter(InputRateHz);
+	}
+
+	// What the adapter test returns (null: a good adapter at the fake's input rate).
+	public AdapterTestResult? AdapterResult { get; set; }
+
+	// A test result as the real service words it, from link measurements like this PC's good adapter.
+	public static AdapterTestResult GoodAdapter(double rate = 640) => Adapter(rate, 4.8, 0, 93.9);
+
+	public static AdapterTestResult Adapter(double rate, double worstMs, double lostPercent, double hapticsRate, int gaps = 0, double coverage = 1)
+	{
+		int reports = (int)(rate * 5);
+		int lost = (int)Math.Round(reports * lostPercent / (100 - lostPercent));
+		Kopru.Core.Diagnostics.LinkResult Link() => new(reports, 5, rate, new(1.3, 2.5, 4.4, 20), new(1.0, 2.0, worstMs, worstMs + 10), lost, gaps, 0);
+		Kopru.Core.Diagnostics.AdapterReport report = Kopru.Core.Diagnostics.AdapterCheck.Grade(Link(), Link(), hapticsRate) with { Coverage = coverage };
+		return RealControllerService.Describe(report);
 	}
 
 	public async Task<Kopru.Core.Input.DriftCalibrationResult> CalibrateDriftAsync(TimeSpan duration, IProgress<double>? progress = null)

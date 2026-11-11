@@ -1,14 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
              x:Class="Kopru.App.Views.ControllerView" x:DataType="vm:ControllerPageViewModel">
   <ScrollViewer Classes="page">
-    <StackPanel Spacing="16" MaxWidth="1500" Margin="{StaticResource PagePadding}">
-      <Grid ColumnDefinitions="*,16,Auto">
-        <StackPanel Spacing="4" VerticalAlignment="Center">
+    <StackPanel Spacing="{StaticResource GapLarge}" Classes="page">
+      <!-- Header: title, description and the controller picker left; the Test tab's reset right -->
+      <Grid Classes="pageHeader" ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="4">
           <TextBlock Classes="h1" Text="{Binding Title}" />
           <TextBlock Classes="body" Text="{Binding Intro}" />
           <v:ControllerSelector DataContext="{Binding Test.Picker}" Margin="0,6,0,0" />
         </StackPanel>
-        <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding Tuning.ResetText}" Command="{Binding Tuning.ResetCommand}" VerticalAlignment="Center"
+        <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding Tuning.ResetText}" Command="{Binding Tuning.ResetCommand}"
                 IsVisible="{Binding IsTestTab}" />
       </Grid>
 

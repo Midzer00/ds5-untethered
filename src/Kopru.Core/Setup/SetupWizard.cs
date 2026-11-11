@@ -139,11 +139,9 @@ public sealed class SetupWizard(SystemCheck check, IUrlLauncher launcher)
 			Diagnostics.AdapterVerdict.Suitable => StepStatus.Done,
 			_ => StepStatus.Warning
 		};
-		var adapterNotes = AdapterVerdict is Diagnostics.AdapterVerdict.Borderline or Diagnostics.AdapterVerdict.Unsuitable
-			? new List<Func<Language?, string>> { Text.SetupAdapterWeak }
-			: [];
+		// The result itself (verdict, measured values, advice) shows inside the step on the setup page.
 		var adapter = new SetupStep(SetupStepId.AdapterTest, adapterStatus, Text.SetupAdapterTitle, Text.SetupAdapterInstructions,
-			adapterNotes, paired ? [new SetupAction(SetupActionKind.RunAdapterTest, Text.SetupActionRunAdapterTest)] : [], IsOptional: true);
+			[], paired ? [new SetupAction(SetupActionKind.RunAdapterTest, Text.SetupActionRunAdapterTest)] : [], IsOptional: true);
 
 		var steps = new List<SetupStep> { language, drivers, pair, adapter };
 		bool finish = steps.All(x => x.IsOptional || x.Status != StepStatus.Needed);

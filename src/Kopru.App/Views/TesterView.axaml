@@ -20,8 +20,9 @@
     <Style Selector="Border.chip.key.pressed TextBlock">
       <Setter Property="Foreground" Value="White" />
     </Style>
-    <Style Selector="Button.test">
-      <Setter Property="Margin" Value="0,0,6,6" />
+    <!-- Label on the left of an output test row -->
+    <Style Selector="Grid.settingRow > TextBlock.label">
+      <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
   </UserControl.Styles>
 
@@ -128,6 +129,7 @@
           </StackPanel>
         </WrapPanel>
         <TextBlock Classes="caption" Text="{Binding SourceHint}" />
+        <TextBlock Classes="caption" Text="{Binding TuneHint}" />
       </StackPanel>
 
       <!-- Test and fix in one view, laid out like the controller: L2 and the left stick on the left, R2 and the right
@@ -138,7 +140,7 @@
           <ContentControl Content="{Binding L2Panel}" />
           <ContentControl Grid.Row="1" Content="{Binding LeftPanel}" VerticalContentAlignment="Stretch" />
         </Grid>
-        <Grid Grid.Column="2" RowDefinitions="*,Auto,Auto" RowSpacing="12">
+        <Grid Grid.Column="2" RowDefinitions="*,Auto" RowSpacing="12">
           <Border Classes="stage" Padding="12,16">
             <Panel MaxHeight="300" HorizontalAlignment="Center" VerticalAlignment="Center">
               <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
@@ -162,7 +164,6 @@
               </StackPanel>
             </StackPanel>
           </Border>
-          <TextBlock Grid.Row="2" Classes="caption" Text="{Binding TuneHint}" />
         </Grid>
         <Grid Grid.Column="4" RowDefinitions="Auto,*" RowSpacing="12">
           <ContentControl Content="{Binding R2Panel}" />
@@ -170,41 +171,36 @@
         </Grid>
       </Grid>
 
+      <!-- What the controller sends besides sticks and triggers: every button as a chip with the touchpad fingers under
+           them, and the motion sensors; the two cards share one height -->
       <Grid ColumnDefinitions="2*,12,*">
-        <!-- Every button as a chip, the touchpad fingers -->
-        <StackPanel Spacing="12">
-          <Border Classes="panel">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="h2" Text="{Binding ButtonsLabel}" />
-              <ItemsControl ItemsSource="{Binding VisibleButtons}" Margin="0,0,-6,-6">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ButtonChip">
-                    <Border Classes="chip key" Classes.pressed="{Binding IsPressed}">
-                      <TextBlock Text="{Binding Name}" />
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
-          <Border Classes="panel">
-            <StackPanel Spacing="12">
-              <TextBlock Classes="h2" Text="{Binding TouchpadLabel}" />
-              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-                <TextBlock Classes="rowLabel" Text="{Binding Finger1Label}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding Touch1Text}" FontFamily="Consolas,Menlo,monospace" />
-                <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding Finger2Label}" />
-                <TextBlock Grid.Row="1" Grid.Column="1" Classes="label" Text="{Binding Touch2Text}" FontFamily="Consolas,Menlo,monospace" />
-              </Grid>
-            </StackPanel>
-          </Border>
-        </StackPanel>
+        <Border Classes="panel fill">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="{Binding ButtonsLabel}" />
+            <ItemsControl ItemsSource="{Binding VisibleButtons}" Margin="0,0,-6,-6">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ButtonChip">
+                  <Border Classes="chip key" Classes.pressed="{Binding IsPressed}">
+                    <TextBlock Text="{Binding Name}" />
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="section" Text="{Binding TouchpadLabel}" Margin="0,6,0,0" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+              <TextBlock Classes="rowLabel" Text="{Binding Finger1Label}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding Touch1Text}" FontFamily="Consolas,Menlo,monospace" />
+              <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding Finger2Label}" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Classes="label" Text="{Binding Touch2Text}" FontFamily="Consolas,Menlo,monospace" />
+            </Grid>
+          </StackPanel>
+        </Border>
 
         <!-- Motion -->
-        <Border Grid.Column="2" Classes="panel" VerticalAlignment="Top">
+        <Border Grid.Column="2" Classes="panel fill">
           <StackPanel Spacing="8">
             <TextBlock Classes="h2" Text="{Binding MotionLabel}" />
             <TextBlock Classes="caption" Text="{Binding MotionNeedsFull}" IsVisible="{Binding ShowsMotionNote}" />
@@ -216,65 +212,69 @@
         </Border>
       </Grid>
 
-      <!-- Output tests -->
+      <!-- Output tests: one setting row per output, the controls on the card's right edge -->
       <Border Classes="panel">
-        <StackPanel Spacing="12">
-          <StackPanel Spacing="4">
+        <StackPanel Spacing="8">
+          <StackPanel Spacing="4" Margin="0,0,0,6">
             <TextBlock Classes="h2" Text="{Binding OutputsLabel}" />
             <TextBlock Classes="body" Text="{Binding OutputsHint}" />
           </StackPanel>
-          <!-- One row per output, each at least a button high so the rows sit evenly -->
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20" RowSpacing="8">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto" MinHeight="36" />
-              <RowDefinition Height="Auto" MinHeight="36" />
-              <RowDefinition Height="Auto" MinHeight="36" />
-              <RowDefinition Height="Auto" MinHeight="36" />
-            </Grid.RowDefinitions>
-            <TextBlock Classes="rowLabel" Text="{Binding HapticsLabel}" />
-            <WrapPanel Grid.Column="1" Margin="0,0,0,-6" VerticalAlignment="Center">
-              <Button Classes="test" Theme="{StaticResource QuietButton}" Content="{Binding LeftText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}" />
-              <Button Classes="test" Theme="{StaticResource QuietButton}" Content="{Binding RightText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}" />
-            </WrapPanel>
-            <!-- Trigger effect to feel on both triggers (stays on until Off); what each does in its tooltip -->
-            <TextBlock Grid.Row="1" Classes="rowLabel" Text="{Binding Triggers.EffectsLabel}" />
-            <ListBox x:Name="TriggerEffects" Grid.Row="1" Grid.Column="1" Theme="{StaticResource Segmented}" ItemsSource="{Binding Triggers.Effects}"
-                     SelectedItem="{Binding Triggers.SelectedEffect}" AutoScrollToSelectedItem="False" HorizontalAlignment="Left" VerticalAlignment="Center" Width="380" AutomationProperties.Name="{Binding Triggers.EffectsLabel}">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:TriggerEffectItem">
-                  <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" ToolTip.Tip="{Binding Hint}" />
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            <!-- How strong the games' trigger effects are (the same setting as on Supported Games and in Quick Settings) -->
-            <TextBlock Grid.Row="2" Classes="rowLabel" Text="{Binding Triggers.StrengthLabel}" />
-            <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" HorizontalAlignment="Left" Width="380">
-              <Slider x:Name="TriggerStrength" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}"
-                      VerticalAlignment="Center" AutomationProperties.Name="{Binding Triggers.StrengthLabel}" />
-              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" MinWidth="40" TextAlignment="Right" VerticalAlignment="Center" />
+          <StackPanel>
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding HapticsLabel}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" HorizontalAlignment="Right">
+                <Button Theme="{StaticResource QuietButton}" Content="{Binding LeftText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}" />
+                <Button Theme="{StaticResource QuietButton}" Content="{Binding RightText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}" />
+              </StackPanel>
             </Grid>
-            <TextBlock Grid.Row="3" Classes="rowLabel" Text="{Binding LightLabel}" />
-            <ItemsControl Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Swatches}" VerticalAlignment="Center">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:LightSwatch">
-                  <Button Theme="{StaticResource QuietButton}" Width="32" Height="32" MinWidth="0" Padding="0" CornerRadius="16"
-                          Command="{Binding $parent[UserControl].((vm:TesterViewModel)DataContext).TestLightCommand}" CommandParameter="{Binding}">
-                    <Ellipse Width="18" Height="18" Fill="{Binding Brush}" />
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </Grid>
+            <Border Classes="divider" />
+            <!-- Trigger effect to feel on both triggers (stays on until Off); what each does in its tooltip -->
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding Triggers.EffectsLabel}" />
+              <ListBox x:Name="TriggerEffects" Grid.Column="1" Classes="control wide" Theme="{StaticResource Segmented}" ItemsSource="{Binding Triggers.Effects}"
+                       SelectedItem="{Binding Triggers.SelectedEffect}" AutoScrollToSelectedItem="False" AutomationProperties.Name="{Binding Triggers.EffectsLabel}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TriggerEffectItem">
+                    <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" ToolTip.Tip="{Binding Hint}" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+            <Border Classes="divider" />
+            <!-- How strong the games' trigger effects are (the same setting as on Supported Games and in Quick Settings) -->
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding Triggers.StrengthLabel}" />
+              <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+                <Slider x:Name="TriggerStrength" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}"
+                        VerticalAlignment="Center" AutomationProperties.Name="{Binding Triggers.StrengthLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding LightLabel}" />
+              <ItemsControl Grid.Column="1" ItemsSource="{Binding Swatches}" HorizontalAlignment="Right">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LightSwatch">
+                    <Button Theme="{StaticResource QuietButton}" Width="32" Height="32" MinWidth="0" Padding="0" CornerRadius="16"
+                            Command="{Binding $parent[UserControl].((vm:TesterViewModel)DataContext).TestLightCommand}" CommandParameter="{Binding}">
+                      <Ellipse Width="18" Height="18" Fill="{Binding Brush}" />
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Grid>
+          </StackPanel>
         </StackPanel>
       </Border>
 
       <!-- Controller info: what the controller reports about itself; copy (address masked) and reconnect -->
       <Border Classes="panel" DataContext="{Binding Info}" x:DataType="vm:ControllerInfoViewModel">
         <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
             <StackPanel Spacing="4" VerticalAlignment="Center">
               <TextBlock Classes="h2" Text="{Binding Title}" />
               <TextBlock Classes="caption" Text="{Binding Hint}" IsVisible="{Binding HasDetails}" />

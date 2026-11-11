@@ -32,6 +32,11 @@ public sealed class GamePadTypePicker : ObservableObject
 
 	public string Tip => Text.PadTypeTip() + " " + Text.PadTypeDualShock4Tip();
 
+	// Off while a controller type is forced for every game (the choice is kept and applies again on Automatic).
+	public bool IsEnabled => _games.ForcedPadType == null;
+
+	public void Refresh() => OnPropertyChanged(nameof(IsEnabled));
+
 	public PadTypeOption? Selected
 	{
 		get

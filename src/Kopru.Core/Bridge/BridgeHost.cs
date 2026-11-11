@@ -29,9 +29,11 @@ public enum BridgeError
 }
 
 // What the UI shows. Battery is null until the first input report.
-// Latency (null until measured, see LatencyMeter): link extra delay p50/p99 and our relay time, in ms.
+// Latency (null until measured, see LatencyMeter): link extra delay p50/p99 and our relay time, in ms. Link: how the link
+// feels (LinkQualityMonitor), null while not running.
 public sealed record BridgeStatus(BridgeState State, BatteryStatus? Battery, double InputRateHz, double HapticsReportsPerSecond,
-	BridgeError LastError, string? LastErrorDetail, double? LinkLatencyP50Ms = null, double? LinkLatencyP99Ms = null, double? RelayMs = null)
+	BridgeError LastError, string? LastErrorDetail, double? LinkLatencyP50Ms = null, double? LinkLatencyP99Ms = null, double? RelayMs = null,
+	Diagnostics.LinkQualityReading? Link = null)
 {
 	public string? LastErrorText(Language? language = null) => BridgeHost.Describe(LastError, language);
 
@@ -80,6 +82,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 
 	private Diagnostics.LatencyReading? latency;
 
+	private readonly Diagnostics.LinkQualityMonitor linkQuality;
+
 	private bool lowBatteryRaised;
 
 	private double gameHapticsLevel = DefaultGameHapticsLevel;
@@ -94,7 +98,14 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		this.identities = identities;
 		this.attacher = attacher;
 		this.time = time ?? TimeProvider.System;
+		linkQuality = new Diagnostics.LinkQualityMonitor(line => Diagnostics.AppLog.Write(line + LogSlot));
 	}
+
+	// Monotonic milliseconds for the link quality monitor (it tells a paused program from a slow link by its own gaps).
+	private long NowMs => (long)(time.GetTimestamp() * 1000.0 / time.TimestampFrequency);
+
+	// The link warning was shown (see LinkQualityMonitor.AcknowledgeWarning).
+	public void AcknowledgeLinkWarning() => linkQuality.AcknowledgeWarning(NowMs);
 
 	public static BridgeHost CreateDefault()
 	{
@@ -193,7 +204,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			lock (gate)
 			{
 				return new BridgeStatus(state, battery, inputRate, hapticsRate, lastError, lastErrorDetail,
-					latency?.LinkP50Ms, latency?.LinkP99Ms, latency?.RelayMs);
+					latency?.LinkP50Ms, latency?.LinkP99Ms, latency?.RelayMs, state == BridgeState.Running ? linkQuality.Current : null);
 			}
 		}
 	}
@@ -398,6 +409,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				current = connection;
 				StartLightSender(connection);
 				SetState(BridgeState.Running);
+				linkQuality.Restart(NowMs, "connected");
 				try
 				{
 					while (!token.IsCancellationRequested && !Monitor(connection))
@@ -411,6 +423,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 					// Stopping.
 				}
 				StopLightSender();
+				linkQuality.Stop();
 				current = null;
 				await connection.CloseAsync().ConfigureAwait(false);
 				if (connection.PowerOff is { } powerOff)
@@ -440,6 +453,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		finally
 		{
 			StopLightSender();
+			linkQuality.Stop();
 			Connection? left = current;
 			current = null;
 			if (left != null)
@@ -495,6 +509,11 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				c.RateInputs = inputs;
 				c.RateHaptics = haptics;
 				latency = c.Latency.Snapshot();
+				Diagnostics.LinkCounts counts = c.Latency.TakeCounts();
+				if (latency != null)
+				{
+					linkQuality.Add(new Diagnostics.LinkSecond(latency.LinkP99Ms, counts.Reports, counts.Lost, counts.LongGaps, counts.VeryLongGaps, seconds), NowMs);
+				}
 			}
 			if (reading is { } b)
 			{
@@ -654,8 +673,19 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			await host.CleanupStaleAsync(token).ConfigureAwait(false);
 			server = new UsbIpServer(pad);
 			server.Start();
-			port = await host.attacher.AttachAsync(server.Port, host.BusId, token).ConfigureAwait(false);
-			host.RecordAttached(port.Value, server.Port);
+			host.NotifyPadAudio(a => a.PadAttaching(host.Slot, pad.Type == VirtualPadType.DualSense));
+			try
+			{
+				port = await host.attacher.AttachAsync(server.Port, host.BusId, token).ConfigureAwait(false);
+			}
+			catch (Exception)
+			{
+				host.NotifyPadAudio(a => a.PadDetaching(host.Slot));
+				throw;
+			}
+			int attached = port.Value;
+			host.NotifyPadAudio(a => a.PadAttached(host.Slot, attached));
+			host.RecordAttached(attached, server.Port);
 		}
 
 		// Unplug first, so games never see a pad that stopped answering; then the bridge, server, controller and pad.
@@ -667,6 +697,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			}
 			if (port is int p)
 			{
+				host.NotifyPadAudio(a => a.PadDetaching(host.Slot));
 				try
 				{
 					await host.attacher.DetachAsync(p).ConfigureAwait(false);

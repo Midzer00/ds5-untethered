@@ -1,33 +1,53 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.RemapView" x:DataType="vm:RemapViewModel">
-  <StackPanel Spacing="16">
+  <UserControl.Styles>
+    <!-- Switches outside setting rows end on the right edge like the shared setting-row switches -->
+    <Style Selector="ToggleSwitch">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="ToggleSwitch /template/ ContentPresenter#PART_OnContentPresenter, ToggleSwitch /template/ ContentPresenter#PART_OffContentPresenter">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector=":disabled TextBlock">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <!-- Label (with an optional caption under it) on the left of a setting row -->
+    <Style Selector="Grid.settingRow > StackPanel.text">
+      <Setter Property="Spacing" Value="2" />
+      <Setter Property="Margin" Value="0,10" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <!-- One remap row: the physical button, the target picker; two columns per card -->
+    <DataTemplate DataType="vm:RemapRow">
+      <Grid ColumnDefinitions="*,200" ColumnSpacing="{StaticResource Gap}" Margin="0,3,28,3">
+        <TextBlock Classes="label" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Targets}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{Binding Name}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ButtonOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </Grid>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <StackPanel Spacing="{StaticResource GapLarge}">
     <TextBlock Classes="body" Text="{Binding Intro}" />
 
-    <!-- Button remapping: physical button -> target, two columns -->
+    <!-- Button remapping: physical button -> target, two columns (the right column's pickers end on the card's edge) -->
     <Border Classes="panel">
       <StackPanel Spacing="14">
-        <Grid ColumnDefinitions="*,16,Auto">
-          <StackPanel Spacing="4">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
+          <StackPanel Spacing="4" VerticalAlignment="Center">
             <TextBlock Classes="h2" Text="{Binding RemapLabel}" />
             <TextBlock Classes="body" Text="{Binding RemapHint}" />
           </StackPanel>
-          <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding ResetText}" Command="{Binding ResetRemapCommand}" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding ResetText}" Command="{Binding ResetRemapCommand}" VerticalAlignment="Center" />
         </Grid>
-        <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl ItemsSource="{Binding Rows}" Margin="0,0,-28,0">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:RemapRow">
-              <Grid ColumnDefinitions="*,12,200" Margin="0,3,28,3">
-                <TextBlock Classes="label" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding Targets}" SelectedItem="{Binding Selected}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ButtonOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
     </Border>
@@ -39,161 +59,163 @@
           <TextBlock Classes="h2" Text="{Binding Title}" />
           <TextBlock Classes="body" Text="{Binding Hint}" />
         </StackPanel>
-        <Grid ColumnDefinitions="*,16,Auto">
-          <StackPanel Spacing="2">
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding PresentAsEdgeLabel}" />
-            <TextBlock Classes="caption" Text="{Binding PresentAsEdgeHint}" TextWrapping="Wrap" />
+            <TextBlock Classes="body" Text="{Binding PresentAsEdgeHint}" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="2" IsChecked="{Binding PresentAsEdge}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding PresentAsEdge}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding PresentAsEdgeLabel}" />
         </Grid>
-        <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl ItemsSource="{Binding Rows}" Margin="0,0,-28,0">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:RemapRow">
-              <Grid ColumnDefinitions="*,12,200" Margin="0,3,28,3">
-                <TextBlock Classes="label" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding Targets}" SelectedItem="{Binding Selected}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ButtonOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
     </Border>
 
-    <!-- Gyro aiming: settings on the left, the live offset on the right -->
+    <!-- Gyro aiming: one setting per row (controls on the card's right edge), the live offset, then the gyro's calibration -->
     <Border Classes="panel">
-      <StackPanel Spacing="14">
-        <Grid ColumnDefinitions="*,16,Auto">
-          <StackPanel Spacing="4">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,0,0,6">
+          <StackPanel Spacing="4" VerticalAlignment="Center">
             <TextBlock Classes="h2" Text="{Binding GyroLabel}" />
             <TextBlock Classes="body" Text="{Binding GyroHint}" />
           </StackPanel>
-          <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding ResetText}" Command="{Binding ResetGyroCommand}" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding ResetText}" Command="{Binding ResetGyroCommand}" VerticalAlignment="Center" />
         </Grid>
-        <Grid ColumnDefinitions="*,24,Auto">
-          <StackPanel Spacing="12">
-            <Grid ColumnDefinitions="*,24,*">
-              <StackPanel Spacing="6">
-                <TextBlock Classes="label" Text="{Binding ModeLabel}" />
-                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GyroModeOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </StackPanel>
-              <Grid Grid.Column="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom" IsVisible="{Binding HasActivationButton}" ToolTip.Tip="{Binding ToggleHint}">
-                <TextBlock Classes="label" Text="{Binding ToggleLabel}" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding Toggle}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
-              </Grid>
+        <StackPanel>
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding ModeLabel}" />
+            <ComboBox Grid.Column="1" Classes="control" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" AutomationProperties.Name="{Binding ModeLabel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:GyroModeOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <StackPanel IsVisible="{Binding HasActivationButton}">
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding ToggleHint}">
+              <TextBlock Classes="label" Text="{Binding ToggleLabel}" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Toggle}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding ToggleLabel}" />
             </Grid>
-            <Grid ColumnDefinitions="*,24,*" IsEnabled="{Binding IsGyroOn}">
-              <StackPanel Spacing="6">
+          </StackPanel>
+          <Border Classes="divider" />
+          <StackPanel IsEnabled="{Binding IsGyroOn}">
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <StackPanel Classes="text">
                 <TextBlock Classes="label" Text="{Binding GyroTargetLabel}" />
-                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding GyroTargets}" SelectedItem="{Binding SelectedGyroTarget}" ToolTip.Tip="{Binding GyroTargetHint}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GyroTargetOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
+                <TextBlock Classes="body" Text="{Binding GyroTargetHint}" />
               </StackPanel>
-              <TextBlock Grid.Column="2" Classes="caption" Text="{Binding GyroTargetHint}" TextWrapping="Wrap" VerticalAlignment="Bottom" />
+              <ComboBox Grid.Column="1" Classes="control" ItemsSource="{Binding GyroTargets}" SelectedItem="{Binding SelectedGyroTarget}" AutomationProperties.Name="{Binding GyroTargetLabel}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GyroTargetOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
             </Grid>
-            <Grid ColumnDefinitions="*,24,*" RowDefinitions="Auto,12,Auto,12,Auto" IsEnabled="{Binding IsGyroOn}">
-              <StackPanel Spacing="2">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="label" Text="{Binding SensitivityXLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding SensitivityXText}" />
-                </Grid>
-                <Slider Minimum="0.1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding SensitivityX}" />
-              </StackPanel>
-              <StackPanel Grid.Column="2" Spacing="2">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="label" Text="{Binding SensitivityYLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding SensitivityYText}" />
-                </Grid>
-                <Slider Minimum="0.1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding SensitivityY}" />
-              </StackPanel>
-              <StackPanel Grid.Row="2" Spacing="2">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="label" Text="{Binding SmoothingLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding SmoothingText}" />
-                </Grid>
-                <Slider Maximum="90" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Smoothing}" />
-              </StackPanel>
-              <StackPanel Grid.Row="2" Grid.Column="2" Spacing="2">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="label" Text="{Binding DeadzoneLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding DeadzoneText}" />
-                </Grid>
-                <Slider Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Deadzone}" />
-              </StackPanel>
-              <Grid Grid.Row="4" ColumnDefinitions="*,Auto">
-                <TextBlock Classes="label" Text="{Binding InvertXLabel}" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertX}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding SensitivityXLabel}" />
+              <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+                <Slider Minimum="0.1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding SensitivityX}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding SensitivityXLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding SensitivityXText}" />
               </Grid>
-              <Grid Grid.Row="4" Grid.Column="2" ColumnDefinitions="*,Auto">
-                <TextBlock Classes="label" Text="{Binding InvertYLabel}" VerticalAlignment="Center" />
-                <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertY}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding SensitivityYLabel}" />
+              <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+                <Slider Minimum="0.1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding SensitivityY}" VerticalAlignment="Center"
+                        AutomationProperties.Name="{Binding SensitivityYLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding SensitivityYText}" />
               </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding SmoothingLabel}" />
+              <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+                <Slider Maximum="90" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Smoothing}" VerticalAlignment="Center" AutomationProperties.Name="{Binding SmoothingLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding SmoothingText}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding DeadzoneLabel}" />
+              <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+                <Slider Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Deadzone}" VerticalAlignment="Center" AutomationProperties.Name="{Binding DeadzoneLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding DeadzoneText}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding InvertXLabel}" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertX}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding InvertXLabel}" />
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="{Binding InvertYLabel}" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertY}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding InvertYLabel}" />
             </Grid>
           </StackPanel>
-          <StackPanel Grid.Column="2" Spacing="8" Width="170" VerticalAlignment="Center">
-            <TextBlock Classes="label" Text="{Binding OffsetLabel}" HorizontalAlignment="Center" />
-            <c:StickPreview Width="140" Height="140" HorizontalAlignment="Center" Accent="{StaticResource AccentBrush}"
+          <Border Classes="divider" />
+          <!-- The live offset the gyro adds, as a stick preview in the control column -->
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Classes="text">
+              <TextBlock Classes="label" Text="{Binding OffsetLabel}" />
+              <TextBlock Classes="body" Text="{Binding OffsetHint}" />
+            </StackPanel>
+            <c:StickPreview Grid.Column="1" Width="112" Height="112" Margin="0,10" HorizontalAlignment="Right" Accent="{StaticResource AccentBrush}"
                             RawX="{Binding OffsetX}" RawY="{Binding OffsetY}" TunedX="{Binding OffsetX}" TunedY="{Binding OffsetY}" IsLive="{Binding IsLive}" />
-            <TextBlock Classes="caption" Text="{Binding OffsetHint}" TextWrapping="Wrap" TextAlignment="Center" />
-          </StackPanel>
-        </Grid>
-      </StackPanel>
-    </Border>
-
-    <Grid ColumnDefinitions="*,14,*">
-      <!-- Stick swap and inversion -->
-      <Border Classes="panel">
-        <StackPanel Spacing="10">
-          <TextBlock Classes="h2" Text="{Binding SticksLabel}" />
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="{Binding SwapLabel}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SwapSticks}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
           </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="{Binding InvertLeftXLabel}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertLeftX}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
+          <Border Classes="divider" />
+          <!-- Gyro calibration: what it does left, the button right, the progress under the row while it runs -->
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <StackPanel Classes="text">
+              <TextBlock Classes="label" Text="{Binding CalibrationLabel}" />
+              <TextBlock Classes="body" Text="{Binding CalibrationHint}" />
+            </StackPanel>
+            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CalibrateText}" Command="{Binding CalibrateCommand}" HorizontalAlignment="Right" />
           </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="{Binding InvertLeftYLabel}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertLeftY}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="{Binding InvertRightXLabel}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertRightX}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="label" Text="{Binding InvertRightYLabel}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertRightY}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center" />
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- Gyro calibration -->
-      <Border Grid.Column="2" Classes="panel">
-        <StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,16,Auto">
-            <TextBlock Classes="h2" Text="{Binding CalibrationLabel}" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Content="{Binding CalibrateText}" Command="{Binding CalibrateCommand}" VerticalAlignment="Center" />
-          </Grid>
-          <TextBlock Classes="body" Text="{Binding CalibrationHint}" />
-          <StackPanel Spacing="8" Margin="0,6,0,0" IsVisible="{Binding HasCalibrationText}">
+          <StackPanel Spacing="8" Margin="0,4,0,0" IsVisible="{Binding HasCalibrationText}">
             <ProgressBar Classes="meter" Value="{Binding CalibrationProgress}" HorizontalAlignment="Stretch" />
             <TextBlock Classes="label" Text="{Binding CalibrationText}" TextWrapping="Wrap" />
           </StackPanel>
         </StackPanel>
-      </Border>
-    </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- Stick swap and inversion -->
+    <Border Classes="panel">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="h2" Text="{Binding SticksLabel}" Margin="0,0,0,6" />
+        <StackPanel>
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding SwapLabel}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SwapSticks}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding SwapLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding InvertLeftXLabel}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertLeftX}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding InvertLeftXLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding InvertLeftYLabel}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertLeftY}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding InvertLeftYLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding InvertRightXLabel}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertRightX}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding InvertRightXLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding InvertRightYLabel}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding InvertRightY}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding InvertRightYLabel}" />
+          </Grid>
+        </StackPanel>
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>

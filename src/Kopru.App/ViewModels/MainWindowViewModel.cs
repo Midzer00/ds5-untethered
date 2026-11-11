@@ -16,10 +16,11 @@ public sealed class NavItem(PageViewModel page, string iconData) : ViewModelBase
 
 // What the app passes in besides the controller service; everything is optional (tests leave it out).
 // FullScreen: whether a full-screen app is in front (for "don't notify while playing"). GameList: downloads the supported
-// games list (null: no update button); Now: the wall clock for its weekly automatic check.
+// games list (null: no update button); Now: the wall clock for its weekly automatic check. GameImages: the pictures of the
+// supported games list (null: placeholders only).
 public sealed record AppEnvironment(ISettingsStore? Store = null, IStartupRegistration? Startup = null, Func<SetupWizard>? Wizard = null,
 	Func<bool>? FullScreen = null, Func<long>? Clock = null, Kopru.Core.Games.GameCatalogUpdater? GameList = null,
-	Func<DateTimeOffset>? Now = null);
+	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null, RestartServices? Restart = null);
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -32,11 +33,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		_environment = environment ?? new AppEnvironment();
 		Settings = new SettingsState(service, _environment.Store, _environment.Startup);
 		Overview = new OverviewViewModel(service, Settings);
-		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now);
+		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now, _environment.GameImages);
 		OtherGames = new OtherGamesViewModel(service, Settings);
 		Controller = new ControllerPageViewModel(service, Settings);
 		Light = new LightViewModel(service, Settings);
-		SettingsPage = new SettingsViewModel(service, Settings, _environment.Wizard != null ? ShowSetup : null);
+		SettingsPage = new SettingsViewModel(service, Settings, _environment.Wizard != null ? ShowSetup : null) { Bridge = Overview };
 		NavItems =
 		[
 			new(Overview, Icons.Overview),
@@ -91,6 +92,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		}
 	}
 
+	// Exits the app for real (the shell's exit; set by the app). Used after a restart was requested.
+	public Action? ExitApp { get; set; }
+
 	// The setup page while it is open (shown instead of the selected page).
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(CurrentPage))]
@@ -104,7 +108,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	{
 		if (_environment.Wizard is { } create)
 		{
-			var setup = new SetupViewModel(create(), _service, CloseSetup, autoFinish) { FocusStep = focus };
+			SetupRestart? restart = _environment.Restart is { } services
+				? new SetupRestart(services, () => Settings.StartWithWindows, Settings.SaveNow, () => ExitApp?.Invoke())
+				: null;
+			var setup = new SetupViewModel(create(), _service, CloseSetup, autoFinish, restart: restart) { FocusStep = focus };
 			// Finishing the required steps (here or opened from Settings) completes setup for good.
 			setup.PropertyChanged += (_, e) =>
 			{

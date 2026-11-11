@@ -1,57 +1,65 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.LightView" x:DataType="vm:LightViewModel">
   <UserControl.Resources>
-    <!-- Segmented picker option: a small pill like the chips; the chosen one gets the accent edge and tint -->
-    <ControlTheme x:Key="SegmentItem" TargetType="ListBoxItem">
+    <!-- Choice pill (same look as ChipToggle): the chosen one gets the accent edge and tint -->
+    <ControlTheme x:Key="ChoicePill" TargetType="ListBoxItem">
       <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
       <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
       <Setter Property="FontSize" Value="13" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
         <ControlTemplate>
           <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="15"
-                  Height="30" Padding="11,0">
+                  Height="30" Padding="12,0">
             <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                               VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" />
           </Border>
         </ControlTemplate>
       </Setter>
-      <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" /></Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      </Style>
       <Style Selector="^:selected">
-        <Setter Property="Background" Value="#263B82F6" />
+        <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
       </Style>
+      <Style Selector="^:selected:pointerover"><Setter Property="Background" Value="{StaticResource AccentTintHoverBrush}" /></Style>
+      <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" /></Style>
     </ControlTheme>
     <ItemsPanelTemplate x:Key="Wrap"><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
   </UserControl.Resources>
 
-  <!-- Fills the window: the preview takes the free height -->
-  <Grid RowDefinitions="Auto,16,*" MaxWidth="1500" Margin="32,28,32,28">
-      <StackPanel Spacing="4">
-        <TextBlock Classes="h1" Text="{Binding Title}" />
-        <TextBlock Classes="body" Text="{Binding Intro}" />
-        <v:ControllerSelector DataContext="{Binding Picker}" Margin="0,6,0,0" />
-      </StackPanel>
+  <!-- Header in the page column; below it the live preview beside the settings card. Both share one height: the card
+       sets it (the stage follows), and when the window is too short the card scrolls while the preview stays in view -->
+  <Grid RowDefinitions="Auto,16,*" Classes="page">
+    <StackPanel Spacing="4">
+      <TextBlock Classes="h1" Text="{Binding Title}" />
+      <TextBlock Classes="body" Text="{Binding Intro}" />
+      <v:ControllerSelector DataContext="{Binding Picker}" Margin="0,6,0,0" />
+    </StackPanel>
 
-      <!-- Live preview beside the settings: the light strips follow the effect, brightness and player LEDs -->
-      <Grid Grid.Row="2" ColumnDefinitions="*,14,*">
-        <Border Classes="stage" Padding="24,20" MinHeight="260">
-          <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding PreviewColor}" LightIntensity="{Binding Settings.LightIntensity}"
-                           PlayerLedMask="{Binding PreviewPlayerMask}" MaxHeight="460" VerticalAlignment="Center" />
-        </Border>
+    <Grid Grid.Row="2" ColumnDefinitions="*,16,*" VerticalAlignment="Top">
+      <!-- Live preview: the light strips follow the effect, brightness and player LEDs -->
+      <Border Classes="stage" Padding="24,20" MinHeight="300">
+        <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding PreviewColor}" LightIntensity="{Binding Settings.LightIntensity}"
+                         PlayerLedMask="{Binding PreviewPlayerMask}" MaxHeight="420" VerticalAlignment="Center" />
+      </Border>
 
-        <Border Grid.Column="2" Classes="panel" Padding="0" VerticalAlignment="Top">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <Border Grid.Column="2" Classes="panel" Padding="0">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <!-- Each section: title (and hint) on top, its control below; sections split by a divider -->
           <StackPanel Margin="20,4">
             <!-- Mode -->
-            <StackPanel Spacing="8" Margin="0,12">
+            <StackPanel Spacing="10" Margin="0,14">
               <TextBlock Classes="h2" Text="{Binding ModeLabel}" />
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" ItemContainerTheme="{StaticResource SegmentItem}"
-                       ItemsPanel="{StaticResource Wrap}">
+              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"
+                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
                 <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" /></DataTemplate>
+                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
               <TextBlock Classes="body" Text="{Binding ModeHint}" />
@@ -60,50 +68,57 @@
             <!-- Colour (static, breathing, game controlled) -->
             <StackPanel IsVisible="{Binding ShowsColour}">
               <Border Classes="divider" />
-              <Grid ColumnDefinitions="*,Auto" Margin="0,12">
-                <StackPanel Spacing="10">
-                  <TextBlock Classes="h2" Text="{Binding ColourLabel}" />
-                  <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" ItemContainerTheme="{StaticResource SwatchItem}">
-                    <ListBox.ItemsPanel>
-                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                    <ListBox.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ColourPreset">
-                        <Ellipse Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
-                      </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
-                </StackPanel>
-                <TextBlock Grid.Column="1" Classes="value" Text="{Binding SelectedName}" VerticalAlignment="Top" />
-              </Grid>
+              <StackPanel Spacing="10" Margin="0,14">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="h2" Text="{Binding ColourLabel}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding SelectedName}" />
+                </Grid>
+                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
+                         ItemContainerTheme="{StaticResource SwatchItem}" HorizontalAlignment="Left">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ColourPreset">
+                      <Ellipse Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </StackPanel>
             </StackPanel>
 
-            <!-- Breathing -->
+            <!-- Breathing: one section, three sliders -->
             <StackPanel IsVisible="{Binding ShowsBreathing}">
               <Border Classes="divider" />
-              <StackPanel Spacing="6" Margin="0,12">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="h2" Text="{Binding BreathingPeriodLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingPeriodText}" />
-                </Grid>
-                <Slider Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingPeriod}" />
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="h2" Text="{Binding BreathingMinLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMinText}" />
-                </Grid>
-                <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMin}" />
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="h2" Text="{Binding BreathingMaxLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMaxText}" />
-                </Grid>
-                <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMax}" />
+              <StackPanel Spacing="14" Margin="0,14">
+                <StackPanel Spacing="4">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h2" Text="{Binding BreathingPeriodLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingPeriodText}" />
+                  </Grid>
+                  <Slider Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingPeriod}" />
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h2" Text="{Binding BreathingMinLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMinText}" />
+                  </Grid>
+                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMin}" />
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h2" Text="{Binding BreathingMaxLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMaxText}" />
+                  </Grid>
+                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMax}" />
+                </StackPanel>
               </StackPanel>
             </StackPanel>
 
             <!-- Rainbow -->
             <StackPanel IsVisible="{Binding ShowsRainbow}">
               <Border Classes="divider" />
-              <StackPanel Spacing="6" Margin="0,12">
+              <StackPanel Spacing="4" Margin="0,14">
                 <Grid ColumnDefinitions="*,Auto">
                   <TextBlock Classes="h2" Text="{Binding RainbowSpeedLabel}" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Classes="value" Text="{Binding RainbowSpeedText}" />
@@ -112,8 +127,9 @@
               </StackPanel>
             </StackPanel>
 
+            <!-- Brightness -->
             <Border Classes="divider" />
-            <StackPanel Spacing="6" Margin="0,12">
+            <StackPanel Spacing="4" Margin="0,14">
               <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Classes="h2" Text="{Binding BrightnessLabel}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.BrightnessText}" />
@@ -121,45 +137,45 @@
               <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.Brightness}" />
             </StackPanel>
 
-            <!-- Player LEDs -->
+            <!-- Player LEDs, with their brightness as a sub-setting -->
             <Border Classes="divider" />
-            <StackPanel Spacing="8" Margin="0,12">
-              <StackPanel Spacing="3">
+            <StackPanel Spacing="10" Margin="0,14">
+              <StackPanel Spacing="2">
                 <TextBlock Classes="h2" Text="{Binding PlayerLedsLabel}" />
                 <TextBlock Classes="body" Text="{Binding PatternHint}" />
               </StackPanel>
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Patterns}" SelectedItem="{Binding SelectedPattern}" ItemContainerTheme="{StaticResource SegmentItem}"
-                       ItemsPanel="{StaticResource Wrap}">
+              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Patterns}" SelectedItem="{Binding SelectedPattern}"
+                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
                 <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" /></DataTemplate>
+                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
-              <StackPanel Spacing="8" Margin="0,6,0,0">
-                <TextBlock Classes="label" Text="{Binding LedBrightnessLabel}" />
-                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding LedLevels}" SelectedItem="{Binding SelectedLedLevel}"
-                         ItemContainerTheme="{StaticResource SegmentItem}" ItemsPanel="{StaticResource Wrap}">
-                  <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" /></DataTemplate>
-                  </ListBox.ItemTemplate>
-                </ListBox>
-              </StackPanel>
+              <TextBlock Classes="label" Text="{Binding LedBrightnessLabel}" Margin="0,4,0,0" />
+              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding LedLevels}" SelectedItem="{Binding SelectedLedLevel}"
+                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
             </StackPanel>
 
             <!-- Mute LED -->
             <Border Classes="divider" />
-            <StackPanel Spacing="3" Margin="0,12">
-              <TextBlock Classes="h2" Text="{Binding MuteLedLabel}" />
-              <TextBlock Classes="body" Text="{Binding MuteLedHint}" />
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding MuteChoices}" SelectedItem="{Binding SelectedMute}" ItemContainerTheme="{StaticResource SegmentItem}"
-                       ItemsPanel="{StaticResource Wrap}" Margin="0,6,0,0">
+            <StackPanel Spacing="10" Margin="0,14">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="h2" Text="{Binding MuteLedLabel}" />
+                <TextBlock Classes="body" Text="{Binding MuteLedHint}" />
+              </StackPanel>
+              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding MuteChoices}" SelectedItem="{Binding SelectedMute}"
+                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
                 <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" /></DataTemplate>
+                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
             </StackPanel>
           </StackPanel>
-          </ScrollViewer>
-        </Border>
-      </Grid>
+        </ScrollViewer>
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>

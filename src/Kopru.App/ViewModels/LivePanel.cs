@@ -5,9 +5,10 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// The Overview's live card while the bridge runs: link delay with the last 30 seconds as a small graph, the input rate
-// with its low and average, L2/R2 and the haptics output as level bars. Only measured values; Sample() is called once a
-// second, Follow() at the input rate.
+// The Overview's live card while the bridge runs: how the link feels with its last 30 seconds as a small graph (the worst
+// delay of each second against the "you can feel it" limit, on a fixed scale), the input rate with its low and average,
+// L2/R2 and the haptics output as level bars. Only measured values; Sample() is called once a second, Follow() at the
+// input rate.
 public sealed partial class LivePanelViewModel : ViewModelBase
 {
 	public const int HistoryLength = 30;
@@ -27,7 +28,12 @@ public sealed partial class LivePanelViewModel : ViewModelBase
 	public string LatencyLabel => Text.StatLatency();
 	public string RateLabel => Text.StatInputRate();
 	public string GraphCaption => Text.LiveLast30s();
-	public string GraphTip => Text.LiveGraphTip();
+	public string GraphTip => Text.LinkGraphTip();
+	// The chart: a fixed 0 to twice the limit scale, so the same height always means the same delay.
+	public double LimitMs => Kopru.Core.Diagnostics.LinkLimits.PoorDelayMs;
+	public double ScaleMaxMs => 2 * LimitMs;
+	public string LimitLabel => Text.LinkLimitLabel();
+	public string Unit => "ms";
 	public string L2Label => "L2";
 	public string R2Label => "R2";
 	public string LeftLabel => Text.LiveLeftHaptics();

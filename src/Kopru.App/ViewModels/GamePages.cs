@@ -69,6 +69,9 @@ public sealed partial class GameItemViewModel : ObservableObject
 	// The controller type games see while this game is in front (DualSense unless chosen).
 	public GamePadTypePicker? PadType { get; init; }
 
+	// The picture at the start of the row (null without a picture service: the placeholder).
+	public GameImageHandle? Image { get; init; }
+
 	[RelayCommand]
 	private void RemoveAlways()
 	{
@@ -96,6 +99,7 @@ public sealed partial class GameItemViewModel : ObservableObject
 	{
 		OnPropertyChanged(nameof(IsAlways));
 		OnPropertyChanged(nameof(IsNeverAsk));
+		PadType?.Refresh();
 	}
 
 	public bool Matches(string query) => query.Length == 0
@@ -156,15 +160,26 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	private int _knownCount = -1;
 
 	private readonly GameCatalogUpdater? _updater;
+	private readonly GameImageService? _images;
 	private readonly Func<DateTimeOffset> _now;
 	private CatalogUpdateResult? _lastResult;
 
 	public SupportedGamesViewModel(IControllerService service, SettingsState settings, GameCatalogUpdater? updater = null,
-		Func<DateTimeOffset>? now = null) : base(service, settings, GameMode.Supported)
+		Func<DateTimeOffset>? now = null, GameImageService? images = null) : base(service, settings, GameMode.Supported)
 	{
 		_updater = updater;
+		_images = images;
 		_now = now ?? (() => DateTimeOffset.Now);
 		Rebuild();
+		// The pictures follow the download setting: the rows load again (downloaded pictures only while it is on).
+		settings.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(SettingsState.DownloadGameImages) && _images != null)
+			{
+				_images.Forget();
+				Rebuild();
+			}
+		};
 		service.Games.MemoryChanged += () => RunOnUi(() =>
 		{
 			if (Service.Games.KnownGames().Count != _knownCount)
@@ -287,6 +302,8 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	public string ListHint => Text.GameListHint();
 	public string AskLabel => Text.AskOnKnownGame();
 	public string AskHint => Text.AskOnKnownGameHint();
+	public string DownloadImagesLabel => Text.DownloadGameImages();
+	public string DownloadImagesHint => Text.DownloadGameImagesHint();
 	public string AddGameText => Text.AddGame();
 	public string AddFromFileText => Text.AddGameFromFile();
 	public string RunningHeader => Text.AddGameRunningHeader();
@@ -345,7 +362,12 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	{
 		IReadOnlyList<KnownGame> known = Service.Games.KnownGames();
 		_knownCount = known.Count;
-		_all = known.Select(g => new GameItemViewModel(g, Service.Games) { Profile = new GameProfilePicker(Settings, g.Key), PadType = new GamePadTypePicker(Service.Games, g.Key) }).ToList();
+		_all = known.Select(g => new GameItemViewModel(g, Service.Games)
+		{
+			Profile = new GameProfilePicker(Settings, g.Key),
+			PadType = new GamePadTypePicker(Service.Games, g.Key),
+			Image = _images == null ? null : new GameImageHandle(_images, new GameImageRequest(g.Key, g.Catalog?.SteamAppId, g.IsUserAdded ? g.Path ?? g.Exe : null))
+		}).ToList();
 		OnPropertyChanged(nameof(Games));
 		OnPropertyChanged(nameof(CountText));
 		OnPropertyChanged(nameof(HasNoMatch));
@@ -385,6 +407,11 @@ public sealed partial class OtherGamesViewModel : GameModePageViewModel
 	public string TriggerTestText => Text.TestFallbackTrigger();
 	public string LeftText => Text.TestHapticsLeft();
 	public string RightText => Text.TestHapticsRight();
+	public string RumbleCardTitle => Text.OtherGamesRumbleCard();
+	public string TriggerCardTitle => Text.OtherGamesTriggerCard();
+	public string TryLabel => Text.OtherGamesTryLabel();
+	public string RumbleTryHint => Text.OtherGamesRumbleTryHint();
+	public string TriggerTryHint => Text.OtherGamesTriggerTryHint();
 	public bool HasFallback => Settings.FallbackTrigger != FallbackTrigger.Off;
 
 	// Chip toggles: checking one picks it; unchecking the picked one leaves it picked.

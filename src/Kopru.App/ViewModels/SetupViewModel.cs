@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
+using Kopru.Core.Diagnostics;
 using Kopru.Core.Localization;
 using Kopru.Core.Setup;
 
@@ -19,6 +20,8 @@ public sealed class SetupStepItem(SetupStep step, IReadOnlyList<SetupActionItem>
 {
 	// The page, on the adapter test row only: its progress shows inside the row while the test runs.
 	public SetupViewModel? AdapterTest { get; } = step.Id == SetupStepId.AdapterTest ? adapterTest : null;
+	// The page, on the drivers row only: the restart button and its inline question show there.
+	public SetupViewModel? RestartHost { get; } = step.Id == SetupStepId.Drivers ? adapterTest : null;
 	// Optional steps (the adapter test) never block finishing and are never the current step.
 	public bool IsOptional => step.IsOptional;
 	public string OptionalText { get; } = optionalText;
@@ -40,6 +43,17 @@ public sealed class SetupStepItem(SetupStep step, IReadOnlyList<SetupActionItem>
 	public bool IsPending => !IsDone && !IsWarning;
 	public IReadOnlyList<SetupActionItem> Actions { get; } = actions;
 	public bool HasActions => Actions.Count > 0;
+}
+
+// One measured value of the adapter test: what was measured, what is needed (muted), and how it did (coloured word).
+public sealed class AdapterLineItem(AdapterLine line)
+{
+	public string Measured { get; } = line.Measured;
+	public string Needed { get; } = " · " + line.Needed;
+	public string Status { get; } = line.Status;
+	public bool IsGood => line.Level == LinkQuality.Good;
+	public bool IsWarn => line.Level == LinkQuality.Borderline;
+	public bool IsBad => line.Level == LinkQuality.Poor;
 }
 
 // Elapsed time for the adapter test progress; tests pass a fake one.
@@ -70,9 +84,10 @@ public sealed partial class SetupViewModel : PageViewModel
 	// close: leaves the page for the Overview. autoFinish: go there by itself when the required steps become done
 	// (first run). clock / tick: progress timing (tick waits between progress refreshes).
 	public SetupViewModel(SetupWizard wizard, IControllerService service, Action close, bool autoFinish = false,
-		IElapsedClock? clock = null, Func<CancellationToken, Task>? tick = null)
+		IElapsedClock? clock = null, Func<CancellationToken, Task>? tick = null, SetupRestart? restart = null)
 	{
 		_wizard = wizard;
+		Restart = restart;
 		_service = service;
 		_close = close;
 		_clock = clock ?? new StopwatchClock();
@@ -127,6 +142,58 @@ public sealed partial class SetupViewModel : PageViewModel
 	[ObservableProperty]
 	private string _testRemaining = string.Empty;
 
+	// "Restart The Computer" on the drivers step while Windows reports a pending restart: asks inline first.
+	public SetupRestart? Restart { get; }
+	public bool IsRestartPending => Restart != null && _wizard.Status.RestartPending == true;
+	// The drivers row's buttons hide while the restart question shows in their place.
+	public bool ShowsActions => !IsConfirmingRestart;
+	public string RestartText => Text.SetupRestartButton();
+	public string RestartQuestion => Text.SetupRestartQuestion();
+	public string RestartConfirmText => Text.SetupRestartConfirm();
+	public string RestartCancelText => Text.SetupRestartCancel();
+	public bool HasRestartError => !string.IsNullOrEmpty(RestartError);
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(ShowsActions))]
+	private bool _isConfirmingRestart;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasRestartError))]
+	private string _restartError = string.Empty;
+
+	[RelayCommand]
+	private void AskRestart()
+	{
+		RestartError = string.Empty;
+		IsConfirmingRestart = IsRestartPending;
+	}
+
+	[RelayCommand]
+	private void CancelRestart() => IsConfirmingRestart = false;
+
+	[RelayCommand]
+	private void ConfirmRestart()
+	{
+		if (!IsConfirmingRestart || Restart == null)
+		{
+			return;
+		}
+		IsConfirmingRestart = false;
+		if (!Restart.Run())
+		{
+			RestartError = Text.SetupRestartFailed();
+		}
+	}
+
+	partial void OnStepsChanged(IReadOnlyList<SetupStepItem> value)
+	{
+		OnPropertyChanged(nameof(IsRestartPending));
+		if (!IsRestartPending)
+		{
+			IsConfirmingRestart = false;
+		}
+	}
+
 	[RelayCommand]
 	private void Close() => _close();
 
@@ -135,6 +202,40 @@ public sealed partial class SetupViewModel : PageViewModel
 
 	[RelayCommand(CanExecute = nameof(IsTesting))]
 	private void CancelTest() => _cancel?.Cancel();
+
+	// The last adapter test in words (AdapterCheck.Explain, in the current language): shown inside the step, under where
+	// the progress was. Null before a test, and for a result without a measurement but with a verdict (then Message).
+	private AdapterTestResult? _adapterResult;
+
+	public AdapterExplanation? AdapterExplanation => _adapterResult is { } r && (r.Report != null || r.Verdict == null) ? AdapterCheck.Explain(r.Report) : null;
+	public bool HasAdapterResult => !IsTesting && AdapterExplanation != null;
+	public string AdapterHeadline => AdapterExplanation?.Headline ?? string.Empty;
+	public bool IsAdapterGood => AdapterExplanation?.Verdict == AdapterVerdict.Suitable;
+	public bool IsAdapterBorderline => AdapterExplanation?.Verdict == AdapterVerdict.Borderline;
+	public bool IsAdapterBad => AdapterExplanation?.Verdict == AdapterVerdict.Unsuitable;
+	public IReadOnlyList<AdapterLineItem> AdapterLines => AdapterExplanation?.Lines.Select(l => new AdapterLineItem(l)).ToList() ?? [];
+	public IReadOnlyList<string> AdapterAdvice => AdapterExplanation?.Advice ?? [];
+	public bool HasAdapterAdvice => AdapterAdvice.Count > 0;
+
+	// Shows a finished test's result (also used by tests and renders).
+	public void ShowAdapterResult(AdapterTestResult? result)
+	{
+		_adapterResult = result;
+		_wizard.AdapterVerdict = result?.Verdict;
+		Message = result != null && AdapterExplanation == null ? result.Text : string.Empty;
+		OnPropertyChanged(nameof(AdapterExplanation));
+		OnPropertyChanged(nameof(HasAdapterResult));
+		OnPropertyChanged(nameof(AdapterHeadline));
+		OnPropertyChanged(nameof(IsAdapterGood));
+		OnPropertyChanged(nameof(IsAdapterBorderline));
+		OnPropertyChanged(nameof(IsAdapterBad));
+		OnPropertyChanged(nameof(AdapterLines));
+		OnPropertyChanged(nameof(AdapterAdvice));
+		OnPropertyChanged(nameof(HasAdapterAdvice));
+		Steps = Build();
+	}
+
+	partial void OnIsTestingChanged(bool value) => OnPropertyChanged(nameof(HasAdapterResult));
 
 	partial void OnIsBusyChanged(bool value)
 	{
@@ -168,8 +269,17 @@ public sealed partial class SetupViewModel : PageViewModel
 		TestRemaining = left > 0 ? Text.AdapterTestSecondsLeft(left) : string.Empty;
 	}
 
+	// The drivers row gets "Restart The Computer" after its own buttons while a restart is pending.
 	private IReadOnlyList<SetupStepItem> Build() => BuildItems(_wizard.Steps,
-		s => s.Actions.Select(a => new SetupActionItem(a.Label(null), new AsyncRelayCommand(() => RunAsync(a), () => !IsBusy))).ToList(),
+		s => s.Actions.Select(a => new SetupActionItem(a.Label(null), new AsyncRelayCommand(() => RunAsync(a), () => !IsBusy)))
+			.Concat(s.Id == SetupStepId.Drivers && IsRestartPending
+				? [new SetupActionItem(RestartText, new AsyncRelayCommand(() =>
+				{
+					AskRestart();
+					return Task.CompletedTask;
+				}, () => !IsBusy))]
+				: Array.Empty<SetupActionItem>())
+			.ToList(),
 		OptionalText, this);
 
 	// Numbers the steps and marks the current one: the first pending required step, none when nothing is pending.
@@ -223,6 +333,7 @@ public sealed partial class SetupViewModel : PageViewModel
 	{
 		using var cancel = new CancellationTokenSource();
 		_cancel = cancel;
+		_adapterResult = null;
 		Message = string.Empty;
 		_clock.Restart();
 		RefreshProgress();
@@ -235,9 +346,7 @@ public sealed partial class SetupViewModel : PageViewModel
 				await Task.WhenAny(test, _tick(CancellationToken.None));
 				RefreshProgress();
 			}
-			AdapterTestResult result = await test;
-			_wizard.AdapterVerdict = result.Verdict;
-			Message = result.Text;
+			ShowAdapterResult(await test);
 		}
 		catch (OperationCanceledException)
 		{

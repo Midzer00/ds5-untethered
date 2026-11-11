@@ -35,6 +35,16 @@ using Kopru.Probe;
 //   Kopru.Probe looptest [s] [render-name] [capture-name] (app running, mic on) the same tone through Windows: played on the
 //                          virtual pad's render endpoint, recorded from its capture endpoint (see LoopTest.cs); exit codes
 //                          as speakermic, 2 also when an endpoint is missing, 3 playback/capture failed
+//   Kopru.Probe audiodefaults [roundtrip] lists the active speakers and microphones, the roles each is the default for and
+//                          whether it is a virtual pad endpoint (same identification as the app, with how it was decided);
+//                          roundtrip (app closed): switches console + multimedia to another endpoint and back, per flow,
+//                          always restoring the originals (see AudioDefaultsProbe.cs). Exit 0 works, 2 nothing to switch,
+//                          3 setting failed, 4 restoring failed
+if (args.FirstOrDefault() == "audiodefaults" && OperatingSystem.IsWindows())
+{
+	return AudioDefaultsProbe.Run(args.Skip(1).ToArray());
+}
+
 IReadOnlyList<HidDevice> devices = WindowsHid.FindDualSenses();
 Console.WriteLine($"Found {devices.Count} DualSense interface(s)");
 foreach (HidDevice d in devices)

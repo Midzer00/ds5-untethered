@@ -1,15 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.ShortcutsPanel" x:DataType="vm:ShortcutsViewModel">
   <StackPanel>
-    <TextBlock Classes="section" Text="{Binding Title}" Margin="0,24,0,8" />
+    <TextBlock Classes="section" Text="{Binding Title}" />
     <Border Classes="panel" Padding="20,0" Name="ShortcutsGroup">
       <StackPanel>
         <!-- The switch -->
-        <Grid ColumnDefinitions="*,Auto" Margin="0,14">
-          <StackPanel Spacing="3" Margin="0,0,24,0" VerticalAlignment="Center">
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <StackPanel>
             <TextBlock Classes="label" Text="{Binding Title}" />
             <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.ShortcutsEnabled}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.ShortcutsEnabled}" OnContent="{x:Null}" OffContent="{x:Null}"
                         AutomationProperties.Name="{Binding Title}" />
         </Grid>
         <Border Classes="divider" />
@@ -26,6 +26,16 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <!-- PS alone: open the app (no game in front); under the shortcuts switch like the legend -->
+        <Border Classes="divider" />
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.ShortcutsEnabled}">
+          <StackPanel>
+            <TextBlock Classes="label" Text="{Binding OpenAppLabel}" />
+            <TextBlock Classes="body" Text="{Binding OpenAppHint}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PsOpensApp}" OnContent="{x:Null}" OffContent="{x:Null}"
+                        AutomationProperties.Name="{Binding OpenAppLabel}" />
+        </Grid>
       </StackPanel>
     </Border>
   </StackPanel>
