@@ -76,7 +76,7 @@ Done and verified on hardware:
 - Controller speaker: sound played to the controller's speaker is heard by its own microphone.
 
 Done and tested in code, not yet verified on hardware:
-- The app: setup page, Overview, one Controller page (Test, Triggers, Remap and Gyro), Light, Supported Games,
+- The app: setup page, Overview, one Controller page (Test, Output Tests, Remap and Gyro), Light, Supported Games,
   Settings, tray icon and notifications; the bridge is shown as the "Virtual Controller" and starts by itself
   (stop it in Settings > General or from the menu of its icon next to the clock).
 - Hiding the real controller with HidHide; rumble to haptics for games without native haptics; reconnection,
