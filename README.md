@@ -30,9 +30,15 @@ controller is forwarded to the virtual one; the game's output (adaptive triggers
 converted and sent back to the controller over Bluetooth. HidHide hides the real controller from games so they only
 see the virtual one.
 
-```
-DualSense --Bluetooth--> DS5 Untethered --USB/IP--> usbip-win2 --> virtual wired DualSense --> game
-game --> triggers, lights, haptics audio (48 kHz, channels 3-4) --> DS5 Untethered --Bluetooth--> DualSense
+```mermaid
+flowchart LR
+  DS["DualSense"] -->|"Bluetooth: input"| APP["DS5 Untethered"]
+  APP -->|"USB/IP"| USBIP["usbip-win2"]
+  USBIP --> VPAD["virtual wired DualSense"]
+  VPAD -->|"input"| GAME["game"]
+  GAME -.->|"triggers, lights, haptics audio<br/>(48 kHz, channels 3-4)"| APP
+  APP -.->|"Bluetooth: triggers, lights, haptics"| DS
+  HH["HidHide"] -.->|"hides the real controller"| GAME
 ```
 
 ### Download
@@ -114,82 +120,92 @@ GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PART
 
 ## Türkçe
 
-DualSense için — oyunun kendi haptikleri ve adaptif tetikleri Bluetooth üzerinden.
+Oyunun kendi haptiğini ve adaptif tetiklerini DualSense'te Bluetooth üzerinden çalıştırır.
 
 ### Feragat
 
-DS5 Untethered resmi olmayan bir projedir. Sony Interactive Entertainment ile bağlantılı değildir, onun tarafından
-onaylanmamış veya desteklenmemiştir. "DualSense", "DualSense Edge", "PlayStation" ve "PS5", Sony Interactive
-Entertainment Inc.'in ticari markalarıdır ve yalnızca uyumluluğu belirtmek için kullanılır. "DS5" yalnızca uyumluluğu belirtmek için yaygın bir kısaltma olarak kullanılır. Sony'ye ait hiçbir
-yazılım, donanım yazılımı, görsel veya logo içerilmez. Kumanda çizimleri özgündür. Protokol uygulaması, herkese açık
-belgelere ve kendi ölçümlerimize dayanan bağımsız bir birlikte çalışabilirlik uygulamasıdır. Kullanım riski size
-aittir; yazılım hiçbir garanti olmadan sunulur.
+DS5 Untethered resmi bir proje değildir. Sony Interactive Entertainment ile bağlantısı yoktur; Sony Interactive
+Entertainment bu projeyi onaylamamış ve desteklememiştir. "DualSense", "DualSense Edge", "PlayStation" ve "PS5",
+Sony Interactive Entertainment Inc.'in ticari markalarıdır ve burada yalnızca uyumluluğu belirtmek için kullanılmıştır.
+"DS5" de yalnızca uyumluluğu belirtmek için, yaygın bir kısaltma olarak kullanılmıştır. Projede Sony'ye ait hiçbir
+donanım yazılımı, yazılım, görsel ya da logo yoktur. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
+kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Kullanımdan doğan
+risk size aittir; yazılım için hiçbir garanti verilmez.
 
 ### Sorun
 
-PC'de DualSense kumandanın oyun haptiği ve adaptif tetikleri yalnızca USB kabloyla bağlıyken çalışır. Bluetooth'ta
-oyunlar farklı bir cihaz görür ve bu özellikler kaybolur. DS5 Untethered bunları Bluetooth üzerinden aktarır; oyunlar kablolu
-bir kumanda görür.
+PC'de DualSense'in oyun haptiği ve adaptif tetikleri yalnızca kumanda USB kabloyla bağlıyken çalışır. Bluetooth'la
+bağlanınca oyunlar başka bir cihaz görür, bu özellikler de kaybolur. DS5 Untethered bu özellikleri Bluetooth üzerinden
+kumandaya taşır; oyunlar kabloyla bağlı bir kumanda görür.
 
 ### Nasıl çalışır
 
-DS5 Untethered kumandaya Bluetooth ile bağlanır ve aynı bilgisayarda yerel bir USB/IP sunucusu ile usbip-win2 aracılığıyla
-sanal bir kablolu DualSense oluşturur. Oyunlar sanal kumandayla takılıymış gibi konuşur. Gerçek kumandanın girdisi
-sanal kumandaya aktarılır; oyunun çıktısı (adaptif tetikler, ışıklar) ve haptik sesi dönüştürülüp Bluetooth ile
-kumandaya gönderilir. HidHide gerçek kumandayı oyunlardan gizler, böylece oyunlar yalnızca sanal kumandayı görür.
+DS5 Untethered kumandaya Bluetooth'la bağlanır; yerel bir USB/IP sunucusu ve usbip-win2 üzerinden aynı bilgisayarda
+kabloyla bağlı görünen sanal bir DualSense oluşturur. Oyunlar bu sanal kumandayı bilgisayara takılı sanıp onunla
+haberleşir. Gerçek kumandadan gelen girdi sanal kumandaya aktarılır; oyunun gönderdiği çıktı (adaptif tetikler,
+ışıklar) ve haptik sesi dönüştürülüp Bluetooth'la kumandaya geri yollanır. HidHide gerçek kumandayı oyunlardan
+gizlediği için oyunlar yalnızca sanal kumandayı görür.
 
-```
-DualSense --Bluetooth--> DS5 Untethered --USB/IP--> usbip-win2 --> sanal kablolu DualSense --> oyun
-oyun --> tetikler, ışıklar, haptik sesi (48 kHz, 3-4. kanallar) --> DS5 Untethered --Bluetooth--> DualSense
+```mermaid
+flowchart LR
+  DS["DualSense"] -->|"Bluetooth: girdi"| APP["DS5 Untethered"]
+  APP -->|"USB/IP"| USBIP["usbip-win2"]
+  USBIP --> VPAD["sanal kablolu DualSense"]
+  VPAD -->|"girdi"| GAME["oyun"]
+  GAME -.->|"tetikler, ışıklar, haptik sesi<br/>(48 kHz, 3-4. kanallar)"| APP
+  APP -.->|"Bluetooth: tetikler, ışıklar, haptik"| DS
+  HH["HidHide"] -.->|"gerçek kumandayı gizler"| GAME
 ```
 
 ### İndirme
 
-Ön sürüm, deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında kurulum programı
-(`DS5-Untethered-<sürüm>-Setup.exe`, yalnızca sizin kullanıcınıza, yönetici izni istemeden) ve zip
-(`DS5-Untethered-<sürüm>-win-x64.zip`, istediğiniz yere açıp `Kopru.App.exe`'yi çalıştırın) olarak bulunur. İkisinde de
-.NET içindedir; uygulamanın kendisi için başka bir şey kurmanız gerekmez.
+Ön sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz. İki
+biçimde gelir: kurulum dosyası (`DS5-Untethered-<sürüm>-Setup.exe`; yalnızca geçerli kullanıcıya kurar, yönetici izni
+istemez) ve zip (`DS5-Untethered-<sürüm>-win-x64.zip`; istediğiniz yere açıp `Kopru.App.exe` dosyasını çalıştırırsınız).
+.NET ikisinin de içindedir; uygulama için başka bir şey kurmanız gerekmez.
 
-- Sürüm imzalı olmadığı için Windows SmartScreen uyarı verebilir: "Ek bilgi"ye, sonra "Yine de çalıştır"a tıklayın.
-- Bir kez tamamlanana kadar her açılışta Kurulum sayfası iki sürücüyü, usbip-win2 ve HidHide'ı kontrol eder ve resmi
-  indirme sayfalarını açar (uygulama bunları kurmaz; kurulumları yönetici izni ister), ardından kumandanın Bluetooth
-  ile eşleştirilmesine yol gösterir. İki sürücü de gerekli: onlar olmadan sanal kumanda başlamaz.
-- Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe tutulur.
-- İnternet: "Oyun Görsellerini İndir" açıkken (Desteklenen Oyunlar sayfası, varsayılan olarak açık) uygulama oyun
-  görsellerini Steam'in herkese açık CDN'inden (yeni oyunlarda Steam'in herkese açık oyun bilgisinden) indirir ve yalnızca
-  `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe saklar. İstekte yalnızca oyunun Steam numarası bulunur; sizinle
-  ilgili hiçbir bilgi gönderilmez.
-- Kaldırmak için: "Windows ile Başlat"ı kapatın, uygulamadan sistem tepsisindeki simgeden çıkın, Windows Ayarlar →
-  Uygulamalar'dan "DS5 Untethered"ı kaldırın (ya da zip klasörünü silin), ayarların da gitmesini istiyorsanız
-  `%LOCALAPPDATA%\Untethered` klasörünü silin. Başka bir şey kullanmıyorsa "USBip" ve "HidHide"ı da kaldırın.
+- Derleme imzalı olmadığından Windows SmartScreen uyarı gösterebilir. "Ek bilgi"ye, ardından "Yine de çalıştır"a
+  tıklayın.
+- Kurulum sayfası, bir kez tamamlanana kadar uygulama her açıldığında karşınıza çıkar. Sayfa iki sürücünün, usbip-win2
+  ile HidHide'ın kurulu olup olmadığına bakar ve resmi indirme sayfalarını açar (sürücüleri uygulama kurmaz; kurulum
+  programları yönetici izni ister), sonra kumandayı Bluetooth'la eşleştirirken size yol gösterir. İki sürücü de
+  şarttır; sürücüler olmadan sanal kumanda başlamaz.
+- Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe durur.
+- Ağ erişimi: "Oyun Görsellerini İndir" açıkken (Desteklenen Oyunlar sayfasındadır, baştan açık gelir) uygulama oyun
+  görsellerini Steam'in herkese açık CDN'inden (yeni oyunlarda Steam'in herkese açık uygulama bilgilerinden de) indirir
+  ve yalnızca `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe tutar. İsteklerde yalnızca oyunun Steam uygulama
+  kimliği yer alır; size ait hiçbir bilgi gönderilmez.
+- Kaldırma: "Windows ile Başlat"ı kapatın, saat yanındaki simgeden uygulamadan çıkın, Windows Ayarlar →
+  Uygulamalar'dan "DS5 Untethered"ı kaldırın (zip kullandıysanız klasörü silin). Ayarların da silinmesini istiyorsanız
+  `%LOCALAPPDATA%\Untethered` klasörünü silin. Başka bir program kullanmıyorsa "USBip" ve "HidHide"ı da kaldırın.
 
 ### Durum
 
-Ön sürüm. Özelliklerin çoğu yalnızca kodda test edildi; gerçek kumandada ölçülenler aşağıda.
+Ön sürüm. Özelliklerin çoğu yalnızca kod testlerinden geçti; gerçek kumandada ölçülenler aşağıda listelenmiştir.
 
-Bitti ve donanımda doğrulandı:
-- Bluetooth oturumu: girdi okuma, çıkış raporları, haptik akışı; Bluetooth adaptör testi.
+Tamamlandı, donanımda doğrulandı:
+- Bluetooth oturumu: girdi okuma, çıktı raporları, haptik akışı; Bluetooth adaptör testi.
 - usbip-win2 ile sanal kablolu DualSense: Windows kablolu DualSense olarak tanıyor, girdi uygulamalara ulaşıyor,
   oyun sesi geliyor.
-- DS5 Untethered (60 sn test): girdi yaklaşık 750 Hz'de, düşük ek gecikmeyle ve kayıpsız aktarıldı; tetik ve ışık çıktısı
-  iletildi; oyun haptik sesi Bluetooth haptik raporlarına dönüştürüldü.
-- Bluetooth mikrofon: Windows kumandanın mikrofonundan kayıt alıyor, sanal kumandada hayalet giriş olmuyor; kumandanın
-  mikrofon tuşu mikrofonu açıp kapatıyor.
-- Kumanda hoparlörü: kumandanın hoparlörüne çalınan ses kendi mikrofonundan duyuluyor.
+- Köprü (60 saniyelik test): girdi yaklaşık 750 Hz'de, az ek gecikmeyle ve kayıpsız aktarıldı; tetik ve ışık çıktısı
+  iletildi; oyunun haptik sesi Bluetooth haptik raporlarına dönüştürüldü.
+- Bluetooth'ta mikrofon: Windows kumandanın mikrofonundan kayıt alıyor, sanal kumandada hayalet girdi oluşmuyor;
+  kumandadaki mikrofon tuşu mikrofonu açıp kapatıyor.
+- Kumanda hoparlörü: kumandanın hoparlöründen çalınan sesi kumandanın kendi mikrofonu duyuyor.
 
-Kodda bitti ve testli, donanımda henüz doğrulanmadı:
-- Uygulama: kurulum sayfası, Genel Bakış, tek Kumanda sayfası (Test, Tuş Atama ve Gyro), Işık, Desteklenen
-  Oyunlar, Ayarlar, tepsi simgesi ve bildirimler; köprü "Sanal Kumanda" olarak görünür ve kendiliğinden başlar
-  (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
-- Gerçek kumandayı HidHide ile gizleme; yerel haptik desteği olmayan oyunlar için titreşimden haptiğe dönüşüm;
-  yeniden bağlanma, pil uyarısı, boşta kapatma.
-- Oyuna göre profiller, tetik gücü, tuş atama, gyro ile nişan, ışık efektleri, fare modu.
-- Mikrofon tuşu ışığı ve bildirimleri, oyunlarda kumanda hoparlörü.
-- DualSense Edge, hatırlanan ve ad verilebilen en fazla dört kumanda, oyun başına Xbox 360 ya da DualShock 4 taklidi.
+Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
+- Uygulama: kurulum sayfası, Genel Bakış, tek bir Kumanda sayfası (Test, Çıkış Testleri, Tuş Atama ve Gyro), Işık,
+  Desteklenen Oyunlar, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda" adıyla görünür ve
+  kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
+- Gerçek kumandanın HidHide ile gizlenmesi; kendi haptiği olmayan oyunlarda titreşimin haptiğe çevrilmesi; yeniden
+  bağlanma, pil uyarısı, boştayken kapanma.
+- Oyuna özel profiller, tetik gücü, tuş atama, gyro ile nişan alma, ışık efektleri, fare modu.
+- Mikrofon tuşunun ışığı ve bildirimleri, oyunlarda kumanda hoparlörü.
+- DualSense Edge; hatırlanan ve adlandırılabilen en çok dört kumanda; oyuna göre Xbox 360 ya da DualShock 4 taklidi.
 
 Henüz yapılmadı:
-- İki sürücünün kurulum programıyla kurulması, kod imzalama, güncelleme denetimi.
-- Uzun oyun oturumları ve yukarıdaki özelliklerin çoğunun gerçek donanımda denenmesi.
+- İki sürücünün kurulum programından kurulması, kod imzalama, güncelleme denetimi.
+- Uzun oyun oturumları; yukarıdaki özelliklerin çoğunun gerçek donanımda denenmesi.
 
 ### Gereksinimler
 
@@ -200,7 +216,7 @@ Henüz yapılmadı:
 
 ### Derleme
 
-.NET 8 SDK gerekir. Depo kök dizininde:
+.NET 8 SDK gerekir. Deponun kök klasöründe şunları çalıştırın:
 
 ```
 dotnet build
@@ -217,4 +233,4 @@ dotnet test
 
 ### Lisans
 
-GPL-3.0-or-later. Bkz. [LICENSE](LICENSE) ve [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+GPL-3.0-or-later. Ayrıntılar [LICENSE](LICENSE) ve [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) dosyalarındadır.
