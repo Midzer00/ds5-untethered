@@ -28,8 +28,6 @@ public static partial class Text
 
 	public static string DesktopScrollSpeed(Language? l = null) => Pick(l, $"Kaydırma Hızı", $"Scroll Speed");
 
-	public static string DesktopMappingTitle(Language? l = null) => Pick(l, $"Tuş Düzeni", $"Controls");
-
 	public static string DesktopOnTitle(Language? l = null) => Pick(l, $"Fare Modu Açık", $"Mouse Mode On");
 
 	public static string DesktopOffTitle(Language? l = null) => Pick(l, $"Fare Modu Kapalı", $"Mouse Mode Off");
@@ -53,22 +51,6 @@ public static partial class Text
 	public static string ShortcutDoesDesktop(Language? l = null) => Pick(l,
 		$"Fare modunu aç / kapat",
 		$"Turn mouse mode on / off");
-
-	// The mapping legend: controls, what they do.
-	public static IReadOnlyList<(string Keys, string Does)> DesktopMapping(Language? l = null) =>
-	[
-		(Pick(l, $"Dokunmatik Yüzey", $"Touchpad"), Pick(l,
-			$"Tek parmak imleci taşır; dokunma sol tık, iki parmakla dokunma sağ tık, iki parmak yukarı/aşağı kaydırır; basınca sol/sağ yarıya göre tıklar.",
-			$"One finger moves the pointer; tap = left click, two-finger tap = right click, two fingers up/down scroll; pressing clicks by left/right half.")),
-		(Pick(l, $"Sağ Çubuk / Sol Çubuk", $"Right Stick / Left Stick"), Pick(l, $"İmleç / kaydırma.", $"Pointer / scroll.")),
-		(Pick(l, $"Çarpı / Daire", $"Cross / Circle"), Pick(l, $"Sol tık (basılı tutunca sürükler) / sağ tık.", $"Left click (hold to drag) / right click.")),
-		(Pick(l, $"Kare / Üçgen", $"Square / Triangle"), Pick(l, $"Enter / ekran klavyesi.", $"Enter / on-screen keyboard.")),
-		(Pick(l, $"Yön Tuşları", $"D-Pad"), Pick(l, $"Ok tuşları.", $"Arrow keys.")),
-		(Pick(l, $"R1 / L1", $"R1 / L1"), Pick(l, $"Pencereler arasında ileri / geri (Alt+Tab).", $"Switch windows forward / back (Alt+Tab).")),
-		(Pick(l, $"L2 / R2", $"L2 / R2"), Pick(l, $"Sesi azaltır / artırır.", $"Volume down / up.")),
-		(Pick(l, $"Seçenekler / Oluştur", $"Options / Create"), Pick(l, $"Başlat menüsü / oynat-duraklat.", $"Start menu / play-pause.")),
-		(Pick(l, $"L3 / R3", $"L3 / R3"), Pick(l, $"Esc / orta tık.", $"Esc / middle click.")),
-	];
 
 	public static string GyroTargetLabel(Language? l = null) => Pick(l, $"Gyro Çıkışı", $"Gyro Output");
 

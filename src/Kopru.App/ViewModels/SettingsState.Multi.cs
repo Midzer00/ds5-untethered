@@ -51,7 +51,7 @@ public sealed partial class SettingsState
 		Remap = v.Remap,
 		Gyro = v.Gyro,
 		LightOptions = new LightOptions(v.LightMode, v.BreathingPeriod, Math.Clamp(v.BreathingMin / 100, 0, 1), Math.Clamp(v.BreathingMax / 100, 0, 1),
-			v.RainbowSpeed, v.PlayerLedPattern ?? (v.PlayerLeds ? PlayerLedPattern.One : PlayerLedPattern.Off), v.PlayerLedBrightness, v.MuteLed)
+			v.RainbowSpeed, v.PlayerLedPattern ?? (v.PlayerLeds ? PlayerLedPattern.One : PlayerLedPattern.Off), v.PlayerLedBrightness)
 	};
 
 	private void InitControllerProfiles(AppSettings? saved)

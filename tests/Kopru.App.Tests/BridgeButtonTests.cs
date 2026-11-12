@@ -184,7 +184,8 @@ public class BridgeButtonTests
 	public async Task SettingsRow_Rendered_IsBoundToTheSameCommand()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
-		vm.Navigate(AppPage.Settings);
+		vm.Navigate(AppPage.SettingsGeneral);
+		Assert.True(vm.SettingsPage.IsGeneralTab);
 		var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 		window.Show();
 		Settle();
@@ -256,15 +257,10 @@ public class BridgeButtonTests
 
 						if (state != "blocked")
 						{
-							vm.Navigate(AppPage.Settings);
+							vm.Navigate(AppPage.SettingsGeneral);
 							RenderSettle();
 							Grid row = window.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "BridgeRow");
-							// The whole General group in view: its section title at the top.
-							TextBlock title = window.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == Text.General());
-							ScrollViewer scroller = title.FindAncestorOfType<ScrollViewer>()!;
-							double y = title.TranslatePoint(new Point(0, 0), scroller)!.Value.Y;
-							scroller.Offset = new Vector(0, Math.Max(0, scroller.Offset.Y + y - 8));
-							RenderSettle();
+							Assert.True(row.IsEffectivelyVisible);
 							Button button = window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "BridgeRowButton");
 							TextBlock stateText = window.GetVisualDescendants().OfType<TextBlock>().Single(b => b.Name == "BridgeRowState");
 							Assert.True(button.IsEffectivelyVisible);

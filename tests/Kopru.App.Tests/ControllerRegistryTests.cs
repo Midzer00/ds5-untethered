@@ -348,12 +348,11 @@ public class ControllerRegistryTests
 		Assert.False(string.IsNullOrWhiteSpace(vm.Settings.ControllersPanel.EmptyText));
 	}
 
-	// Renders Settings at the Controllers group with two remembered controllers, one renamed and connected, and the
-	// sidebar card with that name (docs/screens/settings-controllers-*.png when KOPRU_RENDER_SCREENS=1).
+	// Renders the Settings page's Controllers tab with two remembered controllers, one renamed and connected, and the
+	// sidebar card with that name (the picture in docs/screens: SettingsFitTests, settings-controllers-*.png).
 	[AvaloniaFact]
 	public void RenderControllersSection()
 	{
-		bool writeFiles = Environment.GetEnvironmentVariable("KOPRU_RENDER_SCREENS") == "1";
 		Language? before = Localizer.Chosen;
 		try
 		{
@@ -377,7 +376,7 @@ public class ControllerRegistryTests
 				vm.Settings.AssignControllerProfile("fake-pad-b", racing.Id);
 				fake.ControllerList.Add(Entry("fake-pad-a", battery: 78));
 				fake.RaiseStateChanged();
-				vm.OpenSettingsAt(SettingsSections.Controllers);
+				vm.OpenSettingsAt(SettingsViewModel.ControllersTab);
 				var window = new Kopru.App.Views.MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 				window.Show();
 				for (int i = 0; i < 4; i++)
@@ -390,10 +389,7 @@ public class ControllerRegistryTests
 				Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 				using var frame = Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
 				Assert.NotNull(frame);
-				if (writeFiles)
-				{
-					frame!.Save(Path.Combine(RepoRoot(), "docs", "screens", $"settings-controllers-{code}.png"));
-				}
+				Assert.True(Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.Border>().Single(b => b.Name == "ControllersGroup").IsEffectivelyVisible);
 				window.Close();
 			}
 		}

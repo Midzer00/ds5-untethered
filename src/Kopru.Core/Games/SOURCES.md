@@ -8,7 +8,7 @@ Entries were verified online on 2026-11-09: haptics/adaptiveTriggers flags again
 - https://store.steampowered.com/api/appdetails?appids=<id> (app id / name check for every entry)
 - https://www.gamereactor.eu/chatting-with-team-ninja-about-nioh-2-the-complete-edition/ (Nioh 2 developer claim; not on PCGW lists, so excluded)
 
-Not verified: executable names. No exe was confirmed against a source (PCGW game pages were unreachable), so no entry is marked exeConfidence "high"; treat all exe names as best-effort and confirm on real installs.
+Not verified: executable names. No exe was confirmed against a source (PCGW game pages were unreachable), so entries are marked exeConfidence "high" only after their exe names were confirmed on a running install (so far: Lego Batman: Legacy of the Dark Knight); treat all other exe names as best-effort. Games without exe names are still recognised by their Steam library folder or by their full name (folder, product name or window title).
 
 <!-- gamelist:start -->
 ## Last automatic refresh (tools/Kopru.GameList)

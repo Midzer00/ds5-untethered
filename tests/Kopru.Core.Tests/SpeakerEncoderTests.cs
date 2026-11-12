@@ -217,6 +217,61 @@ public partial class BridgeTests
 		Assert.Contains(encoder.Frames.SelectMany(f => f), s => Math.Abs((int)s) > 1000); // the 440 Hz tone, not the haptics
 	}
 
+	// Whether a sound reached the speaker channels is logged with the speaker off too (the test that tells the game's
+	// routing from ours reads these lines).
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void SpeakerChannels_SoundStartAndEndAreLogged(bool speakerOn)
+	{
+		List<string> lines = [];
+		void Watch(string line)
+		{
+			if (line.Contains("speaker channels", StringComparison.Ordinal))
+			{
+				lock (lines)
+				{
+					lines.Add(line);
+				}
+			}
+		}
+		Diagnostics.AppLog.Written += Watch;
+		try
+		{
+			FakeLink link = new();
+			using BluetoothSession session = new(link);
+			using VirtualDualSense pad = Pad();
+			using ControllerBridge bridge = new(session, pad) { SpeakerEnabled = speakerOn };
+			if (speakerOn)
+			{
+				session.Speaker = new SpeakerAudioSender(new FakeOpusEncoder());
+			}
+			byte[] sound = HapticsConverterTests.Audio(480, ch1: HapticsConverterTests.Tone(440, 0.5));
+			byte[] quiet = HapticsConverterTests.Audio(480, ch3: HapticsConverterTests.Tone(100, 0.3));
+			for (int i = 0; i < 5; i++)
+			{
+				SendAudio(pad, sound);
+			}
+			for (int i = 0; i < 30; i++) // 300 ms of quiet: past the 200 ms tail
+			{
+				SendAudio(pad, quiet);
+			}
+			string[] got;
+			lock (lines)
+			{
+				got = lines.ToArray();
+			}
+			// Other tests may log at the same time: look for this bridge's two lines.
+			Assert.Contains(got, l => l.EndsWith($"bridge: game sound on the speaker channels (1-2), controller speaker {(speakerOn ? "on" : "off")}", StringComparison.Ordinal));
+			Assert.Contains(got, l => l.Contains("bridge: speaker channels quiet again after 50 ms", StringComparison.Ordinal)
+				&& l.Contains(speakerOn ? "underruns" : "controller speaker off, not played", StringComparison.Ordinal));
+		}
+		finally
+		{
+			Diagnostics.AppLog.Written -= Watch;
+		}
+	}
+
 	[Fact]
 	public void Speaker_OnlyHapticsChannels_SendNothingToTheSpeaker()
 	{

@@ -28,7 +28,6 @@ public sealed class AppSettings
 	public double RainbowSpeed { get; set; } = 3;
 	public Kopru.Core.Lighting.PlayerLedPattern? PlayerLedPattern { get; set; }
 	public Kopru.Core.Lighting.LedBrightness PlayerLedBrightness { get; set; } = Kopru.Core.Lighting.LedBrightness.High;
-	public Kopru.Core.Lighting.MuteLedMode MuteLed { get; set; }
 	public double IdlePowerOffMinutes { get; set; } = 15;
 	public bool StartWithWindows { get; set; }
 
@@ -125,6 +124,8 @@ public sealed class AppSettings
 	public bool ShortcutsEnabled { get; set; } = true;
 	// "PS: Open The App" (missing in older files: on).
 	public bool PsOpensApp { get; set; } = true;
+	// "Also In Games" (missing in older files: on).
+	public bool PsOpensAppInGames { get; set; } = true;
 	// Controller id (device instance id) to the profile id it runs instead of the global settings.
 	public Dictionary<string, string>? ControllerProfiles { get; set; }
 	// The controllers the app has seen, by the same id, with the user's names (missing in older files: none yet).

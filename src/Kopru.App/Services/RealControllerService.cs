@@ -53,6 +53,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	private DateTimeOffset? lastBatteryProbe;
 	private int batteryProbing;
 	private volatile bool psOpensApp = true;
+	private volatile bool psOpensAppInGames = true;
 
 	public RealControllerService(BridgeHost host, IHidingService hiding, IControllerFinder finder, Action<Action>? post = null,
 		Func<HidDevice, string?>? instanceId = null, bool timers = true, GameModeController? games = null,
@@ -300,6 +301,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		host.PowerOffWhenIdle = value.PowerOffWhenIdle;
 		host.Shortcuts.Enabled = value.ShortcutsEnabled;
 		psOpensApp = value.PsOpensApp;
+		psOpensAppInGames = value.PsOpensAppInGames;
 		host.Desktop.Settings = value.Desktop;
 		host.Desktop.Active = value.DesktopModeOn;
 		InputTransform t = host.InputTransform;
@@ -583,15 +585,20 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 	}
 
-	// Whether the app's main window is the active one, and whether the foreground window covers its monitor (set by the
-	// app; read on the input thread, so both must be cheap).
+	// Whether the app's main window is the foreground window, and the exe of a full-screen foreground program (null: none)
+	// (set by the app; read on the input thread, so both must be cheap).
 	public Func<bool>? IsAppInFront { get; set; }
-	public Func<bool>? IsForegroundFullScreen { get; set; }
+	public Func<string?>? FullScreenForeground { get; set; }
 
-	// Where a single short PS tap goes ("PS: Open The App"): a game counts as in front when the foreground window was a
-	// known game at the last game tick (GameModeController.IsGameInFront) or anything covers its whole monitor.
-	public PsTapRoute RoutePsTap() =>
-		PsTapRule.Decide(psOpensApp, IsAppInFront?.Invoke() == true, Games.IsGameInFront || IsForegroundFullScreen?.Invoke() == true);
+	// Where a single short PS tap goes ("PS: Open The App"), with the reason for the log: a game counts as in front when
+	// the foreground window was a known game at the last game tick (GameModeController.GameInFront) or another program
+	// covers its whole monitor.
+	public PsTapDecision RoutePsTap()
+	{
+		bool app = IsAppInFront?.Invoke() == true;
+		string? game = Games.GameInFront ?? (app ? null : FullScreenForeground?.Invoke());
+		return PsTapRule.Decide(psOpensApp, app, game, psOpensAppInGames);
+	}
 
 	// Looks at the foreground game and applies its mode (once a second).
 	public void GameTick()

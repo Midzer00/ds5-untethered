@@ -12,8 +12,8 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.Tests;
 
-// The controller page's two tabs at the smallest and a large window, in Turkish and English: both tabs render, nothing on
-// them is wider than the page column, and with KOPRU_PAGE_RENDER_DIR set each is saved as controller-{test|remap}-{size}-{lang}.png
+// The controller page's three tabs at every render size, in Turkish and English: every tab renders, nothing on
+// them is wider than the page column, and with KOPRU_PAGE_RENDER_DIR set each is saved as controller-{test|outputs|remap}-{size}-{lang}.png
 // (and the whole scrolled page as ...-full-... so the parts below the fold can be reviewed too).
 public sealed class ControllerPageRenderTests
 {
@@ -39,7 +39,7 @@ public sealed class ControllerPageRenderTests
 				{
 					var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 					window.Show();
-					foreach ((int tab, string name) in new[] { (ControllerPageViewModel.TestTab, "test"), (ControllerPageViewModel.RemapTab, "remap") })
+					foreach ((int tab, string name) in new[] { (ControllerPageViewModel.TestTab, "test"), (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.RemapTab, "remap") })
 					{
 						vm.OpenController(tab);
 						Settle();

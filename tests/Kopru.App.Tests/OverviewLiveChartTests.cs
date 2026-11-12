@@ -47,9 +47,9 @@ public class OverviewLiveChartTests
 		window.UpdateLayout();
 
 		// The graph takes the little height the live card gets to end on the quick settings' line: never under its
-		// minimum (72) and never over its cap (120), whatever the window size.
+		// minimum (72) and never over its cap (200; a tall window's spare height also reaches it), whatever the window size.
 		Sparkline graph = window.GetVisualDescendants().OfType<Sparkline>().Single(g => g.IsEffectivelyVisible);
-		Assert.InRange(graph.Bounds.Height, 71, 121);
+		Assert.InRange(graph.Bounds.Height, 71, 201);
 		// A fixed scale now (0 to twice the "you can feel it" limit), so the same height always means the same delay.
 		Assert.Equal(2 * Kopru.Core.Diagnostics.LinkLimits.PoorDelayMs, graph.Maximum);
 		// The level bars: full-width meters of a fixed height.
@@ -61,7 +61,7 @@ public class OverviewLiveChartTests
 		window.Height = 1050;
 		Dispatcher.UIThread.RunJobs();
 		window.UpdateLayout();
-		Assert.InRange(graph.Bounds.Height, 71, 121);
+		Assert.InRange(graph.Bounds.Height, 71, 201);
 		Assert.Equal(barHeight, bar.Bounds.Height);
 		// A larger window shows the same layout scaled up (UiScale), not stretched cards: the live card keeps its layout height
 		// and is drawn 1.5 times as large.

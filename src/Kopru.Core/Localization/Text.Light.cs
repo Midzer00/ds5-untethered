@@ -48,12 +48,4 @@ public static partial class Text
 	public static string LedBrightnessLow(Language? l = null) => Pick(l, $"Düşük", $"Low");
 	public static string LedBrightnessMedium(Language? l = null) => Pick(l, $"Orta", $"Medium");
 	public static string LedBrightnessHigh(Language? l = null) => Pick(l, $"Yüksek", $"High");
-	public static string MuteLedLabel(Language? l = null) => Pick(l, $"Mikrofon LED'i", $"Mute LED");
-
-	public static string MuteLedHint(Language? l = null) => Pick(l,
-		$"Mikrofon düğmesindeki turuncu LED.",
-		$"The orange LED on the mute button.");
-
-	public static string MuteLedOff(Language? l = null) => Pick(l, $"Kapalı", $"Off");
-	public static string MuteLedOn(Language? l = null) => Pick(l, $"Açık", $"On");
 }

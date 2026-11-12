@@ -16,22 +16,39 @@ public sealed record DesktopModeSettings
 	public double ScrollSpeed { get; init; } = 1.0;
 
 	public bool AutoOffInGame { get; init; } = true;
+
+	// Which stick moves the pointer (the other scrolls); missing in older files: the right stick.
+	[System.Text.Json.Serialization.JsonConverter(typeof(LenientEnumConverter<PointerStick>))]
+	public PointerStick PointerStick { get; init; } = PointerStick.Right;
+
+	// What each button does (missing in older files, or a button or action not known: that button's default).
+	public DesktopButtonMap Buttons
+	{
+		get => _buttons;
+		init => _buttons = value ?? DesktopButtonMap.Default;
+	}
+
+	private readonly DesktopButtonMap _buttons = DesktopButtonMap.Default;
 }
 
 // Desktop mode: while Active, the controller drives the Windows desktop through an IInputSink and the 63-byte input
 // body is replaced by a neutral one (sticks centred, triggers released, no buttons, no touches), so games don't react.
 //
-// Mapping:
+// Mapping (the buttons are Settings.Buttons; the defaults below):
 //   touchpad      one finger moves the pointer (with acceleration); tap = left click; two-finger tap = right click;
 //                 two fingers moving up/down = scroll; touchpad click = left click (left half) / right click (right half)
 //   right stick   pointer (speed and acceleration curve)          left stick   scroll (vertical and horizontal)
+//                 (Settings.PointerStick = Left swaps the two)
 //   Cross         left mouse button (held = drag)                 Circle       right mouse button
 //   Square        Enter                                           Triangle     on-screen keyboard (Win+Ctrl+O)
 //   Options       Windows key (Start)                             Create       media play/pause
 //   D-pad         arrow keys                                      L3 Esc,      R3 middle mouse button
-//   R1 / L1       Alt+Tab / Alt+Shift+Tab (Alt stays down SwitcherHold after the last press, Cross picks at once)
+//   R1 / L1       Alt+Tab / Alt+Shift+Tab (Alt stays down SwitcherHold after the last press; the button on Left Click
+//                 picks at once instead of clicking)
 //   L2 / R2       volume down / up
-//   PS and Mute do nothing (PS combos are handled before, by ShortcutProcessor).
+//   PS and Mute do nothing (PS combos are handled before, by ShortcutProcessor); touchpad, PS and Mute are not remappable.
+// A held action is released with the action it was pressed with; when the mapping changes under a held button, what it
+// holds is let go at once and the button does nothing more until it is released.
 //
 // Apply runs on the input thread only; Active and Settings may be set from any thread. Turning Active off releases every
 // key and button still held on the next Apply.
@@ -40,11 +57,11 @@ public sealed class DesktopMode
 	public const int MinBodySize = 40;
 	public const int Buttons0 = 7, Buttons1 = 8, Buttons2 = 9, Touch1 = 32, Touch2 = 36;
 
-	// Right stick at full deflection with PointerSpeed 1.0, pixels per second.
+	// Pointer stick at full deflection with PointerSpeed 1.0, pixels per second.
 	public const double PointerPixelsPerSecond = 1400;
 	public const double StickDeadzone = 0.15;
 
-	// Left stick at full deflection: wheel notches per second.
+	// Scroll stick at full deflection: wheel notches per second.
 	public const double ScrollNotchesPerSecond = 14;
 	public const int WheelDelta = 120;
 
@@ -57,23 +74,6 @@ public sealed class DesktopMode
 	public const int TapMaxTravel = 60;
 	public static readonly TimeSpan SwitcherHold = TimeSpan.FromMilliseconds(700);
 
-	private static readonly (PadButtons Button, ushort Key)[] HeldKeys =
-	[
-		(PadButtons.DpadUp, VirtualKeys.Up), (PadButtons.DpadDown, VirtualKeys.Down), (PadButtons.DpadLeft, VirtualKeys.Left),
-		(PadButtons.DpadRight, VirtualKeys.Right), (PadButtons.Square, VirtualKeys.Enter), (PadButtons.L3, VirtualKeys.Escape)
-	];
-
-	private static readonly (PadButtons Button, ushort Key)[] TapKeys =
-	[
-		(PadButtons.Options, VirtualKeys.LeftWindows), (PadButtons.Create, VirtualKeys.MediaPlayPause),
-		(PadButtons.L2, VirtualKeys.VolumeDown), (PadButtons.R2, VirtualKeys.VolumeUp)
-	];
-
-	private static readonly (PadButtons Button, MouseButton Mouse)[] MouseButtons =
-	[
-		(PadButtons.Cross, MouseButton.Left), (PadButtons.Circle, MouseButton.Right), (PadButtons.R3, MouseButton.Middle)
-	];
-
 	private readonly TimeProvider time;
 	private volatile bool active;
 	private volatile DesktopModeSettings settings = DesktopModeSettings.Default;
@@ -84,11 +84,15 @@ public sealed class DesktopMode
 	private bool hasTimestamp;
 	private double clock;
 	private PadButtons previous;
-	private PadButtons crossSwallowed;
+	// Buttons that do nothing until released (picked a window, or remapped while held).
+	private PadButtons swallowed;
 
-	// Held keys / mouse buttons, released when leaving.
-	private readonly List<ushort> keysDown = [];
-	private readonly List<MouseButton> mouseDown = [];
+	// The action each remappable button was pressed with (None: not pressed, or swallowed).
+	private readonly MouseAction[] pressed = new MouseAction[DesktopButtonMap.Bits.Length];
+
+	// How many presses hold each key / mouse button down (two buttons on one action); released when leaving.
+	private readonly int[] keyCount = new int[256];
+	private readonly int[] mouseCount = new int[3];
 
 	// Pointer and scroll remainders (sub-pixel / sub-unit).
 	private double remX, remY, wheelRem, hwheelRem;
@@ -135,7 +139,7 @@ public sealed class DesktopMode
 		set => sink = value ?? NullInputSink.Instance;
 	}
 
-	// Right stick (-1..1 per axis, Y down) to pointer velocity in pixels per second.
+	// Pointer stick (-1..1 per axis, Y down) to pointer velocity in pixels per second.
 	public static (double X, double Y) PointerVelocity(double x, double y, DesktopModeSettings settings)
 	{
 		double n = StickAmount(x, y, out double r);
@@ -192,10 +196,10 @@ public sealed class DesktopMode
 			engaged = true;
 			fresh = false;
 			previous = buttons;
-			crossSwallowed = PadButtons.None;
+			swallowed = PadButtons.None;
 			ResetTouch(body);
 		}
-		Buttons(output, buttons);
+		Buttons(output, buttons, s.Buttons);
 		Sticks(output, body, dt, s);
 		Touch(output, body, buttons, s);
 		previous = buttons;
@@ -222,95 +226,224 @@ public sealed class DesktopMode
 
 	private bool Released(PadButtons now, PadButtons b) => (now & b) == 0 && (previous & b) != 0;
 
-	private void Buttons(IInputSink output, PadButtons now)
+	private void Buttons(IInputSink output, PadButtons now, DesktopButtonMap map)
 	{
-		// Window switcher first: Cross while it is open picks the window instead of clicking.
-		bool forward = Pressed(now, PadButtons.R1), back = Pressed(now, PadButtons.L1);
-		if (forward || back)
+		PadButtons[] bits = DesktopButtonMap.Bits;
+		// Releases first (with the action the button was pressed with); a held button whose action changed lets go now.
+		PadButtons switcherHeld = PadButtons.None;
+		for (int i = 0; i < bits.Length; i++)
 		{
-			if (!altDown)
+			PadButtons b = bits[i];
+			if ((now & b) == 0)
 			{
-				output.Key(VirtualKeys.Alt, true);
-				altDown = true;
+				swallowed &= ~b;
+				if (pressed[i] != MouseAction.None)
+				{
+					Release(output, pressed[i]);
+					pressed[i] = MouseAction.None;
+				}
 			}
-			if (back)
+			else if (pressed[i] != MouseAction.None && map.At(i) != pressed[i])
 			{
-				output.Key(VirtualKeys.Shift, true);
+				Release(output, pressed[i]);
+				pressed[i] = MouseAction.None;
+				swallowed |= b;
 			}
-			output.Key(VirtualKeys.Tab, true);
-			output.Key(VirtualKeys.Tab, false);
-			if (back)
+			if (pressed[i] is MouseAction.NextWindow or MouseAction.PreviousWindow)
 			{
-				output.Key(VirtualKeys.Shift, false);
+				switcherHeld |= b;
 			}
-			switcherSince = clock;
+		}
+
+		// Window switcher next: the button on Left Click while it is open picks the window instead of clicking.
+		for (int i = 0; i < bits.Length; i++)
+		{
+			MouseAction action = map.At(i);
+			if (action is MouseAction.NextWindow or MouseAction.PreviousWindow && IsNewPress(now, bits[i]))
+			{
+				Switch(output, back: action == MouseAction.PreviousWindow);
+				pressed[i] = action;
+				switcherHeld |= bits[i];
+			}
 		}
 		if (altDown)
 		{
-			if (Pressed(now, PadButtons.Cross))
+			int pick = -1;
+			for (int i = 0; i < bits.Length && pick < 0; i++)
 			{
-				crossSwallowed = PadButtons.Cross;
+				if (map.At(i) == MouseAction.LeftClick && IsNewPress(now, bits[i]))
+				{
+					pick = i;
+				}
+			}
+			if (pick >= 0)
+			{
+				swallowed |= bits[pick];
 				CloseSwitcher(output);
 			}
-			else if ((now & (PadButtons.L1 | PadButtons.R1)) == 0 && clock - switcherSince >= SwitcherHold.TotalSeconds)
+			else if (switcherHeld == PadButtons.None && clock - switcherSince >= SwitcherHold.TotalSeconds)
 			{
 				CloseSwitcher(output);
 			}
-			else if ((now & (PadButtons.L1 | PadButtons.R1)) != 0)
+			else if (switcherHeld != PadButtons.None)
 			{
 				switcherSince = clock;
 			}
 		}
-		if ((now & crossSwallowed) == 0)
-		{
-			crossSwallowed = PadButtons.None;
-		}
 
-		foreach ((PadButtons b, MouseButton m) in MouseButtons)
+		for (int i = 0; i < bits.Length; i++)
 		{
-			if ((b & crossSwallowed) != 0)
+			MouseAction action = map.At(i);
+			if (action is not (MouseAction.None or MouseAction.NextWindow or MouseAction.PreviousWindow) && IsNewPress(now, bits[i]))
 			{
-				continue;
-			}
-			if (Pressed(now, b))
-			{
-				output.MouseButton(m, true);
-				mouseDown.Add(m);
-			}
-			else if (Released(now, b) && mouseDown.Remove(m))
-			{
-				output.MouseButton(m, false);
+				Press(output, action);
+				pressed[i] = action;
 			}
 		}
-		foreach ((PadButtons b, ushort key) in HeldKeys)
+	}
+
+	// Went down in this body and is not being ignored.
+	private bool IsNewPress(PadButtons now, PadButtons b) => Pressed(now, b) && (swallowed & b) == 0;
+
+	private void Switch(IInputSink output, bool back)
+	{
+		if (!altDown)
 		{
-			if (Pressed(now, b))
-			{
-				output.Key(key, true);
-				keysDown.Add(key);
-			}
-			else if (Released(now, b) && keysDown.Remove(key))
-			{
-				output.Key(key, false);
-			}
+			output.Key(VirtualKeys.Alt, true);
+			altDown = true;
 		}
-		foreach ((PadButtons b, ushort key) in TapKeys)
+		if (back)
 		{
-			if (Pressed(now, b))
-			{
-				output.Key(key, true);
-				output.Key(key, false);
-			}
+			output.Key(VirtualKeys.Shift, true);
 		}
-		if (Pressed(now, PadButtons.Triangle))
+		output.Key(VirtualKeys.Tab, true);
+		output.Key(VirtualKeys.Tab, false);
+		if (back)
 		{
-			// Win+Ctrl+O switches the on-screen keyboard on and off.
-			output.Key(VirtualKeys.LeftWindows, true);
-			output.Key(VirtualKeys.Control, true);
-			output.Key(VirtualKeys.O, true);
-			output.Key(VirtualKeys.O, false);
-			output.Key(VirtualKeys.Control, false);
-			output.Key(VirtualKeys.LeftWindows, false);
+			output.Key(VirtualKeys.Shift, false);
+		}
+		switcherSince = clock;
+	}
+
+	// The mouse button of a click action, or null.
+	private static MouseButton? MouseOf(MouseAction action) => action switch
+	{
+		MouseAction.LeftClick => MouseButton.Left,
+		MouseAction.RightClick => MouseButton.Right,
+		MouseAction.MiddleClick => MouseButton.Middle,
+		_ => null
+	};
+
+	// The key an action holds down while its button is held, or 0.
+	private static ushort HeldKeyOf(MouseAction action) => action switch
+	{
+		MouseAction.Enter => VirtualKeys.Enter,
+		MouseAction.Escape => VirtualKeys.Escape,
+		MouseAction.Tab => VirtualKeys.Tab,
+		MouseAction.Space => VirtualKeys.Space,
+		MouseAction.Backspace => VirtualKeys.Backspace,
+		MouseAction.Delete => VirtualKeys.Delete,
+		MouseAction.ArrowUp => VirtualKeys.Up,
+		MouseAction.ArrowDown => VirtualKeys.Down,
+		MouseAction.ArrowLeft => VirtualKeys.Left,
+		MouseAction.ArrowRight => VirtualKeys.Right,
+		_ => 0
+	};
+
+	// A one-press action: the key tapped and up to two modifiers held around it (Key 0: not a one-press action).
+	private static (ushort Mod1, ushort Mod2, ushort Key) TapOf(MouseAction action) => action switch
+	{
+		MouseAction.PageUp => (0, 0, VirtualKeys.PageUp),
+		MouseAction.PageDown => (0, 0, VirtualKeys.PageDown),
+		MouseAction.WindowsKey => (0, 0, VirtualKeys.LeftWindows),
+		// Win+Ctrl+O switches the on-screen keyboard on and off.
+		MouseAction.OnScreenKeyboard => (VirtualKeys.LeftWindows, VirtualKeys.Control, VirtualKeys.O),
+		MouseAction.Back => (VirtualKeys.Alt, 0, VirtualKeys.Left),
+		MouseAction.Forward => (VirtualKeys.Alt, 0, VirtualKeys.Right),
+		MouseAction.Copy => (VirtualKeys.Control, 0, VirtualKeys.C),
+		MouseAction.Paste => (VirtualKeys.Control, 0, VirtualKeys.V),
+		MouseAction.VolumeUp => (0, 0, VirtualKeys.VolumeUp),
+		MouseAction.VolumeDown => (0, 0, VirtualKeys.VolumeDown),
+		MouseAction.MuteSound => (0, 0, VirtualKeys.VolumeMute),
+		MouseAction.PlayPause => (0, 0, VirtualKeys.MediaPlayPause),
+		MouseAction.NextTrack => (0, 0, VirtualKeys.MediaNextTrack),
+		MouseAction.PreviousTrack => (0, 0, VirtualKeys.MediaPreviousTrack),
+		_ => (0, 0, 0)
+	};
+
+	private void Press(IInputSink output, MouseAction action)
+	{
+		if (MouseOf(action) is MouseButton m)
+		{
+			PressMouse(output, m);
+			return;
+		}
+		ushort held = HeldKeyOf(action);
+		if (held != 0)
+		{
+			if (keyCount[held]++ == 0)
+			{
+				output.Key(held, true);
+			}
+			return;
+		}
+		(ushort mod1, ushort mod2, ushort key) = TapOf(action);
+		if (key == 0)
+		{
+			return;
+		}
+		if (mod1 == VirtualKeys.Alt)
+		{
+			// Alt+arrow would close the switcher's Alt halfway; close it first.
+			CloseSwitcher(output);
+		}
+		if (mod1 != 0)
+		{
+			output.Key(mod1, true);
+		}
+		if (mod2 != 0)
+		{
+			output.Key(mod2, true);
+		}
+		output.Key(key, true);
+		output.Key(key, false);
+		if (mod2 != 0)
+		{
+			output.Key(mod2, false);
+		}
+		if (mod1 != 0)
+		{
+			output.Key(mod1, false);
+		}
+	}
+
+	private void Release(IInputSink output, MouseAction action)
+	{
+		if (MouseOf(action) is MouseButton m)
+		{
+			ReleaseMouse(output, m);
+			return;
+		}
+		ushort held = HeldKeyOf(action);
+		if (held != 0 && keyCount[held] > 0 && --keyCount[held] == 0)
+		{
+			output.Key(held, false);
+		}
+	}
+
+	private void PressMouse(IInputSink output, MouseButton m)
+	{
+		if (mouseCount[(int)m]++ == 0)
+		{
+			output.MouseButton(m, true);
+		}
+	}
+
+	private void ReleaseMouse(IInputSink output, MouseButton m)
+	{
+		if (mouseCount[(int)m] > 0 && --mouseCount[(int)m] == 0)
+		{
+			output.MouseButton(m, false);
 		}
 	}
 
@@ -325,7 +458,9 @@ public sealed class DesktopMode
 
 	private void Sticks(IInputSink output, ReadOnlySpan<byte> body, double dt, DesktopModeSettings s)
 	{
-		(double vx, double vy) = PointerVelocity(Axis(body[2]), Axis(body[3]), s);
+		// Body bytes 0/1 are the left stick, 2/3 the right one.
+		int pointer = s.PointerStick == PointerStick.Left ? 0 : 2, scroll = 2 - pointer;
+		(double vx, double vy) = PointerVelocity(Axis(body[pointer]), Axis(body[pointer + 1]), s);
 		remX += vx * dt;
 		remY += vy * dt;
 		int px = (int)Math.Truncate(remX), py = (int)Math.Truncate(remY);
@@ -335,7 +470,7 @@ public sealed class DesktopMode
 		{
 			output.MoveMouse(px, py);
 		}
-		double lx = Axis(body[0]), ly = Axis(body[1]);
+		double lx = Axis(body[scroll]), ly = Axis(body[scroll + 1]);
 		double n = StickAmount(lx, ly, out double r);
 		if (n <= 0)
 		{
@@ -379,18 +514,14 @@ public sealed class DesktopMode
 		{
 			TouchPoint at = f1.Active ? f1 : f2;
 			padClickButton = at.Active && at.X >= TouchPoint.Width / 2 ? MouseButton.Right : MouseButton.Left;
-			output.MouseButton(padClickButton, true);
-			mouseDown.Add(padClickButton);
+			PressMouse(output, padClickButton);
 			padClickDown = true;
 			touchClicked = true;
 		}
 		else if (!click && padClickDown)
 		{
 			padClickDown = false;
-			if (mouseDown.Remove(padClickButton))
-			{
-				output.MouseButton(padClickButton, false);
-			}
+			ReleaseMouse(output, padClickButton);
 		}
 
 		if (fingers == 0)
@@ -466,16 +597,24 @@ public sealed class DesktopMode
 
 	private void ReleaseAll(IInputSink output)
 	{
-		foreach (ushort key in keysDown)
+		for (int vk = 0; vk < keyCount.Length; vk++)
 		{
-			output.Key(key, false);
+			if (keyCount[vk] > 0)
+			{
+				keyCount[vk] = 0;
+				output.Key((ushort)vk, false);
+			}
 		}
-		keysDown.Clear();
-		foreach (MouseButton m in mouseDown)
+		for (int m = 0; m < mouseCount.Length; m++)
 		{
-			output.MouseButton(m, false);
+			if (mouseCount[m] > 0)
+			{
+				mouseCount[m] = 0;
+				output.MouseButton((MouseButton)m, false);
+			}
 		}
-		mouseDown.Clear();
+		Array.Clear(pressed);
+		swallowed = PadButtons.None;
 		CloseSwitcher(output);
 		padClickDown = false;
 		engaged = false;

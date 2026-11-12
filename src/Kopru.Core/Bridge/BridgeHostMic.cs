@@ -2,7 +2,6 @@
 using System.Globalization;
 using Kopru.Core.Audio;
 using Kopru.Core.Bluetooth;
-using Kopru.Core.Lighting;
 using Kopru.Core.Protocol;
 
 namespace Kopru.Core.Bridge;
@@ -11,7 +10,7 @@ namespace Kopru.Core.Bridge;
 // virtual pad's mic endpoint (gain 0..4); Muted feeds silence instead (the stream keeps running). While the bridge runs
 // with the virtual DualSense every press of the controller's mic button is reported (MicButtonPressed) and never reaches
 // the game; the app decides what it does (Audio.MicButtonRules). Button: false passes the button to the game.
-// Live: whether the microphone the button acts on is live (the mute LED in FollowMic mode); null = Enabled and not Muted.
+// Live: whether the microphone the button acts on is live (the mute LED, see SyncMuteLed); null = Enabled and not Muted.
 public sealed record MicSettings(bool Enabled = false, double Gain = 1, bool NoiseGate = true, bool Muted = false, bool Button = true)
 {
 	public static MicSettings Off { get; } = new();
@@ -49,6 +48,9 @@ public sealed partial class BridgeHost
 	// The running connection's mic pipeline (diagnostics and tests).
 	public MicPipeline? MicPipeline => current?.Mic;
 
+	// The running connection's virtual DualSense, or null (diagnostics; tests feed it a game's output).
+	public Virtual.VirtualDualSense? VirtualDualSense => current?.Pad;
+
 	public void ApplyMic(MicSettings settings)
 	{
 		Connection? c = current;
@@ -62,10 +64,6 @@ public sealed partial class BridgeHost
 		if (c != null)
 		{
 			bool ok = ApplyMicTo(c);
-			if (!InvalidateLightSender())
-			{
-				ApplyLightTo(c.Session);
-			}
 			if (ok)
 			{
 				Diagnostics.AppLog.Write($"mic apply{LogSlot}: done");
@@ -89,17 +87,49 @@ public sealed partial class BridgeHost
 			$"mic check{LogSlot}: {MicCheckDelay.TotalSeconds:F0} s after mic on: {s.MicReports - c.MicCheckMic} mic reports, {s.InputReports - c.MicCheckInputs} inputs, {s.RejectedReports - c.MicCheckRejected} rejected, decoded {c.Mic?.Packets ?? 0}, stream running {s.IsHapticsStreaming}"));
 	}
 
-	// FollowMic resolved to on/off: lit while the microphone the button acts on is live (MicSettings.IsLive).
-	private LightSettings EffectiveLight()
+	// The mute LED (the orange light of the mic button) always shows the microphone the button acts on: lit while it is
+	// live (MicSettings.IsLive: the controller microphone on and not muted, or the selected PC microphone not muted), dark
+	// otherwise. It is not part of the light settings, so no light effect, profile or game light can hide it. It is written
+	// on its own (not through the LightSender, which pauses while a game drives the light) when the value changes and on
+	// every connect or pad swap, and every relayed game output carries it (ControllerBridge.AppMuteLed). Only when the
+	// game owns the mic button (Button off on the virtual DualSense) does the game's own mute LED go through.
+	private void SyncMuteLed(Connection c, string reason)
 	{
-		LightSettings l = light;
-		if (l.Options.MuteLed != MuteLedMode.FollowMic)
+		MicSettings s = micSettings;
+		bool appOwnsButton = s.Button || c.PadType != Virtual.VirtualPadType.DualSense;
+		if (!appOwnsButton)
 		{
-			return l;
+			c.Bridge.AppMuteLed = ControllerBridge.NoAppMuteLed;
+			if (c.MuteLedSent != ControllerBridge.NoAppMuteLed)
+			{
+				c.MuteLedSent = ControllerBridge.NoAppMuteLed;
+				Diagnostics.AppLog.Write($"mute led{LogSlot}: left to the game ({reason})");
+			}
+			return;
 		}
-		bool on = micSettings.IsLive;
-		return l with { Options = l.Options with { MuteLed = on ? MuteLedMode.On : MuteLedMode.Off } };
+		byte value = s.IsLive ? OutputBlock.MuteLedOn : OutputBlock.MuteLedOff;
+		c.Bridge.AppMuteLed = value;
+		if (c.MuteLedSent == value)
+		{
+			return;
+		}
+		try
+		{
+			c.Session.UpdateOutput(b => OutputBlock.SetMuteLed(b, value));
+		}
+		catch (Exception e)
+		{
+			// The controller is going away; sent again on the next connect.
+			Diagnostics.AppLog.Write($"mute led{LogSlot}: not sent: {e.GetType().Name}");
+			return;
+		}
+		c.MuteLedSent = value;
+		Diagnostics.AppLog.Write($"mute led{LogSlot}: {(value == OutputBlock.MuteLedOn ? "on" : "off")} ({reason}: {MuteLedReason(s)})");
 	}
+
+	private static string MuteLedReason(MicSettings s) => s.Live is { } live
+		? live ? "PC microphone live" : "PC microphone muted"
+		: !s.Enabled ? "controller microphone off" : s.Muted ? "controller microphone muted" : "controller microphone live";
 
 	// False when the controller refused the change (logged).
 	private bool ApplyMicTo(Connection c)
@@ -125,7 +155,7 @@ public sealed partial class BridgeHost
 			MicPipeline? p = c.Mic;
 			// The button is the switch only on the virtual DualSense (the other pad types get it as before).
 			c.Bridge.MicButton = s.Button && c.PadType == Virtual.VirtualPadType.DualSense ? MicButton : null;
-			c.Bridge.KeepMuteLed = light.Options.MuteLed == MuteLedMode.FollowMic;
+			SyncMuteLed(c, "mic settings");
 			if (!s.Enabled)
 			{
 				if (c.Pad is { } off)
@@ -164,6 +194,12 @@ public sealed partial class BridgeHost
 			Diagnostics.AppLog.Write($"mic apply{LogSlot}: failed: {e.GetType().Name}: {e.Message}");
 			return false;
 		}
+	}
+
+	private sealed partial class Connection
+	{
+		// The mute LED value last written to this controller (ControllerBridge.NoAppMuteLed: none yet / the game's).
+		public int MuteLedSent = ControllerBridge.NoAppMuteLed;
 	}
 
 	// Input thread: the app decides what the press does (Core Audio calls it may need are slow: never here).

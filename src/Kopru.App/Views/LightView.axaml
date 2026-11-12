@@ -158,21 +158,7 @@
                 </ListBox.ItemTemplate>
               </ListBox>
             </StackPanel>
-
-            <!-- Mute LED -->
-            <Border Classes="divider" />
-            <StackPanel Spacing="10" Margin="0,14">
-              <StackPanel Spacing="2">
-                <TextBlock Classes="h2" Text="{Binding MuteLedLabel}" />
-                <TextBlock Classes="body" Text="{Binding MuteLedHint}" />
-              </StackPanel>
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding MuteChoices}" SelectedItem="{Binding SelectedMute}"
-                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-            </StackPanel>
+            <!-- The mute LED is not a light setting: it always shows the microphone (BridgeHost.SyncMuteLed). -->
           </StackPanel>
         </ScrollViewer>
       </Border>

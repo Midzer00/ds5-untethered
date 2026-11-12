@@ -1,9 +1,9 @@
 ﻿// SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
-using Avalonia.VisualTree;
+using Kopru.App.Controls;
 using Kopru.App.ViewModels;
 using Kopru.Core.Localization;
 
@@ -19,50 +19,31 @@ public partial class SettingsView : UserControl
 			if (DataContext is SettingsViewModel vm)
 			{
 				vm.PickSavePath = PickSavePathAsync;
-				vm.SectionRequested += _ => Dispatcher.UIThread.Post(ShowPendingSection, DispatcherPriority.Loaded);
-				Dispatcher.UIThread.Post(ShowPendingSection, DispatcherPriority.Loaded);
 			}
 		};
+		LayoutUpdated += (_, _) => UpdateTargetHeight();
 	}
 
-	// Scrolls the requested group (with its title above it) to the top of the page.
-	private void ShowPendingSection()
+	// Every tab's cards fit what the page's viewport has left below the tab switch (above the page's bottom margin), so a
+	// tab never scrolls the page; all tabs sit at the same place, so they all get the same height.
+	private void UpdateTargetHeight()
 	{
-		if (DataContext is not SettingsViewModel vm || !vm.TryGetPendingSection(out string name) || !IsVisible)
+		ScrollViewer scroll = (ScrollViewer)Content!;
+		if (!IsEffectivelyVisible || scroll.Content is not Layoutable column || TabHost.TranslatePoint(default, column) is not { } top)
 		{
 			return;
 		}
-		Control? panel = this.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == name);
-		ScrollViewer? scroll = this.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
-		if (panel == null || scroll == null || panel.Bounds.Height <= 0 || scroll.Viewport.Height <= 0)
+		double target = Math.Floor(scroll.Viewport.Height - column.Margin.Top - column.Margin.Bottom - top.Y);
+		if (target <= 0)
 		{
-			// Not laid out yet (the page was just built or shown): again after the next layout pass.
-			if (!_waitingForLayout)
+			return;
+		}
+		foreach (SettingsLayout tab in TabHost.Children.OfType<SettingsLayout>())
+		{
+			if (double.IsNaN(tab.TargetHeight) || Math.Abs(target - tab.TargetHeight) >= 1)
 			{
-				_waitingForLayout = true;
-				LayoutUpdated += OnLayoutUpdated;
+				tab.TargetHeight = target;
 			}
-			return;
-		}
-		vm.ClearPendingSection();
-		panel.BringIntoView(new Rect(0, -40, panel.Bounds.Width, Math.Max(panel.Bounds.Height, scroll.Viewport.Height)));
-	}
-
-	private bool _waitingForLayout;
-
-	private void OnLayoutUpdated(object? sender, EventArgs e)
-	{
-		LayoutUpdated -= OnLayoutUpdated;
-		_waitingForLayout = false;
-		Dispatcher.UIThread.Post(ShowPendingSection, DispatcherPriority.Background);
-	}
-
-	protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-	{
-		base.OnPropertyChanged(change);
-		if (change.Property == IsVisibleProperty && IsVisible)
-		{
-			Dispatcher.UIThread.Post(ShowPendingSection, DispatcherPriority.Loaded);
 		}
 	}
 

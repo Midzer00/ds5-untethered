@@ -337,8 +337,8 @@ public class MicHostTests
 		return () => Interlocked.Read(ref count);
 	}
 
-	// Each press is reported (the app switches the mic), the LED (FollowMic) is lit while the mic is on and the stream asks
-	// for the mic while on.
+	// Each press is reported (the app switches the mic), the LED is lit while the mic is on (no light setting needed) and
+	// the stream asks for the mic while on.
 	[Fact]
 	public async Task MicButton_IsReported_TheAppSwitchesTheMic_LedFollows()
 	{
@@ -349,7 +349,6 @@ public class MicHostTests
 		Func<long> inputs = CountInputs(host);
 		FakeLink link = new();
 		controllers.Links.Enqueue(link);
-		host.ApplyLight(host.Light with { Options = host.Light.Options with { MuteLed = MuteLedMode.FollowMic } });
 		host.ApplyMic(new MicSettings(false));
 		await host.StartAsync();
 		WaitUntil(() => host.State == BridgeState.Running);
@@ -399,6 +398,95 @@ public class MicHostTests
 		host.ApplyMic(new MicSettings(true));
 		WaitUntil(() => host.MicPipeline is { Muted: false });
 		WaitUntil(() => link.Writes.Last(w => w[0] == 0x31)[3 + OutputBlock.MuteLed] == OutputBlock.MuteLedOn);
+	}
+
+	private static void GameOutput(BridgeHost host, byte trigger, bool gameMuteLed)
+	{
+		byte[] block = new byte[OutputBlock.Size];
+		// A game (or Windows / Steam on the virtual DualSense) setting the light bar and its own mute LED.
+		OutputBlock.SetLightbar(block, 0x11, 0x22, 0x33);
+		OutputBlock.SetMuteLed(block, gameMuteLed ? OutputBlock.MuteLedOn : OutputBlock.MuteLedOff);
+		block[OutputBlock.RightTrigger] = trigger;
+		byte[] report = new byte[UsbReports.OutputSize];
+		UsbReports.BuildOutput(block, report);
+		host.VirtualDualSense!.Submit(new SubmitCommand(5, 0, UsbIpCodes.DirOut, VirtualDualSense.HidOutEndpoint, 0, report.Length, 0, -1, 1,
+			new byte[8], report, []), _ => { });
+	}
+
+	private static (bool Valid, byte Value) LastMuteLed(FakeLink link)
+	{
+		byte[] w = link.Writes.Last(w => w[0] == BluetoothReports.OutputId);
+		return ((w[3 + OutputBlock.Flag1] & OutputBlock.MuteLedControl) != 0, w[3 + OutputBlock.MuteLed]);
+	}
+
+	// The owner's setup (0.1.4): the Windows default microphone is a PC (webcam) microphone, the button in "Kapat" (turn off)
+	// mode, the controller microphone feature off, the light at its defaults (the old "Mikrofon LED'i: Kapalı" setting),
+	// the bridge running with the virtual DualSense and output relayed (here with a light bar, so the light effect sender
+	// pauses for it). Each press makes the app mute / unmute the PC microphone and push MicSettings.Live; the bytes going to
+	// the controller must carry the mute LED (valid bit set) lit while that microphone is live and dark while muted, also
+	// in the relayed output. Before the fix the LED value came from the light setting ("Off": always dark) and was only
+	// written by the light sender, which also stops while a game drives the light.
+	[Fact]
+	public async Task OwnerSetup_PcMicrophone_TurnOffMode_MuteLedFollowsEveryPress()
+	{
+		ConcurrentQueue<string> lines = new();
+		void OnLine(string line)
+		{
+			if (line.StartsWith("mute led", StringComparison.Ordinal))
+			{
+				lines.Enqueue(line);
+			}
+		}
+		Kopru.Core.Diagnostics.AppLog.Written += OnLine;
+		try
+		{
+			StepClock clock = new();
+			await using BridgeHost host = Host(clock);
+			FakeLink link = new();
+			controllers.Links.Enqueue(link);
+			host.ApplyLight(LightSettings.FromRgb(0x2F6BFF, 0.8));
+			// PC microphone selected and not muted: MicEnabled false, Live true.
+			host.ApplyMic(new MicSettings(false) { Live = true });
+			await host.StartAsync();
+			WaitUntil(() => host.State == BridgeState.Running);
+			WaitUntil(() => LastMuteLed(link) == (true, OutputBlock.MuteLedOn));
+
+			// Output relayed from the virtual pad, with the game's own (dark) mute LED: ours stays.
+			GameOutput(host, 1, gameMuteLed: false);
+			WaitUntil(() => link.Writes.Any(w => w[0] == BluetoothReports.OutputId && w[3 + OutputBlock.Red] == 0x11 && w[3 + OutputBlock.RightTrigger] == 1));
+			Assert.Equal((true, OutputBlock.MuteLedOn), LastMuteLed(link));
+
+			// Press: PC microphone muted.
+			host.ApplyMic(new MicSettings(false) { Live = false });
+			WaitUntil(() => LastMuteLed(link) == (true, OutputBlock.MuteLedOff));
+			GameOutput(host, 2, gameMuteLed: true);
+			WaitUntil(() => link.Writes.Any(w => w[0] == BluetoothReports.OutputId && w[3 + OutputBlock.RightTrigger] == 2));
+			Assert.Equal((true, OutputBlock.MuteLedOff), LastMuteLed(link));
+
+			// Press: unmuted again.
+			host.ApplyMic(new MicSettings(false) { Live = true });
+			WaitUntil(() => LastMuteLed(link) == (true, OutputBlock.MuteLedOn));
+			GameOutput(host, 3, gameMuteLed: false);
+			WaitUntil(() => link.Writes.Any(w => w[0] == BluetoothReports.OutputId && w[3 + OutputBlock.RightTrigger] == 3));
+			Assert.Equal((true, OutputBlock.MuteLedOn), LastMuteLed(link));
+
+			// The same value again writes nothing new and logs nothing.
+			int writes = link.Writes.Count(w => w[0] == BluetoothReports.OutputId);
+			host.ApplyMic(new MicSettings(false) { Live = true });
+			Assert.Equal(writes, link.Writes.Count(w => w[0] == BluetoothReports.OutputId));
+
+			// A light change (any effect) never touches it.
+			host.ApplyLight(LightSettings.FromRgb(0xFF0000) with { Options = new LightOptions(LightMode.Rainbow, RainbowSpeed: 10) });
+			await Task.Delay(100);
+			Assert.Equal((true, OutputBlock.MuteLedOn), LastMuteLed(link));
+		}
+		finally
+		{
+			Kopru.Core.Diagnostics.AppLog.Written -= OnLine;
+		}
+		// One line per change (other tests may log at the same time, so only presence is checked).
+		Assert.Contains("mute led: on (mic settings: PC microphone live)", lines);
+		Assert.Contains("mute led: off (mic settings: PC microphone muted)", lines);
 	}
 
 	// Low Power keeps the button (the app may still mute a PC microphone; it does not turn the controller mic on); the
@@ -586,20 +674,55 @@ public class MicHostTests
 		Assert.NotEqual(0, Next(Input(true, 2))[1 + MicButton.ButtonByte] & MicButton.ButtonBit);
 	}
 
-	[Fact]
-	public void Bridge_DropsTheGamesMuteLed_WhileTheAppDrivesIt()
+	[Theory]
+	// The game sets its own mute LED, with and without the valid bit, and with the light switched off for games.
+	[InlineData(OutputBlock.MuteLedOn, true, true)]
+	[InlineData(OutputBlock.MuteLedOff, true, true)]
+	[InlineData(OutputBlock.MuteLedOn, false, true)]
+	[InlineData(OutputBlock.MuteLedOn, true, false)]
+	public void Bridge_ReplacesTheGamesMuteLed_WithTheAppsOne(byte gameValue, bool gameValid, bool lightFromGame)
 	{
 		FakeLink link = new();
 		using BluetoothSession session = new(link);
 		using VirtualDualSense pad = new(DeviceIdentity.Create(BridgeTests.Device, BridgeTests.Configuration, [0x05, 0x01, 0x09, 0x05, 0xA1, 0x01, 0xC0, 0x00],
 			new Dictionary<int, string> { [1] = "S", [2] = "D" }, new Dictionary<byte, byte[]> { [0x05] = [0x05, 1, 2, 3] }));
-		using ControllerBridge bridge = new(session, pad) { KeepMuteLed = true };
-		byte[] block = new byte[OutputBlock.Size];
-		OutputBlock.SetMuteLed(block, OutputBlock.MuteLedOn);
-		byte[] report = new byte[UsbReports.OutputSize];
-		UsbReports.BuildOutput(block, report);
-		pad.Submit(new SubmitCommand(5, 0, UsbIpCodes.DirOut, VirtualDualSense.HidOutEndpoint, 0, report.Length, 0, -1, 1, new byte[8], report, []), _ => { });
+		using ControllerBridge bridge = new(session, pad) { AppMuteLed = OutputBlock.MuteLedOff, LightFromGame = lightFromGame };
+		void Send(byte trigger)
+		{
+			byte[] block = new byte[OutputBlock.Size];
+			OutputBlock.SetMuteLed(block, gameValue);
+			if (!gameValid)
+			{
+				block[OutputBlock.Flag1] &= unchecked((byte)~OutputBlock.MuteLedControl);
+			}
+			OutputBlock.SetLightbar(block, 1, 2, 3);
+			block[OutputBlock.RightTrigger] = trigger;
+			byte[] report = new byte[UsbReports.OutputSize];
+			UsbReports.BuildOutput(block, report);
+			pad.Submit(new SubmitCommand(5, 0, UsbIpCodes.DirOut, VirtualDualSense.HidOutEndpoint, 0, report.Length, 0, -1, 1, new byte[8], report, []), _ => { });
+		}
+		Send(1);
 		WaitUntil(() => bridge.Outputs == 1);
-		Assert.Equal(0, link.Writes.Last(w => w[0] == 0x31)[3 + OutputBlock.Flag1] & OutputBlock.MuteLedControl);
+		byte[] sent = link.Writes.Last(w => w[0] == 0x31);
+		Assert.NotEqual(0, sent[3 + OutputBlock.Flag1] & OutputBlock.MuteLedControl);
+		Assert.Equal(OutputBlock.MuteLedOff, sent[3 + OutputBlock.MuteLed]);
+
+		bridge.AppMuteLed = OutputBlock.MuteLedOn;
+		Send(2);
+		WaitUntil(() => bridge.Outputs == 2);
+		sent = link.Writes.Last(w => w[0] == 0x31);
+		Assert.NotEqual(0, sent[3 + OutputBlock.Flag1] & OutputBlock.MuteLedControl);
+		Assert.Equal(OutputBlock.MuteLedOn, sent[3 + OutputBlock.MuteLed]);
+
+		// The game owns the button: its own mute LED goes through untouched.
+		bridge.AppMuteLed = ControllerBridge.NoAppMuteLed;
+		Send(3);
+		WaitUntil(() => bridge.Outputs == 3);
+		sent = link.Writes.Last(w => w[0] == 0x31);
+		if (lightFromGame)
+		{
+			Assert.Equal(gameValid ? OutputBlock.MuteLedControl : 0, sent[3 + OutputBlock.Flag1] & OutputBlock.MuteLedControl);
+			Assert.Equal(gameValue, sent[3 + OutputBlock.MuteLed]);
+		}
 	}
 }

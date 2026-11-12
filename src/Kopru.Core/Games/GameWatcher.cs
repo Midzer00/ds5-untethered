@@ -43,6 +43,17 @@ public interface IProcessSource
 	IReadOnlyList<ProcessInfo> WindowedApps();
 }
 
+// What the watcher reads about a process beyond its exe name, to recognise a list game whose exe name is unknown (faked
+// in tests). Both may return null; neither throws.
+public interface IProcessDetails
+{
+	// The title of the process's window (the foreground window when it belongs to that process), or null.
+	string? WindowTitle(ProcessInfo process);
+
+	// ProductName and FileDescription from the version info of the exe at path.
+	(string? Product, string? Description) VersionInfo(string path);
+}
+
 // Reports the known game in the foreground; GameModeController polls it about once a second. Unknown apps (browsers,
 // chat, editors, anything not in the list) are never reported.
 public interface IGameWatcher
@@ -59,10 +70,15 @@ public interface IGameWatcher
 	IReadOnlyList<UserGame> UserGames { get => []; set { } }
 }
 
-// Watches the foreground window's process and recognises known games only: (a) the exe matches a catalog exe, (b) the exe
-// runs from a Steam library folder whose app id is in the catalog, or (c) it is a game the user added. Lookups are cached
-// per process (id and path). Ignores this app and common desktop apps.
-public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes = null, SteamLibrary? steam = null) : IGameWatcher
+// Watches the foreground window's process and recognises known games only: (a) the exe matches a catalog exe (an Unreal
+// Engine "-Win64-Shipping" pair included), (b) the exe runs from a Steam library folder whose app id is in the catalog,
+// (c) it is a game the user added, or (d) for a catalog game without exe names, the whole normalised game name equals a
+// folder name of the exe's path, the exe's product name or file description, or the window title. Lookups are cached
+// per process (id and path): version info is read once per process; only the window title of an unknown process is read
+// again (games often set it after the window opens). Ignores this app and common desktop apps. details defaults to
+// processes when that implements IProcessDetails (SystemProcessSource does).
+public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes = null, SteamLibrary? steam = null,
+	IProcessDetails? details = null, Action<string>? log = null) : IGameWatcher
 {
 	// Shell and system processes and common desktop apps: never games, even when a list entry names them.
 	public static readonly IReadOnlySet<string> Ignored = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -82,7 +98,8 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 	private readonly IProcessSource processes = processes ?? new SystemProcessSource();
 	private readonly string ownExe = GameCatalog.Normalize(Environment.ProcessPath);
 	private readonly object gate = new();
-	private readonly Dictionary<(int, string), ForegroundGame?> cache = [];
+	private readonly Action<string> log = log ?? Diagnostics.AppLog.Write;
+	private readonly Dictionary<(int, string), Entry> cache = [];
 	private GameCatalog current = catalog;
 	private IReadOnlyList<UserGame> userGames = [];
 
@@ -150,9 +167,13 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		(int, string) key = (process.Id, process.Path ?? exe);
 		lock (gate)
 		{
-			if (cache.TryGetValue(key, out ForegroundGame? known))
+			if (cache.TryGetValue(key, out Entry? known))
 			{
-				return known;
+				if (known.Game == null && known.ReadTitle)
+				{
+					known.Game = ByTitle(process, exe, known);
+				}
+				return known.Game;
 			}
 			if (cache.Count >= CacheLimit)
 			{
@@ -160,7 +181,7 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 			}
 			known = Lookup(process, exe);
 			cache[key] = known;
-			return known;
+			return known.Game;
 		}
 	}
 
@@ -194,28 +215,114 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 	}
 
 	// Caller holds the lock.
-	private ForegroundGame? Lookup(ProcessInfo process, string exe)
+	private Entry Lookup(ProcessInfo process, string exe)
 	{
 		foreach (UserGame game in userGames)
 		{
 			if (UserGameMatches(game, process, exe))
 			{
-				return new ForegroundGame(exe, current.Find(exe), process.Id, process.Path, game.Name);
+				return new Entry(new ForegroundGame(exe, current.Find(exe), process.Id, process.Path, game.Name));
 			}
 		}
 		if (Ignored.Contains(exe))
 		{
-			return null;
+			return new Entry(null);
 		}
 		if (current.Find(exe) is { } match)
 		{
-			return new ForegroundGame(exe, match, process.Id, process.Path);
+			return new Entry(new ForegroundGame(exe, match, process.Id, process.Path));
 		}
 		if (steam?.AppIdFor(process.Path) is long appId && current.FindBySteamAppId(appId) is { } byApp)
 		{
-			return new ForegroundGame(exe, byApp, process.Id, process.Path);
+			return new Entry(new ForegroundGame(exe, byApp, process.Id, process.Path));
 		}
-		return null;
+		return ByName(process, exe);
+	}
+
+	private IProcessDetails? Details => details ?? processes as IProcessDetails;
+
+	// Caller holds the lock. A catalog game without exe names: by folder name, version info, then window title.
+	private Entry ByName(ProcessInfo process, string exe)
+	{
+		if (!current.HasNamedGames)
+		{
+			return new Entry(null);
+		}
+		foreach (string folder in Folders(process.Path))
+		{
+			if (current.FindByName(folder) is { } byFolder)
+			{
+				return new Entry(Found(byFolder, "folder name", process, exe));
+			}
+		}
+		IProcessDetails? source = Details;
+		if (source == null)
+		{
+			return new Entry(null);
+		}
+		if (!string.IsNullOrEmpty(process.Path))
+		{
+			(string? product, string? description) = source.VersionInfo(process.Path);
+			if (current.FindByName(product) is { } byProduct)
+			{
+				return new Entry(Found(byProduct, "product name", process, exe));
+			}
+			if (current.FindByName(description) is { } byDescription)
+			{
+				return new Entry(Found(byDescription, "file description", process, exe));
+			}
+		}
+		var entry = new Entry(null) { ReadTitle = true };
+		entry.Game = ByTitle(process, exe, entry);
+		return entry;
+	}
+
+	// Caller holds the lock. Reads the window title again and checks it only when it changed.
+	private ForegroundGame? ByTitle(ProcessInfo process, string exe, Entry entry)
+	{
+		string? title = Details?.WindowTitle(process);
+		if (string.Equals(title, entry.Title, StringComparison.Ordinal))
+		{
+			return null;
+		}
+		entry.Title = title;
+		return current.FindByName(title) is { } byTitle ? Found(byTitle, "window title", process, exe) : null;
+	}
+
+	private ForegroundGame Found(CatalogGame game, string signal, ProcessInfo process, string exe)
+	{
+		log($"game: {game.Name} recognised by {signal} ({exe})");
+		return new ForegroundGame(exe, game, process.Id, process.Path);
+	}
+
+	// The folder names of an exe path, innermost first, without the drive (C:\A\B\x.exe gives B, then A).
+	public static IEnumerable<string> Folders(string? path)
+	{
+		if (string.IsNullOrWhiteSpace(path))
+		{
+			yield break;
+		}
+		string? folder = System.IO.Path.GetDirectoryName(path.Replace('/', '\\'));
+		while (!string.IsNullOrEmpty(folder))
+		{
+			string name = System.IO.Path.GetFileName(folder);
+			if (name.Length == 0)
+			{
+				yield break;
+			}
+			yield return name;
+			folder = System.IO.Path.GetDirectoryName(folder);
+		}
+	}
+
+	// One cached lookup. ReadTitle: an unknown process whose window title is checked again on each poll.
+	private sealed class Entry(ForegroundGame? game)
+	{
+		public ForegroundGame? Game { get; set; } = game;
+
+		public bool ReadTitle { get; init; }
+
+		public string? Title { get; set; }
 	}
 
 	// A full path must match exactly; a bare file name (or a process whose path is unknown) matches by file name.
@@ -241,7 +348,7 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 }
 
 // Windows: GetForegroundWindow, GetWindowThreadProcessId, then the process (name and, with limited query rights, the path).
-public sealed class SystemProcessSource : IProcessSource
+public sealed class SystemProcessSource : IProcessSource, IProcessDetails
 {
 	private const uint QueryLimitedInformation = 0x1000;
 	private const uint StillActive = 259;
@@ -312,6 +419,43 @@ public sealed class SystemProcessSource : IProcessSource
 		return list;
 	}
 
+	public string? WindowTitle(ProcessInfo process)
+	{
+		if (!OperatingSystem.IsWindows() || process.Id <= 0)
+		{
+			return null;
+		}
+		IntPtr window = GetForegroundWindow();
+		if (window != IntPtr.Zero && GetWindowThreadProcessId(window, out uint pid) != 0 && pid == (uint)process.Id)
+		{
+			var buffer = new StringBuilder(512);
+			int length = GetWindowText(window, buffer, buffer.Capacity);
+			return length > 0 ? buffer.ToString(0, length) : null;
+		}
+		try
+		{
+			using Process p = Process.GetProcessById(process.Id);
+			return string.IsNullOrEmpty(p.MainWindowTitle) ? null : p.MainWindowTitle;
+		}
+		catch (Exception e) when (e is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+		{
+			return null;
+		}
+	}
+
+	public (string? Product, string? Description) VersionInfo(string path)
+	{
+		try
+		{
+			FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
+			return (info.ProductName, info.FileDescription);
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+		{
+			return (null, null);
+		}
+	}
+
 	// The full exe path, or null when the process can't be queried.
 	public static string? PathOf(int pid)
 	{
@@ -343,6 +487,9 @@ public sealed class SystemProcessSource : IProcessSource
 
 	[DllImport("user32.dll")]
 	private static extern IntPtr GetForegroundWindow();
+
+	[DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetWindowTextW")]
+	private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
 
 	[DllImport("user32.dll")]
 	private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);

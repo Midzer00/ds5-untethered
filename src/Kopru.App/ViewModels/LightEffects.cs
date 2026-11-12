@@ -29,7 +29,6 @@ public sealed partial class LightViewModel
 	public IReadOnlyList<LightChoice<LightMode>> Modes { get; private set; } = [];
 	public IReadOnlyList<LightChoice<PlayerLedPattern>> Patterns { get; private set; } = [];
 	public IReadOnlyList<LightChoice<LedBrightness>> LedLevels { get; private set; } = [];
-	public IReadOnlyList<LightChoice<MuteLedMode>> MuteChoices { get; private set; } = [];
 
 	public string ModeLabel => Text.LightModeLabel();
 	public string ModeHint => Settings.LightMode switch
@@ -50,8 +49,6 @@ public sealed partial class LightViewModel
 	public string RainbowSpeedText => Text.SpeedValue(Settings.RainbowSpeed);
 	public string PatternHint => Text.PlayerLedsPatternHint();
 	public string LedBrightnessLabel => Text.LedBrightnessLabel();
-	public string MuteLedLabel => Text.MuteLedLabel();
-	public string MuteLedHint => Text.MuteLedHint();
 
 	// Which settings show: the colour for static, breathing and game controlled; battery and rainbow pick their own.
 	public bool ShowsColour => Settings.LightMode is LightMode.Static or LightMode.Breathing or LightMode.Game;
@@ -90,18 +87,6 @@ public sealed partial class LightViewModel
 			if (value != null)
 			{
 				Settings.PlayerLedBrightness = value.Value;
-			}
-		}
-	}
-
-	public LightChoice<MuteLedMode>? SelectedMute
-	{
-		get => MuteChoices.FirstOrDefault(m => m.Value == Settings.MuteLed);
-		set
-		{
-			if (value != null)
-			{
-				Settings.MuteLed = value.Value;
 			}
 		}
 	}
@@ -166,12 +151,6 @@ public sealed partial class LightViewModel
 			new(LedBrightness.Medium, () => Text.LedBrightnessMedium()),
 			new(LedBrightness.High, () => Text.LedBrightnessHigh()),
 		];
-		MuteChoices =
-		[
-			new(MuteLedMode.Off, () => Text.MuteLedOff()),
-			new(MuteLedMode.On, () => Text.MuteLedOn()),
-			new(MuteLedMode.FollowMic, () => Text.MuteLedFollowMic()),
-		];
 	}
 
 	private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
@@ -191,9 +170,6 @@ public sealed partial class LightViewModel
 				break;
 			case nameof(SettingsState.PlayerLedBrightness):
 				OnPropertyChanged(nameof(SelectedLedLevel));
-				break;
-			case nameof(SettingsState.MuteLed):
-				OnPropertyChanged(nameof(SelectedMute));
 				break;
 			case nameof(SettingsState.BreathingPeriod):
 				OnPropertyChanged(nameof(BreathingPeriodText));
@@ -219,6 +195,5 @@ public sealed partial class LightViewModel
 		OnPropertyChanged(nameof(Modes));
 		OnPropertyChanged(nameof(Patterns));
 		OnPropertyChanged(nameof(LedLevels));
-		OnPropertyChanged(nameof(MuteChoices));
 	}
 }

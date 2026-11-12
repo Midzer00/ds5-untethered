@@ -2,7 +2,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Kopru.App.Services;
 using Kopru.Core.Bridge;
-using Kopru.Core.Lighting;
 using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
@@ -31,18 +30,13 @@ public sealed partial class SettingsState
 		Live = ControllerMicSelected ? null : PcMicMuted != true
 	};
 
-	// Turning the mic on by hand makes the mute LED follow it (unless the user picked "always on"). Turning it off ends a
-	// mute of the button's "Mute" mode.
+	// Turning the mic off ends a mute of the button's "Mute" mode.
 	partial void OnMicEnabledChanged(bool value)
 	{
 		Kopru.Core.Diagnostics.AppLog.Write($"settings: mic switch {(value ? "on" : "off")} ({ChangeSource})");
 		if (!value)
 		{
 			MicMuted = false;
-		}
-		if (value && !_loading && !_applyingProfile && MuteLed == MuteLedMode.Off)
-		{
-			MuteLed = MuteLedMode.FollowMic;
 		}
 		NotifyMicState();
 	}

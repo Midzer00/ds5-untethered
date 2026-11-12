@@ -54,10 +54,6 @@ public sealed partial class BridgeHost
 	{
 		light = settings;
 		Connection? c = current;
-		if (c != null)
-		{
-			c.Bridge.KeepMuteLed = settings.Options.MuteLed == Lighting.MuteLedMode.FollowMic;
-		}
 		if (c != null && !InvalidateLightSender())
 		{
 			ApplyLightTo(c.Session);
@@ -134,7 +130,7 @@ public sealed partial class BridgeHost
 
 	private void ApplyLightTo(BluetoothSession session)
 	{
-		LightSettings l = EffectiveLight();
+		LightSettings l = light;
 		try
 		{
 			session.UpdateOutput(l.WriteTo);

@@ -3,10 +3,10 @@ namespace Kopru.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-	// Opens the Settings page scrolled to one of its groups (see SettingsSections).
-	public void OpenSettingsAt(string section)
+	// Opens the Settings page on one of its tabs (SettingsViewModel.GeneralTab...).
+	public void OpenSettingsAt(int tab)
 	{
+		SettingsPage.ShowTab(tab);
 		Navigate(SettingsPage);
-		SettingsPage.ShowSection(section);
 	}
 }

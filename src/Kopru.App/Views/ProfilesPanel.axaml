@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.ProfilesPanel" x:DataType="vm:ProfilesViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.ProfilesPanel" x:DataType="vm:ProfilesViewModel">
   <UserControl.Styles>
     <!-- Profile number as the player LEDs show it -->
     <Style Selector="Border.profileIndex">
@@ -14,67 +14,71 @@
       <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
     </Style>
   </UserControl.Styles>
-  <StackPanel>
-    <TextBlock Classes="section" Text="{Binding Title}" />
-    <Border Classes="panel" Padding="20,0" Name="ProfilesGroup">
-      <StackPanel>
-        <!-- What profiles are, the actions on the right -->
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
-            <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
-            <TextBlock Classes="caption" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" />
-          </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" Margin="0">
-            <Button Theme="{StaticResource QuietButton}" Command="{Binding ImportCommand}" Content="{Binding ImportText}" />
-            <Button Theme="{StaticResource QuietButton}" Command="{Binding NewCommand}" Content="{Binding NewText}" />
-          </StackPanel>
-        </Grid>
-        <ItemsControl ItemsSource="{Binding Items}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ProfileItemViewModel">
-              <StackPanel>
-                <Border Classes="divider" />
-                <Grid Classes="settingRow" ColumnDefinitions="Auto,*,Auto">
-                  <Border Classes="profileIndex" Classes.active="{Binding IsActive}">
-                    <TextBlock Text="{Binding IndexText}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                  </Border>
-                  <!-- Name and where it is used, or the rename box -->
-                  <StackPanel Grid.Column="1" Spacing="2" IsVisible="{Binding IsShowingName}">
-                    <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Classes="caption" Text="{Binding GamesText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" IsVisible="{Binding IsRenaming}">
-                    <TextBox Text="{Binding EditName}" Width="{StaticResource ControlWidth}" MaxLength="40" VerticalAlignment="Center" />
-                    <Button Theme="{StaticResource PrimaryButton}" Command="{Binding CommitRenameCommand}" Content="{Binding SaveText}" IsDefault="True" />
-                    <Button Theme="{StaticResource QuietButton}" Command="{Binding CancelRenameCommand}" Content="{Binding CancelText}" />
-                  </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" Margin="0">
-                    <TextBlock Classes="stateText on" IsVisible="{Binding IsActive}" Text="{Binding ActiveText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0" />
-                    <Button Theme="{StaticResource QuietButton}" IsVisible="{Binding IsInactive}" Command="{Binding ActivateCommand}"
-                            Content="{Binding ActivateText}" />
-                    <Button Theme="{StaticResource QuietButton}" Width="34" MinWidth="34" Padding="0" ToolTip.Tip="{Binding MoreText}"
-                            AutomationProperties.Name="{Binding MoreText}">
-                      <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
-                        <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
-                        <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
-                      </StackPanel>
-                      <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight">
-                          <MenuItem Header="{Binding RenameText}" Command="{Binding BeginRenameCommand}" IsEnabled="{Binding CanEdit}" />
-                          <MenuItem Header="{Binding DuplicateText}" Command="{Binding DuplicateCommand}" />
-                          <MenuItem Header="{Binding ExportText}" Command="{Binding ExportCommand}" />
-                          <MenuItem Header="{Binding DeleteText}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanEdit}" />
-                        </MenuFlyout>
-                      </Button.Flyout>
-                    </Button>
-                  </StackPanel>
-                </Grid>
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+  <DockPanel Classes="card">
+    <!-- The title with the card's actions on its right -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,0,0,8">
+      <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Bottom" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+        <Button Theme="{StaticResource QuietButton}" Command="{Binding ImportCommand}" Content="{Binding ImportText}" />
+        <Button Theme="{StaticResource QuietButton}" Command="{Binding NewCommand}" Content="{Binding NewText}" />
       </StackPanel>
+    </Grid>
+    <Border Classes="panel" Padding="20,0" Name="ProfilesGroup">
+      <Grid RowDefinitions="Auto,*">
+        <!-- What profiles are (the full explanation in the tooltip) -->
+        <StackPanel Background="Transparent" Spacing="2" Margin="0,12" ToolTip.Tip="{Binding Hint}">
+          <TextBlock Classes="body" Text="{Binding Short, Converter={x:Static v:KeepLastWords.Instance}}" />
+          <TextBlock Classes="caption" Text="{Binding StatusText, Converter={x:Static v:KeepLastWords.Instance}}" IsVisible="{Binding HasStatus}" />
+        </StackPanel>
+        <!-- The list scrolls inside the card when there are more profiles than room -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="0,0,0,4">
+          <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProfileItemViewModel">
+                <StackPanel>
+                  <Border Classes="divider" />
+                  <Grid Classes="settingRow" ColumnDefinitions="Auto,*,Auto">
+                    <Border Classes="profileIndex" Classes.active="{Binding IsActive}">
+                      <TextBlock Text="{Binding IndexText}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <!-- Name and where it is used, or the rename box -->
+                    <StackPanel Grid.Column="1" Spacing="2" IsVisible="{Binding IsShowingName}">
+                      <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="caption" Text="{Binding GamesText, Converter={x:Static v:KeepLastWords.Instance}}" />
+                    </StackPanel>
+                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource GapSmall}" IsVisible="{Binding IsRenaming}">
+                      <TextBox Text="{Binding EditName}" MaxWidth="{StaticResource ControlWidth}" MaxLength="40" VerticalAlignment="Center" />
+                      <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Command="{Binding CommitRenameCommand}" Content="{Binding SaveText}" IsDefault="True" />
+                      <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Command="{Binding CancelRenameCommand}" Content="{Binding CancelText}" />
+                    </Grid>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" Margin="0">
+                      <TextBlock Classes="stateText on" IsVisible="{Binding IsActive}" Text="{Binding ActiveText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,4,0" />
+                      <Button Theme="{StaticResource QuietButton}" IsVisible="{Binding IsInactive}" Command="{Binding ActivateCommand}"
+                              Content="{Binding ActivateText}" />
+                      <Button Theme="{StaticResource QuietButton}" Width="34" MinWidth="34" Padding="0" ToolTip.Tip="{Binding MoreText}"
+                              AutomationProperties.Name="{Binding MoreText}">
+                        <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+                          <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+                          <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+                        </StackPanel>
+                        <Button.Flyout>
+                          <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuItem Header="{Binding RenameText}" Command="{Binding BeginRenameCommand}" IsEnabled="{Binding CanEdit}" />
+                            <MenuItem Header="{Binding DuplicateText}" Command="{Binding DuplicateCommand}" />
+                            <MenuItem Header="{Binding ExportText}" Command="{Binding ExportCommand}" />
+                            <MenuItem Header="{Binding DeleteText}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanEdit}" />
+                          </MenuFlyout>
+                        </Button.Flyout>
+                      </Button>
+                    </StackPanel>
+                  </Grid>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
     </Border>
-  </StackPanel>
+  </DockPanel>
 </UserControl>

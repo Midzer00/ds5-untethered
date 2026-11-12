@@ -32,11 +32,8 @@ public sealed partial class SettingsState
 	[ObservableProperty]
 	private LedBrightness _playerLedBrightness = LedBrightness.High;
 
-	[ObservableProperty]
-	private MuteLedMode _muteLed;
-
 	public LightOptions LightOptions => new(LightMode, BreathingPeriod, Math.Clamp(BreathingMin / 100, 0, 1), Math.Clamp(BreathingMax / 100, 0, 1),
-		RainbowSpeed, PlayerLedPattern, PlayerLedBrightness, MuteLed);
+		RainbowSpeed, PlayerLedPattern, PlayerLedBrightness);
 
 	partial void OnPlayerLedPatternChanged(PlayerLedPattern value) => PlayerLeds = value != PlayerLedPattern.Off;
 
@@ -61,7 +58,6 @@ public sealed partial class SettingsState
 		RainbowSpeed = Math.Clamp(saved.RainbowSpeed, 1, 10);
 		PlayerLedPattern = saved.PlayerLedPattern ?? (saved.PlayerLeds ? PlayerLedPattern.One : PlayerLedPattern.Off);
 		PlayerLedBrightness = saved.PlayerLedBrightness;
-		MuteLed = Enum.IsDefined(saved.MuteLed) ? saved.MuteLed : MuteLedMode.Off;
 	}
 
 	private AppSettings WithLight(AppSettings s)
@@ -73,7 +69,6 @@ public sealed partial class SettingsState
 		s.RainbowSpeed = RainbowSpeed;
 		s.PlayerLedPattern = PlayerLedPattern;
 		s.PlayerLedBrightness = PlayerLedBrightness;
-		s.MuteLed = MuteLed;
 		return s;
 	}
 }

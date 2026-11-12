@@ -24,11 +24,20 @@ public sealed partial class SettingsState
 
 	// Controller shortcuts with the PS button held.
 	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(PsOpensAppInGamesAvailable))]
 	private bool _shortcutsEnabled = true;
 
 	// "PS: Open The App": a single PS tap with no game in front brings the window up (only with the shortcuts switch on).
 	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(PsOpensAppInGamesAvailable))]
 	private bool _psOpensApp = true;
+
+	// "Also In Games": the tap opens the window while a game is in front too (only with "PS: Open The App" on).
+	[ObservableProperty]
+	private bool _psOpensAppInGames = true;
+
+	// Whether "Also In Games" can be changed (both switches above it on).
+	public bool PsOpensAppInGamesAvailable => ShortcutsEnabled && PsOpensApp;
 
 	public ProfileBook Profiles => _profiles;
 
@@ -73,7 +82,6 @@ public sealed partial class SettingsState
 		RainbowSpeed = RainbowSpeed,
 		PlayerLedPattern = PlayerLedPattern,
 		PlayerLedBrightness = PlayerLedBrightness,
-		MuteLed = MuteLed,
 		SpeakerEnabled = SpeakerEnabled,
 		SpeakerVolume = SpeakerVolume,
 		HeadphoneVolume = HeadphoneVolume,
@@ -186,7 +194,7 @@ public sealed partial class SettingsState
 			or nameof(RumbleFeel) or nameof(FallbackTrigger) or nameof(FallbackStrength) or nameof(Tuning) or nameof(LightbarColour)
 			or nameof(Brightness) or nameof(PlayerLeds) or nameof(Remap) or nameof(Gyro) or nameof(LightMode) or nameof(BreathingPeriod)
 			or nameof(BreathingMin) or nameof(BreathingMax) or nameof(RainbowSpeed) or nameof(PlayerLedPattern) or nameof(PlayerLedBrightness)
-			or nameof(MuteLed) or nameof(SpeakerEnabled) or nameof(SpeakerVolume) or nameof(HeadphoneVolume)
+			or nameof(SpeakerEnabled) or nameof(SpeakerVolume) or nameof(HeadphoneVolume)
 			or nameof(MicEnabled) or nameof(MicGain) or nameof(MicNoiseGate))
 		{
 			_profiles.Update(_profiles.ActiveId, CaptureValues());
@@ -244,7 +252,6 @@ public sealed partial class SettingsState
 		// Last: the pattern and the PlayerLeds switch keep each other in step.
 		PlayerLedPattern = v.PlayerLedPattern ?? (v.PlayerLeds ? PlayerLedPattern.One : PlayerLedPattern.Off);
 		PlayerLedBrightness = v.PlayerLedBrightness;
-		MuteLed = Enum.IsDefined(v.MuteLed) ? v.MuteLed : MuteLedMode.Off;
 		SpeakerEnabled = v.SpeakerEnabled;
 		SpeakerVolume = Math.Clamp(v.SpeakerVolume, 0, 100);
 		HeadphoneVolume = Math.Clamp(v.HeadphoneVolume, 0, 100);

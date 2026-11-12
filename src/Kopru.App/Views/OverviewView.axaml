@@ -85,7 +85,7 @@
     <Style Selector="ToggleButton:unchecked TextBlock.tileState.on"><Setter Property="IsVisible" Value="False" /></Style>
     <!-- Three rows of tiles share the card with the sound and stepped rows: lower than the tile's default -->
     <Style Selector="Grid.tiles ToggleButton">
-      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="MinHeight" Value="40" />
     </Style>
     <!-- The small quiet button on the shortcuts tile (opens the shortcuts list): nothing at rest, a faint fill on hover,
          sinks when pressed, accent edge on keyboard focus -->
@@ -152,15 +152,29 @@
     <Style Selector="Grid.quickRow ListBox">
       <Setter Property="Height" Value="30" />
     </Style>
-    <!-- A sound device picker takes the row's full width after its icon, so device names show (the label is in its tooltip and
-         its accessible name; the icon says which it is) -->
-    <Style Selector="Grid.quickRow ComboBox.device">
-      <Setter Property="Width" Value="NaN" />
+    <!-- The two sound device pickers side by side, each under its tile: as tall as the row controls, the full column wide;
+         the opened list is wider than the closed picker so whole device names show -->
+    <Style Selector="Grid.quickPickers > ComboBox.quickDevice">
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="ToolTip.ShowDelay" Value="350" />
+      <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
     </Style>
-    <!-- Rows of a group: one rhythm, never touching -->
-    <Style Selector="Grid.quickRows">
-      <Setter Property="RowSpacing" Value="6" />
+    <!-- The closed picker leads with its icon (speaker / microphone), in the column of the tile icon above it -->
+    <Style Selector="Grid.deviceBox">
+      <Setter Property="ColumnSpacing" Value="10" />
+    </Style>
+    <Style Selector="Grid.deviceBox > c|IconSlot">
+      <Setter Property="Margin" Value="3,0,0,0" />
+    </Style>
+    <Style Selector="ComboBox.quickDevice ComboBoxItem">
+      <Setter Property="MinWidth" Value="260" />
+    </Style>
+    <!-- The cards of this page: a little less vertical padding than the shared card, so the quick settings' rows get the room -->
+    <Style Selector="Border.panel">
+      <Setter Property="Padding" Value="20,16" />
     </Style>
     <Style Selector="Grid.quickRow > TextBlock.caption">
       <Setter Property="HorizontalAlignment" Value="Right" />
@@ -190,9 +204,13 @@
 
   <!-- One screen by state: header with a plain status line and the one action, the controller and the live link on the
        left, the quick settings on the right, and the health of everything the bridge needs right under the cards. Every
-       row sizes to its content: in a tall window the cards keep their height and the free space stays under the page. -->
+       row sizes to its content; when the window has height to spare (taller than the design's shape) the page takes up
+       to MaxExtra of it (ElasticHeight) and the cards' row (the star row) gets it: the quick settings' gaps and the live
+       graph spread it, up to their caps, and the rest stays under the page. A window too short for the page is never
+       squeezed: the page keeps its natural height and its bottom is cut off, as with plain Auto rows. -->
   <Border>
-    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="{StaticResource GapLarge}" Classes="page wide" VerticalAlignment="Top">
+    <c:ElasticHeight MaxExtra="80" VerticalAlignment="Top">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{StaticResource Gap}" Classes="page wide">
 
       <!-- Header: title with the status line under it, turn off (with a controller) and, only while the virtual controller
            is off, its start or the blocking issue's fix (stopping lives in Settings and the tray menu) -->
@@ -286,7 +304,7 @@
               <Grid Grid.Row="1" IsVisible="{Binding IsLive}" RowSpacing="{StaticResource Gap}">
                 <Grid.RowDefinitions>
                   <RowDefinition Height="Auto" />
-                  <RowDefinition Height="*" MinHeight="72" MaxHeight="120" />
+                  <RowDefinition Height="*" MinHeight="72" MaxHeight="200" />
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
@@ -339,18 +357,30 @@
           </Border>
         </Grid>
 
-        <!-- Quick settings: the same settings the detailed pages edit. On/off tiles first (two per row), then the sound
-             devices with the mic button's mode, then the stepped settings and the profile. The card sizes to these; when the
-             left column is taller, the gaps between the groups take the difference (up to a cap) instead of one empty block. -->
-        <Border Grid.Column="1" Classes="panel fill">
+        <!-- Quick settings: the same settings the detailed pages edit. On/off tiles first (two per row), the sound devices
+             right under their tiles with the mic button's mode, then the controller's settings and the profile. One flat grid:
+             the controls sit on their own rows and every gap is a row of its own (quickGap between rows, quickGroupGap between
+             the groups), so a taller card (spare window height, see ElasticHeight) spreads
+             over the gaps up to their caps instead of leaving one empty block. -->
+        <Border Grid.Column="1" Classes="panel fill quickCard">
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="*" MinHeight="16" MaxHeight="28" />
+              <RowDefinition Height="0.75*" MinHeight="12" MaxHeight="16" />
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="*" MinHeight="12" MaxHeight="28" />
+              <RowDefinition Height="1.5*" MinHeight="16" MaxHeight="28" />
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="*" MinHeight="12" MaxHeight="28" />
+              <RowDefinition Height="*" MinHeight="10" MaxHeight="18" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="1.5*" MinHeight="16" MaxHeight="28" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" MinHeight="10" MaxHeight="18" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" MinHeight="10" MaxHeight="18" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" MinHeight="10" MaxHeight="18" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" MinHeight="10" MaxHeight="18" />
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <!-- Title, with the link to the detailed settings on the right (always inside the card) -->
@@ -427,80 +457,99 @@
               </ToggleButton>
             </Grid>
 
-            <!-- Sound: the Windows default output and microphone, and what the mic button does -->
-            <Grid Grid.Row="4" Classes="quickRows" RowDefinitions="Auto,Auto,Auto">
-              <Grid Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.Audio.OutputTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Speaker}" />
-                <ComboBox Grid.Column="1" Grid.ColumnSpan="2" Classes="device" Name="QuickOutputPicker" ItemsSource="{Binding Quick.Audio.Outputs}" SelectedItem="{Binding Quick.Audio.SelectedOutput}"
-                          IsEnabled="{Binding Quick.Audio.CanChoose}" AutomationProperties.Name="{Binding Quick.Audio.OutputLabel}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AudioDeviceItem">
-                      <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding FullName}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </Grid>
-              <Grid Grid.Row="1" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.Audio.InputTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Microphone}" />
-                <ComboBox Grid.Column="1" Grid.ColumnSpan="2" Classes="device" Name="QuickInputPicker" ItemsSource="{Binding Quick.Audio.Inputs}" SelectedItem="{Binding Quick.Audio.SelectedInput}"
-                          IsEnabled="{Binding Quick.Audio.CanChoose}" AutomationProperties.Name="{Binding Quick.Audio.InputLabel}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AudioDeviceItem">
-                      <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding FullName}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </Grid>
-              <Grid Grid.Row="2" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.MicButtonTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.MicButton}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.MicButtonLabel}" />
-                <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.MicButtonModes}" SelectedIndex="{Binding Quick.MicButtonModeIndex}"
-                         AutomationProperties.Name="{Binding Quick.MicButtonLabel}" />
-              </Grid>
+            <!-- Sound: the Windows default output under the Speaker tile and the microphone under the Microphone tile (the same
+                 two columns, the picker's icon under the tile's), then what the mic button does. A long device name is trimmed in the
+                 closed picker (the tooltip has the full one); the opened list is at least quickDevice's popup width. -->
+            <Grid Grid.Row="4" Classes="quickPickers" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource GapSmall}">
+              <ComboBox Classes="quickDevice" Name="QuickOutputPicker" ItemsSource="{Binding Quick.Audio.Outputs}" SelectedItem="{Binding Quick.Audio.SelectedOutput}"
+                        IsEnabled="{Binding Quick.Audio.CanChoose}" AutomationProperties.Name="{Binding Quick.Audio.OutputLabel}">
+                <ToolTip.Tip>
+                  <StackPanel Spacing="4">
+                    <TextBlock FontWeight="SemiBold" Text="{Binding Quick.Audio.SelectedOutput.FullName}" IsVisible="{Binding Quick.Audio.SelectedOutput, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <TextBlock Text="{Binding Quick.Audio.OutputTip}" />
+                  </StackPanel>
+                </ToolTip.Tip>
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:AudioDeviceItem">
+                    <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding FullName}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+                <ComboBox.SelectionBoxItemTemplate>
+                  <DataTemplate x:DataType="vm:AudioDeviceItem">
+                    <Grid Classes="deviceBox" ColumnDefinitions="Auto,*">
+                      <c:IconSlot Data="{x:Static c:IconPaths.Speaker}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </ComboBox.SelectionBoxItemTemplate>
+              </ComboBox>
+              <ComboBox Grid.Column="1" Classes="quickDevice" Name="QuickInputPicker" ItemsSource="{Binding Quick.Audio.Inputs}" SelectedItem="{Binding Quick.Audio.SelectedInput}"
+                        IsEnabled="{Binding Quick.Audio.CanChoose}" AutomationProperties.Name="{Binding Quick.Audio.InputLabel}">
+                <ToolTip.Tip>
+                  <StackPanel Spacing="4">
+                    <TextBlock FontWeight="SemiBold" Text="{Binding Quick.Audio.SelectedInput.FullName}" IsVisible="{Binding Quick.Audio.SelectedInput, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <TextBlock Text="{Binding Quick.Audio.InputTip}" />
+                  </StackPanel>
+                </ToolTip.Tip>
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:AudioDeviceItem">
+                    <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding FullName}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+                <ComboBox.SelectionBoxItemTemplate>
+                  <DataTemplate x:DataType="vm:AudioDeviceItem">
+                    <Grid Classes="deviceBox" ColumnDefinitions="Auto,*">
+                      <c:IconSlot Data="{x:Static c:IconPaths.Microphone}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </ComboBox.SelectionBoxItemTemplate>
+              </ComboBox>
+            </Grid>
+            <Grid Grid.Row="6" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.MicButtonTip}">
+              <c:IconSlot Data="{x:Static c:IconPaths.MicButton}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.MicButtonLabel}" />
+              <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.MicButtonModes}" SelectedIndex="{Binding Quick.MicButtonModeIndex}"
+                       AutomationProperties.Name="{Binding Quick.MicButtonLabel}" />
             </Grid>
 
             <!-- The controller type games see, the stepped settings and the profile: icon and label left, the control on the card's right edge -->
-            <!-- Between the sound group and the settings group: a hairline -->
-            <Border Grid.Row="5" Classes="divider" VerticalAlignment="Center" />
-            <Grid Grid.Row="6" Classes="quickRows" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-              <Grid Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.PadType.Tip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Gamepad}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.PadType.Label}" />
-                <ComboBox Grid.Column="2" Name="QuickPadTypePicker" ItemsSource="{Binding Quick.PadType.Options}" SelectedItem="{Binding Quick.PadType.Selected}"
-                          AutomationProperties.Name="{Binding Quick.PadType.Label}">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:PadChoiceOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </Grid>
-              <Grid Grid.Row="1" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.HapticsTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Haptics}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.HapticsLabel}" />
-                <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.StrengthSteps}" SelectedIndex="{Binding Quick.HapticsIndex}"
-                         AutomationProperties.Name="{Binding Quick.HapticsLabel}" />
-                <TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="{Binding Quick.HapticsCustom}" IsVisible="{Binding Quick.HasHapticsCustom}" />
-              </Grid>
-              <Grid Grid.Row="2" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.TriggerTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Trigger}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.TriggerLabel}" />
-                <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.StrengthSteps}" SelectedIndex="{Binding Quick.TriggerIndex}"
-                         AutomationProperties.Name="{Binding Quick.TriggerLabel}" />
-                <TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="{Binding Quick.TriggerCustom}" IsVisible="{Binding Quick.HasTriggerCustom}" />
-              </Grid>
-              <Grid Grid.Row="3" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.LightTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Light}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.LightLabel}" />
-                <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.LightSteps}" SelectedIndex="{Binding Quick.LightIndex}"
-                         AutomationProperties.Name="{Binding Quick.LightLabel}" />
-                <TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="{Binding Quick.LightCustom}" IsVisible="{Binding Quick.HasLightCustom}" />
-              </Grid>
-              <Grid Grid.Row="4" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.ProfileTip}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Profile}" />
-                <TextBlock Grid.Column="1" Classes="label" Text="{Binding ProfileLabel}" />
-                <ComboBox Grid.Column="2" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" AutomationProperties.Name="{Binding ProfileLabel}" />
-              </Grid>
+            <Grid Grid.Row="8" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.PadType.Tip}">
+              <c:IconSlot Data="{x:Static c:IconPaths.Gamepad}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.PadType.Label}" />
+              <ComboBox Grid.Column="2" Name="QuickPadTypePicker" ItemsSource="{Binding Quick.PadType.Options}" SelectedItem="{Binding Quick.PadType.Selected}"
+                        AutomationProperties.Name="{Binding Quick.PadType.Label}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PadChoiceOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
             </Grid>
-
+            <Grid Grid.Row="10" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.HapticsTip}">
+              <c:IconSlot Data="{x:Static c:IconPaths.Haptics}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.HapticsLabel}" />
+              <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.StrengthSteps}" SelectedIndex="{Binding Quick.HapticsIndex}"
+                       AutomationProperties.Name="{Binding Quick.HapticsLabel}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="{Binding Quick.HapticsCustom}" IsVisible="{Binding Quick.HasHapticsCustom}" />
+            </Grid>
+            <Grid Grid.Row="12" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.TriggerTip}">
+              <c:IconSlot Data="{x:Static c:IconPaths.Trigger}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.TriggerLabel}" />
+              <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.StrengthSteps}" SelectedIndex="{Binding Quick.TriggerIndex}"
+                       AutomationProperties.Name="{Binding Quick.TriggerLabel}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="{Binding Quick.TriggerCustom}" IsVisible="{Binding Quick.HasTriggerCustom}" />
+            </Grid>
+            <Grid Grid.Row="14" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto" IsEnabled="{Binding Quick.CanEditOverridden}" ToolTip.Tip="{Binding Quick.LightTip}">
+              <c:IconSlot Data="{x:Static c:IconPaths.Light}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding Quick.LightLabel}" />
+              <ListBox Grid.Column="2" Theme="{StaticResource Segmented}" ItemsSource="{Binding Quick.LightSteps}" SelectedIndex="{Binding Quick.LightIndex}"
+                       AutomationProperties.Name="{Binding Quick.LightLabel}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="{Binding Quick.LightCustom}" IsVisible="{Binding Quick.HasLightCustom}" />
+            </Grid>
+            <Grid Grid.Row="16" Classes="quickRow" ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Quick.ProfileTip}">
+              <c:IconSlot Data="{x:Static c:IconPaths.Profile}" />
+              <TextBlock Grid.Column="1" Classes="label" Text="{Binding ProfileLabel}" />
+              <ComboBox Grid.Column="2" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" AutomationProperties.Name="{Binding ProfileLabel}" />
+            </Grid>
           </Grid>
         </Border>
       </Grid>
@@ -535,5 +584,6 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </Grid>
+    </c:ElasticHeight>
   </Border>
 </UserControl>

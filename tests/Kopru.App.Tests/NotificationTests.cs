@@ -535,8 +535,13 @@ public class NotificationTests
 		Assert.Same(h.Vm.SupportedGames, h.Vm.CurrentPage);
 		h.Vm.Navigate(AppPage.OtherGames);
 		Assert.Same(h.Vm.OtherGames, h.Vm.CurrentPage);
-		h.Vm.Navigate(AppPage.Settings);
+		h.Vm.SettingsPage.SelectedTab = SettingsViewModel.AudioTab;
+		h.Vm.Navigate(AppPage.SettingsShortcuts);
 		Assert.Same(h.Vm.SettingsPage, h.Vm.CurrentPage);
+		Assert.True(h.Vm.SettingsPage.IsShortcutsTab);
+		h.Vm.Navigate(AppPage.SettingsGeneral);
+		Assert.Same(h.Vm.SettingsPage, h.Vm.CurrentPage);
+		Assert.True(h.Vm.SettingsPage.IsGeneralTab);
 		h.Vm.Navigate(AppPage.Overview);
 		Assert.Same(h.Vm.Overview, h.Vm.CurrentPage);
 	}
@@ -634,12 +639,12 @@ public class NotificationTests
 		yield return ("steam-input", new(NotificationType.SteamInput, NotificationKind.Warning, Text.NotifySteamInputTitle(l),
 			Text.NotifySteamInputBody(l), AppPage.SupportedGames));
 		yield return ("powered-off", new(NotificationType.PoweredOffIdle, NotificationKind.Info, Text.NotifyPoweredOffTitle(l),
-			Text.NotifyPoweredOffBody(l), AppPage.Settings));
+			Text.NotifyPoweredOffBody(l), AppPage.SettingsGeneral));
 		yield return ("bridge-error", new(NotificationType.BridgeError, NotificationKind.Error, Text.NotifyBridgeErrorTitle(l),
 			Text.NotifyBridgeUsbIpMissing(l), AppPage.Overview));
 		yield return ("hidhide", new(NotificationType.HidHideMissing, NotificationKind.Warning, Text.NotifyHidHideTitle(l),
 			Text.NotifyHidHideBody(l), AppPage.Overview));
-		yield return ("tray", new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(l), Text.NotifyTrayBody(l), AppPage.Settings));
+		yield return ("tray", new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(l), Text.NotifyTrayBody(l), AppPage.SettingsGeneral));
 	}
 
 	// A dark desktop-like backdrop behind the cards, so the PNGs show them as they appear over a wallpaper.
@@ -702,7 +707,7 @@ public class NotificationTests
 		}
 	}
 
-	// Renders each toast kind, a compact one, a stack of three and the settings group; PNGs go to docs/screens only with
+	// Renders each toast kind, a compact one and a stack of three (the Settings tab: SettingsFitTests); PNGs go to docs/screens only with
 	// KOPRU_RENDER_SCREENS=1.
 	[AvaloniaFact]
 	public void RenderToasts()
@@ -736,26 +741,6 @@ public class NotificationTests
 					stack.Children.Add(Card(Samples(language).First(s => s.Name == name).Notification));
 				}
 				Save($"toast-stack-{code}.png", Render(new Border { Padding = new Avalonia.Thickness(20), Child = stack }, 420, 456));
-
-				// The settings page scrolled to the notifications group.
-				var vm = new MainWindowViewModel(new FakeControllerService(animate: false));
-				vm.Sticks.StopPreview();
-				vm.Navigate(AppPage.Settings);
-				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 760 };
-				window.Show();
-				Dispatcher.UIThread.RunJobs();
-				AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-				Border panel = window.GetVisualDescendantsOfType<Border>().First(b => b.Name == "NotificationsPanel");
-				panel.BringIntoView();
-				Thread.Sleep(320);
-				Dispatcher.UIThread.RunJobs();
-				AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-				using var frame = window.CaptureRenderedFrame();
-				Assert.NotNull(frame);
-				using var png = new MemoryStream();
-				frame!.Save(png);
-				Save($"settings-notifications-{code}.png", png.ToArray());
-				window.Close();
 			});
 		}
 	}

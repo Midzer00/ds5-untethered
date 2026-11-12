@@ -34,14 +34,6 @@ public enum LedBrightness
 	High
 }
 
-// FollowMic is reserved for the microphone feature (treated as Off until then).
-public enum MuteLedMode
-{
-	Off,
-	On,
-	FollowMic
-}
-
 public readonly record struct Rgb(byte R, byte G, byte B)
 {
 	public static Rgb From(uint rgb) => new((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
@@ -64,16 +56,16 @@ public sealed record LightOptions(
 	double BreathingMax = 1,
 	double RainbowSpeed = 3,
 	PlayerLedPattern PlayerPattern = PlayerLedPattern.One,
-	LedBrightness PlayerBrightness = LedBrightness.High,
-	MuteLedMode MuteLed = MuteLedMode.Off)
+	LedBrightness PlayerBrightness = LedBrightness.High)
 {
 	public const double RainbowCycleSeconds = 30;
 
 	public static LightOptions Default { get; } = new();
 }
 
-// One state of every LED, as written to the output block.
-public readonly record struct LedFrame(Rgb Lightbar, byte PlayerMask, LedBrightness PlayerBrightness, bool MuteLed)
+// One state of the light bar and the player LEDs, as written to the output block. The mute LED is not part of the light:
+// it always shows the microphone (BridgeHost.SyncMuteLed).
+public readonly record struct LedFrame(Rgb Lightbar, byte PlayerMask, LedBrightness PlayerBrightness)
 {
 	public void WriteTo(byte[] block) => WriteTo(block.AsSpan());
 
@@ -86,7 +78,6 @@ public readonly record struct LedFrame(Rgb Lightbar, byte PlayerMask, LedBrightn
 			LedBrightness.Medium => OutputBlock.LedBrightnessMedium,
 			_ => OutputBlock.LedBrightnessHigh
 		});
-		OutputBlock.SetMuteLed(block, MuteLed ? OutputBlock.MuteLedOn : OutputBlock.MuteLedOff);
 	}
 }
 
@@ -152,7 +143,7 @@ public static class LightAnimator
 		percent >= GoodPercent ? BatteryGood : percent >= LowPercent ? BatteryAmber : BatteryRed;
 
 	public static LedFrame FrameAt(LightSettings light, TimeSpan t, BatteryStatus? battery = null) =>
-		new(ColourAt(light, t, battery), light.PlayerMask, light.Options.PlayerBrightness, light.Options.MuteLed == MuteLedMode.On);
+		new(ColourAt(light, t, battery), light.PlayerMask, light.Options.PlayerBrightness);
 
 	public static byte PatternMask(PlayerLedPattern pattern) => pattern switch
 	{

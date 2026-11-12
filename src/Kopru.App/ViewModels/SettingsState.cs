@@ -71,6 +71,7 @@ public sealed partial class SettingsState : ViewModelBase
 			LoadLight(saved);
 			ShortcutsEnabled = saved.ShortcutsEnabled;
 			PsOpensApp = saved.PsOpensApp;
+			PsOpensAppInGames = saved.PsOpensAppInGames;
 			SpeakerEnabled = saved.SpeakerEnabled;
 			SpeakerVolume = Math.Clamp(saved.SpeakerVolume, 0, 100);
 			HeadphoneVolume = Math.Clamp(saved.HeadphoneVolume, 0, 100);
@@ -296,6 +297,7 @@ public sealed partial class SettingsState : ViewModelBase
 		LightOptions = LightOptions,
 		ShortcutsEnabled = ShortcutsEnabled,
 		PsOpensApp = PsOpensApp,
+		PsOpensAppInGames = PsOpensAppInGames,
 		Speaker = new SpeakerSettings(SpeakerEnabled, Math.Clamp(SpeakerVolume / 100, 0, 1), Math.Clamp(HeadphoneVolume / 100, 0, 1)),
 		DesktopModeOn = DesktopModeOn,
 		Desktop = DesktopMode,
@@ -340,6 +342,7 @@ public sealed partial class SettingsState : ViewModelBase
 		DownloadGameImages = DownloadGameImages,
 		ShortcutsEnabled = ShortcutsEnabled,
 		PsOpensApp = PsOpensApp,
+		PsOpensAppInGames = PsOpensAppInGames,
 		SpeakerEnabled = SpeakerEnabled,
 		SpeakerVolume = SpeakerVolume,
 		HeadphoneVolume = HeadphoneVolume,

@@ -53,17 +53,23 @@ public static partial class Text
 
 	public static string MicStateMuted(Language? l = null) => Pick(l, $"Sessizde", $"Muted");
 
-	// The toast after a press of the mic button (or the tile).
-	public static string MicToastTitle(Audio.MicState state, Language? l = null) => state switch
+	// The toast after a press of the mic button: the title says what happened in the button's mode ("Kapat": on / off,
+	// "Sessize Al": on / muted; a PC microphone is muted in both, shown as "off" in the "Kapat" mode), the body which
+	// microphone it was (or why nothing changed).
+	public static string MicToastTitle(Audio.MicPress press, Audio.MicButtonMode mode, Language? l = null) => press switch
 	{
-		Audio.MicState.On => Pick(l, $"Mikrofon Açık", $"Microphone On"),
-		Audio.MicState.Muted => Pick(l, $"Mikrofon Sessizde", $"Microphone Muted"),
+		Audio.MicPress.ControllerOn or Audio.MicPress.ControllerUnmuted or Audio.MicPress.PcUnmuted => Pick(l, $"Mikrofon Açık", $"Microphone On"),
+		Audio.MicPress.ControllerMuted => Pick(l, $"Mikrofon Sessizde", $"Microphone Muted"),
+		Audio.MicPress.PcMuted when mode == Audio.MicButtonMode.Mute => Pick(l, $"Mikrofon Sessizde", $"Microphone Muted"),
 		_ => Pick(l, $"Mikrofon Kapalı", $"Microphone Off")
 	};
 
-	public static string MicToastBody(bool controller, Language? l = null) => controller
-		? Pick(l, $"Kumanda mikrofonu", $"Controller microphone")
-		: Pick(l, $"Bilgisayarın mikrofonu", $"Your PC's microphone");
+	public static string MicToastBody(Audio.MicPress press, Language? l = null) => press switch
+	{
+		Audio.MicPress.PcMuted or Audio.MicPress.PcUnmuted => Pick(l, $"Bilgisayar Mikrofonu", $"PC Microphone"),
+		Audio.MicPress.Ignored => Pick(l, $"Düşük Güç Açık", $"Low Power On"),
+		_ => Pick(l, $"Kumanda Mikrofonu", $"Controller Microphone")
+	};
 
 	// Quick Settings: the shortcuts tile is half as wide now.
 	public static string QuickShortcutsShort(Language? l = null) => Pick(l, $"Kısayollar", $"Shortcuts");

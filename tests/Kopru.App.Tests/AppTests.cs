@@ -368,20 +368,10 @@ public class AppTests
 						}
 						vm.Settings.LowPowerOn = false;
 
-						// Settings scrolled to the switch for Low Power below 20 % battery.
-						vm.Navigate(vm.SettingsPage);
+						// The switch for Low Power below 20 % battery is on Settings' General tab.
+						vm.OpenSettingsAt(SettingsViewModel.GeneralTab);
 						Settle();
-						ToggleSwitch auto = window.GetVisualDescendants().OfType<ToggleSwitch>().First(t => AutomationProperties.GetName(t) == Text.AutoLowPower());
-						auto.BringIntoView(new Avalonia.Rect(0, 0, auto.Bounds.Width, 260));
-						Settle();
-						using (var settingsFrame = window.CaptureRenderedFrame())
-						{
-							Assert.NotNull(settingsFrame);
-							if (writeFiles)
-							{
-								settingsFrame!.Save(Path.Combine(outDir, $"settings-low-power-{code}.png"));
-							}
-						}
+						Assert.True(window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => AutomationProperties.GetName(t) == Text.AutoLowPower()).IsEffectivelyVisible);
 					}
 					window.Close();
 				}
@@ -471,7 +461,7 @@ public class AppTests
 	private static IReadOnlyList<string> Texts(Window window) =>
 		window.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text ?? "").ToList();
 
-	private static string RepoRoot()
+	internal static string RepoRoot()
 	{
 		string? dir = AppContext.BaseDirectory;
 		while (dir != null && !File.Exists(Path.Combine(dir, "Kopru.sln")))

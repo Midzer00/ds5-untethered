@@ -431,7 +431,8 @@ public class DesktopModeTests
 		foreach (Language l in new[] { Language.Turkish, Language.English })
 		{
 			Assert.NotEmpty(Text.DesktopModeSection(l));
-			Assert.Equal(9, Text.DesktopMapping(l).Count);
+			Assert.Equal(DesktopButtonMap.Actions.Count, DesktopButtonMap.Actions.Select(a => Text.DesktopActionName(a, l)).Distinct().Count());
+			Assert.NotEqual(Text.DesktopStickLeft(l), Text.DesktopStickRight(l));
 			Assert.NotEqual(Text.GyroTargetName(GyroTarget.Mouse, l), Text.GyroTargetName(GyroTarget.RightStick, l));
 		}
 		Assert.Equal("Fare Modu Açık", Text.DesktopOnTitle(Language.Turkish));

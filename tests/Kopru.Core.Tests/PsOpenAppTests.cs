@@ -13,17 +13,18 @@ public class PsOpenAppTests
 	private readonly StepClock clock = new();
 	private readonly ShortcutProcessor shortcuts;
 	private readonly List<ShortcutAction> fired = [];
+	private readonly List<string> log = [];
 	private PsTapRoute route = PsTapRoute.OpenApp;
 	private int asked;
 
 	public PsOpenAppTests()
 	{
-		shortcuts = new ShortcutProcessor(clock);
+		shortcuts = new ShortcutProcessor(clock) { Log = log.Add };
 		shortcuts.Triggered += fired.Add;
 		shortcuts.TapRoute = () =>
 		{
 			asked++;
-			return route;
+			return new PsTapDecision(route, "test");
 		};
 	}
 
@@ -59,18 +60,49 @@ public class PsOpenAppTests
 
 	[Theory]
 	// Setting off: always the game.
-	[InlineData(false, false, false, PsTapRoute.Game)]
-	[InlineData(false, true, false, PsTapRoute.Game)]
-	[InlineData(false, false, true, PsTapRoute.Game)]
+	[InlineData(false, false, null, PsTapRoute.Game, "setting off")]
+	[InlineData(false, true, null, PsTapRoute.Game, "setting off")]
+	[InlineData(false, false, "acc.exe", PsTapRoute.Game, "setting off")]
 	// Setting on: no game and the window not in front opens the app.
-	[InlineData(true, false, false, PsTapRoute.OpenApp)]
-	// A game in front: the game, as before.
-	[InlineData(true, false, true, PsTapRoute.Game)]
-	// The window already in front: nothing (and not passed on).
-	[InlineData(true, true, false, PsTapRoute.Nothing)]
-	[InlineData(true, true, true, PsTapRoute.Nothing)]
-	public void Rule(bool opensApp, bool appInFront, bool gameInFront, PsTapRoute expected) =>
-		Assert.Equal(expected, PsTapRule.Decide(opensApp, appInFront, gameInFront));
+	[InlineData(true, false, null, PsTapRoute.OpenApp, "no game in front")]
+	// A game in front: the game, as before; the app is neither shown nor hidden.
+	[InlineData(true, false, "acc.exe", PsTapRoute.Game, "game in front: acc.exe")]
+	[InlineData(true, true, "acc.exe", PsTapRoute.Game, "game in front: acc.exe")]
+	// The window already in front: hidden again (and not passed on).
+	[InlineData(true, true, null, PsTapRoute.HideApp, "app in front")]
+	public void Rule(bool opensApp, bool appInFront, string? gameInFront, PsTapRoute expected, string reason) =>
+		Assert.Equal(new PsTapDecision(expected, reason), PsTapRule.Decide(opensApp, appInFront, gameInFront));
+
+	[Theory]
+	// "Also In Games" on, setting off: still the game.
+	[InlineData(false, false, "acc.exe", PsTapRoute.Game, "setting off")]
+	[InlineData(false, true, null, PsTapRoute.Game, "setting off")]
+	// A game in front: the app opens anyway.
+	[InlineData(true, false, "acc.exe", PsTapRoute.OpenApp, "game in front, opens anyway: acc.exe")]
+	// The window in front hides it, even while the game is still reported in front (refreshed once a second).
+	[InlineData(true, true, "acc.exe", PsTapRoute.HideApp, "app in front")]
+	[InlineData(true, true, null, PsTapRoute.HideApp, "app in front")]
+	// Neither: opens the app.
+	[InlineData(true, false, null, PsTapRoute.OpenApp, "no game in front")]
+	public void Rule_AlsoInGames(bool opensApp, bool appInFront, string? gameInFront, PsTapRoute expected, string reason) =>
+		Assert.Equal(new PsTapDecision(expected, reason), PsTapRule.Decide(opensApp, appInFront, gameInFront, inGames: true));
+
+	// In a game with "Also In Games": the tap that opens the app and the one that hides it never reach the game; a long
+	// press still does.
+	[Fact]
+	public void AlsoInGames_ConsumedTapsStayAway_LongPressReachesTheGame()
+	{
+		bool shown = false;
+		shortcuts.TapRoute = () => PsTapRule.Decide(true, shown, "acc.exe", inGames: true);
+		shortcuts.Triggered += a => shown = a == ShortcutAction.OpenApp || (a != ShortcutAction.HideApp && shown);
+		Assert.False(Tap());
+		Assert.False(Tap());
+		Assert.True(Tap(holdMs: 700));
+		Assert.Equal([ShortcutAction.OpenApp, ShortcutAction.HideApp], fired);
+		Assert.Equal("ps tap: 140 ms -> OpenApp (game in front, opens anyway: acc.exe)", log[0]);
+		Assert.Equal("ps tap: 140 ms -> HideApp (app in front)", log[1]);
+		Assert.StartsWith("ps tap: 720 ms -> Game (held too long", log[2]);
+	}
 
 	[Fact]
 	public void ShortTap_WithNoGame_OpensTheApp_AndIsNotPassedOn()
@@ -78,22 +110,39 @@ public class PsOpenAppTests
 		Assert.False(Tap());
 		Assert.Equal([ShortcutAction.OpenApp], fired);
 		Assert.Equal(1, asked);
+		Assert.Equal(["ps tap: 140 ms -> OpenApp (test)"], log);
+	}
+
+	// "Coming and going": the first tap shows the window, the next one (window in front) hides it, then shows it again.
+	[Fact]
+	public void Taps_ShowAndHideTheApp_InTurn()
+	{
+		bool shown = false;
+		shortcuts.TapRoute = () => PsTapRule.Decide(true, shown, null);
+		shortcuts.Triggered += a => shown = a == ShortcutAction.OpenApp || (a != ShortcutAction.HideApp && shown);
+		Assert.False(Tap());
+		Assert.False(Tap());
+		Assert.False(Tap());
+		Assert.Equal([ShortcutAction.OpenApp, ShortcutAction.HideApp, ShortcutAction.OpenApp], fired);
+		Assert.Equal(["ps tap: 140 ms -> OpenApp (no game in front)", "ps tap: 140 ms -> HideApp (app in front)",
+			"ps tap: 140 ms -> OpenApp (no game in front)"], log);
 	}
 
 	[Fact]
 	public void ShortTap_WithAGameInFront_ReachesTheGame()
 	{
-		route = PsTapRoute.Game;
+		shortcuts.TapRoute = () => PsTapRule.Decide(true, false, "acc.exe");
 		Assert.True(Tap());
 		Assert.Empty(fired);
+		Assert.Equal(["ps tap: 140 ms -> Game (game in front: acc.exe)"], log);
 	}
 
 	[Fact]
-	public void ShortTap_WithTheWindowInFront_DoesNothing()
+	public void ShortTap_WithTheWindowInFront_HidesTheApp()
 	{
-		route = PsTapRoute.Nothing;
+		route = PsTapRoute.HideApp;
 		Assert.False(Tap());
-		Assert.Empty(fired);
+		Assert.Equal([ShortcutAction.HideApp], fired);
 	}
 
 	[Fact]
@@ -104,6 +153,7 @@ public class PsOpenAppTests
 		shortcuts.TapRoute = () => throw new InvalidOperationException();
 		Assert.True(Tap());
 		Assert.Empty(fired);
+		Assert.Equal(["ps tap: 140 ms -> Game (no route)", "ps tap: 140 ms -> Game (route failed: InvalidOperationException)"], log);
 	}
 
 	[Fact]
@@ -112,6 +162,7 @@ public class PsOpenAppTests
 		Assert.True(Tap(holdMs: ShortcutProcessor.OpenAppMaxHold.TotalMilliseconds + 100));
 		Assert.Empty(fired);
 		Assert.Equal(0, asked);
+		Assert.Equal(["ps tap: 720 ms -> Game (held too long (over 600 ms))"], log);
 	}
 
 	[Fact]
@@ -126,6 +177,7 @@ public class PsOpenAppTests
 		}
 		Assert.Equal([ShortcutAction.ToggleSupportedMode], fired);
 		Assert.Equal(0, asked);
+		Assert.Equal(["ps tap: 28 ms -> combo (modifier used)"], log);
 	}
 
 	[Fact]
@@ -136,6 +188,7 @@ public class PsOpenAppTests
 		Assert.False(PsOf(Step(Body())));
 		Assert.Empty(fired);
 		Assert.Equal(0, asked);
+		Assert.Equal(["ps tap: 4 ms -> Game (shortcuts off)"], log);
 	}
 
 	[Fact]
@@ -148,6 +201,7 @@ public class PsOpenAppTests
 		processes.Show("acc.exe");
 		games.Tick();
 		Assert.True(games.IsGameInFront);
+		Assert.Equal("acc.exe", games.GameInFront);
 		// Alt-tab to another app: the game still runs (ActiveGame) but is not in front.
 		processes.Show("notepad.exe");
 		games.Tick();

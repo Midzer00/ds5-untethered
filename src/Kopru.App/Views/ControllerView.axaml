@@ -13,17 +13,28 @@
                 IsVisible="{Binding IsTestTab}" />
       </Grid>
 
-      <!-- Test first (what the controller sends, fixed right beside it, and the output tests), then remap & gyro -->
-      <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="360">
+      <!-- Test first (what the controller sends, fixed right beside it), then the output tests, then remap & gyro -->
+      <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="420">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TabOption">
-            <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" />
+            <!-- Regular, and semibold while selected: two labels with a fixed weight each, so the selected one is always measured
+                 bold (a label that only inherits the bold weight can keep its narrower size and lose its last letter) -->
+            <Panel>
+              <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                         IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
+              <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                         IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+            </Panel>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
 
       <Panel IsVisible="{Binding IsTestTab}">
         <v:TesterView DataContext="{Binding Test}" />
+      </Panel>
+
+      <Panel IsVisible="{Binding IsOutputsTab}">
+        <v:OutputTestsView DataContext="{Binding Test}" />
       </Panel>
 
       <Panel IsVisible="{Binding IsRemapTab}">

@@ -69,11 +69,12 @@ public sealed class BluetoothSession : IDisposable
 			{
 				value.Headset = HeadphonesPlugged;
 			}
-			bool was = speaker != null;
+			SpeakerAudioSender? was = speaker;
 			speaker = value;
-			if (was != (value != null))
+			if ((was != null) != (value != null))
 			{
-				Diagnostics.AppLog.Write(value != null ? "bt: speaker stream attached" : $"bt: speaker stream detached ({SpeakerReports} speaker reports)");
+				Diagnostics.AppLog.Write(value != null ? "bt: speaker stream attached"
+					: $"bt: speaker stream detached ({SpeakerReports} speaker reports, {was!.Underruns} underruns, {was.DroppedSamples} samples dropped)");
 			}
 			ApplySpeakerRoute();
 		}

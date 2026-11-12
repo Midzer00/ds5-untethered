@@ -35,7 +35,6 @@ public sealed record ProfileValues
 	// Null (profiles saved before the pattern existed): player 1 when PlayerLeds is on, otherwise off.
 	public PlayerLedPattern? PlayerLedPattern { get; init; }
 	public LedBrightness PlayerLedBrightness { get; init; } = LedBrightness.High;
-	public MuteLedMode MuteLed { get; init; } = MuteLedMode.Off;
 	// Experimental controller speaker (missing in older profiles: off); volumes in percent.
 	public bool SpeakerEnabled { get; init; }
 	public double SpeakerVolume { get; init; } = 80;

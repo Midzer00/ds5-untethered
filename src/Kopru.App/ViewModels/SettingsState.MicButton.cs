@@ -64,7 +64,8 @@ public sealed partial class SettingsState
 			switch (press)
 			{
 				case MicPress.Ignored:
-					return;
+					// Low Power holds the controller microphone off: nothing changes (the toast says why).
+					break;
 				case MicPress.ControllerOn:
 					MicMuted = false;
 					MicEnabled = true;
@@ -91,7 +92,7 @@ public sealed partial class SettingsState
 		}
 		if (fromButton)
 		{
-			ShortcutFeedback?.Invoke(Text.MicToastTitle(MicButtonRules.After(press)), Text.MicToastBody(controller));
+			ShortcutFeedback?.Invoke(Text.MicToastTitle(press, MicButtonMode), Text.MicToastBody(press));
 		}
 	}
 

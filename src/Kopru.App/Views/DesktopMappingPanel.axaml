@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.DesktopMappingPanel" x:DataType="vm:DesktopModeViewModel">
+  <UserControl.Styles>
+    <!-- One button: its name over a compact action picker; two buttons per line -->
+    <Style Selector="StackPanel.mapRow">
+      <Setter Property="Spacing" Value="3" />
+      <Setter Property="Margin" Value="0,0,12,8" />
+    </Style>
+    <Style Selector="StackPanel.mapRow > TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+    <Style Selector="StackPanel.mapRow > ComboBox">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Padding" Value="10,0,0,0" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
+    </Style>
+    <!-- The title row's button: as tall as a compact chip so the title row stays short -->
+    <Style Selector="Button.titleAction">
+      <Setter Property="Height" Value="26" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Padding" Value="12,0" />
+    </Style>
+  </UserControl.Styles>
+  <!-- Mouse mode's button mapping: the title with Reset To Default, the buttons with their action pickers, what can't change -->
+  <DockPanel Classes="card">
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" MinHeight="26" Margin="0,0,0,8">
+      <TextBlock Classes="section" Text="{Binding MappingTitle}" VerticalAlignment="Center" ToolTip.Tip="{Binding MappingHint}" />
+      <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Classes="titleAction" Name="ResetMappingButton" Content="{Binding ResetText}"
+              Command="{Binding ResetMappingCommand}" VerticalAlignment="Center"
+              AutomationProperties.Name="{Binding ResetText}" />
+    </Grid>
+    <Border Classes="panel" Padding="16,12" Name="DesktopMappingGroup">
+      <StackPanel Spacing="2">
+        <ItemsControl ItemsSource="{Binding Rows}" Margin="0,0,-12,0" Name="DesktopMappingRows">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:DesktopButtonRow">
+              <StackPanel Classes="mapRow">
+                <TextBlock Text="{Binding Name}" />
+                <ComboBox ItemsSource="{Binding Actions}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{Binding Name}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MouseActionOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="caption" Text="{Binding MappingNote, Converter={x:Static v:KeepLastWords.Instance}}" ToolTip.Tip="{Binding MappingHint}" />
+      </StackPanel>
+    </Border>
+  </DockPanel>
+</UserControl>

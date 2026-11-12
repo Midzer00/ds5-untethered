@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Buffers.Binary;
 using System.Text;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -208,7 +209,7 @@ public class ControllerInfoAppTests
 
 	// View model, tray and toast.
 
-	private static ControllerDetails Details() => new(TestLink.BtPath, false, Transport.Bluetooth,
+	internal static ControllerDetails Details() => new(TestLink.BtPath, false, Transport.Bluetooth,
 		FirmwareInfo.Parse(InfoHidLink.Firmware()), Address);
 
 	[AvaloniaFact]
@@ -292,12 +293,11 @@ public class ControllerInfoAppTests
 		public void Exit() { }
 	}
 
-	// Renders the controller test page with the info card to docs/screens/tester-info-tr.png / -en.png
-	// (files only with KOPRU_RENDER_SCREENS=1).
+	// The info card is on the Settings page's Controllers tab (not on the controller page); it shows the details and its
+	// copy writes through the window. Its picture: SettingsFitTests (settings-controllers-*.png).
 	[AvaloniaFact]
-	public void RenderInfoScreens()
+	public async Task InfoCard_IsOnTheControllersTab_AndCopies()
 	{
-		bool writeFiles = Environment.GetEnvironmentVariable("KOPRU_RENDER_SCREENS") == "1";
 		foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
 		{
 			Language? before = Localizer.Chosen;
@@ -312,24 +312,16 @@ public class ControllerInfoAppTests
 				var vm = new MainWindowViewModel(service);
 				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 				window.Show();
-				vm.OpenController(ControllerPageViewModel.TestTab);
-				service.LiveHandler!(TesterTests.Sample);
-				vm.Tester.Tick();
-				vm.Tester.Info.Refresh();
+				vm.OpenSettingsAt(SettingsViewModel.ControllersTab);
+				vm.SettingsPage.Info.Refresh();
 				Dispatcher.UIThread.RunJobs();
-				// The info card is the last one on the Test tab.
-				window.GetVisualDescendants().OfType<Avalonia.Controls.ScrollViewer>().First(s => s.Classes.Contains("page") && s.IsEffectivelyVisible).ScrollToEnd();
-				Dispatcher.UIThread.RunJobs();
-				AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-				Thread.Sleep(320);
-				Dispatcher.UIThread.RunJobs();
-				AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-				using var frame = window.CaptureRenderedFrame();
-				Assert.NotNull(frame);
-				if (writeFiles)
-				{
-					frame!.Save(Path.Combine(RepoRoot(), "docs", "screens", $"tester-info-{code}.png"));
-				}
+				window.UpdateLayout();
+				ControllerInfoCard card = window.GetVisualDescendants().OfType<ControllerInfoCard>().Single(c => c.IsEffectivelyVisible);
+				Assert.Same(vm.SettingsPage.Info, card.DataContext);
+				Assert.Empty(window.GetVisualDescendants().OfType<ControllerView>().SelectMany(v => v.GetVisualDescendants()).OfType<ControllerInfoCard>());
+				Assert.NotNull(vm.SettingsPage.Info.Clipboard);
+				await vm.SettingsPage.Info.CopyCommand.ExecuteAsync(null);
+				Assert.Equal(Text.InfoCopied(), vm.SettingsPage.Info.CopyFeedback);
 				window.Close();
 			}
 			finally

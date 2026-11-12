@@ -28,8 +28,7 @@ public class LightEffectsTests
 				BreathingMax = 90,
 				RainbowSpeed = 7,
 				PlayerLedPattern = PlayerLedPattern.Three,
-				PlayerLedBrightness = LedBrightness.Medium,
-				MuteLed = MuteLedMode.On
+				PlayerLedBrightness = LedBrightness.Medium
 			};
 			state.SaveNow();
 			Assert.Contains("\"Breathing\"", File.ReadAllText(path));
@@ -43,8 +42,7 @@ public class LightEffectsTests
 			Assert.Equal(PlayerLedPattern.Three, loaded.PlayerLedPattern);
 			Assert.True(loaded.PlayerLeds);
 			Assert.Equal(LedBrightness.Medium, loaded.PlayerLedBrightness);
-			Assert.Equal(MuteLedMode.On, loaded.MuteLed);
-			Assert.Equal(new LightOptions(LightMode.Breathing, 6, 0.3, 0.9, 7, PlayerLedPattern.Three, LedBrightness.Medium, MuteLedMode.On),
+			Assert.Equal(new LightOptions(LightMode.Breathing, 6, 0.3, 0.9, 7, PlayerLedPattern.Three, LedBrightness.Medium),
 				loaded.ToSettings().LightOptions);
 		}
 		finally
@@ -69,7 +67,6 @@ public class LightEffectsTests
 			Assert.Equal(expected, state.PlayerLedPattern);
 			Assert.Equal(playerLeds, state.PlayerLeds);
 			Assert.Equal(LedBrightness.High, state.PlayerLedBrightness);
-			Assert.Equal(MuteLedMode.Off, state.MuteLed);
 		}
 		finally
 		{
@@ -89,8 +86,6 @@ public class LightEffectsTests
 		Assert.Equal(0, service.Settings.Light.PlayerMask);
 		state.PlayerLeds = true;
 		Assert.Equal(PlayerLedPattern.One, state.PlayerLedPattern);
-		state.MuteLed = MuteLedMode.On;
-		Assert.Equal(MuteLedMode.On, service.Settings.Light.Options.MuteLed);
 	}
 
 	[Fact]
@@ -111,8 +106,6 @@ public class LightEffectsTests
 		Assert.Equal(5, light.Modes.Count);
 		Assert.Equal(6, light.Patterns.Count);
 		Assert.Equal(3, light.LedLevels.Count);
-		// Follow mic mute is offered with the microphone feature.
-		Assert.Equal([MuteLedMode.Off, MuteLedMode.On, MuteLedMode.FollowMic], light.MuteChoices.Cast<LightChoice<MuteLedMode>>().Select(c => c.Value));
 		Assert.Equal(LightMode.Static, ((LightChoice<LightMode>)light.SelectedMode!).Value);
 		Assert.True(light.ShowsColour);
 		Assert.False(light.IsPreviewAnimated);
@@ -143,7 +136,5 @@ public class LightEffectsTests
 		Assert.Equal(0x1F, light.PreviewPlayerMask);
 		light.SelectedLedLevel = light.LedLevels[0];
 		Assert.Equal(LedBrightness.Low, service.Settings.LightOptions.PlayerBrightness);
-		light.SelectedMute = light.MuteChoices[1];
-		Assert.Equal(MuteLedMode.On, service.Settings.LightOptions.MuteLed);
 	}
 }

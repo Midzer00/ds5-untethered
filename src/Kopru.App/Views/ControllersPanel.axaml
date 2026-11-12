@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
-             x:Class="Kopru.App.Views.ControllersPanel" x:DataType="vm:ControllersPanelViewModel">
+             xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.ControllersPanel" x:DataType="vm:ControllersPanelViewModel">
   <UserControl.Styles>
     <!-- One remembered controller: a bordered row; plain muted text for its state (no dots or badges) -->
     <Style Selector="Border.knownRow">
@@ -18,49 +18,66 @@
       <Setter Property="ToolTip.ShowDelay" Value="350" />
       <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
     </Style>
+    <!-- Name | state | Forget in one line; in a narrow column the state goes under the name -->
+    <Style Selector="Grid.knownLine > StackPanel.state">
+      <Setter Property="Grid.Column" Value="2" />
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.knownLine > StackPanel.name">
+      <Setter Property="Grid.ColumnSpan" Value="3" />
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.knownLine > StackPanel.state">
+      <Setter Property="Grid.Column" Value="0" />
+      <Setter Property="Grid.Row" Value="1" />
+      <Setter Property="Grid.ColumnSpan" Value="5" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+    </Style>
   </UserControl.Styles>
-  <StackPanel>
+  <DockPanel Classes="card">
     <TextBlock Classes="section" Text="{Binding Title}" />
-    <Border Classes="panel" Name="ControllersGroup">
-      <StackPanel Spacing="{StaticResource GapSmall}">
-        <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" Margin="0,0,0,4" />
+    <!-- What the list is (remembered controllers, renamed with the pencil) is the card's tooltip -->
+    <Border Classes="panel" Name="ControllersGroup" ToolTip.Tip="{Binding Hint}">
+      <Grid RowDefinitions="Auto,*">
         <TextBlock Classes="caption" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
-        <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding HasRows}">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><StackPanel Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:KnownControllerRowViewModel">
-              <Border Classes="knownRow">
-                <Panel>
-                  <!-- Name (renamed in place) over the model; state, last battery and profile; Forget -->
-                  <Grid ColumnDefinitions="2*,16,3*,12,Auto" IsVisible="{Binding IsNotConfirming}">
-                    <StackPanel Spacing="1" VerticalAlignment="Center">
-                      <v:ControllerNameEditor DataContext="{Binding NameEditor}" />
-                      <TextBlock Classes="caption" Text="{Binding ModelText}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
-                      <TextBlock Classes="caption" Text="{Binding StatusText}" />
-                      <TextBlock Classes="caption" Text="{Binding BatteryText}" IsVisible="{Binding HasBattery}" />
-                      <TextBlock Classes="caption" Text="{Binding ProfileText}" IsVisible="{Binding HasProfile}" />
-                    </StackPanel>
-                    <Button Grid.Column="4" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ForgetCommand}"
-                            IsEnabled="{Binding CanForget}" ToolTip.Tip="{Binding ForgetTip}" VerticalAlignment="Center" />
-                  </Grid>
-                  <!-- Forget pressed: ask first -->
-                  <Grid ColumnDefinitions="*,Auto,8,Auto" IsVisible="{Binding IsConfirming}">
-                    <TextBlock Classes="label" Text="{Binding ForgetAsk}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CancelText}" Command="{Binding CancelForgetCommand}"
-                            VerticalAlignment="Center" />
-                    <Button Grid.Column="3" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ConfirmForgetCommand}"
-                            Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" />
-                  </Grid>
-                </Panel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
+        <!-- The list scrolls inside the card when there are more controllers than room -->
+        <ScrollViewer Grid.Row="1" IsVisible="{Binding HasRows}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding Hint}">
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:KnownControllerRowViewModel">
+                <Border Classes="knownRow">
+                  <Panel>
+                    <!-- Name (renamed in place) over the model; state, last battery and profile; Forget -->
+                    <Grid Classes="knownLine" ColumnDefinitions="2*,16,3*,12,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding IsNotConfirming}">
+                      <StackPanel Classes="name" Spacing="1" VerticalAlignment="Center">
+                        <v:ControllerNameEditor DataContext="{Binding NameEditor}" />
+                        <TextBlock Classes="caption" Text="{Binding ModelText}" />
+                      </StackPanel>
+                      <StackPanel Classes="state" Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
+                        <TextBlock Classes="caption" Text="{Binding StatusText}" />
+                        <TextBlock Classes="caption" Text="{Binding BatteryText}" IsVisible="{Binding HasBattery}" />
+                        <TextBlock Classes="caption" Text="{Binding ProfileText}" IsVisible="{Binding HasProfile}" />
+                      </StackPanel>
+                      <Button Grid.Column="4" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ForgetCommand}"
+                              IsEnabled="{Binding CanForget}" ToolTip.Tip="{Binding ForgetTip}" VerticalAlignment="Center" />
+                    </Grid>
+                    <!-- Forget pressed: ask first -->
+                    <Grid ColumnDefinitions="*,Auto,8,Auto" IsVisible="{Binding IsConfirming}">
+                      <TextBlock Classes="label" Text="{Binding ForgetAsk}" VerticalAlignment="Center" />
+                      <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding CancelText}" Command="{Binding CancelForgetCommand}"
+                              VerticalAlignment="Center" />
+                      <Button Grid.Column="3" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ConfirmForgetCommand}"
+                              Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" />
+                    </Grid>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
     </Border>
-  </StackPanel>
+  </DockPanel>
 </UserControl>

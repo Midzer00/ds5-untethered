@@ -49,8 +49,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		];
 		_selectedNav = NavItems[0];
 		Overview.Attach(_environment.Now);
-		Overview.Quick.OpenAdvanced = () => Navigate(SettingsPage);
-		Overview.Quick.OpenShortcuts = () => OpenSettingsAt(SettingsSections.Shortcuts);
+		Overview.Quick.OpenAdvanced = () => OpenSettingsAt(SettingsViewModel.GeneralTab);
+		Overview.Quick.OpenShortcuts = () => OpenSettingsAt(SettingsViewModel.ShortcutsTab);
 		_service.FixRequested += (_, fix) => RunOnUi(() => HandleFix(fix));
 		Overview.SetVisible(true);
 		Notifications = new NotificationCenter(service, Settings, _environment.FullScreen, _environment.Clock);
@@ -148,7 +148,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 				Navigate(SupportedGames);
 				break;
 			case Kopru.Core.Health.FixAction.RunAdapterTest:
-				Navigate(SettingsPage);
+				OpenSettingsAt(SettingsViewModel.GeneralTab);
 				if (SettingsPage.TestAdapterCommand.CanExecute(null))
 				{
 					SettingsPage.TestAdapterCommand.Execute(null);
@@ -221,13 +221,26 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		Navigate(Controller);
 	}
 
-	public void Navigate(AppPage page) => Navigate(page switch
+	public void Navigate(AppPage page)
 	{
-		AppPage.SupportedGames => SupportedGames,
-		AppPage.OtherGames => OtherGames,
-		AppPage.Settings => SettingsPage,
-		_ => (PageViewModel)Overview
-	});
+		switch (page)
+		{
+			case AppPage.SettingsGeneral:
+				OpenSettingsAt(SettingsViewModel.GeneralTab);
+				break;
+			case AppPage.SettingsShortcuts:
+				OpenSettingsAt(SettingsViewModel.ShortcutsTab);
+				break;
+			default:
+				Navigate(page switch
+				{
+					AppPage.SupportedGames => SupportedGames,
+					AppPage.OtherGames => OtherGames,
+					_ => (PageViewModel)Overview
+				});
+				break;
+		}
+	}
 
 	public NotificationCenter Notifications { get; }
 

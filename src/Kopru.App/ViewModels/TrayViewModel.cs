@@ -11,6 +11,11 @@ public interface IAppShell
 	// Shows, restores and focuses the main window, optionally on a page.
 	void ShowMainWindow(AppPage? page = null);
 
+	// Hides the main window like closing it does (to the icon next to the clock; the app keeps running).
+	void HideMainWindow()
+	{
+	}
+
 	// Exits for real (stops the bridge and undoes the hiding).
 	void Exit();
 }
@@ -29,12 +34,17 @@ public sealed partial class TrayViewModel : ViewModelBase
 		_settings = settings;
 		_shell = shell;
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
-		// "PS: Open The App": the controller's PS tap shows the window like the tray icon does (on its current page).
+		// "PS: Open The App": the controller's PS tap shows the window like the tray icon does (on its current page), and
+		// hides it again when it is already in front.
 		_service.Shortcut += (_, action) =>
 		{
 			if (action == Kopru.Core.Input.ShortcutAction.OpenApp)
 			{
 				RunOnUi(() => _shell.ShowMainWindow());
+			}
+			else if (action == Kopru.Core.Input.ShortcutAction.HideApp)
+			{
+				RunOnUi(_shell.HideMainWindow);
 			}
 		};
 		_settings.PropertyChanged += (_, e) =>

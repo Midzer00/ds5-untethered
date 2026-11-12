@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-09",
+  "updated": "2026-11-12",
   "games": [
     {
       "name": "007 First Light",
@@ -1078,12 +1078,15 @@
     },
     {
       "name": "Lego Batman: Legacy of the Dark Knight",
-      "exe": [],
+      "exe": [
+        "LEGOBatmanLotDK.exe",
+        "LEGOBatmanLotDK-Win64-Shipping.exe"
+      ],
       "steamAppId": 2215200,
       "haptics": true,
       "adaptiveTriggers": true,
-      "exeConfidence": null,
-      "notes": "Added from PCGamingWiki; exe name unknown"
+      "exeConfidence": "high",
+      "notes": "Exe names confirmed on a running install (launcher and Unreal Engine game binary)"
     },
     {
       "name": "Lego Horizon Adventures",

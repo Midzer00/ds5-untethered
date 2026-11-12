@@ -157,21 +157,20 @@ public class QuickSettingsAppTests
 	}
 
 	[AvaloniaFact]
-	public void ShortcutsTileButton_OpensTheShortcutsGroup_WithoutSwitching()
+	public void ShortcutsTileButton_OpensTheShortcutsTab_WithoutSwitching()
 	{
 		(MainWindowViewModel vm, _) = Create();
 		QuickSettingsViewModel q = vm.Overview.Quick;
-		string? requested = null;
-		vm.SettingsPage.SectionRequested += s => requested = s;
+		vm.SettingsPage.SelectedTab = SettingsViewModel.NotificationsTab;
 		q.EditShortcutsCommand.Execute(null);
 		Assert.Same(vm.SettingsPage, vm.CurrentPage);
-		Assert.Equal(SettingsSections.Shortcuts, requested);
+		Assert.True(vm.SettingsPage.IsShortcutsTab);
 		Assert.True(q.ShortcutsOn);
 	}
 
-	// The tile's small button scrolls the Settings page to the shortcuts group (headless window).
+	// The tile's small button shows the Settings page's Shortcuts tab, its switch in view without scrolling (headless window).
 	[AvaloniaFact]
-	public void ShortcutsTileButton_ScrollsTheSettingsPageToTheGroup()
+	public void ShortcutsTileButton_ShowsTheShortcutsTab()
 	{
 		(MainWindowViewModel vm, _) = Create();
 		var window = new Kopru.App.Views.MainWindow { DataContext = vm, Width = 1100, Height = 700 };
@@ -188,8 +187,10 @@ public class QuickSettingsAppTests
 		Settle();
 		var scroll = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.ScrollViewer>()
 			.First(s => s.Classes.Contains("page") && s.IsEffectivelyVisible);
-		Assert.True(scroll.Offset.Y > 100, $"offset {scroll.Offset.Y}");
-		Assert.False(vm.SettingsPage.HasPendingSection);
+		Assert.Equal(0, scroll.Offset.Y);
+		Avalonia.Controls.Border group = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).OfType<Avalonia.Controls.Border>()
+			.Single(b => b.Name == "ShortcutsGroup");
+		Assert.True(group.IsEffectivelyVisible);
 		window.Close();
 	}
 

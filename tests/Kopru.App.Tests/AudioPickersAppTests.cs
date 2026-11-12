@@ -11,7 +11,6 @@ using Kopru.App.ViewModels;
 using Kopru.App.Views;
 using Kopru.Core.Audio;
 using Kopru.Core.Bridge;
-using Kopru.Core.Lighting;
 using Kopru.Core.Localization;
 
 namespace Kopru.App.Tests;
@@ -144,16 +143,16 @@ public class AudioPickersAppTests
 		Assert.Equal(Text.AudioDevicesUnavailable(), none.Settings.Audio.UnavailableText);
 	}
 
-	// Controller microphone selected, "Turn Off" (the default): the press switches the feature; the tile, the LED (FollowMic)
-	// and the toast follow; Low Power: nothing, no toast.
+	// Controller microphone selected, "Turn Off" (the default): the press switches the feature; the tile, the LED (always the
+	// microphone) and the toast follow; Low Power: nothing changes, the toast says why.
 	[AvaloniaFact]
 	public void ControllerMic_TurnOff_SwitchesTheFeature()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
 		SettingsState s = vm.Settings;
 		QuickSettingsViewModel q = vm.Overview.Quick;
-		List<string> toasts = [];
-		s.ShortcutFeedback += (title, _) => toasts.Add(title);
+		List<(string Title, string Body)> toasts = [];
+		s.ShortcutFeedback += (title, body) => toasts.Add((title, body));
 		Assert.Equal(MicButtonMode.TurnOff, s.MicButtonMode);
 		int applies = fake.Applies;
 
@@ -163,9 +162,8 @@ public class AudioPickersAppTests
 		Assert.True(q.MicTile);
 		Assert.Equal(Text.QuickStateOn(), q.MicStateText);
 		Assert.True(fake.Settings.Mic.IsLive);
-		Assert.Equal(MuteLedMode.FollowMic, fake.Settings.LightOptions.MuteLed);
 		Assert.Equal(applies + 1, fake.Applies);
-		Assert.Equal([Text.MicToastTitle(MicState.On)], toasts);
+		Assert.Equal([(Text.MicToastTitle(MicPress.ControllerOn, MicButtonMode.TurnOff), Text.MicToastBody(MicPress.ControllerOn))], toasts);
 
 		fake.RaiseShortcut(Kopru.Core.Input.ShortcutAction.MicButton);
 		Settle();
@@ -173,7 +171,7 @@ public class AudioPickersAppTests
 		Assert.False(q.MicTile);
 		Assert.Equal(Text.QuickStateOff(), q.MicStateText);
 		Assert.False(fake.Settings.Mic.IsLive);
-		Assert.Equal(Text.MicToastTitle(MicState.Off), toasts.Last());
+		Assert.Equal((Text.MicToastTitle(MicPress.ControllerOff, MicButtonMode.TurnOff), Text.MicToastBody(MicPress.ControllerOff)), toasts.Last());
 
 		s.LowPowerOn = true;
 		Settle();
@@ -184,7 +182,8 @@ public class AudioPickersAppTests
 		Settle();
 		Assert.False(s.MicEnabled);
 		Assert.Equal(before, fake.Applies);
-		Assert.Equal(2, toasts.Count);
+		Assert.Equal(3, toasts.Count);
+		Assert.Equal((Text.MicToastTitle(MicPress.Ignored, MicButtonMode.TurnOff), Text.MicToastBody(MicPress.Ignored)), toasts.Last());
 	}
 
 	// Controller microphone selected, "Mute": the stream stays on, the press mutes what games get; a first press while off
@@ -214,7 +213,7 @@ public class AudioPickersAppTests
 		Assert.False(fake.Settings.Mic.IsLive);
 		Assert.False(q.MicTile);
 		Assert.Equal(Text.MicStateMuted(), q.MicStateText);
-		Assert.Equal([Text.MicToastTitle(MicState.Muted)], toasts);
+		Assert.Equal([Text.MicToastTitle(MicPress.ControllerMuted, MicButtonMode.Mute)], toasts);
 
 		q.MicTile = true;
 		Settle();
@@ -241,7 +240,6 @@ public class AudioPickersAppTests
 		List<(string Title, string Body)> toasts = [];
 		s.ShortcutFeedback += (title, body) => toasts.Add((title, body));
 		s.MicButtonMode = mode;
-		s.MuteLed = MuteLedMode.FollowMic;
 		s.Audio.SelectedInput = s.Audio.Inputs.Single(i => i.Id == "webcam");
 		Settle();
 		Assert.False(s.ControllerMicSelected);
@@ -256,7 +254,19 @@ public class AudioPickersAppTests
 		Assert.False(fake.Settings.Mic.IsLive);
 		Assert.False(q.MicTile);
 		Assert.Equal(Text.MicStateMuted(), q.MicStateText);
-		Assert.Equal((Text.MicToastTitle(MicState.Muted), Text.MicToastBody(false)), toasts.Single());
+		Assert.Equal((Text.MicToastTitle(MicPress.PcMuted, mode), Text.MicToastBody(MicPress.PcMuted)), toasts.Single());
+		// "Kapat" says off, "Sessize Al" says muted; the body names the PC microphone, not the controller's.
+		Assert.Equal(mode == MicButtonMode.TurnOff ? "Mikrofon Kapalı" : "Mikrofon Sessizde", Text.MicToastTitle(MicPress.PcMuted, mode, Language.Turkish));
+		Assert.Equal("Bilgisayar Mikrofonu", Text.MicToastBody(MicPress.PcMuted, Language.Turkish));
+
+		fake.RaiseShortcut(Kopru.Core.Input.ShortcutAction.MicButton);
+		Settle();
+		Assert.False(fake.AudioEndpoints.GetMute("webcam"));
+		Assert.True(fake.Settings.Mic.IsLive);
+		Assert.Equal((Text.MicToastTitle(MicPress.PcUnmuted, mode), Text.MicToastBody(MicPress.PcUnmuted)), toasts.Last());
+		fake.RaiseShortcut(Kopru.Core.Input.ShortcutAction.MicButton);
+		Settle();
+		Assert.True(fake.AudioEndpoints.GetMute("webcam"));
 
 		// Low Power: a PC microphone can still be switched.
 		s.LowPowerOn = true;
@@ -321,7 +331,7 @@ public class AudioPickersAppTests
 		Assert.Equal("Mic", AudioDevicesViewModel.ShortName("Mic"));
 	}
 
-	// The Overview at the default size and large, and the Settings sound panels; PNGs to docs/screens only with
+	// The Overview at the default size and large, and the Settings Audio tab; PNGs to docs/screens only with
 	// KOPRU_RENDER_SCREENS=1. The quick settings card must hold every row without clipping.
 	[AvaloniaFact]
 	public void RenderQuickSettingsAndSoundPanels()
@@ -365,31 +375,14 @@ public class AudioPickersAppTests
 					}
 				}
 
-				// Settings: the speaker and microphone groups.
-				vm.SelectedNav = vm.NavItems.Last();
-				window.Height = 1400;
+				// Settings: the speaker and microphone groups side by side on the Audio tab.
+				vm.OpenSettingsAt(SettingsViewModel.AudioTab);
+				window.Width = 1100;
+				window.Height = 700;
 				Settle();
 				SettingsView settings = window.GetLogicalDescendants().OfType<SettingsView>().Single();
-				Border speaker = settings.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "SpeakerPanel");
-				speaker.BringIntoView();
-				Settle();
-				using (var page = window.CaptureRenderedFrame())
-				{
-					if (writeFiles)
-					{
-						page!.Save(Path.Combine(outDir, $"settings-audio-speaker-{code}.png"));
-					}
-				}
-				Border mic = settings.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "MicPanel");
-				mic.BringIntoView();
-				Settle();
-				using (var page = window.CaptureRenderedFrame())
-				{
-					if (writeFiles)
-					{
-						page!.Save(Path.Combine(outDir, $"settings-audio-mic-{code}.png"));
-					}
-				}
+				Assert.True(settings.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "SpeakerPanel").IsEffectivelyVisible);
+				Assert.True(settings.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "MicPanel").IsEffectivelyVisible);
 				// Pickers unavailable: one line why, inside the card (the error of the refused choice is not shown then).
 				window.Width = 1100;
 				window.Height = 700;

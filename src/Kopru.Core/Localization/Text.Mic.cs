@@ -15,10 +15,8 @@ public static partial class Text
 	public static string MicNoiseGate(Language? l = null) => Pick(l, $"Gürültü Kapısı", $"Noise Gate");
 
 	public static string MicNoiseGateHint(Language? l = null) => Pick(l,
-		$"Konuşmadığınızda hafif arka plan seslerini keser",
-		$"Cuts faint background noise while you are not speaking");
+		$"Sessizken arka plan sesini keser.",
+		$"Cuts background noise while you're quiet.");
 
 	public static string MicLevel(Language? l = null) => Pick(l, $"Mikrofon Seviyesi", $"Microphone Level");
-
-	public static string MuteLedFollowMic(Language? l = null) => Pick(l, $"Mikrofonu İzle", $"Follow Microphone");
 }

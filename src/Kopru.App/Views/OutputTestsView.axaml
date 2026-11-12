@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels"
+             xmlns:s="using:Kopru.App.Services" x:Class="Kopru.App.Views.OutputTestsView" x:DataType="vm:TesterViewModel">
+  <UserControl.Styles>
+    <Style Selector="Grid.settingRow > TextBlock.label">
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- The controller page's Output Tests tab: one setting row per output, the controls on the card's right edge -->
+  <Border Classes="panel">
+    <StackPanel Spacing="8">
+      <StackPanel Spacing="4" Margin="0,0,0,6">
+        <TextBlock Classes="h2" Text="{Binding OutputsLabel}" />
+        <TextBlock Classes="body" Text="{Binding OutputsHint}" />
+      </StackPanel>
+      <StackPanel>
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <TextBlock Classes="label" Text="{Binding HapticsLabel}" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" HorizontalAlignment="Right">
+            <Button Theme="{StaticResource QuietButton}" Content="{Binding LeftText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}" />
+            <Button Theme="{StaticResource QuietButton}" Content="{Binding RightText}" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}" />
+          </StackPanel>
+        </Grid>
+        <Border Classes="divider" />
+        <!-- Trigger effect to feel on both triggers (stays on until Off); what each does in its tooltip -->
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <TextBlock Classes="label" Text="{Binding Triggers.EffectsLabel}" />
+          <ListBox x:Name="TriggerEffects" Grid.Column="1" Classes="control wide" Theme="{StaticResource Segmented}" ItemsSource="{Binding Triggers.Effects}"
+                   SelectedItem="{Binding Triggers.SelectedEffect}" AutoScrollToSelectedItem="False" AutomationProperties.Name="{Binding Triggers.EffectsLabel}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:TriggerEffectItem">
+                <!-- Regular, and semibold while selected (fixed weights, so the selected label is always measured bold) -->
+                <Panel Background="Transparent" ToolTip.Tip="{Binding Hint}">
+                  <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                             IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
+                  <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                             IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                </Panel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+        <Border Classes="divider" />
+        <!-- How strong the games' trigger effects are (the same setting as on Supported Games and in Quick Settings) -->
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <TextBlock Classes="label" Text="{Binding Triggers.StrengthLabel}" />
+          <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+            <Slider x:Name="TriggerStrength" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}"
+                    VerticalAlignment="Center" AutomationProperties.Name="{Binding Triggers.StrengthLabel}" />
+            <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" />
+          </Grid>
+        </Grid>
+        <Border Classes="divider" />
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+          <TextBlock Classes="label" Text="{Binding LightLabel}" />
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding Swatches}" HorizontalAlignment="Right">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LightSwatch">
+                <Button Theme="{StaticResource QuietButton}" Width="32" Height="32" MinWidth="0" Padding="0" CornerRadius="16"
+                        Command="{Binding $parent[UserControl].((vm:TesterViewModel)DataContext).TestLightCommand}" CommandParameter="{Binding}">
+                  <Ellipse Width="18" Height="18" Fill="{Binding Brush}" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

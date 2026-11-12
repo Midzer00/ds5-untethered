@@ -14,7 +14,7 @@ public sealed partial class BridgeHost
 
 	private void StartLightSender(Connection c)
 	{
-		LightSender sender = new(c.Session.UpdateOutput, EffectiveLight, () => battery, () => c.Bridge.GameControlsLight, time);
+		LightSender sender = new(c.Session.UpdateOutput, () => light, () => battery, () => c.Bridge.GameControlsLight, time);
 		Interlocked.Exchange(ref lightSender, sender)?.Dispose();
 		sender.Start();
 	}

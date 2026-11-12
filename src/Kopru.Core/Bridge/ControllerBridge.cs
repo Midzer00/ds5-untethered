@@ -62,8 +62,11 @@ public sealed class ControllerBridge : IDisposable
 	// The mic button as the microphone switch (BridgeHostMic); null = the button goes to the game as usual.
 	public volatile Audio.MicButton? MicButton;
 
-	// The app drives the mute LED (it follows our mic mute): the game's mute LED bits are dropped.
-	public volatile bool KeepMuteLed;
+	// The mute LED value the app shows (OutputBlock.MuteLedOn / MuteLedOff: the microphone is live or not), put into every
+	// relayed game output in place of the game's; NoAppMuteLed lets the game's mute LED through (the game owns the button).
+	public const int NoAppMuteLed = -1;
+
+	public volatile int AppMuteLed = NoAppMuteLed;
 
 	private bool hasBlock;
 
@@ -319,9 +322,12 @@ public sealed class ControllerBridge : IDisposable
 			sent[OutputBlock.Flag1] &= unchecked((byte)~(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl));
 			sent[OutputBlock.Flag2] &= unchecked((byte)~(OutputBlock.LightbarSetupControl | OutputBlock.LedBrightnessControl));
 		}
-		if (KeepMuteLed)
+		int muteLed = AppMuteLed;
+		if (muteLed != NoAppMuteLed)
 		{
-			sent[OutputBlock.Flag1] &= unchecked((byte)~OutputBlock.MuteLedControl);
+			// The whole block replaces the controller's output state: carry the app's mute LED (and its valid bit) in it, so
+			// neither the game's value nor a cleared bit ever reaches the controller.
+			OutputBlock.SetMuteLed(sent, (byte)muteLed);
 		}
 		sent[OutputBlock.Flag0] &= unchecked((byte)~(OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
 		sent[OutputBlock.MotorLeft] = sent[OutputBlock.MotorRight] = 0;
@@ -409,18 +415,71 @@ public sealed class ControllerBridge : IDisposable
 			});
 		}
 		session.WakeHaptics();
+		bool speakerSound = HasSpeakerSound(audio.Span);
+		TrackSpeakerChannels(speakerSound, audio.Length / (HapticsConverter.Channels * 2));
 		if (speakerEnabled)
 		{
-			FeedSpeaker(audio.Span);
+			FeedSpeaker(audio.Span, speakerSound);
 		}
+	}
+
+	// Speaker-channel sounds logged per bridge at most (a game that talks all the time must not flood the log).
+	public const int SpeakerActivityLogLimit = 100;
+
+	// Whether channels 1-2 carry sound (after SpeakerTailMs of silence they count as quiet again), frames since the last
+	// sound, frames since the sound started, lines written. Only touched on the audio thread (OnAudio).
+	private bool speakerChannelsActive;
+	private long speakerChannelsQuietFrames, speakerChannelsSoundFrames;
+	private int speakerActivityLines;
+
+	// Logs when the game's speaker channels start and stop carrying sound, whether or not the speaker is on, so a test can
+	// tell whether a sound reached the virtual controller's speaker channels at all (and how the controller speaker coped).
+	private void TrackSpeakerChannels(bool sound, int frames)
+	{
+		if (sound)
+		{
+			speakerChannelsQuietFrames = 0;
+			if (!speakerChannelsActive)
+			{
+				speakerChannelsActive = true;
+				speakerChannelsSoundFrames = 0;
+				LogSpeakerActivity($"bridge: game sound on the speaker channels (1-2), controller speaker {(speakerEnabled ? "on" : "off")}");
+			}
+		}
+		else if (speakerChannelsActive && (speakerChannelsQuietFrames += frames) > SpeakerTailFrames)
+		{
+			speakerChannelsActive = false;
+			Audio.SpeakerAudioSender? s = session.Speaker;
+			long ms = (speakerChannelsSoundFrames - speakerChannelsQuietFrames + frames) * 1000 / Audio.SpeakerAudioSender.InputRate;
+			LogSpeakerActivity(s != null
+				? $"bridge: speaker channels quiet again after {Math.Max(0, ms)} ms ({s.Underruns} underruns, {s.DroppedSamples} samples dropped so far)"
+				: $"bridge: speaker channels quiet again after {Math.Max(0, ms)} ms (controller speaker off, not played)");
+		}
+		if (speakerChannelsActive)
+		{
+			speakerChannelsSoundFrames += frames;
+		}
+	}
+
+	private void LogSpeakerActivity(string line)
+	{
+		if (speakerActivityLines < SpeakerActivityLogLimit)
+		{
+			Diagnostics.AppLog.Write(line);
+		}
+		else if (speakerActivityLines == SpeakerActivityLogLimit)
+		{
+			Diagnostics.AppLog.Write($"bridge: speaker channel lines stop here ({SpeakerActivityLogLimit} written)");
+		}
+		speakerActivityLines++;
 	}
 
 	// Sound on channels 1-2 goes to the speaker, then up to SpeakerTailMs of silence (so the end isn't cut off); longer
 	// silence is not sent, so the session's speaker buffer runs dry and the stream falls back to haptics-only reports.
-	private void FeedSpeaker(ReadOnlySpan<byte> audio)
+	private void FeedSpeaker(ReadOnlySpan<byte> audio, bool sound)
 	{
 		int frames = audio.Length / (HapticsConverter.Channels * 2);
-		long silent = HasSpeakerSound(audio) ? 0 : Interlocked.Add(ref speakerSilentFrames, frames);
+		long silent = sound ? 0 : Interlocked.Add(ref speakerSilentFrames, frames);
 		if (silent == 0)
 		{
 			Interlocked.Exchange(ref speakerSilentFrames, 0);

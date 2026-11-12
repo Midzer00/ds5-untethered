@@ -105,8 +105,50 @@ public class DesktopModeAppTests
 		Assert.Equal(2, d.ScrollSpeed);
 		Assert.Equal(Text.MultiplierValue(1.8), panel.PointerSpeedText);
 		Assert.Equal(Text.PercentValue(72), panel.PointerAccelerationText);
-		Assert.Equal(Text.DesktopMapping().Count, panel.Mapping.Count);
+		Assert.Equal(DesktopButtonMap.Buttons.Count, panel.Rows.Count);
 		Assert.Contains(vm.Settings.ShortcutsPanel.Legend, l => l.Keys == Text.ShortcutKeysDesktop());
+	}
+
+	[AvaloniaFact]
+	public void PointerStick_AndButtonMapping_ReachTheService()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
+		DesktopModeViewModel panel = vm.Settings.DesktopPanel;
+		Assert.Equal([Text.DesktopStickLeft(), Text.DesktopStickRight()], panel.PointerSticks);
+		IReadOnlyList<string> sticks = panel.PointerSticks;
+		Assert.Equal(1, panel.PointerStickIndex);
+		panel.PointerStickIndex = 0;
+		Assert.Equal(PointerStick.Left, fake.Settings.Desktop.PointerStick);
+		Assert.Equal(0, panel.PointerStickIndex);
+		panel.PointerStickIndex = 5;
+		Assert.Equal(PointerStick.Left, vm.Settings.DesktopMode.PointerStick);
+		Assert.Same(sticks, panel.PointerSticks);
+
+		// Rows: every remappable button, today's actions selected, every action offered.
+		Assert.Equal(DesktopButtonMap.Buttons, panel.Rows.Select(r => r.Button));
+		Assert.All(panel.Rows, r => Assert.Equal(DesktopButtonMap.DefaultActionOf(r.Button), r.Selected!.Action));
+		Assert.Equal(Text.ButtonName(DsButton.Cross), panel.Rows[0].Name);
+		Assert.Equal(Enum.GetValues<MouseAction>().Length, panel.Actions.Count);
+		Assert.True(panel.IsMappingDefault);
+
+		DesktopButtonRow cross = panel.Rows.Single(r => r.Button == DsButton.Cross);
+		var changes = new List<string?>();
+		cross.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+		cross.Selected = panel.Actions.Single(a => a.Action == MouseAction.Copy);
+		Assert.Equal(MouseAction.Copy, fake.Settings.Desktop.Buttons.ActionOf(DsButton.Cross));
+		Assert.Equal(MouseAction.Copy, cross.Selected!.Action);
+		Assert.Equal(Text.DesktopActionName(MouseAction.Copy), cross.Selected.Name);
+		Assert.NotEmpty(changes);
+		Assert.False(panel.IsMappingDefault);
+		cross.Selected = null;
+		Assert.Equal(MouseAction.Copy, fake.Settings.Desktop.Buttons.ActionOf(DsButton.Cross));
+
+		// Reset: the mapping only (the stick stays).
+		panel.ResetMappingCommand.Execute(null);
+		Assert.Equal(DesktopButtonMap.Default, fake.Settings.Desktop.Buttons);
+		Assert.Equal(MouseAction.LeftClick, cross.Selected!.Action);
+		Assert.Equal(PointerStick.Left, fake.Settings.Desktop.PointerStick);
+		Assert.True(panel.IsMappingDefault);
 	}
 
 	[AvaloniaFact]
@@ -126,7 +168,11 @@ public class DesktopModeAppTests
 	{
 		var store = new MemorySettingsStore();
 		(MainWindowViewModel vm, _) = NewViewModel(store);
-		var desktop = new DesktopModeSettings { PointerSpeed = 2.2, PointerAcceleration = 10, TouchpadSpeed = 1.5, ScrollSpeed = 0.6, AutoOffInGame = false };
+		var desktop = new DesktopModeSettings
+		{
+			PointerSpeed = 2.2, PointerAcceleration = 10, TouchpadSpeed = 1.5, ScrollSpeed = 0.6, AutoOffInGame = false, PointerStick = PointerStick.Left,
+			Buttons = DesktopButtonMap.Default.With(DsButton.Square, MouseAction.Space).With(DsButton.L2, MouseAction.None)
+		};
 		vm.Settings.DesktopMode = desktop;
 		vm.Settings.DesktopModeOn = true;
 		vm.Settings.Gyro = vm.Settings.Gyro with { Mode = GyroMode.Always, Target = GyroTarget.Mouse };
@@ -151,6 +197,15 @@ public class DesktopModeAppTests
 			(MainWindowViewModel old, _) = NewViewModel(file);
 			Assert.Equal(DesktopModeSettings.Default, old.Settings.DesktopMode);
 			Assert.Equal(GyroTarget.RightStick, old.Settings.Gyro.Target);
+
+			// A file from before the stick and the mapping: their defaults, the rest kept; a bad action falls back alone.
+			File.WriteAllText(file.Path, "{\"DesktopMode\":{\"PointerSpeed\":2.5,\"PointerStick\":\"Diagonal\",\"Buttons\":{\"Cross\":\"Teleport\",\"Circle\":\"Paste\"}},\"Brightness\":40}");
+			(MainWindowViewModel older, _) = NewViewModel(file);
+			Assert.Equal(DesktopModeSettings.Default with
+			{
+				PointerSpeed = 2.5, Buttons = DesktopButtonMap.Default.With(DsButton.Circle, MouseAction.Paste)
+			}, older.Settings.DesktopMode);
+			Assert.Equal(40, older.Settings.Brightness);
 		}
 		finally
 		{
@@ -161,7 +216,7 @@ public class DesktopModeAppTests
 		}
 	}
 
-	// Renders the desktop mode group of the Settings page; PNGs go to docs/screens only with KOPRU_RENDER_SCREENS=1.
+	// Renders the Settings page's Mouse Mode tab with mouse mode on; PNGs go to docs/screens only with KOPRU_RENDER_SCREENS=1.
 	[AvaloniaFact]
 	public void RenderDesktopModeGroup()
 	{
@@ -175,13 +230,13 @@ public class DesktopModeAppTests
 				Localizer.Chosen = language;
 				(MainWindowViewModel vm, _) = NewViewModel();
 				vm.Settings.DesktopModeOn = true;
-				vm.Navigate(AppPage.Settings);
-				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 900 };
+				vm.OpenSettingsAt(SettingsViewModel.MouseTab);
+				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 				window.Show();
 				Dispatcher.UIThread.RunJobs();
 				AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 				Border panel = window.GetVisualDescendants().OfType<Border>().First(b => b.Name == "DesktopModeGroup");
-				panel.BringIntoView();
+				Assert.True(panel.IsEffectivelyVisible);
 				Thread.Sleep(320);
 				Dispatcher.UIThread.RunJobs();
 				AvaloniaHeadlessPlatform.ForceRenderTimerTick();

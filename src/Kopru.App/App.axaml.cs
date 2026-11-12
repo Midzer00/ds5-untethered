@@ -95,15 +95,14 @@ public partial class App : Application
 
 		var window = new MainWindow { DataContext = vm };
 		window.FitToScreen();
-		var shell = new DesktopShell(desktop, window, vm);
+		// Shows the window in front also from the background (PS tap, second start, toast) and hides it again.
+		var presenter = new MainWindowPresenter(new AvaloniaPresentedWindow(window), new Win32ForegroundWindows());
+		var shell = new DesktopShell(desktop, window, vm, presenter);
 		// After "Restart The Computer" on the setup page: the normal exit (settings saved, bridge and hiding undone).
 		vm.ExitApp = shell.Exit;
-		// For the PS tap ("PS: Open The App"), read on the input thread: kept in a field instead of asking the window.
-		bool windowActive = false;
-		window.Activated += (_, _) => Volatile.Write(ref windowActive, true);
-		window.Deactivated += (_, _) => Volatile.Write(ref windowActive, false);
-		service.IsAppInFront = () => Volatile.Read(ref windowActive);
-		service.IsForegroundFullScreen = FullScreenDetector.IsForegroundFullScreen;
+		// For the PS tap ("PS: Open The App"), read on the input thread: the real foreground window, not the Activated flag.
+		service.IsAppInFront = () => presenter.IsInFront;
+		service.FullScreenForeground = FullScreenDetector.ForegroundFullScreenApp;
 		// A second start (Start menu, the exe again) shows this copy's window on its current page; that copy then exits.
 		Program.Instance?.Listen(() => ShowFromOtherStart(shell));
 		var toasts = new ToastHost(page => shell.ShowMainWindow(page), FullScreenDetector.IsForegroundFullScreen);
@@ -213,7 +212,8 @@ public partial class App : Application
 	}
 
 	// The running app as seen by the tray and the toasts.
-	private sealed class DesktopShell(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, MainWindowViewModel vm) : IAppShell
+	private sealed class DesktopShell(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, MainWindowViewModel vm,
+		MainWindowPresenter presenter) : IAppShell
 	{
 		public bool IsExiting { get; private set; }
 
@@ -230,12 +230,15 @@ public partial class App : Application
 				vm.Navigate(p);
 			}
 			desktop.MainWindow ??= window;
-			window.Show();
-			if (window.WindowState == WindowState.Minimized)
+			presenter.Show(page is { } shown ? "page " + shown : "open");
+		}
+
+		public void HideMainWindow()
+		{
+			if (!IsExiting)
 			{
-				window.WindowState = WindowState.Normal;
+				presenter.Hide("PS tap");
 			}
-			window.Activate();
 		}
 
 		public void Exit()

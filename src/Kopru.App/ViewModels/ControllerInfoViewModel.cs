@@ -9,7 +9,7 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// The "Controller Info" card (controller test page) and the compact line in Settings → About: model, connection,
+// The "Controller Info" card (Settings, under the controllers) and the compact line in Settings → About: model, connection,
 // firmware/hardware version, build date, masked Bluetooth address, connected for (live) and battery; copy and reconnect.
 public sealed partial class ControllerInfoViewModel : ViewModelBase
 {
@@ -43,7 +43,8 @@ public sealed partial class ControllerInfoViewModel : ViewModelBase
 	public bool HasNoDetails => !HasDetails;
 
 	public string Title => Text.InfoTitle();
-	public string Hint => Text.InfoHint();
+	public string Hint => Text.InfoShort();
+	public string HintTip => Text.InfoHint();
 	public string NotConnectedText => Text.InfoNotConnected();
 	public string ModelLabel => Text.InfoModel();
 	public string ConnectionLabel => Text.InfoConnection();
@@ -54,7 +55,7 @@ public sealed partial class ControllerInfoViewModel : ViewModelBase
 	public string ConnectedForLabel => Text.InfoConnectedFor();
 	public string BatteryLabel => Text.InfoBattery();
 	public string CopyText => Text.InfoCopy();
-	public string ReconnectText => Text.ReconnectController();
+	public string ReconnectText => Text.InfoReconnect();
 	public string ReconnectHint => Text.ReconnectHint();
 
 	public string Model => Details?.ModelName ?? (_service.IsConnected ? _service.DeviceName : "—");

@@ -26,7 +26,7 @@ public class PageLayoutTests
 	}
 
 	[AvaloniaFact]
-	public void Sidebar_HasOneControllerEntry_WithTestAndRemapTabs()
+	public void Sidebar_HasOneControllerEntry_WithTestOutputsAndRemapTabs()
 	{
 		(MainWindowViewModel vm, _) = NewViewModel();
 		Assert.Equal(6, vm.NavItems.Count);
@@ -34,23 +34,25 @@ public class PageLayoutTests
 		Assert.Equal(Text.NavController(), vm.Controller.Title);
 		Assert.Same(vm.Sticks.Triggers, vm.Triggers);
 		Assert.Same(vm.Triggers, vm.Tester.Triggers);
-		Assert.Equal(["Test", Text.RemapTab()], vm.Controller.Tabs.Select(t => t.Name));
+		Assert.Equal(["Test", Text.TesterOutputs(), Text.RemapTab()], vm.Controller.Tabs.Select(t => t.Name));
 		Assert.True(vm.Controller.IsTestTab);
 		vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
-		// Nothing selected (-1) and a tab that does not exist (the former third tab) are ignored.
+		// Nothing selected (-1) and a tab that does not exist are ignored.
 		vm.Controller.SelectedTab = -1;
-		vm.Controller.SelectedTab = 2;
+		vm.Controller.SelectedTab = 3;
 		Assert.True(vm.Controller.IsRemapTab);
+		vm.Controller.SelectedTab = ControllerPageViewModel.OutputsTab;
+		Assert.True(vm.Controller.IsOutputsTab);
 		// Opening a tab that does not exist opens Test.
-		vm.OpenController(2);
+		vm.OpenController(3);
 		Assert.True(vm.Controller.IsTestTab);
 		Assert.Same(vm.Controller, vm.CurrentPage);
 		vm.OpenController(ControllerPageViewModel.RemapTab);
 		Assert.True(vm.Controller.IsRemapTab);
 	}
 
-	// Every setting shows on one tab only: the stick settings, trigger ranges, trigger effects and strength on the Test
-	// tab (beside the live test and in the output tests), remapping and gyro on their own tab.
+	// Every setting shows on one tab only: the stick settings and trigger ranges on the Test tab (beside the live test), the
+	// trigger effects and strength on the Output Tests tab, remapping and gyro on their own tab.
 	[AvaloniaFact]
 	public void EverySetting_IsOnOneTabOnly()
 	{
@@ -65,7 +67,7 @@ public class PageLayoutTests
 			Dispatcher.UIThread.RunJobs();
 			var seen = new Dictionary<string, int>();
 			ControllerView page = window.GetVisualDescendants().OfType<ControllerView>().Single();
-			foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.RemapTab })
+			foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.RemapTab })
 			{
 				vm.Controller.SelectedTab = tab;
 				Dispatcher.UIThread.RunJobs();
@@ -88,8 +90,8 @@ public class PageLayoutTests
 		}
 	}
 
-	// The output tests hold the trigger effect picker; its selection must not scroll the page down when the page opens,
-	// and picking an effect plays it on the controller.
+	// The Test tab fits the window and opens at the top; the Output Tests tab holds the trigger effect picker, and picking an
+	// effect plays it on the controller.
 	[AvaloniaFact]
 	public void TestTab_OpensAtTheTop_AndTheTriggerEffectPickerPlaysTheEffect()
 	{
@@ -101,9 +103,14 @@ public class PageLayoutTests
 		window.UpdateLayout();
 		ControllerView page = window.GetVisualDescendants().OfType<ControllerView>().Single();
 		ScrollViewer scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First();
-		Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
+		Assert.True(scroll.Extent.Height <= scroll.Viewport.Height + 0.5, $"extent {scroll.Extent.Height} > viewport {scroll.Viewport.Height}");
 		Assert.Equal(0, scroll.Offset.Y);
+		Assert.DoesNotContain(page.GetVisualDescendants().OfType<ListBox>(), l => l.Name == "TriggerEffects" && l.IsEffectivelyVisible);
 
+		vm.Controller.SelectedTab = ControllerPageViewModel.OutputsTab;
+		Dispatcher.UIThread.RunJobs();
+		window.UpdateLayout();
+		Assert.False(vm.Tester.IsVisible); // the live input is held only on the Test tab
 		ListBox effects = page.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "TriggerEffects");
 		Assert.True(effects.IsEffectivelyVisible);
 		Assert.Equal(4, effects.ItemCount);

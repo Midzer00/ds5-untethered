@@ -1,42 +1,38 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.ShortcutsPanel" x:DataType="vm:ShortcutsViewModel">
-  <StackPanel>
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.ShortcutsPanel" x:DataType="vm:ShortcutsViewModel">
+  <!-- The controller shortcuts switch and "PS: Open The App" (the button combinations are their own card beside it) -->
+  <DockPanel Classes="card">
     <TextBlock Classes="section" Text="{Binding Title}" />
     <Border Classes="panel" Padding="20,0" Name="ShortcutsGroup">
       <StackPanel>
-        <!-- The switch -->
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Hint}">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding Title}" />
-            <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
+            <TextBlock Classes="body" Text="{Binding Short, Converter={x:Static v:KeepLastWords.Instance}}" />
           </StackPanel>
           <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.ShortcutsEnabled}" OnContent="{x:Null}" OffContent="{x:Null}"
-                        AutomationProperties.Name="{Binding Title}" />
+                        AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding Hint}" />
         </Grid>
         <Border Classes="divider" />
-        <!-- Legend: the buttons on the left, what they do on the right -->
-        <ItemsControl ItemsSource="{Binding Legend}" Margin="0,8,0,10" IsEnabled="{Binding Settings.ShortcutsEnabled}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ShortcutLegendItem">
-              <Grid ColumnDefinitions="240,*" Margin="0,5">
-                <Border Classes="chip" HorizontalAlignment="Left" Height="28" Padding="12,0">
-                  <TextBlock Text="{Binding Keys}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="NoWrap" />
-                </Border>
-                <TextBlock Grid.Column="1" Classes="body" Text="{Binding Does}" VerticalAlignment="Center" TextWrapping="Wrap" />
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <!-- PS alone: open the app (no game in front); under the shortcuts switch like the legend -->
-        <Border Classes="divider" />
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.ShortcutsEnabled}">
-          <StackPanel>
+        <!-- PS alone: open the app (no game in front); works with the shortcuts switch on -->
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.ShortcutsEnabled}" ToolTip.Tip="{Binding OpenAppHint}">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding OpenAppLabel}" />
-            <TextBlock Classes="body" Text="{Binding OpenAppHint}" TextWrapping="Wrap" />
+            <TextBlock Classes="body" Text="{Binding OpenAppShort, Converter={x:Static v:KeepLastWords.Instance}}" />
           </StackPanel>
           <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PsOpensApp}" OnContent="{x:Null}" OffContent="{x:Null}"
-                        AutomationProperties.Name="{Binding OpenAppLabel}" />
+                        AutomationProperties.Name="{Binding OpenAppLabel}" AutomationProperties.HelpText="{Binding OpenAppHint}" />
+        </Grid>
+        <Border Classes="divider" />
+        <!-- "Also In Games": the PS tap opens the app while a game is in front too; needs both switches above on -->
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" IsEnabled="{Binding Settings.PsOpensAppInGamesAvailable}" ToolTip.Tip="{Binding InGamesHint}">
+          <StackPanel Classes="text">
+            <TextBlock Classes="label" Text="{Binding InGamesLabel}" />
+            <TextBlock Classes="body" Text="{Binding InGamesShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+          </StackPanel>
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PsOpensAppInGames}" OnContent="{x:Null}" OffContent="{x:Null}"
+                        AutomationProperties.Name="{Binding InGamesLabel}" AutomationProperties.HelpText="{Binding InGamesHint}" />
         </Grid>
       </StackPanel>
     </Border>
-  </StackPanel>
+  </DockPanel>
 </UserControl>

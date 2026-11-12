@@ -105,6 +105,7 @@ public sealed partial class ProfilesViewModel : ViewModelBase
 
 	public string Title => Text.ProfilesSection();
 	public string Hint => Text.ProfilesHint();
+	public string Short => Text.ProfilesShort();
 	public string ProfileLabel => Text.ProfileLabel();
 	public string NewText => Text.ProfileNew();
 	public string ImportText => Text.ProfileImport();
@@ -315,8 +316,13 @@ public sealed class ShortcutsViewModel : ViewModelBase
 	public SettingsState Settings { get; }
 	public string Title => Text.ShortcutsSection();
 	public string Hint => Text.ShortcutsHint();
+	public string Short => Text.ShortcutsShort();
+	public string OpenAppShort => Text.PsOpenAppShort();
 	public string OpenAppLabel => Text.PsOpenApp();
 	public string OpenAppHint => Text.PsOpenAppHint();
+	public string InGamesLabel => Text.PsOpenAppInGames();
+	public string InGamesShort => Text.PsOpenAppInGamesShort();
+	public string InGamesHint => Text.PsOpenAppInGamesHint();
 
 	public IReadOnlyList<ShortcutLegendItem> Legend =>
 	[

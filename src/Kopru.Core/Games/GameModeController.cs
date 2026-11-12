@@ -50,7 +50,7 @@ public sealed partial class GameModeController
 	// The key of the game the switch was turned on for (it turns off when that game ends); null: on without a game.
 	private string? onFor;
 	private bool askOnKnownGame = true;
-	private volatile bool gameInFront;
+	private volatile string? gameInFront;
 	private GameModeState state = GameModeState.Initial;
 	private BridgeProfile? applied;
 
@@ -142,7 +142,10 @@ public sealed partial class GameModeController
 
 	// Whether the foreground window was a known game at the last Tick (about once a second). Unlike ActiveGame, false
 	// while the game still runs behind another window. Lock-free (read on the input thread).
-	public bool IsGameInFront => gameInFront;
+	public bool IsGameInFront => gameInFront != null;
+
+	// The exe of the game in front at the last Tick (for the PS tap log), or null.
+	public string? GameInFront => gameInFront;
 
 	public bool IsSupportedModeOn
 	{
@@ -196,7 +199,7 @@ public sealed partial class GameModeController
 	public void Tick()
 	{
 		ForegroundGame? seen = watcher.Poll();
-		gameInFront = seen != null;
+		gameInFront = seen?.Exe;
 		ForegroundGame? ask = null;
 		lock (gate)
 		{

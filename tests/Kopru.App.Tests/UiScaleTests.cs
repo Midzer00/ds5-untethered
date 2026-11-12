@@ -10,21 +10,50 @@ using Kopru.App.Views;
 
 namespace Kopru.App.Tests;
 
-// The window content grows with the window by one factor (UiScale), and popups grow with it.
+// The window content follows the window by one factor (UiScale), and popups follow it; the layout never gets less than
+// the 1100x700 design size, down to the window's minimum.
 public sealed class UiScaleTests
 {
 	[Theory]
-	[InlineData(960, 640, 1.0)]    // the minimum window: unchanged
+	[InlineData(960, 640, 0.85)]   // the minimum window: scaled down (960 / 1100 = 0.873 -> 0.85)
+	[InlineData(1000, 700, 0.90)]  // limited by the width (0.909 -> 0.90)
 	[InlineData(1100, 700, 1.0)]   // the design size
 	[InlineData(1400, 800, 1.10)]  // limited by the height (800 / 700 = 1.14 -> 1.10)
 	[InlineData(1680, 1050, 1.50)]
 	[InlineData(2560, 1440, 1.75)] // capped; the rest stays centred
 	[InlineData(1300, 1300, 1.15)] // limited by the width (1300 / 1100 = 1.18 -> 1.15)
-	public void Factor_FollowsTheSmallerRatio_InSteps_BetweenOneAndMax(double width, double height, double expected) =>
+	public void Factor_FollowsTheSmallerRatio_InSteps_BetweenMinAndMax(double width, double height, double expected) =>
 		Assert.Equal(expected, UiScale.Factor(width, height), 3);
 
 	[Fact]
 	public void Factor_IsOne_ForNoSize() => Assert.Equal(1, UiScale.Factor(0, 0));
+
+	// At every allowed window size (from the minimum up, every 10 DIPs to 2600x1600) the layout gets at least 1100x700, and
+	// the factor never rounds up past the exact ratio.
+	[Fact]
+	public void LayoutCanvas_IsNeverSmallerThanTheDesignSize()
+	{
+		for (double w = UiScale.MinWindowWidth; w <= 2600; w += 10)
+		{
+			for (double h = UiScale.MinWindowHeight; h <= 1600; h += 10)
+			{
+				double s = UiScale.Factor(w, h);
+				Assert.True(s <= Math.Min(w / UiScale.DesignWidth, h / UiScale.DesignHeight) + 1e-9 || s == UiScale.MinFactor, $"{w}x{h}: {s}");
+				if (s < UiScale.Max)
+				{
+					Assert.True(w / s >= UiScale.DesignWidth - 1e-6 && h / s >= UiScale.DesignHeight - 1e-6, $"{w}x{h}: canvas {w / s:F1}x{h / s:F1}");
+				}
+			}
+		}
+		Assert.Equal(0.85, UiScale.MinFactor, 3);
+	}
+
+	[AvaloniaFact]
+	public void MinimumWindowSize_MatchesUiScale()
+	{
+		var window = new MainWindow();
+		Assert.Equal((UiScale.MinWindowWidth, UiScale.MinWindowHeight), (window.MinWidth, window.MinHeight));
+	}
 
 	[AvaloniaFact]
 	public void Window_ScalesItsContent_AndKeepsTheCaptionInset()
@@ -35,21 +64,24 @@ public sealed class UiScaleTests
 		Dispatcher.UIThread.RunJobs();
 		Assert.Equal(1, window.ContentScale);
 
-		window.Width = 1680;
-		window.Height = 1050;
-		Dispatcher.UIThread.RunJobs();
-		window.UpdateLayout();
-		Assert.Equal(1.5, window.ContentScale);
+		foreach ((double width, double height, double scale) in new[] { (1680.0, 1050.0, 1.5), (960.0, 640.0, 0.85) })
+		{
+			window.Width = width;
+			window.Height = height;
+			Dispatcher.UIThread.RunJobs();
+			window.UpdateLayout();
+			Assert.Equal(scale, window.ContentScale);
 
-		// The sidebar is 272 wide in layout terms and 408 on screen.
-		Control sidebar = window.GetVisualDescendants().OfType<DockPanel>().First();
-		Point right = sidebar.TranslatePoint(new Point(sidebar.Bounds.Width, 0), window)!.Value;
-		Assert.InRange(right.X, 407, 409);
+			// The sidebar is 272 wide in layout terms and 272 x scale on screen.
+			Control sidebar = window.GetVisualDescendants().OfType<DockPanel>().First();
+			Point right = sidebar.TranslatePoint(new Point(sidebar.Bounds.Width, 0), window)!.Value;
+			Assert.InRange(right.X, 272 * scale - 1, 272 * scale + 1);
 
-		// The page content still starts 32 on screen below the top (the caption buttons do not scale).
-		PageHost pages = window.GetVisualDescendants().OfType<PageHost>().Single();
-		Point top = pages.TranslatePoint(new Point(0, 0), window)!.Value;
-		Assert.InRange(top.Y, 31, 33);
+			// The page content still starts 32 on screen below the top (the caption buttons do not scale).
+			PageHost pages = window.GetVisualDescendants().OfType<PageHost>().Single();
+			Point top = pages.TranslatePoint(new Point(0, 0), window)!.Value;
+			Assert.InRange(top.Y, 31, 33);
+		}
 		window.Close();
 	}
 
@@ -88,6 +120,7 @@ public sealed class UiScaleTests
 
 	// The opened drop-down comes out at the same scale as its ComboBox: as wide, left edges equal, same text size on screen.
 	[AvaloniaTheory]
+	[InlineData(960, 640)]
 	[InlineData(1100, 700)]
 	[InlineData(1680, 1050)]
 	public void DropDown_MatchesItsComboBox_OnScreen(double width, double height)
@@ -120,6 +153,7 @@ public sealed class UiScaleTests
 
 	// A tooltip comes out at the window's content scale, starting near its control.
 	[AvaloniaTheory]
+	[InlineData(960, 640, 0.85)]
 	[InlineData(1100, 700, 1.0)]
 	[InlineData(1680, 1050, 1.5)]
 	public void ToolTip_IsDrawnAtTheContentScale(double width, double height, double scale)

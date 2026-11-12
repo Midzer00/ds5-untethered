@@ -46,7 +46,9 @@ public enum AppPage
 	Overview,
 	SupportedGames,
 	OtherGames,
-	Settings
+	// Settings on its General tab (power, running in the background) and on its Shortcuts tab.
+	SettingsGeneral,
+	SettingsShortcuts
 }
 
 // A button on a toast; Run is called on the UI thread, then the toast closes. The primary one is drawn in the accent.
@@ -122,7 +124,7 @@ public sealed partial class NotificationCenter
 		{
 			if (_settings.NotificationsEnabled)
 			{
-				Post(new AppNotification(NotificationType.Shortcut, NotificationKind.Info, title, body, AppPage.Settings, IsEdge: IsEdge), force: true);
+				Post(new AppNotification(NotificationType.Shortcut, NotificationKind.Info, title, body, AppPage.SettingsShortcuts, IsEdge: IsEdge), force: true);
 			}
 		};
 		service.Games.AskRequested += game =>
@@ -182,7 +184,7 @@ public sealed partial class NotificationCenter
 		AppNotification? n = notice.Kind switch
 		{
 			ServiceNoticeKind.PoweredOffIdle => new AppNotification(NotificationType.PoweredOffIdle, NotificationKind.Info,
-				Text.NotifyPoweredOffTitle(), Text.NotifyPoweredOffBody(), AppPage.Settings, IsEdge: IsEdge),
+				Text.NotifyPoweredOffTitle(), Text.NotifyPoweredOffBody(), AppPage.SettingsGeneral, IsEdge: IsEdge),
 			ServiceNoticeKind.BridgeError => new AppNotification(NotificationType.BridgeError, NotificationKind.Error,
 				Text.NotifyBridgeErrorTitle(), notice.Detail ?? Text.NotifyBridgeOther(), AppPage.Overview, IsEdge: IsEdge),
 			ServiceNoticeKind.HidHideMissing => HidHideOnce(),
@@ -273,7 +275,7 @@ public sealed partial class NotificationCenter
 	};
 
 	public static AppNotification TrayHint() =>
-		new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(), Text.NotifyTrayBody(), AppPage.Settings);
+		new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(), Text.NotifyTrayBody(), AppPage.SettingsGeneral);
 
 	private AppNotification? HidHideOnce()
 	{

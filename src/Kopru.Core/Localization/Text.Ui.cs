@@ -96,8 +96,8 @@ public static partial class Text
 	public static string StartWithWindowsHint(Language? l = null) => Pick(l, $"Oturum açınca pencere açmadan arka planda başlar.", $"Starts in the background when you sign in, without opening the window.");
 	public static string IdlePowerOff(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");
 	public static string IdlePowerOffHint(Language? l = null) => Pick(l,
-		$"Kumanda bu kadar dakika kullanılmazsa kapanır (0 = asla).",
-		$"Turns the controller off after this many idle minutes (0 = never).");
+		$"Bu kadar dakika boşta kalınca kapanır (0 = asla).",
+		$"Turns off after this many idle minutes (0 = never).");
 	public static string Minutes(double minutes, Language? l = null) => Pick(l, $"{minutes:F0} dk", $"{minutes:F0} min");
 	public static string Never(Language? l = null) => Pick(l, $"Asla", $"Never");
 	public static string General(Language? l = null) => Pick(l, $"Genel", $"General");
@@ -106,9 +106,9 @@ public static partial class Text
 	public static string AboutVersion(string version, Language? l = null) => Pick(l, $"Sürüm {version}", $"Version {version}");
 	public static string AboutTagline(Language? l = null) =>
 		Pick(l, $"DualSense haptikleri ve uyarlanabilir tetikleri, kablosuz.", $"DualSense haptics and adaptive triggers, wirelessly.");
-	public static string RunSetupWizard(Language? l = null) => Pick(l, $"Kurulum Sihirbazını Yeniden Çalıştır", $"Run Setup Wizard Again");
-	public static string TestBluetoothAdapter(Language? l = null) => Pick(l, $"Bluetooth Adaptörünü Test Et", $"Test Bluetooth Adapter");
-	public static string ExportDiagnostics(Language? l = null) => Pick(l, $"Tanılama Bilgisini Dışa Aktar", $"Export Diagnostics");
+	public static string RunSetupWizard(Language? l = null) => Pick(l, $"Kurulum Sihirbazı", $"Setup Wizard");
+	public static string TestBluetoothAdapter(Language? l = null) => Pick(l, $"Bluetooth Adaptör Testi", $"Bluetooth Adapter Test");
+	public static string ExportDiagnostics(Language? l = null) => Pick(l, $"Tanılama Raporu", $"Diagnostics Report");
 
 	// Redesigned UI: bridge state, stats, cards and setting rows
 	public static string BridgeStateStopped(Language? l = null) => Pick(l, $"Sanal Kumanda Kapalı", $"Virtual Controller Off");
@@ -134,14 +134,14 @@ public static partial class Text
 	public static string EffectVibrationHint(Language? l = null) => Pick(l, $"Basılıyken titreşir", $"Pulses while pressed");
 	public static string LanguageHint(Language? l = null) => Pick(l, $"Arayüzün dili.", $"The language of the interface.");
 	public static string RunSetupWizardHint(Language? l = null) => Pick(l,
-		$"Sürücüleri ve eşleştirmeyi baştan kontrol eder.",
-		$"Checks drivers and pairing from the start.");
+		$"Sürücüleri ve eşleşmeyi denetler.",
+		$"Checks drivers and pairing again.");
 	public static string TestBluetoothAdapterHint(Language? l = null) => Pick(l,
-		$"Adaptörün haptik için yeterli olup olmadığını ölçer.",
-		$"Measures whether the adapter keeps up with haptics.");
+		$"Haptik için yeterli mi, ölçer.",
+		$"Checks it keeps up with haptics.");
 	public static string ExportDiagnosticsHint(Language? l = null) => Pick(l,
-		$"Sorun bildirmek için bir rapor dosyası oluşturur.",
-		$"Creates a report file to attach to bug reports.");
+		$"Hata bildirimine eklenecek dosya.",
+		$"A file to attach to bug reports.");
 	public static string ActionRun(Language? l = null) => Pick(l, $"Çalıştır", $"Run");
 	public static string ActionTest(Language? l = null) => Pick(l, $"Test Et", $"Test");
 	public static string ActionExport(Language? l = null) => Pick(l, $"Dışa Aktar", $"Export");
@@ -377,23 +377,23 @@ public static partial class Text
 	public static string NotifyClose(Language? l = null) => Pick(l, $"Bildirimi Kapat", $"Dismiss");
 	public static string GroupNotifications(Language? l = null) => Pick(l, $"Bildirimler", $"Notifications");
 	public static string NotificationsShow(Language? l = null) => Pick(l, $"Bildirimleri Göster", $"Show Notifications");
-	public static string NotificationsShowHint(Language? l = null) => Pick(l, $"Ekranın sağ altında kısa bilgi kartları.", $"Small cards in the bottom-right corner of the screen.");
+	public static string NotificationsShowHint(Language? l = null) => Pick(l, $"Ekranın sağ altında kısa bilgi kartları.", $"Small cards in the bottom-right corner.");
 	public static string NotifyConnectionSetting(Language? l = null) => Pick(l, $"Bağlantı", $"Connection");
-	public static string NotifyConnectionHint(Language? l = null) => Pick(l, $"Kumanda bağlanınca ve bağlantısı kesilince.", $"When the controller connects or disconnects.");
+	public static string NotifyConnectionHint(Language? l = null) => Pick(l, $"Kumanda bağlanınca ve bağlantısı kesilince.", $"When a controller connects or drops.");
 	public static string NotifyBatterySetting(Language? l = null) => Pick(l, $"Pil", $"Battery");
-	public static string NotifyBatteryHint(Language? l = null) => Pick(l, $"%20 ve %10'da birer kez, şarj bitince.", $"Once at 20% and 10%, and when charging completes.");
+	public static string NotifyBatteryHint(Language? l = null) => Pick(l, $"%20 ve %10'da birer kez, şarj bitince.", $"At 20% and 10%, and when fully charged.");
 	public static string NotifyGameSetting(Language? l = null) => Pick(l, $"Oyun Algılama", $"Game Detection");
-	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Mod bir oyun için kendiliğinden açılınca.", $"When the mode turns on by itself for a game.");
+	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Mod bir oyun için kendiliğinden açılınca.", $"When the mode turns on by itself.");
 	public static string NotifySteamInputSetting(Language? l = null) => Pick(l, $"Steam Input Uyarısı", $"Steam Input Warning");
 	public static string NotifySteamInputHint(Language? l = null) => Pick(l, $"Oyun oturumu başına bir kez.", $"Once per game session.");
 	public static string NotifyPowerOffSetting(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");
-	public static string NotifyPowerOffHint(Language? l = null) => Pick(l, $"Kumanda kullanılmadığı için kapatılınca.", $"When the controller is turned off for being idle.");
+	public static string NotifyPowerOffHint(Language? l = null) => Pick(l, $"Kumanda kullanılmadığı için kapatılınca.", $"When it turns off for being idle.");
 	public static string NotifyErrorsSetting(Language? l = null) => Pick(l, $"Sanal Kumanda Hataları", $"Virtual Controller Errors");
 	public static string NotifyErrorsHint(Language? l = null) => Pick(l, $"Bir sorunla durunca, nedeniyle birlikte.", $"When it stops on a problem, with the reason.");
 	public static string NotifyHidHideSetting(Language? l = null) => Pick(l, $"HidHide Eksik", $"HidHide Missing");
 	public static string NotifyHidHideHint(Language? l = null) => Pick(l, $"Sanal kumanda HidHide kurulu olmadığı için başlayamazsa.", $"If the virtual controller can't start because HidHide isn't installed.");
 	public static string QuietWhilePlaying(Language? l = null) => Pick(l, $"Oyun Sırasında Bildirim Gösterme", $"Don't Notify While Playing");
-	public static string QuietWhilePlayingHint(Language? l = null) => Pick(l, $"Bir oyun bağlıyken ya da tam ekrandayken sessiz kalır.", $"Stays quiet while a game is connected or full screen.");
+	public static string QuietWhilePlayingHint(Language? l = null) => Pick(l, $"Oyunda ve tam ekranda sessiz kalır.", $"Silent in games and full screen apps.");
 	public static string KeepInTray(Language? l = null) => Pick(l, $"Kapatınca Arka Planda Çalış", $"Keep Running in Background");
 	public static string KeepInTrayHint(Language? l = null) => Pick(l, $"Simge, saat yanındaki gizli simgeler bölümünde durur.", $"The icon stays in the hidden icons area next to the clock.");
 	public static string TrayOpen(Language? l = null) => Pick(l, $"Aç", $"Open");

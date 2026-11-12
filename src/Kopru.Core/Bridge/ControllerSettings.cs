@@ -47,6 +47,9 @@ public sealed record ControllerSettings(
 	// A single short PS tap with no game in front brings the app's window up (PsTapRule; under ShortcutsEnabled).
 	public bool PsOpensApp { get; init; } = true;
 
+	// "Also In Games": with PsOpensApp on, the tap opens the app while a game is in front too (PsTapRule).
+	public bool PsOpensAppInGames { get; init; } = true;
+
 	// Experimental controller speaker (game audio to the controller; off by default).
 	public SpeakerSettings Speaker { get; init; } = SpeakerSettings.Off;
 	// Desktop mode: on (the controller drives Windows, games get a neutral pad) and its tuning.

@@ -1,83 +1,80 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" x:Class="Kopru.App.Views.DesktopModePanel" x:DataType="vm:DesktopModeViewModel">
-  <StackPanel>
-    <TextBlock Classes="section" Text="{Binding Title}" />
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.DesktopModePanel" x:DataType="vm:DesktopModeViewModel">
+  <!-- Mouse mode: the switch, auto-off and the speeds (the controls legend is its own card beside it) -->
+  <DockPanel Classes="card">
+    <!-- As tall as the mapping card's title row (its Reset To Default button), so the two cards start level -->
+    <Grid DockPanel.Dock="Top" MinHeight="26" Margin="0,0,0,8">
+      <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Center" />
+    </Grid>
     <Border Classes="panel" Padding="20,0" Name="DesktopModeGroup">
       <StackPanel>
-        <!-- The switch -->
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Hint}">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding SwitchLabel}" />
-            <TextBlock Classes="body" Text="{Binding Hint}" TextWrapping="Wrap" />
+            <TextBlock Classes="body" Text="{Binding Short, Converter={x:Static v:KeepLastWords.Instance}}" />
           </StackPanel>
           <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.DesktopModeOn}" OnContent="{x:Null}" OffContent="{x:Null}"
-                        AutomationProperties.Name="{Binding SwitchLabel}" />
+                        AutomationProperties.Name="{Binding SwitchLabel}" AutomationProperties.HelpText="{Binding Hint}" />
         </Grid>
         <Border Classes="divider" />
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding AutoOffHint}">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding AutoOffLabel}" />
-            <TextBlock Classes="body" Text="{Binding AutoOffHint}" TextWrapping="Wrap" />
+            <TextBlock Classes="body" Text="{Binding AutoOffShort, Converter={x:Static v:KeepLastWords.Instance}}" />
           </StackPanel>
           <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoOffInGame}" OnContent="{x:Null}" OffContent="{x:Null}"
-                        AutomationProperties.Name="{Binding AutoOffLabel}" />
+                        AutomationProperties.Name="{Binding AutoOffLabel}" AutomationProperties.HelpText="{Binding AutoOffHint}" />
         </Grid>
         <Border Classes="divider" />
-        <!-- Speeds: one row each, slider and value on the shared right edge -->
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <!-- Which stick moves the pointer (the other scrolls): a two-step choice beside the name (under it in a narrow column) -->
+        <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding PointerStickHint}">
+          <StackPanel Classes="text">
+            <TextBlock Classes="label" Text="{Binding PointerStickLabel}" />
+          </StackPanel>
+          <ListBox Theme="{StaticResource Segmented}" Name="PointerStickChoice" ItemsSource="{Binding PointerSticks}" SelectedIndex="{Binding PointerStickIndex}"
+                   Classes="control wide" AutomationProperties.Name="{Binding PointerStickLabel}" AutomationProperties.HelpText="{Binding PointerStickHint}" />
+        </Grid>
+        <Border Classes="divider" />
+        <!-- Speeds: one row each, slider and value on the shared right edge (under the name in a narrow column) -->
+        <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding PointerSpeedLabel}" />
           </StackPanel>
-          <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+          <Grid Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
             <Slider Minimum="0.2" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding PointerSpeed}" AutomationProperties.Name="{Binding PointerSpeedLabel}" />
             <TextBlock Grid.Column="1" Classes="value" Text="{Binding PointerSpeedText}" />
           </Grid>
         </Grid>
         <Border Classes="divider" />
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding PointerAccelerationLabel}" />
           </StackPanel>
-          <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+          <Grid Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
             <Slider Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding PointerAcceleration}" AutomationProperties.Name="{Binding PointerAccelerationLabel}" />
             <TextBlock Grid.Column="1" Classes="value" Text="{Binding PointerAccelerationText}" />
           </Grid>
         </Grid>
         <Border Classes="divider" />
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding TouchpadSpeedLabel}" />
           </StackPanel>
-          <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+          <Grid Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
             <Slider Minimum="0.2" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding TouchpadSpeed}" AutomationProperties.Name="{Binding TouchpadSpeedLabel}" />
             <TextBlock Grid.Column="1" Classes="value" Text="{Binding TouchpadSpeedText}" />
           </Grid>
         </Grid>
         <Border Classes="divider" />
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <StackPanel>
+        <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding ScrollSpeedLabel}" />
           </StackPanel>
-          <Grid Grid.Column="1" Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
+          <Grid Classes="sliderValue control wide" ColumnDefinitions="*,Auto">
             <Slider Minimum="0.2" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding ScrollSpeed}" AutomationProperties.Name="{Binding ScrollSpeedLabel}" />
             <TextBlock Grid.Column="1" Classes="value" Text="{Binding ScrollSpeedText}" />
           </Grid>
         </Grid>
-        <Border Classes="divider" />
-        <!-- Controls legend -->
-        <TextBlock Classes="label" Text="{Binding MappingTitle}" Margin="0,16,0,4" />
-        <ItemsControl ItemsSource="{Binding Mapping}" Margin="0,4,0,12">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ShortcutLegendItem">
-              <Grid ColumnDefinitions="240,*" Margin="0,5">
-                <Border Classes="chip" HorizontalAlignment="Left" Height="28" Padding="12,0">
-                  <TextBlock Text="{Binding Keys}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="NoWrap" />
-                </Border>
-                <TextBlock Grid.Column="1" Classes="body" Text="{Binding Does}" VerticalAlignment="Center" TextWrapping="Wrap" />
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
       </StackPanel>
     </Border>
-  </StackPanel>
+  </DockPanel>
 </UserControl>

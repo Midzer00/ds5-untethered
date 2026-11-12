@@ -69,14 +69,12 @@ public class ProfilesAppTests
 		state.Gyro = state.Gyro with { Mode = GyroMode.Always, SensitivityX = 2 };
 		state.LightMode = Kopru.Core.Lighting.LightMode.Rainbow;
 		state.PlayerLedPattern = Kopru.Core.Lighting.PlayerLedPattern.Three;
-		state.MuteLed = Kopru.Core.Lighting.MuteLedMode.On;
 
 		state.ActivateProfile(ProfileBook.DefaultId);
 		Assert.True(state.Remap.IsIdentity);
 		Assert.True(state.Gyro.IsOff);
 		Assert.Equal(Kopru.Core.Lighting.LightMode.Static, state.LightMode);
 		Assert.Equal(Kopru.Core.Lighting.PlayerLedPattern.One, state.PlayerLedPattern);
-		Assert.Equal(Kopru.Core.Lighting.MuteLedMode.Off, state.MuteLed);
 
 		state.ActivateProfile(racing.Id);
 		Assert.Equal(DsButton.Circle, state.Remap.TargetOf(DsButton.Cross));
@@ -303,21 +301,22 @@ public class ProfilesAppTests
 				book.AssignGame("Returnal", racing.Id);
 				book.AssignGame(GameKey(fake), racing.Id);
 				vm.Settings.ActivateProfile(racing.Id);
-				vm.Navigate(AppPage.Settings);
-				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 760 };
+				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 				window.Show();
-				foreach ((string group, string name) in new[] { ("ProfilesGroup", "profiles"), ("ShortcutsGroup", "settings-shortcuts") })
+				foreach ((int tab, string group, string? name) in new[] { (SettingsViewModel.ControllersTab, "ProfilesGroup", "profiles"),
+					(SettingsViewModel.ShortcutsTab, "ShortcutsGroup", (string?)null) })
 				{
+					vm.OpenSettingsAt(tab);
 					Dispatcher.UIThread.RunJobs();
 					AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 					Border panel = window.GetVisualDescendantsOfType<Border>().First(b => b.Name == group);
-					panel.BringIntoView();
+					Assert.True(panel.IsEffectivelyVisible);
 					Thread.Sleep(320);
 					Dispatcher.UIThread.RunJobs();
 					AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 					using var frame = window.CaptureRenderedFrame();
 					Assert.NotNull(frame);
-					if (writeFiles)
+					if (writeFiles && name != null)
 					{
 						frame!.Save(Path.Combine(outDir, $"{name}-{code}.png"));
 					}

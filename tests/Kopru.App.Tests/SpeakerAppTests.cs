@@ -104,6 +104,7 @@ public class SpeakerAppTests
 				var fake = new FakeControllerService(animate: false);
 				var state = new SettingsState(fake);
 				var vm = new SettingsViewModel(fake, state);
+				vm.SelectedTab = SettingsViewModel.AudioTab;
 				var window = new Window { Content = new SettingsView { DataContext = vm }, Width = 1100, Height = 900 };
 				window.Show();
 				Settle();
@@ -112,10 +113,11 @@ public class SpeakerAppTests
 				List<TextBlock> texts = view.GetLogicalDescendants().OfType<TextBlock>().ToList();
 				Assert.Contains(texts, t => t.Text == Text.GroupControllerSpeaker(language));
 				Assert.Contains(texts, t => t.Text == Text.SpeakerSendGameAudio(language));
-				Assert.Contains(texts, t => t.Text == Text.SpeakerSendGameAudioHint(language));
+				Assert.Contains(texts, t => t.Text == KeepLastWords.Apply(Text.SpeakerSendShort(language)));
+				Assert.Contains(view.GetLogicalDescendants().OfType<Grid>(), g => Equals(ToolTip.GetTip(g), Text.SpeakerSendGameAudioHint(language)));
 				Assert.Contains(texts, t => t.Text == Text.SpeakerVolume(language));
 				Assert.Contains(texts, t => t.Text == Text.HeadphoneVolume(language));
-				TextBlock plugged = texts.Single(t => t.Text == Text.HeadphonesPlugged(language));
+				TextBlock plugged = texts.Single(t => t.Text == KeepLastWords.Apply(Text.HeadphonesPlugged(language)));
 				Assert.False(plugged.IsVisible);
 
 				fake.HeadphonesPlugged = true;
@@ -125,7 +127,7 @@ public class SpeakerAppTests
 				Assert.True(plugged.IsVisible);
 
 				Border panel = view.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "SpeakerPanel");
-				ToggleSwitch toggle = panel.GetLogicalDescendants().OfType<ToggleSwitch>().Single();
+				ToggleSwitch toggle = panel.GetLogicalDescendants().OfType<ToggleSwitch>().Single(t => Avalonia.Automation.AutomationProperties.GetName(t) == Text.SpeakerSendGameAudio(language));
 				Assert.False(toggle.IsChecked);
 				Assert.All(panel.GetLogicalDescendants().OfType<Slider>(), s => Assert.False(s.IsEffectivelyEnabled));
 				toggle.IsChecked = true;

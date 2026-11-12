@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
+             xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.ControllerInfoCard" x:DataType="vm:ControllerInfoViewModel">
+  <UserControl.Styles>
+    <!-- Eight details in four columns; two when the card shares the width with a second column (and in a narrow one, where the buttons go under the hint) -->
+    <Style Selector="UniformGrid.infoGrid">
+      <Setter Property="Columns" Value="4" />
+    </Style>
+    <Style Selector="UniformGrid.infoGrid > StackPanel">
+      <Setter Property="Spacing" Value="2" />
+      <Setter Property="Margin" Value="0,0,10,10" />
+    </Style>
+    <Style Selector="c|SettingsLayout.twoColumns UniformGrid.infoGrid, c|SettingsLayout.narrow UniformGrid.infoGrid">
+      <Setter Property="Columns" Value="2" />
+    </Style>
+    <Style Selector="Grid.infoHeader > WrapPanel.actions">
+      <Setter Property="Grid.Column" Value="1" />
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.infoHeader > WrapPanel.actions">
+      <Setter Property="Grid.Column" Value="0" />
+      <Setter Property="Grid.Row" Value="1" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+  </UserControl.Styles>
+  <!-- Controller info (Settings, Controllers tab): what the controller reports about itself; copy (address masked) and reconnect -->
+  <DockPanel Classes="card">
+    <TextBlock Classes="section" Text="{Binding Title}" />
+    <Border Classes="panel">
+      <StackPanel Spacing="12">
+        <Grid Classes="infoHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource GapLarge}">
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Classes="caption" Text="{Binding Hint, Converter={x:Static v:KeepLastWords.Instance}}" ToolTip.Tip="{Binding HintTip}" IsVisible="{Binding HasDetails}" />
+            <TextBlock Classes="caption" Text="{Binding NotConnectedText, Converter={x:Static v:KeepLastWords.Instance}}" IsVisible="{Binding HasNoDetails}" />
+          </StackPanel>
+          <WrapPanel Classes="actions" ItemSpacing="8" LineSpacing="8" VerticalAlignment="Center">
+            <TextBlock Classes="caption" Text="{Binding CopyFeedback}" VerticalAlignment="Center" IsVisible="{Binding CopyFeedback, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <Button Theme="{StaticResource QuietButton}" Content="{Binding CopyText}" Command="{Binding CopyCommand}" IsEnabled="{Binding HasDetails}" />
+            <Button Theme="{StaticResource QuietButton}" Content="{Binding ReconnectText}" Command="{Binding ReconnectCommand}" ToolTip.Tip="{Binding ReconnectHint}"
+                    AutomationProperties.HelpText="{Binding ReconnectHint}" />
+          </WrapPanel>
+        </Grid>
+        <UniformGrid Classes="infoGrid" Margin="0,0,0,-10" IsVisible="{Binding HasDetails}">
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding ModelLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding Model}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding ConnectionLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding Connection}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding FirmwareLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding Firmware}" ToolTip.Tip="{Binding FirmwareRaw}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding HardwareLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding Hardware}" TextWrapping="NoWrap" FontFamily="Consolas,Menlo,monospace" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding BuildDateLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding BuildDate}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding AddressLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding Address}" TextWrapping="NoWrap" FontFamily="Consolas,Menlo,monospace" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding ConnectedForLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding ConnectedFor}" TextWrapping="NoWrap" />
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Classes="caption" Text="{Binding BatteryLabel}" TextWrapping="NoWrap" />
+            <TextBlock Classes="label" Text="{Binding Battery}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </UniformGrid>
+      </StackPanel>
+    </Border>
+  </DockPanel>
+</UserControl>

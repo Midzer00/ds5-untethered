@@ -19,8 +19,6 @@ public static partial class Text
 		$"Sanal kumanda kapalı olduğu için gerçek kumanda yalnızca okunuyor; ona hiçbir şey gönderilmiyor.",
 		$"The virtual controller is off, so the controller is only read; nothing is sent to it.");
 
-	public static string TesterButtons(Language? l = null) => Pick(l, $"Tuşlar", $"Buttons");
-
 	public static string TesterLeftStick(Language? l = null) => Pick(l, $"Sol Analog", $"Left Stick");
 
 	public static string TesterRightStick(Language? l = null) => Pick(l, $"Sağ Analog", $"Right Stick");
@@ -28,10 +26,6 @@ public static partial class Text
 	public static string TesterStickHint(Language? l = null) => Pick(l,
 		$"Gri nokta ham konum, mavi nokta ayarlarınla oyuna giden konum.",
 		$"The grey dot is the raw position, the blue dot what games receive with your settings.");
-
-	public static string TesterTouchpad(Language? l = null) => Pick(l, $"Dokunmatik Yüzey", $"Touchpad");
-
-	public static string TesterFinger(int n, Language? l = null) => Pick(l, $"Parmak {n}", $"Finger {n}");
 
 	public static string TesterNoTouch(Language? l = null) => Pick(l, $"Dokunma Yok", $"No Touch");
 
@@ -69,13 +63,10 @@ public static partial class Text
 
 	public static string TesterLightColour(Language? l = null) => Pick(l, $"Işık Rengi", $"Light Colour");
 
-	public static string TesterTuneHint(Language? l = null) => Pick(l,
-		$"Gördüğünü burada düzelt: değişiklikler hemen uygulanır. Mavi nokta ve tetik çubuğu oyuna gideni gösterir.",
-		$"Fix what you see right here: changes apply at once. The blue dot and the trigger bar show what games receive.");
-
+	// Two lines on purpose (the card is narrow; a free wrap leaves one word alone on the second line).
 	public static string TesterCalibrationHint(Language? l = null) => Pick(l,
-		$"Kumandayı bırak ve çubuklara 3 saniye dokunma.",
-		$"Put the controller down and don't touch the sticks for 3 seconds.");
+		$"Kumandayı bırak,\nçubuklara 3 saniye dokunma.",
+		$"Put the controller down and\nleave the sticks for 3 seconds.");
 
 	public static string TesterSquare(Language? l = null) => Pick(l, $"Kare", $"Square");
 

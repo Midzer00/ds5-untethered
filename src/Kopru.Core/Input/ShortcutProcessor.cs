@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Globalization;
+
 namespace Kopru.Core.Input;
 
 // What a controller shortcut asks for.
@@ -14,7 +16,9 @@ public enum ShortcutAction
 	// The controller's mic button (BridgeHostMic, not a PS combo); the app decides what it does (Audio.MicButtonRules).
 	MicButton,
 	// A single short PS tap with no game in front (TapRoute): bring the app's window to the front.
-	OpenApp
+	OpenApp,
+	// A single short PS tap while the app's window is the foreground window: hide it (like closing it).
+	HideApp
 }
 
 // Where a single short PS tap (no combo) goes.
@@ -24,19 +28,28 @@ public enum PsTapRoute
 	Game,
 	// Not passed on; OpenApp is raised.
 	OpenApp,
-	// Not passed on and nothing happens (the app's window is already in front).
-	Nothing
+	// Not passed on; HideApp is raised (the app's window is the foreground window).
+	HideApp
 }
+
+// Where a tap goes and why (the reason is logged: "setting off", "game in front: <exe>", "app in front", ...).
+public readonly record struct PsTapDecision(PsTapRoute Route, string Reason);
 
 public static class PsTapRule
 {
-	// "PS: Open The App" on: the app's window already in front swallows the tap; a game (or anything full-screen) in front
-	// gets it as before; otherwise the tap opens the app. Off: always the game.
-	public static PsTapRoute Decide(bool opensApp, bool appInFront, bool gameInFront) =>
-		!opensApp ? PsTapRoute.Game
-		: appInFront ? PsTapRoute.Nothing
-		: gameInFront ? PsTapRoute.Game
-		: PsTapRoute.OpenApp;
+	// "PS: Open The App" off: always the game. On, with "Also In Games" (inGames) off: a game (or anything full-screen) in
+	// front gets the tap as before, and the app is neither shown nor hidden; the app's own window in front is hidden again;
+	// otherwise the tap opens the app. With "Also In Games" on: the app's window in front is hidden (checked first: the game
+	// in front is only refreshed about once a second), and a game in front no longer keeps the app from opening.
+	// gameInFront: the game's (or full-screen program's) exe, null when none.
+	public static PsTapDecision Decide(bool opensApp, bool appInFront, string? gameInFront, bool inGames = false) =>
+		!opensApp ? new(PsTapRoute.Game, "setting off")
+		: inGames && appInFront ? new(PsTapRoute.HideApp, "app in front")
+		: gameInFront != null ? (inGames
+			? new(PsTapRoute.OpenApp, "game in front, opens anyway: " + gameInFront)
+			: new(PsTapRoute.Game, "game in front: " + gameInFront))
+		: appInFront ? new(PsTapRoute.HideApp, "app in front")
+		: new(PsTapRoute.OpenApp, "no game in front");
 }
 
 // Controller shortcuts with the PS button held as a modifier: PS + D-pad left/right = previous/next profile, PS + D-pad
@@ -89,7 +102,13 @@ public sealed class ShortcutProcessor
 	public event Action<ShortcutAction>? Triggered;
 
 	// Asked on the input thread when a single short PS tap ends (keep it cheap); null or a throw: the game gets the tap.
-	public Func<PsTapRoute>? TapRoute { get; set; }
+	public Func<PsTapDecision>? TapRoute { get; set; }
+
+	// One line per PS press: its length, where it went and why (input thread; tests replace it).
+	public Action<string> Log { get; set; } = Diagnostics.AppLog.Write;
+
+	private bool psDownWhileOff;
+	private long psDownWhileOffSince;
 
 	// Forgets a combo in progress (a new connection).
 	public void Reset()
@@ -108,16 +127,27 @@ public sealed class ShortcutProcessor
 		{
 			return;
 		}
+		long now = time.GetTimestamp();
+		bool ps = (body[Buttons2] & PsBit) != 0;
 		if (!enabled)
 		{
 			if (psHeld || tapPending || hatMasked || squareMasked || triangleMasked || optionsMasked)
 			{
 				Reset();
 			}
+			if (ps && !psDownWhileOff)
+			{
+				psDownWhileOff = true;
+				psDownWhileOffSince = now;
+			}
+			else if (!ps && psDownWhileOff)
+			{
+				psDownWhileOff = false;
+				LogTap(now - psDownWhileOffSince, "Game", "shortcuts off");
+			}
 			return;
 		}
-		long now = time.GetTimestamp();
-		bool ps = (body[Buttons2] & PsBit) != 0;
+		psDownWhileOff = false;
 		int hat = body[Buttons0] & HatMask;
 		bool square = (body[Buttons0] & SquareBit) != 0;
 		bool triangle = (body[Buttons0] & TriangleBit) != 0;
@@ -166,17 +196,28 @@ public sealed class ShortcutProcessor
 			{
 				psHeld = false;
 				triangleTiming = false;
-				if (!comboUsed)
+				if (comboUsed)
 				{
-					PsTapRoute route = time.GetElapsedTime(psSince, now) <= OpenAppMaxHold ? RouteTap() : PsTapRoute.Game;
-					if (route == PsTapRoute.Game)
+					LogTap(now - psSince, "combo", "modifier used");
+				}
+				else
+				{
+					PsTapDecision decision = time.GetElapsedTime(psSince, now) <= OpenAppMaxHold
+						? RouteTap()
+						: new(PsTapRoute.Game, $"held too long (over {OpenAppMaxHold.TotalMilliseconds:F0} ms)");
+					LogTap(now - psSince, decision.Route.ToString(), decision.Reason);
+					if (decision.Route == PsTapRoute.Game)
 					{
 						tapPending = true;
 						tapUntil = now + (long)(TapLength.TotalSeconds * time.TimestampFrequency);
 					}
-					else if (route == PsTapRoute.OpenApp)
+					else if (decision.Route == PsTapRoute.OpenApp)
 					{
 						Triggered?.Invoke(ShortcutAction.OpenApp);
+					}
+					else if (decision.Route == PsTapRoute.HideApp)
+					{
+						Triggered?.Invoke(ShortcutAction.HideApp);
 					}
 				}
 			}
@@ -240,15 +281,33 @@ public sealed class ShortcutProcessor
 		}
 	}
 
-	private PsTapRoute RouteTap()
+	private PsTapDecision RouteTap()
 	{
+		Func<PsTapDecision>? route = TapRoute;
+		if (route == null)
+		{
+			return new(PsTapRoute.Game, "no route");
+		}
 		try
 		{
-			return TapRoute?.Invoke() ?? PsTapRoute.Game;
+			return route();
+		}
+		catch (Exception e)
+		{
+			return new(PsTapRoute.Game, "route failed: " + e.GetType().Name);
+		}
+	}
+
+	private void LogTap(long ticks, string route, string reason)
+	{
+		double ms = ticks * 1000.0 / time.TimestampFrequency;
+		try
+		{
+			Log(string.Create(CultureInfo.InvariantCulture, $"ps tap: {ms:F0} ms -> {route} ({reason})"));
 		}
 		catch (Exception)
 		{
-			return PsTapRoute.Game;
+			// Logging never breaks input.
 		}
 	}
 

@@ -94,7 +94,7 @@ public sealed class LightSwatch(uint rgb)
 }
 
 // The controller page's Test tab: live input from the real controller (buttons, sticks, triggers, touchpad, motion,
-// battery, report rate) and output tests (vibration, trigger effects and strength, light). Input arrives on any thread (ILiveInputSource) and is applied at most
+// battery, report rate); also the Output Tests tab (vibration, trigger effects and strength, light). Input arrives on any thread (ILiveInputSource) and is applied at most
 // UpdateInterval apart. The controller is only held while the tab is shown (SetVisible). Beside the live sticks and
 // triggers the user fixes what they see: deadzones, curve, trigger range and drift calibration are the page's own
 // editors (Tuning), the only place these settings are shown.
@@ -119,7 +119,6 @@ public sealed partial class TesterViewModel : ViewModelBase
 		_live = live;
 		Settings = settings;
 		Tuning = tuning ?? new SticksViewModel(service, settings, livePreview: false);
-		Info = new ControllerInfoViewModel(service);
 		_transform = new InputTransform(settings.Tuning);
 		settings.PropertyChanged += (_, e) =>
 		{
@@ -175,12 +174,9 @@ public sealed partial class TesterViewModel : ViewModelBase
 	public SticksViewModel Tuning { get; }
 	// The trigger effects to feel and the trigger strength, in the output tests.
 	public TriggersViewModel Triggers => Tuning.Triggers;
-	// The "Controller Info" card.
-	public ControllerInfoViewModel Info { get; }
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 
 	public IReadOnlyList<ButtonChip> Buttons { get; }
-	public IEnumerable<ButtonChip> VisibleButtons => Buttons.Where(b => IsEdge || !b.IsEdgeOnly);
 	public StickReadout LeftStick { get; }
 	public StickReadout RightStick { get; }
 	public TriggerReadout L2 { get; }
@@ -194,11 +190,8 @@ public sealed partial class TesterViewModel : ViewModelBase
 	public IReadOnlyList<LightSwatch> Swatches { get; }
 
 	// Labels.
-	public string ButtonsLabel => Text.TesterButtons();
 	public string StickHint => Text.TesterStickHint();
-	public string TuneHint => Text.TesterTuneHint();
 	public string CalibrationHint => Text.TesterCalibrationHint();
-	public string TouchpadLabel => Text.TesterTouchpad();
 	public string MotionLabel => Text.TesterMotion();
 	public string GyroLabel => Text.TesterGyro();
 	public string AccelLabel => Text.TesterAccel();
@@ -212,8 +205,6 @@ public sealed partial class TesterViewModel : ViewModelBase
 	public string LeftText => Text.TesterLeft();
 	public string RightText => Text.TesterRight();
 	public string LightLabel => Text.TesterLightColour();
-	public string Finger1Label => Text.TesterFinger(1);
-	public string Finger2Label => Text.TesterFinger(2);
 	public string NoInputHint => Text.TesterNoInputHint();
 	public string MotionNeedsFull => Text.TesterMotionNeedsFull();
 

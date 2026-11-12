@@ -11,12 +11,13 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.Tests;
 
-// Every page at the smallest window (1100x700) and a large one (1680x1050), in Turkish and English, with the bridge running
-// and a game connected (so the live parts are filled). Writes {page}-{small|large}-{tr|en}.png to KOPRU_PAGE_RENDER_DIR when
+// Every page at the window's minimum (960x640, drawn at 0.85 so the layout still gets 1100x700), the design size (1100x700),
+// and larger ones (1400x800, 1680x1050, 2560x1440), in Turkish and English, with the bridge running
+// and a game connected (so the live parts are filled). Writes {page}-{min|small|medium|large|xl}-{tr|en}.png to KOPRU_PAGE_RENDER_DIR when
 // it is set (the design pass compares these before/after); otherwise only checks that every page renders.
 public sealed class PageSizeRenderTests
 {
-	public static readonly (double Width, double Height, string Name)[] Sizes = [(1100, 700, "small"), (1400, 800, "medium"), (1680, 1050, "large"), (2560, 1440, "xl")];
+	public static readonly (double Width, double Height, string Name)[] Sizes = [(960, 640, "min"), (1100, 700, "small"), (1400, 800, "medium"), (1680, 1050, "large"), (2560, 1440, "xl")];
 
 	[AvaloniaFact]
 	public void RenderPages_AtBothSizes()

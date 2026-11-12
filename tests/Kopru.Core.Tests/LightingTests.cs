@@ -96,22 +96,24 @@ public class LightingTests
 	{
 		byte[] block = new byte[OutputBlock.Size];
 		block[OutputBlock.RightTrigger] = 0x21;
-		new LedFrame(new Rgb(1, 2, 3), 0x15, level, true).WriteTo(block);
+		block[OutputBlock.MuteLed] = 0x7E;
+		new LedFrame(new Rgb(1, 2, 3), 0x15, level).WriteTo(block);
 		Assert.Equal(1, block[44]);
 		Assert.Equal(2, block[45]);
 		Assert.Equal(3, block[46]);
 		Assert.Equal(0x15, block[43]);
 		Assert.Equal(expected, block[42]);
-		Assert.Equal(1, block[8]);
-		Assert.Equal(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl, block[OutputBlock.Flag1]);
+		// The mute LED is not part of the light (BridgeHost.SyncMuteLed): byte and valid bit untouched.
+		Assert.Equal(0x7E, block[OutputBlock.MuteLed]);
+		Assert.Equal(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl, block[OutputBlock.Flag1]);
 		Assert.Equal(OutputBlock.LedBrightnessControl, block[OutputBlock.Flag2]);
 		// No rumble, haptics-select or trigger bits; trigger bytes left alone.
 		Assert.Equal(0, block[OutputBlock.Flag0]);
 		Assert.Equal(0, block[OutputBlock.MotorLeft]);
 		Assert.Equal(0, block[OutputBlock.MotorRight]);
 		Assert.Equal(0x21, block[OutputBlock.RightTrigger]);
-		new LedFrame(new Rgb(1, 2, 3), 0, level, false).WriteTo(block);
-		Assert.Equal(0, block[8]);
+		new LedFrame(new Rgb(1, 2, 3), 0, level).WriteTo(block);
+		Assert.Equal(0, block[OutputBlock.PlayerLeds]);
 	}
 
 	[Fact]
@@ -121,7 +123,7 @@ public class LightingTests
 		LightSettings.FromRgb(0xFF8000, 0.5).WriteTo(block);
 		Assert.Equal(LightSettings.PlayerOneLed, block[OutputBlock.PlayerLeds]);
 		Assert.Equal(OutputBlock.LedBrightnessHigh, block[OutputBlock.LedBrightness]);
-		Assert.Equal(OutputBlock.MuteLedOff, block[OutputBlock.MuteLed]);
+		Assert.Equal(0, block[OutputBlock.Flag1] & OutputBlock.MuteLedControl);
 	}
 
 	private sealed class Recorder
@@ -234,7 +236,7 @@ public class LightingTests
 		int before = link.Writes.Count;
 		ManualTime time = new();
 		using LightSender sender = new(session.UpdateOutput,
-			() => Light(new LightOptions(LightMode.Static, PlayerPattern: PlayerLedPattern.All, PlayerBrightness: LedBrightness.Low, MuteLed: MuteLedMode.On), 0x102030),
+			() => Light(new LightOptions(LightMode.Static, PlayerPattern: PlayerLedPattern.All, PlayerBrightness: LedBrightness.Low), 0x102030),
 			() => null, () => false, time);
 		Assert.True(sender.Tick());
 		Assert.Equal(before + 1, link.Writes.Count);
@@ -248,6 +250,6 @@ public class LightingTests
 		Assert.Equal(new byte[] { 0x10, 0x20, 0x30 }, block.AsSpan(OutputBlock.Red, 3).ToArray());
 		Assert.Equal(0x1F, block[OutputBlock.PlayerLeds]);
 		Assert.Equal(OutputBlock.LedBrightnessLow, block[OutputBlock.LedBrightness]);
-		Assert.Equal(OutputBlock.MuteLedOn, block[OutputBlock.MuteLed]);
+		Assert.Equal(0, block[OutputBlock.Flag1] & OutputBlock.MuteLedControl);
 	}
 }

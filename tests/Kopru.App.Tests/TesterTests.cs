@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
 using Kopru.App.Views;
@@ -188,7 +189,8 @@ public class TesterTests
 	}
 
 	// Renders every tab of the controller page to docs/screens/controller-{tab}-{tr,en}.png, the Test tab with a sample
-	// snapshot, also at full height (only with KOPRU_RENDER_SCREENS=1).
+	// snapshot, also at full height and at more window sizes (controller-test-{w}x{h}-...: the window's minimum, a 1080p
+	// and an ultra-wide screen), only with KOPRU_RENDER_SCREENS=1.
 	[AvaloniaFact]
 	public void RenderControllerScreens()
 	{
@@ -204,13 +206,22 @@ public class TesterTests
 				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 				window.Show();
 
+				void ShowSample()
+				{
+					service.LiveHandler!(Sample);
+					vm.Tester.Tick();
+				}
+
 				void Capture(string name)
 				{
-					Dispatcher.UIThread.RunJobs();
-					AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+					ControllerTestFitTests.Settle(window);
 					Thread.Sleep(320);
-					Dispatcher.UIThread.RunJobs();
-					AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+					// The sample again right before the frame (the live view marks input older than a second as gone).
+					if (vm.Tester.IsVisible)
+					{
+						ShowSample();
+					}
+					ControllerTestFitTests.Settle(window);
 					using var frame = window.CaptureRenderedFrame();
 					Assert.NotNull(frame);
 					if (writeFiles)
@@ -219,16 +230,27 @@ public class TesterTests
 					}
 				}
 
+
 				vm.OpenController(ControllerPageViewModel.TestTab);
-				foreach ((double height, string suffix) in new[] { (700.0, ""), (1460.0, "-full") })
+				ShowSample();
+				Capture("controller-test");
+				// The whole page: the window grown to the page's height (the same as above while the tab fits).
+				var scroll = window.GetVisualDescendants().OfType<Avalonia.Controls.ScrollViewer>().First(s => s.IsEffectivelyVisible && s.Classes.Contains("page"));
+				window.Height = 700 + Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+				ShowSample();
+				Capture("controller-test-full");
+				foreach ((double width, double height) in new[] { (960.0, 640.0), (1920.0, 1080.0), (2560.0, 1080.0) })
 				{
+					window.Width = width;
 					window.Height = height;
-					service.LiveHandler!(Sample);
-					vm.Tester.Tick();
-					Capture($"controller-test{suffix}");
+					ShowSample();
+					Capture($"controller-test-{width}x{height}");
 				}
+				window.Width = 1100;
 				window.Height = 700;
 
+				vm.Controller.SelectedTab = ControllerPageViewModel.OutputsTab;
+				Capture("controller-outputs");
 				vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
 				Capture("controller-remap");
 				window.Close();

@@ -15,7 +15,8 @@ public sealed record CatalogGame(
 	string? Notes = null);
 
 // The list of games with native DualSense support, embedded as supported-games.json. Exe names match
-// case-insensitively, by file name only ("C:\Games\Foo.EXE" matches "foo.exe").
+// case-insensitively, by file name only ("C:\Games\Foo.EXE" matches "foo.exe"), and an Unreal Engine pair matches
+// either way ("Foo.exe" matches "Foo-Win64-Shipping.exe"). A game without exe names can be found by its name (FindByName).
 public sealed class GameCatalog
 {
 	public const string ResourceName = "Kopru.Core.Games.supported-games.json";
@@ -24,6 +25,13 @@ public sealed class GameCatalog
 
 	private readonly Dictionary<string, CatalogGame> byExe = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Dictionary<long, CatalogGame> bySteamAppId = [];
+	private readonly Dictionary<string, CatalogGame> byName = new(StringComparer.Ordinal);
+
+	// The shortest normalised name FindByName accepts: shorter names ("Luto", "F1 22") are too easy to hit by chance.
+	public const int MinNameLength = 6;
+
+	// The Unreal Engine game binary next to its small launcher ("Foo.exe" starts "Foo\Binaries\Win64\Foo-Win64-Shipping.exe").
+	public const string ShippingSuffix = "-Win64-Shipping.exe";
 
 	public GameCatalog(IEnumerable<CatalogGame> games)
 	{
@@ -34,13 +42,20 @@ public sealed class GameCatalog
 			{
 				bySteamAppId.TryAdd(appId, game);
 			}
+			bool hasExe = false;
 			foreach (string exe in game.Exe ?? [])
 			{
 				string key = Normalize(exe);
 				if (key.Length > 0)
 				{
+					hasExe = true;
 					byExe.TryAdd(key, game);
 				}
+			}
+			string name = NormalizeName(game.Name);
+			if (!hasExe && name.Length >= MinNameLength)
+			{
+				byName.TryAdd(name, game);
 			}
 		}
 	}
@@ -56,7 +71,57 @@ public sealed class GameCatalog
 
 	public string? Updated { get; private init; }
 
-	public CatalogGame? Find(string? exe) => exe != null && byExe.TryGetValue(Normalize(exe), out CatalogGame? game) ? game : null;
+	public CatalogGame? Find(string? exe)
+	{
+		string key = Normalize(exe);
+		if (key.Length == 0)
+		{
+			return null;
+		}
+		if (byExe.TryGetValue(key, out CatalogGame? game))
+		{
+			return game;
+		}
+		return ShippingPair(key) is string pair && byExe.TryGetValue(pair, out game) ? game : null;
+	}
+
+	// Whether some game can be found by name (one without exe names).
+	public bool HasNamedGames => byName.Count > 0;
+
+	// The game without exe names whose whole normalised name equals the normalised text, or null. Never a partial match.
+	public CatalogGame? FindByName(string? text)
+	{
+		string key = NormalizeName(text);
+		return key.Length >= MinNameLength && byName.TryGetValue(key, out CatalogGame? game) ? game : null;
+	}
+
+	// The other half of an Unreal Engine pair: "Foo-Win64-Shipping.exe" -> "Foo.exe" and "Foo.exe" -> "Foo-Win64-Shipping.exe".
+	public static string? ShippingPair(string exe)
+	{
+		if (exe.EndsWith(ShippingSuffix, StringComparison.OrdinalIgnoreCase))
+		{
+			return exe.Length > ShippingSuffix.Length ? exe[..^ShippingSuffix.Length] + ".exe" : null;
+		}
+		return exe.Length > 4 && exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? exe[..^4] + ShippingSuffix : null;
+	}
+
+	// Lower-case letters and digits only ("LEGO® Batman™: Legacy" -> "legobatmanlegacy"); "" for null.
+	public static string NormalizeName(string? text)
+	{
+		if (string.IsNullOrEmpty(text))
+		{
+			return string.Empty;
+		}
+		var builder = new System.Text.StringBuilder(text.Length);
+		foreach (char c in text)
+		{
+			if (char.IsLetterOrDigit(c))
+			{
+				builder.Append(char.ToLowerInvariant(c));
+			}
+		}
+		return builder.ToString();
+	}
 
 	public CatalogGame? FindBySteamAppId(long? appId) => appId is long id && bySteamAppId.TryGetValue(id, out CatalogGame? game) ? game : null;
 

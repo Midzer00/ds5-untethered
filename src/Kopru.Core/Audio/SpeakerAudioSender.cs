@@ -117,6 +117,11 @@ public sealed class SpeakerAudioSender : IDisposable
 	public const int OpusBitrate = SpeakerReports.OpusFrameBytes * 8 * OpusRate / FrameSamples;
 	public const int MaxBufferedSamples = FrameSamples * 6; // ~64 ms; older audio is dropped
 
+	// A sound starts (and starts again after running dry) only once this much is buffered (~21 ms). The game's audio
+	// arrives in USB chunks of up to ~10 ms while frames leave every 10.67 ms on the report clock; with no cushion, frames
+	// went out half empty and were padded with silence many times a second (heard as crackle).
+	public const int PrefillSamples = FrameSamples * 2;
+
 	private const int FrameBytes = InputChannels * 2;
 
 	private readonly IOpusEncoder encoder;
@@ -134,6 +139,14 @@ public sealed class SpeakerAudioSender : IDisposable
 	private int partialLength;
 
 	private int head, count;
+
+	// Frames are going out (the prefill was reached, or the game stopped sending before it was).
+	private bool playing;
+
+	// Push was called since the last TakeFrame (the game is still sending).
+	private bool pushedSinceTake;
+
+	private long underruns, droppedSamples;
 
 	public SpeakerAudioSender(IOpusEncoder encoder) => this.encoder = encoder;
 
@@ -160,11 +173,18 @@ public sealed class SpeakerAudioSender : IDisposable
 		}
 	}
 
+	// Frames that ran dry while the game was still sending (padded with silence: an audible gap). Diagnostics.
+	public long Underruns => Interlocked.Read(ref underruns);
+
+	// Samples dropped because the buffer was full (the game ran ahead of the reports). Diagnostics.
+	public long DroppedSamples => Interlocked.Read(ref droppedSamples);
+
 	// audio: int16 LE interleaved, 4 channels at 48 kHz (any chunking).
 	public void Push(ReadOnlySpan<byte> audio)
 	{
 		lock (gate)
 		{
+			pushedSinceTake = true;
 			if (partialLength > 0)
 			{
 				int take = Math.Min(FrameBytes - partialLength, audio.Length);
@@ -188,17 +208,36 @@ public sealed class SpeakerAudioSender : IDisposable
 		}
 	}
 
-	// Encodes the next 480 samples (silence where none are buffered) into opus (200 bytes); false when nothing was
-	// buffered, so the caller can fall back to the haptics-only report.
+	// Encodes the next 480 samples into opus (200 bytes); false when there is nothing to send yet, so the caller can fall
+	// back to the haptics-only report. A sound waits for PrefillSamples, unless the game stopped sending (no Push since the
+	// last call): then what is left goes out, padded with silence at the end.
 	public bool TakeFrame(Span<byte> opus)
 	{
-		bool sound;
 		lock (gate)
 		{
-			sound = count > 0;
-			if (!sound)
+			bool sending = pushedSinceTake;
+			pushedSinceTake = false;
+			if (count == 0)
 			{
+				playing = false;
 				return false;
+			}
+			if (!playing)
+			{
+				if (count < PrefillSamples && sending)
+				{
+					return false;
+				}
+				playing = true;
+			}
+			if (count < FrameSamples)
+			{
+				// Runs dry: the rest is padded, then the next sound builds its cushion again.
+				playing = false;
+				if (sending)
+				{
+					Interlocked.Increment(ref underruns);
+				}
 			}
 			for (int i = 0; i < FrameSamples; i++)
 			{
@@ -239,6 +278,7 @@ public sealed class SpeakerAudioSender : IDisposable
 		{
 			head = (head + 1) % MaxBufferedSamples;
 			count--;
+			Interlocked.Increment(ref droppedSamples);
 		}
 		int at = (head + count) % MaxBufferedSamples;
 		ring[2 * at] = left;
