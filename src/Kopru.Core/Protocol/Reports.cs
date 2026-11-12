@@ -33,6 +33,9 @@ public static class OutputBlock
 	public const byte MuteLedControl = 0x01;
 	public const byte PowerSaveControl = 0x02;
 	public const byte LightbarControl = 0x04;
+	// "Release LEDs" (the Linux hid-playstation driver's valid_flag1 bit 3): hands the LEDs back to the controller's own
+	// defaults, which would undo the mute LED the app shows.
+	public const byte ReleaseLeds = 0x08;
 	public const byte PlayerLedControl = 0x10;
 	public const byte HapticsLowPass = 0x20;
 	public const byte MotorPowerControl = 0x40;

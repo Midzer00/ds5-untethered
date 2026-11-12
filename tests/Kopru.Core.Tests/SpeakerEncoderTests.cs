@@ -164,7 +164,7 @@ public class SpeakerEncoderTests(ITestOutputHelper output)
 			Assert.Equal(Frame, decoder.Decode(opus, decoded, Frame, false));
 			frames++;
 		}
-		Assert.Equal(SpeakerAudioSender.MaxBufferedSamples / Frame, frames); // the newest ~64 ms are kept
+		Assert.Equal(10, frames); // 100 ms in: ~4500 samples, nothing dropped
 	}
 }
 
@@ -264,7 +264,8 @@ public partial class BridgeTests
 			// Other tests may log at the same time: look for this bridge's two lines.
 			Assert.Contains(got, l => l.EndsWith($"bridge: game sound on the speaker channels (1-2), controller speaker {(speakerOn ? "on" : "off")}", StringComparison.Ordinal));
 			Assert.Contains(got, l => l.Contains("bridge: speaker channels quiet again after 50 ms", StringComparison.Ordinal)
-				&& l.Contains(speakerOn ? "underruns" : "controller speaker off, not played", StringComparison.Ordinal));
+				&& l.Contains(speakerOn ? "underruns" : "controller speaker off, not played", StringComparison.Ordinal)
+				&& (!speakerOn || l.Contains("/53/", StringComparison.Ordinal) && l.Contains(" ms min/target/max, rate trim ", StringComparison.Ordinal)));
 		}
 		finally
 		{

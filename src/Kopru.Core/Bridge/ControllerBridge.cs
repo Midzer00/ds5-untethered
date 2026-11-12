@@ -66,7 +66,109 @@ public sealed class ControllerBridge : IDisposable
 	// relayed game output in place of the game's; NoAppMuteLed lets the game's mute LED through (the game owns the button).
 	public const int NoAppMuteLed = -1;
 
-	public volatile int AppMuteLed = NoAppMuteLed;
+	// Game reports let through after a mute LED change even when they repeat the last one, so the new value goes out
+	// with the next game report too (not only in the app's own write).
+	public const int MuteLedResendReports = 3;
+
+	// A game output within this time counts as the game streaming output (MuteLedDelivery).
+	public static readonly TimeSpan GameStreamingWindow = TimeSpan.FromSeconds(1);
+
+	// Appended to the bridge's own log lines (the host's " (slot N)"; empty for the first controller).
+	public string LogSlot { get; init; } = string.Empty;
+
+	private int appMuteLed = NoAppMuteLed;
+
+	public int AppMuteLed
+	{
+		get => Volatile.Read(ref appMuteLed);
+		set
+		{
+			if (Interlocked.Exchange(ref appMuteLed, value) == value)
+			{
+				return;
+			}
+			lock (lastBlock)
+			{
+				muteLedResends = MuteLedResendReports;
+				muteLedChangedAt = Stopwatch.GetTimestamp();
+				muteLedConfirmPending = value != NoAppMuteLed;
+			}
+		}
+	}
+
+	// Mute LED bookkeeping (guarded by lastBlock): game reports still to let through after a change, when it changed,
+	// whether the first game report carrying it is still to be logged, and game reports that asked for another mute LED
+	// value (the last one asked for) or for the LEDs to be released since the change.
+	private int muteLedResends;
+	private long muteLedChangedAt;
+	private bool muteLedConfirmPending;
+	private int gameMuteLedAsked, gameMuteLedValue, gameReleaseLedsAsked;
+
+	// The game's light bar setup command (flag2 bit 1, byte 41) while the app shows the mute LED: the last value let
+	// through (-1: none yet), and how often the game sent it / it was let through since the last mute LED change (guarded
+	// by lastBlock). It is a one-shot command; streamed in every report (and, before, kept in the output state and so
+	// repeated in the app's own mute LED write) it sets the controller's LEDs up again. Suspected (2026-11-12, not yet
+	// confirmed on hardware) of the mute LED not following while a game drives the light (DualSense Mode on).
+	private int lastGameLightbarSetup = -1;
+	private int gameSetupSent, gameSetupPassed;
+
+	private long lastGameOutput = long.MinValue / 2;
+
+	// The game sent output (relayed or a repeat) within GameStreamingWindow.
+	public bool GameOutputStreaming =>
+		Stopwatch.GetElapsedTime(Interlocked.Read(ref lastGameOutput)) < GameStreamingWindow;
+
+	// How the app's mute LED reaches the controller right now (for the "mute led:" log line).
+	public string MuteLedDelivery => GameOutputStreaming ? "sent directly and merged into every game report (game streaming output)"
+		: "sent directly (no game output)";
+
+	// What games asked of the mute LED since the last change (one log line per kind, empty when nothing), and starts
+	// counting again.
+	public IReadOnlyList<string> TakeMuteLedOverrides()
+	{
+		int asked, value, release, setup, setupPassed, kept;
+		lock (lastBlock)
+		{
+			(asked, value, release, setup, setupPassed) = (gameMuteLedAsked, gameMuteLedValue, gameReleaseLedsAsked, gameSetupSent, gameSetupPassed);
+			gameMuteLedAsked = gameReleaseLedsAsked = gameSetupSent = gameSetupPassed = 0;
+			kept = AppMuteLed;
+		}
+		if (kept == NoAppMuteLed)
+		{
+			return [];
+		}
+		List<string> lines = [];
+		if (asked > 0)
+		{
+			lines.Add($"game asked for {MuteLedName(value)} {asked} times, kept {MuteLedName(kept)}");
+		}
+		if (release > 0)
+		{
+			lines.Add($"game asked to release the LEDs {release} times, kept {MuteLedName(kept)}");
+		}
+		if (setup > 0)
+		{
+			lines.Add($"game sent the light bar setup {setup} times, passed {setupPassed} (mute led {MuteLedName(kept)} sent again after each)");
+		}
+		return lines;
+	}
+
+	// Takes the one-shot LED commands (release LEDs, light bar setup) out of an output state, so a later report built from
+	// it (the app's own writes) does not repeat them.
+	public static void ClearOneShotLedCommands(Span<byte> block)
+	{
+		block[OutputBlock.Flag1] &= unchecked((byte)~OutputBlock.ReleaseLeds);
+		block[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.LightbarSetupControl);
+		block[OutputBlock.LightbarSetup] = 0;
+	}
+
+	public static string MuteLedName(int value) => value switch
+	{
+		OutputBlock.MuteLedOff => "off",
+		OutputBlock.MuteLedOn => "on",
+		2 => "pulse",
+		_ => $"0x{value:X2}"
+	};
 
 	private bool hasBlock;
 
@@ -283,15 +385,21 @@ public sealed class ControllerBridge : IDisposable
 		{
 			gameSetLight = true;
 		}
+		Interlocked.Exchange(ref lastGameOutput, Stopwatch.GetTimestamp());
 		byte[] sent;
 		lock (lastBlock)
 		{
-			// Games resend the same state every frame.
-			if (hasBlock && !resendNext && block.SequenceEqual(lastBlock))
+			CountGameMuteLed(block);
+			// Games resend the same state every frame (repeats still go out for a few reports after a mute LED change).
+			if (hasBlock && !resendNext && muteLedResends == 0 && block.SequenceEqual(lastBlock))
 			{
 				return;
 			}
 			resendNext = false;
+			if (muteLedResends > 0)
+			{
+				muteLedResends--;
+			}
 			block.CopyTo(lastBlock);
 			hasBlock = true;
 			sent = block.ToArray();
@@ -319,26 +427,110 @@ public sealed class ControllerBridge : IDisposable
 		ApplyTriggers(sent, true);
 		if (!LightFromGame)
 		{
-			sent[OutputBlock.Flag1] &= unchecked((byte)~(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl));
+			sent[OutputBlock.Flag1] &= unchecked((byte)~(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl
+				| OutputBlock.ReleaseLeds));
 			sent[OutputBlock.Flag2] &= unchecked((byte)~(OutputBlock.LightbarSetupControl | OutputBlock.LedBrightnessControl));
-		}
-		int muteLed = AppMuteLed;
-		if (muteLed != NoAppMuteLed)
-		{
-			// The whole block replaces the controller's output state: carry the app's mute LED (and its valid bit) in it, so
-			// neither the game's value nor a cleared bit ever reaches the controller.
-			OutputBlock.SetMuteLed(sent, (byte)muteLed);
 		}
 		sent[OutputBlock.Flag0] &= unchecked((byte)~(OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
 		sent[OutputBlock.MotorLeft] = sent[OutputBlock.MotorRight] = 0;
 		sent[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.ImprovedRumble);
+		bool setupPassed = FilterLightbarSetup(sent);
+		int carried = NoAppMuteLed;
 		session.UpdateOutput(b =>
 		{
 			sent.CopyTo(b, 0);
 			// The game's audio fields are for a wired pad; keep the speaker route while the speaker is on.
 			session.WriteSpeakerRoute(b);
+			// Read under the session's output lock: a mute LED change (BridgeHost.SyncMuteLed sets AppMuteLed, then writes
+			// through the same lock) can never be overtaken by a game report built with the old value.
+			carried = ApplyAppMuteLed(b);
 		});
+		if (setupPassed)
+		{
+			// The game's (new) light bar setup went out: the mute LED again right after it, without the command.
+			session.UpdateOutput(b =>
+			{
+				ClearOneShotLedCommands(b);
+				ApplyAppMuteLed(b);
+			});
+		}
 		Interlocked.Increment(ref outputs);
+		if (carried != NoAppMuteLed)
+		{
+			LogFirstCarry(carried);
+		}
+	}
+
+	// The whole block replaces the controller's output state: carry the app's mute LED (and its valid bit) in it, so
+	// neither the game's value nor a cleared bit ever reaches the controller, and never let the game's "release LEDs"
+	// through (it would hand the mute LED back to the controller's default). The value written, or NoAppMuteLed.
+	private int ApplyAppMuteLed(byte[] b)
+	{
+		int muteLed = AppMuteLed;
+		if (muteLed != NoAppMuteLed)
+		{
+			OutputBlock.SetMuteLed(b, (byte)muteLed);
+			b[OutputBlock.Flag1] &= unchecked((byte)~OutputBlock.ReleaseLeds);
+		}
+		return muteLed;
+	}
+
+	// While the app shows the mute LED, the game's light bar setup command goes out only when its value changes (true: it
+	// is in this report); repeats are taken out of the report.
+	private bool FilterLightbarSetup(byte[] sent)
+	{
+		if (AppMuteLed == NoAppMuteLed || (sent[OutputBlock.Flag2] & OutputBlock.LightbarSetupControl) == 0)
+		{
+			return false;
+		}
+		lock (lastBlock)
+		{
+			gameSetupSent++;
+			if (sent[OutputBlock.LightbarSetup] != lastGameLightbarSetup)
+			{
+				lastGameLightbarSetup = sent[OutputBlock.LightbarSetup];
+				gameSetupPassed++;
+				return true;
+			}
+		}
+		sent[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.LightbarSetupControl);
+		sent[OutputBlock.LightbarSetup] = 0;
+		return false;
+	}
+
+	// Counts a game report asking for another mute LED value or for the LEDs to be released (caller holds lastBlock).
+	private void CountGameMuteLed(ReadOnlySpan<byte> block)
+	{
+		int kept = AppMuteLed;
+		if (kept == NoAppMuteLed)
+		{
+			return;
+		}
+		if ((block[OutputBlock.Flag1] & OutputBlock.MuteLedControl) != 0 && block[OutputBlock.MuteLed] != kept)
+		{
+			gameMuteLedAsked++;
+			gameMuteLedValue = block[OutputBlock.MuteLed];
+		}
+		if ((block[OutputBlock.Flag1] & OutputBlock.ReleaseLeds) != 0)
+		{
+			gameReleaseLedsAsked++;
+		}
+	}
+
+	// One line per mute LED change: the first game report that carried the new value to the controller.
+	private void LogFirstCarry(int carried)
+	{
+		long changedAt;
+		lock (lastBlock)
+		{
+			if (!muteLedConfirmPending || carried != AppMuteLed)
+			{
+				return;
+			}
+			muteLedConfirmPending = false;
+			changedAt = muteLedChangedAt;
+		}
+		Diagnostics.AppLog.Write($"mute led{LogSlot}: {MuteLedName(carried)} carried by the first game report after the change (+{Stopwatch.GetElapsedTime(changedAt).TotalMilliseconds:F0} ms)");
 	}
 
 	// Scales the game's trigger effects, or puts the fallback effect on when the game sets none. fromGame: a new game
@@ -452,13 +644,24 @@ public sealed class ControllerBridge : IDisposable
 			Audio.SpeakerAudioSender? s = session.Speaker;
 			long ms = (speakerChannelsSoundFrames - speakerChannelsQuietFrames + frames) * 1000 / Audio.SpeakerAudioSender.InputRate;
 			LogSpeakerActivity(s != null
-				? $"bridge: speaker channels quiet again after {Math.Max(0, ms)} ms ({s.Underruns} underruns, {s.DroppedSamples} samples dropped so far)"
+				? $"bridge: speaker channels quiet again after {Math.Max(0, ms)} ms ({s.Underruns} underruns, {s.DroppedSamples} samples dropped so far, {SpeakerBufferText(s)})"
 				: $"bridge: speaker channels quiet again after {Math.Max(0, ms)} ms (controller speaker off, not played)");
 		}
 		if (speakerChannelsActive)
 		{
 			speakerChannelsSoundFrames += frames;
 		}
+	}
+
+	// "buffer 38/43/51 ms min/target/max, rate trim +0.12 %": how full the speaker buffer stayed while the sound was sent
+	// (before each frame) and the clock correction at the end.
+	internal static string SpeakerBufferText(Audio.SpeakerAudioSender s)
+	{
+		(int Min, int Max)? levels = s.ReadLevels();
+		string fill = levels is { } l
+			? $"{Audio.SpeakerAudioSender.Milliseconds(l.Min)}/{Audio.SpeakerAudioSender.Milliseconds(Audio.SpeakerAudioSender.TargetSamples)}/{Audio.SpeakerAudioSender.Milliseconds(l.Max)} ms min/target/max"
+			: $"-/{Audio.SpeakerAudioSender.Milliseconds(Audio.SpeakerAudioSender.TargetSamples)}/- ms min/target/max";
+		return string.Create(System.Globalization.CultureInfo.InvariantCulture, $"buffer {fill}, rate trim {s.Trim * 100:+0.00;-0.00;0.00} %");
 	}
 
 	private void LogSpeakerActivity(string line)

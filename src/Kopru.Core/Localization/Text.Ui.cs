@@ -383,7 +383,7 @@ public static partial class Text
 	public static string NotifyBatterySetting(Language? l = null) => Pick(l, $"Pil", $"Battery");
 	public static string NotifyBatteryHint(Language? l = null) => Pick(l, $"%20 ve %10'da birer kez, şarj bitince.", $"At 20% and 10%, and when fully charged.");
 	public static string NotifyGameSetting(Language? l = null) => Pick(l, $"Oyun Algılama", $"Game Detection");
-	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Mod bir oyun için kendiliğinden açılınca.", $"When the mode turns on by itself.");
+	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Desteklenen bir oyun DualSense modu açıkken başlayınca.", $"When a supported game starts with DualSense mode on.");
 	public static string NotifySteamInputSetting(Language? l = null) => Pick(l, $"Steam Input Uyarısı", $"Steam Input Warning");
 	public static string NotifySteamInputHint(Language? l = null) => Pick(l, $"Oyun oturumu başına bir kez.", $"Once per game session.");
 	public static string NotifyPowerOffSetting(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");

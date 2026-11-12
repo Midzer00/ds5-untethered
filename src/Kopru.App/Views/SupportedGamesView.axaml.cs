@@ -17,6 +17,7 @@ public partial class SupportedGamesView : UserControl
 			if (DataContext is SupportedGamesViewModel vm)
 			{
 				vm.PickExe = PickExeAsync;
+				vm.PickFolder = PickFolderAsync;
 			}
 		};
 		// The running apps are listed when the "Add game" menu opens.
@@ -40,5 +41,20 @@ public partial class SupportedGamesView : UserControl
 			FileTypeFilter = [new FilePickerFileType("exe") { Patterns = ["*.exe"] }]
 		});
 		return files.Count > 0 ? files[0].TryGetLocalPath() : null;
+	}
+
+	// The system folder dialog for a folder to look for games in; null when cancelled or when there is no local path.
+	private async Task<string?> PickFolderAsync()
+	{
+		if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanPickFolder: true } storage)
+		{
+			return null;
+		}
+		IReadOnlyList<IStorageFolder> folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
+		{
+			Title = Text.ChooseGameFolder(),
+			AllowMultiple = false
+		});
+		return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
 	}
 }

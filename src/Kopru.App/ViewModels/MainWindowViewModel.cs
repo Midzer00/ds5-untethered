@@ -17,10 +17,12 @@ public sealed class NavItem(PageViewModel page, string iconData) : ViewModelBase
 // What the app passes in besides the controller service; everything is optional (tests leave it out).
 // FullScreen: whether a full-screen app is in front (for "don't notify while playing"). GameList: downloads the supported
 // games list (null: no update button); Now: the wall clock for its weekly automatic check. GameImages: the pictures of the
-// supported games list (null: placeholders only).
+// supported games list (null: placeholders only). InstalledGames: finds the supported games installed on this PC (null:
+// nothing counts as installed).
 public sealed record AppEnvironment(ISettingsStore? Store = null, IStartupRegistration? Startup = null, Func<SetupWizard>? Wizard = null,
 	Func<bool>? FullScreen = null, Func<long>? Clock = null, Kopru.Core.Games.GameCatalogUpdater? GameList = null,
-	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null, RestartServices? Restart = null);
+	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null, RestartServices? Restart = null,
+	Kopru.Core.Games.InstalledGames? InstalledGames = null);
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -33,7 +35,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		_environment = environment ?? new AppEnvironment();
 		Settings = new SettingsState(service, _environment.Store, _environment.Startup);
 		Overview = new OverviewViewModel(service, Settings);
-		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now, _environment.GameImages);
+		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now, _environment.GameImages,
+			_environment.InstalledGames);
 		OtherGames = new OtherGamesViewModel(service, Settings);
 		Controller = new ControllerPageViewModel(service, Settings);
 		Light = new LightViewModel(service, Settings);

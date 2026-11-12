@@ -96,6 +96,9 @@ public sealed partial class NotificationCenter
 
 	private bool _connected;
 	private string? _gameExe;
+	// The game in front at the last check (null: none), and the last "game detected" decision logged for it.
+	private string? _lastSeenExe;
+	private string? _gameLogged;
 	private string? _steamWarnedFor;
 	private bool _lowShown;
 	private bool _criticalShown;
@@ -112,10 +115,11 @@ public sealed partial class NotificationCenter
 		// What is true at start is the baseline, not news.
 		_connected = service.IsConnected;
 		InitControllers();
-		_gameExe = service.Games.State.Exe;
+		_gameExe = _lastSeenExe = service.Games.State.Exe;
 		if (_gameExe != null && service.Games.State.Mode == GameMode.Supported)
 		{
 			_announced.Add(_gameExe);
+			LogGame(_gameExe, $"toast: game detected for {service.Games.State.Name ?? _gameExe} not shown (already in front when the app started)");
 		}
 		_wasCharging = service.IsCharging;
 		service.StateChanged += (_, _) => Evaluate();
@@ -134,6 +138,7 @@ public sealed partial class NotificationCenter
 				_asked.Add(game.Exe);
 			}
 			Post(Ask(service.Games, game, IsEdge), force: true);
+			Log($"toast: asking whether to turn on DualSense mode for {game.Name} (shown)");
 		};
 	}
 
@@ -146,11 +151,19 @@ public sealed partial class NotificationCenter
 	public void Evaluate()
 	{
 		List<AppNotification> pending = [];
+		AppNotification? announce;
 		lock (_gate)
 		{
 			CheckConnection(pending);
 			CheckBattery(pending);
-			CheckGame(pending);
+			announce = CheckGame(pending);
+		}
+		if (announce != null)
+		{
+			// Not held back by the type cooldown: the controller type toast (same type) comes with the game.
+			Log(Post(announce, false, false, out string? blocked)
+				? $"toast: game detected for {announce.Title} shown"
+				: $"toast: game detected for {announce.Title} not shown ({blocked})");
 		}
 		foreach (AppNotification n in pending)
 		{
@@ -201,19 +214,33 @@ public sealed partial class NotificationCenter
 
 	// Shows a notification if the switches, "quiet while playing" and the rate limits allow it. Forced ones (the tray hint)
 	// skip all of that. Returns whether it was raised.
-	public bool Post(AppNotification n, bool force = false)
+	public bool Post(AppNotification n, bool force = false) => Post(n, force, true, out _);
+
+	// blocked: why it was not raised (for the log). typeCooldown false: only the same text is held back, not the type.
+	private bool Post(AppNotification n, bool force, bool typeCooldown, out string? blocked)
 	{
+		blocked = null;
 		if (!force)
 		{
-			if (!_settings.NotificationsEnabled || !IsEnabled(n.Type) || (_settings.QuietWhilePlaying && IsPlaying))
+			blocked = !_settings.NotificationsEnabled ? "notifications off"
+				: !IsEnabled(n.Type) ? "this kind of notification is off"
+				: _settings.QuietWhilePlaying && IsPlaying ? "quiet while playing"
+				: null;
+			if (blocked != null)
 			{
 				return false;
 			}
 			lock (_gate)
 			{
 				long now = _clockMs();
-				if ((Within(_lastByType, n.Type, now, TypeCooldown) && !IsSlotNotice(n)) || Within(_lastByText, (n.Type, n.Title + "\n" + n.Body), now, RepeatCooldown))
+				if (typeCooldown && Within(_lastByType, n.Type, now, TypeCooldown) && !IsSlotNotice(n))
 				{
+					blocked = FormattableString.Invariant($"one of its kind shown in the last {TypeCooldown.TotalSeconds:F0} s");
+					return false;
+				}
+				if (Within(_lastByText, (n.Type, n.Title + "\n" + n.Body), now, RepeatCooldown))
+				{
+					blocked = FormattableString.Invariant($"the same toast shown in the last {RepeatCooldown.TotalMinutes:F0} min");
 					return false;
 				}
 				while (_recent.Count > 0 && now - _recent.Peek() >= BurstWindow.TotalMilliseconds)
@@ -222,6 +249,7 @@ public sealed partial class NotificationCenter
 				}
 				if (_recent.Count >= BurstLimit)
 				{
+					blocked = FormattableString.Invariant($"{BurstLimit} toasts in the last {BurstWindow.TotalSeconds:F0} s");
 					return false;
 				}
 				_recent.Enqueue(now);
@@ -356,26 +384,50 @@ public sealed partial class NotificationCenter
 		_wasCharging = charging;
 	}
 
-	private void CheckGame(List<AppNotification> pending)
+	// Caller holds _gate. Returns the "game detected" toast to post, if one is due.
+	private AppNotification? CheckGame(List<AppNotification> pending)
 	{
 		GameModeState state = _service.Games.State;
+		bool arrived = state.Exe != null && !string.Equals(state.Exe, _lastSeenExe, StringComparison.OrdinalIgnoreCase);
+		_lastSeenExe = state.Exe;
 		if (state.Exe == null)
 		{
+			// The game ended: its next launch is news again.
 			_asked.Clear();
+			_announced.Clear();
+			_gameLogged = null;
 		}
 		if (state.Exe != null && !string.Equals(state.Exe, _gameExe, StringComparison.OrdinalIgnoreCase))
 		{
 			_gameExe = state.Exe;
 			_steamWarnedFor = null;
 		}
-		// A game that turned the supported mode on by itself ("always") is announced once per session (switching away and
-		// back is not news); one the user was asked about or turned on is not.
-		if (state.Exe != null && state.Mode == GameMode.Supported && state.Reason == ModeReason.Always && !_asked.Contains(state.Exe)
-			&& _announced.Add(state.Exe))
+		AppNotification? announce = null;
+		// A known game that becomes the active game with the supported mode on (the switch was already on, or the game turned it
+		// on by itself: "always") is announced once per launch (switching away and back is not news); one the user was asked
+		// about is not. Before, only "always" games were announced, so with the switch already on a game got no toast at all.
+		if (state.Exe != null && (arrived || state.Reason == ModeReason.Always))
 		{
 			string name = state.Name ?? Path.GetFileNameWithoutExtension(state.Exe);
-			pending.Add(new AppNotification(NotificationType.GameDetected, NotificationKind.Info, name,
-				Text.NotifyGameSupported(), AppPage.SupportedGames, Battery, IsEdge, Charging));
+			if (state.Mode != GameMode.Supported)
+			{
+				LogGame(state.Exe, $"toast: game detected for {name} not shown (DualSense mode is off)");
+			}
+			else if (_asked.Contains(state.Exe))
+			{
+				LogGame(state.Exe, $"toast: game detected for {name} not shown (asked about it in this launch)");
+			}
+			else if (!_announced.Add(state.Exe))
+			{
+				LogGame(state.Exe, $"toast: game detected for {name} not shown (shown already in this launch)");
+			}
+			else
+			{
+				// (later state changes would only find it shown already: nothing more to log)
+				_gameLogged = state.Exe + "\n" + $"toast: game detected for {name} not shown (shown already in this launch)";
+				announce = new AppNotification(NotificationType.GameDetected, NotificationKind.Info, name,
+					Text.NotifyGameSupported(), AppPage.SupportedGames, Battery, IsEdge, Charging);
+			}
 		}
 		if (_gameExe != null && _steamWarnedFor == null && _service.SteamInput is { Status: SteamInputStatus.OnGlobally or SteamInputStatus.OnForApp })
 		{
@@ -383,7 +435,21 @@ public sealed partial class NotificationCenter
 			pending.Add(new AppNotification(NotificationType.SteamInput, NotificationKind.Warning, Text.NotifySteamInputTitle(),
 				Text.NotifySteamInputBody(), AppPage.SupportedGames, IsEdge: IsEdge));
 		}
+		return announce;
 	}
+
+	// A "game detected" decision for a game, logged once (not again on every state change while it stays the same).
+	private void LogGame(string exe, string line)
+	{
+		string key = exe + "\n" + line;
+		if (key != _gameLogged)
+		{
+			_gameLogged = key;
+			Log(line);
+		}
+	}
+
+	private static void Log(string line) => Kopru.Core.Diagnostics.AppLog.Write(line);
 
 	// What the toasts show about the controller: its drawing, battery level (when known) and charging state.
 	private bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;

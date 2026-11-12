@@ -122,7 +122,7 @@
 
       <!-- Supported games: search, one row per game, then the list's online update and pictures. Fills the height: the list scrolls inside -->
       <Border Grid.Column="1" Classes="panel fill" Padding="{StaticResource ListCardPadding}">
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
           <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource Gap}" Margin="{StaticResource ListInset}">
             <Border Classes="iconTile"><c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Gamepad}" HorizontalAlignment="Center" /></Border>
             <TextBlock Grid.Column="1" Classes="h2" Text="{Binding ListLabel}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -155,8 +155,58 @@
               </Button.Flyout>
             </Button>
           </Grid>
-          <TextBox Grid.Row="1" Margin="0,14,12,0" Text="{Binding SearchText}" Watermark="{Binding SearchWatermark}" />
-          <StackPanel Grid.Row="2" Margin="0,8,12,6" Spacing="8">
+          <!-- All | Installed (the count in the label), then Scan Again and the extra folders searched for games -->
+          <Grid Grid.Row="1" Name="InstalledRow" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,14,12,0" IsVisible="{Binding HasInstalledList}">
+            <ListBox Theme="{StaticResource Segmented}" Name="InstalledChoice" ItemsSource="{Binding InstalledFilters}" SelectedIndex="{Binding InstalledFilterIndex}"
+                     MinWidth="190" VerticalAlignment="Center" AutomationProperties.Name="{Binding InstalledFilterLabel}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:FilterOption">
+                  <!-- Regular, and semibold while selected: two labels with a fixed weight each, so the selected one is always measured bold -->
+                  <Panel>
+                    <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                               IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
+                    <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                               IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                  </Panel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Grid.Column="2" Name="ScanAgainButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Command="{Binding ScanAgainCommand}"
+                    Content="{Binding ScanText}" IsEnabled="{Binding !IsScanning}" VerticalAlignment="Center" />
+            <!-- The extra folders: what is searched by itself, the added folders (each removable) and Add Folder -->
+            <Button Grid.Column="3" Name="FoldersButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Content="{Binding FoldersText}" VerticalAlignment="Center">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <StackPanel Width="300" Spacing="6">
+                    <TextBlock Classes="caption" Text="{Binding FoldersHint}" TextWrapping="Wrap" Margin="4,0,4,2" />
+                    <TextBlock Classes="body" Text="{Binding NoFoldersText}" IsVisible="{Binding HasNoFolders}" Margin="4,0,0,4" />
+                    <ScrollViewer MaxHeight="220" HorizontalScrollBarVisibility="Disabled">
+                      <ItemsControl ItemsSource="{Binding Folders}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:GameFolderItem">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="4,0,0,4">
+                              <TextBlock Classes="body" Text="{Binding Path}" ToolTip.Tip="{Binding Path}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                              <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Width="28" Height="28" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                      Command="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).RemoveFolderCommand}" CommandParameter="{Binding}"
+                                      ToolTip.Tip="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).RemoveFolderText}"
+                                      AutomationProperties.Name="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).RemoveFolderText}">
+                                <Path Data="M1,1 L9,9 M9,1 L1,9" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.4" StrokeLineCap="Round" Width="10" Height="10" />
+                              </Button>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                    <Border Classes="divider" />
+                    <Button Theme="{StaticResource QuietButton}" Height="32" Padding="10,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Command="{Binding AddFolderCommand}" Content="{Binding AddFolderText}" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+          </Grid>
+          <TextBox Grid.Row="2" Margin="0,14,12,0" Text="{Binding SearchText}" Watermark="{Binding SearchWatermark}" />
+          <StackPanel Grid.Row="3" Margin="0,8,12,6" Spacing="8">
             <TextBlock Classes="caption" Text="{Binding ListHint}" />
             <!-- The controller type for every game (the same choice as in Quick Settings), above the per-game pickers and as
                  wide as they are. Automatic: each game's own choice; any other type turns the pickers below off (the line says why). -->
@@ -175,8 +225,15 @@
             </Grid>
           </StackPanel>
           <!-- The list scrolls itself and only builds the rows in view (the full catalog has hundreds of games) -->
-          <DockPanel Grid.Row="3">
+          <DockPanel Grid.Row="4">
             <TextBlock DockPanel.Dock="Top" Classes="body" Text="{Binding NoMatchText}" IsVisible="{Binding HasNoMatch}" Margin="0,8,12,8" />
+            <!-- "Installed" with nothing found: one sentence and Add Folder; while the first scan runs, that it is looking -->
+            <StackPanel DockPanel.Dock="Top" Name="InstalledEmpty" Spacing="10" Margin="0,8,12,8" IsVisible="{Binding HasNoInstalled}">
+              <TextBlock Classes="body" Text="{Binding InstalledEmptyText}" TextWrapping="Wrap" />
+              <Button Name="EmptyAddFolderButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" HorizontalAlignment="Left"
+                      Command="{Binding AddFolderCommand}" Content="{Binding AddFolderText}" />
+            </StackPanel>
+            <TextBlock DockPanel.Dock="Top" Classes="body" Text="{Binding InstalledSearchingText}" IsVisible="{Binding IsSearchingInstalled}" Margin="0,8,12,8" />
             <ItemsControl ItemsSource="{Binding Games}">
               <ItemsControl.Template>
                 <ControlTemplate>
@@ -208,6 +265,8 @@
                             <TextBlock Classes="caption" Text="{Binding TriggersText}" TextWrapping="NoWrap" VerticalAlignment="Center" />
                           </StackPanel>
                           <TextBlock Classes="caption" IsVisible="{Binding IsUserAdded}" Text="{Binding UserAddedText}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                        <!-- Installed on this PC: plain text; the tooltip says where it was found -->
+                        <TextBlock Classes="caption" IsVisible="{Binding IsInstalled}" Text="{Binding InstalledText}" ToolTip.Tip="{Binding InstalledTip}" TextWrapping="NoWrap" VerticalAlignment="Center" />
                           <Border Classes="chip mark" IsVisible="{Binding IsAlways}" ToolTip.Tip="{Binding AlwaysTip}">
                             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                               <TextBlock Text="{Binding AlwaysText}" FontSize="{StaticResource FontCaption}" FontWeight="SemiBold" TextWrapping="NoWrap" VerticalAlignment="Center" />
@@ -252,7 +311,7 @@
           </DockPanel>
           <!-- Under the list: the list's online update (button busy while checking; size and date or the outcome; weekly check)
                and the game pictures from Steam's CDN (off: only the pictures already on this PC) -->
-          <StackPanel Grid.Row="4" Spacing="10" Margin="0,10,12,4">
+          <StackPanel Grid.Row="5" Spacing="10" Margin="0,10,12,4">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" IsVisible="{Binding CanUpdateList}">
               <StackPanel Spacing="2" VerticalAlignment="Center">
                 <TextBlock Classes="caption" Text="{Binding ListStatusText}" IsVisible="{Binding !HasListError}" TextWrapping="Wrap" />

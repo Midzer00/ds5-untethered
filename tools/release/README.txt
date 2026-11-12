@@ -6,7 +6,7 @@ DS5 Untethered
 DS5 Untethered makes a DualSense controller connected over Bluetooth appear to games as a wired one, so the game's
 own haptics and adaptive triggers work without a cable.
 
-This is a preview build. It is not signed.
+This build is not signed.
 
 1. Install or unzip
    - Installer (DS5-Untethered-...-Setup.exe): run it. It installs for your Windows user only, without administrator
@@ -60,7 +60,7 @@ License: GPL-3.0-or-later (see LICENSE). Third-party components: see THIRD-PARTY
 DS5 Untethered, Bluetooth ile bağlı bir DualSense kumandayı oyunlara kablolu gibi gösterir; böylece oyunun kendi
 titreşimleri ve adaptif tetikleri kablosuz çalışır.
 
-Bu bir ön sürümdür. İmzalı değildir.
+Bu derleme imzalı değildir.
 
 1. Kurun ya da zip'i açın
    - Kurulum (DS5-Untethered-...-Setup.exe): çalıştırın. Yalnızca sizin Windows kullanıcınız için, yönetici izni

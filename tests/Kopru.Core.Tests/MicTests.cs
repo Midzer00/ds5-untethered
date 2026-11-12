@@ -485,8 +485,12 @@ public class MicHostTests
 			Kopru.Core.Diagnostics.AppLog.Written -= OnLine;
 		}
 		// One line per change (other tests may log at the same time, so only presence is checked).
-		Assert.Contains("mute led: on (mic settings: PC microphone live)", lines);
-		Assert.Contains("mute led: off (mic settings: PC microphone muted)", lines);
+		Assert.Contains(lines, l => l.StartsWith("mute led: on (mic settings: PC microphone live; sent directly", StringComparison.Ordinal));
+		Assert.Contains(lines, l => l.StartsWith("mute led: off (mic settings: PC microphone muted; sent directly", StringComparison.Ordinal));
+		// Off was set right after a game report: the game counted as streaming output.
+		Assert.Contains("mute led: off (mic settings: PC microphone muted; sent directly and merged into every game report (game streaming output))", lines);
+		// The game's own mute LED (dark while ours was on) was counted and logged at the next change.
+		Assert.Contains("mute led: game asked for off 1 times, kept on", lines);
 	}
 
 	// Low Power keeps the button (the app may still mute a PC microphone; it does not turn the controller mic on); the

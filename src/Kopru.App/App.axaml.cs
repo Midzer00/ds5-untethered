@@ -73,7 +73,8 @@ public partial class App : Application
 		var images = new GameImageService(Kopru.Core.Games.GameImageResolver.CreateDefault(() => created?.Settings.DownloadGameImages == true));
 		var environment = new AppEnvironment(JsonSettingsStore.CreateDefault(), startup,
 			() => new SetupWizard(SystemCheck.CreateDefault(), new ShellUrlLauncher()), FullScreenDetector.IsForegroundFullScreen,
-			GameList: Kopru.Core.Games.GameCatalogUpdater.CreateDefault(), GameImages: images, Restart: RestartServices.CreateDefault());
+			GameList: Kopru.Core.Games.GameCatalogUpdater.CreateDefault(), GameImages: images, Restart: RestartServices.CreateDefault(),
+			InstalledGames: new Kopru.Core.Games.InstalledGames(Kopru.Core.Games.InstalledGameFinder.CreateDefault()));
 		var vm = new MainWindowViewModel(service, environment);
 		created = vm;
 		if (audioGuard != null)

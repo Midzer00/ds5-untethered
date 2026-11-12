@@ -6,6 +6,7 @@ namespace Kopru.Core.Audio;
 
 // Stereo linear-interpolation resampler for 16-bit audio with state kept across calls. The controller takes one 480-sample
 // Opus frame per 10.67 ms report, i.e. 45 000 samples/s, so the game's 48 kHz audio is resampled 512 -> 480.
+// Output samples lie between two input samples, so they never leave the input's range (no overshoot, no clipping).
 public sealed class StereoResampler(int inputRate, int outputRate)
 {
 	private readonly double step = (double)inputRate / outputRate;
@@ -13,6 +14,9 @@ public sealed class StereoResampler(int inputRate, int outputRate)
 	private double position; // of the next output sample, relative to the previous input sample
 
 	private short lastLeft, lastRight;
+
+	// Small rate correction: +0.01 makes 1 % fewer output samples (the buffer drains faster), -0.01 1 % more.
+	public double Trim { get; set; }
 
 	public void Reset()
 	{
@@ -22,12 +26,13 @@ public sealed class StereoResampler(int inputRate, int outputRate)
 
 	public void Process(short left, short right, Action<short, short> output)
 	{
+		double advance = step * (1 + Trim);
 		// Output samples fall between the previous input (at 0) and this one (at 1).
 		while (position <= 1)
 		{
 			double t = position;
 			output((short)Math.Round(lastLeft + (left - lastLeft) * t), (short)Math.Round(lastRight + (right - lastRight) * t));
-			position += step;
+			position += advance;
 		}
 		position -= 1;
 		lastLeft = left;
@@ -107,6 +112,14 @@ public sealed class NativeOpusEncoder : IOpusEncoder
 // 4-channel 48 kHz audio), resamples them to the controller's 45 kHz report clock, and hands out one 200-byte Opus frame
 // per report. On the built-in speaker (mono, right channel) both channels carry L+R; on headphones stereo is kept.
 // Push and TakeFrame may be called from different threads.
+//
+// The game's audio (USB isochronous transfers, handed over in bursts) and the reports (our own timer) do not run on one
+// clock, and neither is smooth. The sender keeps a cushion of about TargetSamples between them and holds it there: the
+// buffer level, averaged over a few reports, trims the resampling ratio by up to MaxTrim (a slow PI control, inaudible
+// for game effects) so a source that runs slightly fast or slow neither drains the buffer nor fills it up. Should the
+// buffer run dry anyway, the sound fades out over FadeSamples instead of stopping dead, and fades in again when it resumes.
+// Nothing here adds gain: the mono mix halves the sum, the resampler interpolates between samples and fades only
+// attenuate, so no sample can exceed the game's own full scale (the volume is a setting sent to the controller).
 public sealed class SpeakerAudioSender : IDisposable
 {
 	public const int InputChannels = 4;
@@ -115,12 +128,36 @@ public sealed class SpeakerAudioSender : IDisposable
 	public const int FrameSamples = 480;
 	public const int ReportRate = 45000; // 480 samples every 32/3000 s
 	public const int OpusBitrate = SpeakerReports.OpusFrameBytes * 8 * OpusRate / FrameSamples;
-	public const int MaxBufferedSamples = FrameSamples * 6; // ~64 ms; older audio is dropped
 
-	// A sound starts (and starts again after running dry) only once this much is buffered (~21 ms). The game's audio
-	// arrives in USB chunks of up to ~10 ms while frames leave every 10.67 ms on the report clock; with no cushion, frames
-	// went out half empty and were padded with silence many times a second (heard as crackle).
-	public const int PrefillSamples = FrameSamples * 2;
+	// ~213 ms; only audio beyond this is dropped (oldest first). Room for a burst at the start of a stream or a stalled
+	// report thread; before it was ~64 ms and the first sound of a session overflowed it.
+	public const int MaxBufferedSamples = FrameSamples * 20;
+
+	// The cushion the buffer is held at (~53 ms, measured before each frame is taken). The game's audio comes in USB
+	// chunks of ~10 ms, sometimes held back by 20-30 ms, while frames leave every 10.67 ms (with stalls of their own); a
+	// ~21 ms cushion was not enough, and in the simulation (SpeakerClockTests) ~43 ms still ran dry at a sound's start.
+	public const int TargetSamples = FrameSamples * 5;
+
+	// A sound starts (and starts again after running dry) only once the cushion is there.
+	public const int PrefillSamples = TargetSamples;
+
+	// Fade length (~2.8 ms) when the buffer runs dry and when the sound resumes after that.
+	public const int FadeSamples = 128;
+
+	// Reports in a row without new audio after which the game counts as having stopped sending (~32 ms); before that a
+	// gap is just a late USB burst.
+	public const int StoppedAfterTakes = 3;
+
+	// Largest resampling-ratio correction (2 %, a third of a semitone at the very most; ~0.5 % holds a 0.5 % clock
+	// difference).
+	public const double MaxTrim = 0.02;
+
+	// Control: proportional gain per unit of relative level error, integral gain per report, integral limit, and the
+	// level averaging (per report; ~16 reports = 170 ms).
+	private const double ProportionalGain = 0.04;
+	private const double IntegralGain = 0.0002;
+	private const double MaxIntegral = 0.01;
+	private const double LevelSmoothing = 1.0 / 16;
 
 	private const int FrameBytes = InputChannels * 2;
 
@@ -143,8 +180,25 @@ public sealed class SpeakerAudioSender : IDisposable
 	// Frames are going out (the prefill was reached, or the game stopped sending before it was).
 	private bool playing;
 
-	// Push was called since the last TakeFrame (the game is still sending).
+	// Push was called since the last TakeFrame; reports in a row without a Push.
 	private bool pushedSinceTake;
+	private int takesSincePush;
+
+	// Samples of fade-in still to apply (after running dry while the game kept sending).
+	private int fadeIn;
+
+	// Ran dry with the game seemingly still sending: an underrun if more audio follows before the game counts as stopped
+	// (otherwise it was just the end of the sound arriving in a late burst).
+	private bool ranDry;
+
+	// The last sample handed to the encoder (a fade-out starts from it when nothing is left).
+	private short lastLeft, lastRight;
+
+	// Averaged level and the integral part of the trim (kept across sounds: the clocks stay the same).
+	private double level, integral;
+
+	// Buffer level (before each frame) while the game was sending, since ReadLevels; int.MaxValue / -1 when none.
+	private int minLevel = int.MaxValue, maxLevel = -1;
 
 	private long underruns, droppedSamples;
 
@@ -173,17 +227,52 @@ public sealed class SpeakerAudioSender : IDisposable
 		}
 	}
 
-	// Frames that ran dry while the game was still sending (padded with silence: an audible gap). Diagnostics.
+	// The current resampling-ratio correction (positive: the game's audio arrives faster than the reports take it).
+	public double Trim
+	{
+		get
+		{
+			lock (gate)
+			{
+				return resampler.Trim;
+			}
+		}
+	}
+
+	// Times the buffer ran dry while the game was still sending (faded out: an audible gap). Counted when the game's
+	// next audio arrives within StoppedAfterTakes reports, so the end of a sound is never one. Diagnostics.
 	public long Underruns => Interlocked.Read(ref underruns);
 
 	// Samples dropped because the buffer was full (the game ran ahead of the reports). Diagnostics.
 	public long DroppedSamples => Interlocked.Read(ref droppedSamples);
+
+	// Lowest and highest buffer level (samples, before a frame is taken) while the game was sending, since the last call;
+	// null when no frame went out in that time. Diagnostics.
+	public (int Min, int Max)? ReadLevels()
+	{
+		lock (gate)
+		{
+			(int, int)? levels = maxLevel < 0 ? null : (minLevel, maxLevel);
+			minLevel = int.MaxValue;
+			maxLevel = -1;
+			return levels;
+		}
+	}
+
+	// Samples to milliseconds at the report rate.
+	public static int Milliseconds(int samples) => (int)Math.Round(samples * 1000.0 / ReportRate);
 
 	// audio: int16 LE interleaved, 4 channels at 48 kHz (any chunking).
 	public void Push(ReadOnlySpan<byte> audio)
 	{
 		lock (gate)
 		{
+			if (ranDry && !audio.IsEmpty)
+			{
+				Interlocked.Increment(ref underruns);
+				fadeIn = FadeSamples;
+				ranDry = false;
+			}
 			pushedSinceTake = true;
 			if (partialLength > 0)
 			{
@@ -209,50 +298,32 @@ public sealed class SpeakerAudioSender : IDisposable
 	}
 
 	// Encodes the next 480 samples into opus (200 bytes); false when there is nothing to send yet, so the caller can fall
-	// back to the haptics-only report. A sound waits for PrefillSamples, unless the game stopped sending (no Push since the
-	// last call): then what is left goes out, padded with silence at the end.
+	// back to the haptics-only report. A sound waits for PrefillSamples, unless the game stopped sending (no Push for
+	// StoppedAfterTakes calls): then what is left goes out, faded and padded with silence at the end.
 	public bool TakeFrame(Span<byte> opus)
 	{
 		lock (gate)
 		{
-			bool sending = pushedSinceTake;
+			takesSincePush = pushedSinceTake ? 0 : Math.Min(takesSincePush + 1, StoppedAfterTakes);
 			pushedSinceTake = false;
-			if (count == 0)
-			{
-				playing = false;
-				return false;
-			}
+			bool sending = takesSincePush < StoppedAfterTakes;
+			ranDry &= sending;
 			if (!playing)
 			{
-				if (count < PrefillSamples && sending)
+				if (count == 0 || (count < PrefillSamples && sending))
 				{
 					return false;
 				}
 				playing = true;
+				level = count;
 			}
-			if (count < FrameSamples)
+			if (sending)
 			{
-				// Runs dry: the rest is padded, then the next sound builds its cushion again.
-				playing = false;
-				if (sending)
-				{
-					Interlocked.Increment(ref underruns);
-				}
+				minLevel = Math.Min(minLevel, count);
+				maxLevel = Math.Max(maxLevel, count);
+				Steer();
 			}
-			for (int i = 0; i < FrameSamples; i++)
-			{
-				if (count > 0)
-				{
-					frame[2 * i] = ring[2 * head];
-					frame[2 * i + 1] = ring[2 * head + 1];
-					head = (head + 1) % MaxBufferedSamples;
-					count--;
-				}
-				else
-				{
-					frame[2 * i] = frame[2 * i + 1] = 0;
-				}
-			}
+			FillFrame(sending);
 		}
 		opus.Clear();
 		encoder.Encode(frame, opus[..SpeakerReports.OpusFrameBytes]);
@@ -260,6 +331,68 @@ public sealed class SpeakerAudioSender : IDisposable
 	}
 
 	public void Dispose() => encoder.Dispose();
+
+	// Moves the resampling ratio so the averaged level heads for TargetSamples (PI control, called once per report).
+	private void Steer()
+	{
+		level += (count - level) * LevelSmoothing;
+		double error = (level - TargetSamples) / TargetSamples;
+		integral = Math.Clamp(integral + error * IntegralGain, -MaxIntegral, MaxIntegral);
+		resampler.Trim = Math.Clamp(error * ProportionalGain + integral, -MaxTrim, MaxTrim);
+	}
+
+	private void FillFrame(bool sending)
+	{
+		int available = Math.Min(count, FrameSamples);
+		for (int i = 0; i < available; i++)
+		{
+			short left = ring[2 * head], right = ring[2 * head + 1];
+			if (fadeIn > 0)
+			{
+				double gain = (double)(FadeSamples - fadeIn) / FadeSamples;
+				left = (short)Math.Round(left * gain);
+				right = (short)Math.Round(right * gain);
+				fadeIn--;
+			}
+			frame[2 * i] = left;
+			frame[2 * i + 1] = right;
+			head = (head + 1) % MaxBufferedSamples;
+		}
+		count -= available;
+		if (available < FrameSamples)
+		{
+			// Runs dry: fade out (over the last samples there are, or from the last sample sent when there are too few),
+			// pad with silence, and let the next sound build its cushion again.
+			playing = false;
+			ranDry = sending;
+			int end = available;
+			if (available >= FadeSamples)
+			{
+				for (int i = 0; i < FadeSamples; i++)
+				{
+					int at = available - FadeSamples + i;
+					double gain = (double)(FadeSamples - 1 - i) / FadeSamples;
+					frame[2 * at] = (short)Math.Round(frame[2 * at] * gain);
+					frame[2 * at + 1] = (short)Math.Round(frame[2 * at + 1] * gain);
+				}
+			}
+			else
+			{
+				short fromLeft = available > 0 ? frame[2 * available - 2] : lastLeft;
+				short fromRight = available > 0 ? frame[2 * available - 1] : lastRight;
+				for (int i = 0; i < FadeSamples; i++)
+				{
+					double gain = (double)(FadeSamples - 1 - i) / FadeSamples;
+					frame[2 * (available + i)] = (short)Math.Round(fromLeft * gain);
+					frame[2 * (available + i) + 1] = (short)Math.Round(fromRight * gain);
+				}
+				end = available + FadeSamples;
+			}
+			frame.AsSpan(2 * end).Clear();
+		}
+		lastLeft = frame[^2];
+		lastRight = frame[^1];
+	}
 
 	private void Input(ReadOnlySpan<byte> f)
 	{

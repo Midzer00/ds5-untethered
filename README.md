@@ -43,7 +43,7 @@ flowchart LR
 
 ### Download
 
-A preview build is on the repository's [Releases](https://github.com/Midzer00/ds5-untethered/releases) page, as an
+The current release is on the repository's [Releases](https://github.com/Midzer00/ds5-untethered/releases) page, as an
 installer (`DS5-Untethered-<version>-Setup.exe`, per-user, no administrator rights) and as a zip
 (`DS5-Untethered-<version>-win-x64.zip`, unzip anywhere and run `Kopru.App.exe`). Both include .NET; nothing else needs
 to be installed for the app itself.
@@ -63,7 +63,7 @@ to be installed for the app itself.
 
 ### Status
 
-Preview. Most features are tested in code only; what was measured on a real controller is listed below.
+Most features are tested in code only; what was measured on a real controller is listed below.
 
 Done and verified on hardware:
 - Bluetooth session: input reading, output reports, haptics stream; Bluetooth adapter check.
@@ -159,7 +159,7 @@ flowchart LR
 
 ### İndirme
 
-Ön sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz. İki
+Güncel sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz. İki
 biçimde gelir: kurulum dosyası (`DS5-Untethered-<sürüm>-Setup.exe`; yalnızca geçerli kullanıcıya kurar, yönetici izni
 istemez) ve zip (`DS5-Untethered-<sürüm>-win-x64.zip`; istediğiniz yere açıp `Kopru.App.exe` dosyasını çalıştırırsınız).
 .NET ikisinin de içindedir; uygulama için başka bir şey kurmanız gerekmez.
@@ -181,7 +181,7 @@ istemez) ve zip (`DS5-Untethered-<sürüm>-win-x64.zip`; istediğiniz yere açı
 
 ### Durum
 
-Ön sürüm. Özelliklerin çoğu yalnızca kod testlerinden geçti; gerçek kumandada ölçülenler aşağıda listelenmiştir.
+Özelliklerin çoğu yalnızca kod testlerinden geçti; gerçek kumandada ölçülenler aşağıda listelenmiştir.
 
 Tamamlandı, donanımda doğrulandı:
 - Bluetooth oturumu: girdi okuma, çıktı raporları, haptik akışı; Bluetooth adaptör testi.

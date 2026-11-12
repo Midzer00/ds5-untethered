@@ -1,7 +1,7 @@
 ﻿; SPDX-License-Identifier: GPL-3.0-or-later
 ; Inno Setup 6 (6.3 or newer) script for the DS5 Untethered installer. Built by tools\publish.ps1, which passes:
-;   /DAppVersion=0.1.0-preview      shown version (InformationalVersion)
-;   /DAppVersionNumeric=0.1.0       file version of Setup.exe (Version)
+;   /DAppVersion=0.1.5              shown version (InformationalVersion)
+;   /DAppVersionNumeric=0.1.5       file version of Setup.exe (Version)
 ;   /DStagingDir=<published folder> the self-contained app folder (with LICENSE, THIRD-PARTY-NOTICES.md, README.txt)
 ;   /DOutputDir=<artifacts folder>
 ; No absolute paths in here: everything else is relative to this script's folder.

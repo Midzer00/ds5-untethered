@@ -196,25 +196,30 @@ public sealed partial class GameModeController
 		Apply();
 	}
 
+	// Where the game lines go ("game: ..."; exe file names only, never paths). Tests replace it.
+	public Action<string> Log { get; set; } = Diagnostics.AppLog.Write;
+
 	public void Tick()
 	{
 		ForegroundGame? seen = watcher.Poll();
 		gameInFront = seen?.Exe;
 		ForegroundGame? ask = null;
+		List<string> lines = [];
 		lock (gate)
 		{
 			if (active != null && !watcher.IsRunning(active))
 			{
-				EndSession();
+				EndSession("it exited", lines);
 			}
 			if (seen != null && (active == null || !SameLaunch(seen, active)))
 			{
 				// Another known game took over.
 				if (active != null)
 				{
-					EndSession();
+					EndSession($"{seen.Name} took over", lines);
 				}
 				active = seen;
+				lines.Add($"game: {seen.Name} is the active game ({seen.Exe})");
 				if (launches.Count >= LaunchMemoryLimit)
 				{
 					launches.Clear();
@@ -224,18 +229,34 @@ public sealed partial class GameModeController
 					if (always.Contains(seen.Key))
 					{
 						SetOn(true, ModeReason.Always, seen.Key);
+						lines.Add($"game: {seen.Name} is on the always list, DualSense mode on");
 					}
 					else if (!on && askOnKnownGame && !neverAsk.Contains(seen.Key))
 					{
 						ask = seen;
+						lines.Add($"game: asking whether to turn on DualSense mode for {seen.Name}");
+					}
+					else
+					{
+						string why = on ? "DualSense mode is already on" : !askOnKnownGame ? "asking is off" : "on the never ask list";
+						lines.Add($"game: not asking about {seen.Name} ({why})");
 					}
 				}
 				else if (always.Contains(seen.Key) && !on)
 				{
 					// Back to a launch seen before: an "always" game turns on again.
 					SetOn(true, ModeReason.Always, seen.Key);
+					lines.Add($"game: {seen.Name} is on the always list, DualSense mode on again");
+				}
+				else
+				{
+					lines.Add($"game: not asking about {seen.Name} (already seen in this launch)");
 				}
 			}
+		}
+		foreach (string line in lines)
+		{
+			Log(line);
 		}
 		Apply();
 		if (ask != null)
@@ -432,13 +453,18 @@ public sealed partial class GameModeController
 	private static string LaunchId(ForegroundGame game) => game.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + game.Key;
 
 	// Caller holds the lock. The game in front ended (exited or another took over): a switch turned on for it goes off.
-	private void EndSession()
+	private void EndSession(string why, List<string> lines)
 	{
 		ForegroundGame? ended = active;
 		active = null;
-		if (on && ended != null && onFor != null && string.Equals(onFor, ended.Key, StringComparison.OrdinalIgnoreCase))
+		bool off = on && ended != null && onFor != null && string.Equals(onFor, ended.Key, StringComparison.OrdinalIgnoreCase);
+		if (off)
 		{
 			SetOn(false, ModeReason.Default, null);
+		}
+		if (ended != null)
+		{
+			lines.Add($"game: {ended.Name} is no longer the active game ({why}){(off ? ", DualSense mode off again" : string.Empty)}");
 		}
 	}
 

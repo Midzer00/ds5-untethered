@@ -51,6 +51,7 @@ public sealed partial class SettingsState
 		if (game != null && DesktopModeOn && DesktopMode.AutoOffInGame)
 		{
 			_desktopOffGame = ForegroundGame.DisplayName(game.Exe);
+			Kopru.Core.Diagnostics.AppLog.Write($"mouse mode: switched off automatically, {game.Name} came to the front ({game.Exe})");
 			DesktopModeOn = false;
 		}
 	}

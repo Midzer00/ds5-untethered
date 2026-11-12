@@ -2,8 +2,8 @@
 
   <!-- The app version and product name, in one place. The publish script (tools/publish.ps1) names the download from it. -->
   <PropertyGroup>
-    <Version>0.1.4</Version>
-    <InformationalVersion>$(Version)-preview</InformationalVersion>
+    <Version>0.1.5</Version>
+    <InformationalVersion>$(Version)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>DS5 Untethered</Product>
     <!-- No company: the default would be the assembly name ("Kopru.App"). -->

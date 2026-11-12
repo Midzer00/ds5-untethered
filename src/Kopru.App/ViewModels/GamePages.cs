@@ -165,12 +165,15 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	private CatalogUpdateResult? _lastResult;
 
 	public SupportedGamesViewModel(IControllerService service, SettingsState settings, GameCatalogUpdater? updater = null,
-		Func<DateTimeOffset>? now = null, GameImageService? images = null) : base(service, settings, GameMode.Supported)
+		Func<DateTimeOffset>? now = null, GameImageService? images = null, InstalledGames? installed = null) : base(service, settings, GameMode.Supported)
 	{
 		_updater = updater;
 		_images = images;
+		_installedGames = installed;
 		_now = now ?? (() => DateTimeOffset.Now);
+		InstalledFilters = [new FilterOption(() => Text.InstalledFilterAll()), new FilterOption(() => InstalledFilterName)];
 		Rebuild();
+		InitInstalled();
 		// The pictures follow the download setting: the rows load again (downloaded pictures only while it is on).
 		settings.PropertyChanged += (_, e) =>
 		{
@@ -341,7 +344,8 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	}
 	public string CountText => Text.GameCount(Games.Count);
 	public string NoMatchText => Text.NoMatchingGames();
-	public bool HasNoMatch => Games.Count == 0;
+	// "No matching games" for a search; the "Installed" view says instead that nothing was found (or that it is looking).
+	public bool HasNoMatch => Games.Count == 0 && !HasNoInstalled && !IsSearchingInstalled;
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(Games))]
@@ -349,7 +353,7 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	[NotifyPropertyChangedFor(nameof(HasNoMatch))]
 	private string _searchText = string.Empty;
 
-	public IReadOnlyList<GameItemViewModel> Games => _all.Where(g => g.Matches((SearchText ?? string.Empty).Trim())).ToList();
+	public IReadOnlyList<GameItemViewModel> Games => _all.Where(g => (!InstalledOnly || g.IsInstalled) && g.Matches((SearchText ?? string.Empty).Trim())).ToList();
 
 	protected override void OnLanguageChanged()
 	{
@@ -368,9 +372,7 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 			PadType = new GamePadTypePicker(Service.Games, g.Key),
 			Image = _images == null ? null : new GameImageHandle(_images, new GameImageRequest(g.Key, g.Catalog?.SteamAppId, g.IsUserAdded ? g.Path ?? g.Exe : null))
 		}).ToList();
-		OnPropertyChanged(nameof(Games));
-		OnPropertyChanged(nameof(CountText));
-		OnPropertyChanged(nameof(HasNoMatch));
+		MarkInstalled();
 	}
 }
 

@@ -234,6 +234,109 @@ public class NotificationTests
 		Assert.Equal(NotificationType.GameDetected, h.Raised[^1].Type);
 	}
 
+	// Collects this test's "toast: ..." log lines (other tests log in parallel: only lines naming game are kept).
+	private static List<string> WatchToastLog(string game, Action action)
+	{
+		var lines = new List<string>();
+		void Watch(string line)
+		{
+			if (line.StartsWith("toast: ", StringComparison.Ordinal) && line.Contains(game, StringComparison.Ordinal))
+			{
+				lock (lines)
+				{
+					lines.Add(line);
+				}
+			}
+		}
+		Kopru.Core.Diagnostics.AppLog.Written += Watch;
+		try
+		{
+			action();
+		}
+		finally
+		{
+			Kopru.Core.Diagnostics.AppLog.Written -= Watch;
+		}
+		lock (lines)
+		{
+			return lines.ToList();
+		}
+	}
+
+	// The real session: DualSense mode already on (switched on without a game), a supported game started. Before, neither
+	// the question (only asked with the mode off) nor the announcement (only for "always" games) came: no toast at all.
+	[AvaloniaFact]
+	public void Game_StartingWithTheModeAlreadyOn_IsAnnouncedOncePerLaunch_AndLogged()
+	{
+		var h = new Harness();
+		h.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true }); // on without a game
+		h.Fake.RaiseStateChanged();
+		List<string> log = WatchToastLog("Returnal", () => Focus(h, "Returnal-Win64-Shipping.exe"));
+		AppNotification shown = Assert.Single(h.Raised);
+		Assert.Equal(NotificationType.GameDetected, shown.Type);
+		Assert.Equal("Returnal", shown.Title);
+		Assert.Equal(Text.NotifyGameSupported(), shown.Body);
+		Assert.Contains("toast: game detected for Returnal shown", log);
+
+		// Away and back in the same launch: no repeat (and no new log line on every state change).
+		log = WatchToastLog("Returnal", () =>
+		{
+			Focus(h, "chrome.exe");
+			Focus(h, "Returnal-Win64-Shipping.exe");
+			h.Fake.RaiseStateChanged();
+			h.Fake.RaiseStateChanged();
+		});
+		Assert.Single(h.Raised);
+		Assert.Empty(log);
+
+		// Closed and started again: a new launch, announced again.
+		h.Fake.Watcher.Exit("Returnal-Win64-Shipping.exe");
+		Focus(h, null);
+		Focus(h, "Returnal-Win64-Shipping.exe");
+		Assert.Equal(2, h.Raised.Count(n => n.Type == NotificationType.GameDetected));
+	}
+
+	// The controller type toast shares the GameDetected type; its 20 s type cooldown used to swallow the game toast.
+	[AvaloniaFact]
+	public void Game_Announcement_IsNotSwallowedByTheControllerTypeToast()
+	{
+		var h = new Harness();
+		h.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true }); // on without a game
+		h.Later();
+		h.Fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, "DualShock4"));
+		h.Fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
+		h.Fake.Games.Tick();
+		h.Fake.RaiseStateChanged();
+		Assert.Contains(h.Raised, n => n.Type == NotificationType.GameDetected && n.Title == Text.PadModeDualShock4Title());
+		Assert.Contains(h.Raised, n => n.Type == NotificationType.GameDetected && n.Title == "Returnal");
+	}
+
+	[AvaloniaFact]
+	public void Game_Announcement_Suppressed_LogsWhy()
+	{
+		var h = new Harness();
+		h.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true }); // on without a game
+		h.Settings.NotificationsEnabled = false;
+		List<string> log = WatchToastLog("Returnal", () => Focus(h, "Returnal-Win64-Shipping.exe"));
+		Assert.Empty(h.Raised);
+		Assert.Contains("toast: game detected for Returnal not shown (notifications off)", log);
+
+		var quiet = new Harness();
+		quiet.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true });
+		quiet.Settings.QuietWhilePlaying = true;
+		quiet.FullScreen = true;
+		log = WatchToastLog("Assetto", () => Focus(quiet, "AC2-Win64-Shipping.exe"));
+		Assert.Empty(quiet.Raised);
+		Assert.Contains("toast: game detected for Assetto Corsa Competizione not shown (quiet while playing)", log);
+
+		// With the mode off the question comes instead; both are logged.
+		var off = new Harness();
+		log = WatchToastLog("Spider-Man", () => Focus(off, "Spider-Man.exe"));
+		Assert.Equal([NotificationType.GameAsk], off.Types);
+		Assert.Contains("toast: asking whether to turn on DualSense mode for Marvel's Spider-Man Remastered (shown)", log);
+		Assert.Contains("toast: game detected for Marvel's Spider-Man Remastered not shown (DualSense mode is off)", log);
+	}
+
 	[AvaloniaFact]
 	public void Game_UnknownApps_AreNeverAskedAbout()
 	{

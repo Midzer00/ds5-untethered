@@ -62,7 +62,11 @@ public class GameNameMatchTests
 		Assert.Equal("Lego Batman: Legacy of the Dark Knight", watcher.Poll()?.Name);
 		processes.Show("LEGOBatmanLotDK.exe", Launcher);
 		Assert.Equal("Lego Batman: Legacy of the Dark Knight", watcher.Poll()?.Name);
-		Assert.Empty(log);
+		Assert.Equal(
+		[
+			"game: Lego Batman: Legacy of the Dark Knight recognised by exe name (LEGOBatmanLotDK-Win64-Shipping.exe)",
+			"game: Lego Batman: Legacy of the Dark Knight recognised by exe name (LEGOBatmanLotDK.exe)",
+		], log);
 	}
 
 	[Fact]

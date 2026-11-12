@@ -71,8 +71,31 @@ public class DesktopModeAppTests
 
 		var bodies = new List<string>();
 		vm.Settings.ShortcutFeedback += (_, body) => bodies.Add(body);
-		fake.Watcher.Exe = "Cyberpunk2077.exe";
-		fake.Games.Tick();
+		var lines = new List<string>();
+		void Watch(string line)
+		{
+			if (line.StartsWith("mouse mode: switched off automatically", StringComparison.Ordinal))
+			{
+				lock (lines)
+				{
+					lines.Add(line);
+				}
+			}
+		}
+		Kopru.Core.Diagnostics.AppLog.Written += Watch;
+		try
+		{
+			fake.Watcher.Exe = "Cyberpunk2077.exe";
+			fake.Games.Tick();
+		}
+		finally
+		{
+			Kopru.Core.Diagnostics.AppLog.Written -= Watch;
+		}
+		lock (lines)
+		{
+			Assert.Contains("mouse mode: switched off automatically, Cyberpunk 2077 came to the front (Cyberpunk2077.exe)", lines);
+		}
 		Assert.False(vm.Settings.DesktopModeOn);
 		Assert.False(fake.Settings.DesktopModeOn);
 		Assert.Single(bodies);

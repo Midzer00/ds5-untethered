@@ -148,7 +148,7 @@ public class SpeakerAudioTests
 		byte[] opus = new byte[200];
 		Assert.False(sender.TakeFrame(opus));
 
-		sender.Push(FourChannel(1100, _ => (2000, 0, 500))); // past the prefill
+		sender.Push(FourChannel(2800, _ => (2000, 0, 500))); // past the prefill
 		Assert.True(sender.TakeFrame(opus));
 		Assert.All(opus, b => Assert.Equal(0xAB, b));
 		short[] frame = encoder.Frames[^1];
@@ -187,11 +187,12 @@ public class SpeakerAudioTests
 	{
 		using SpeakerAudioSender sender = new(new FakeOpusEncoder());
 		byte[] opus = new byte[200];
-		sender.Push(FourChannel(480, _ => (3000, 3000, 0))); // 450 samples: under the prefill
-		Assert.False(sender.TakeFrame(opus));
-		sender.Push(FourChannel(480, _ => (3000, 3000, 0))); // 900 samples, still under
-		Assert.False(sender.TakeFrame(opus));
-		sender.Push(FourChannel(480, _ => (3000, 3000, 0))); // 1350 samples
+		for (int i = 0; i < 5; i++)
+		{
+			sender.Push(FourChannel(480, _ => (3000, 3000, 0))); // 450 samples a time: 2250 is still under the prefill
+			Assert.False(sender.TakeFrame(opus));
+		}
+		sender.Push(FourChannel(480, _ => (3000, 3000, 0))); // 2700 samples
 		Assert.True(sender.TakeFrame(opus));
 		Assert.Equal(0, sender.Underruns);
 	}
@@ -203,8 +204,11 @@ public class SpeakerAudioTests
 		using SpeakerAudioSender sender = new(encoder);
 		byte[] opus = new byte[200];
 		sender.Push(FourChannel(300, _ => (3000, 3000, 0))); // ~281 samples, never reaches the prefill
-		Assert.False(sender.TakeFrame(opus));
-		Assert.True(sender.TakeFrame(opus)); // nothing new arrived: the sound goes out, padded at its end
+		for (int i = 0; i < SpeakerAudioSender.StoppedAfterTakes; i++)
+		{
+			Assert.False(sender.TakeFrame(opus)); // a late USB burst is waited for
+		}
+		Assert.True(sender.TakeFrame(opus)); // nothing new arrived for a while: the sound goes out, faded and padded at its end
 		Assert.Equal(3000, encoder.Frames[^1][100]);
 		Assert.Equal(0, encoder.Frames[^1][^1]);
 		Assert.False(sender.TakeFrame(opus));
@@ -243,7 +247,7 @@ public class SpeakerAudioTests
 			}
 		}
 		Assert.Equal(0, sender.Underruns);
-		Assert.True(frames > 180);
+		Assert.True(frames > 175);
 		// No sample of silence inside the sound: every frame sent while the game was sending is full (the resampler's very
 		// first sample starts from its silent state).
 		Assert.All(encoder.Frames, f => Assert.DoesNotContain((short)0, f.Skip(2)));
@@ -254,16 +258,19 @@ public class SpeakerAudioTests
 	{
 		using SpeakerAudioSender sender = new(new FakeOpusEncoder());
 		byte[] opus = new byte[200];
-		sender.Push(FourChannel(1100, _ => (3000, 3000, 0)));
+		sender.Push(FourChannel(2800, _ => (3000, 3000, 0)));
 		Assert.True(sender.TakeFrame(opus));
 		// The game still sends, but too little: the buffer runs dry.
-		sender.Push(FourChannel(48, _ => (3000, 3000, 0)));
-		Assert.True(sender.TakeFrame(opus));
-		sender.Push(FourChannel(48, _ => (3000, 3000, 0)));
-		Assert.True(sender.TakeFrame(opus));
-		Assert.Equal(1, sender.Underruns);
-		sender.Push(FourChannel(4800, _ => (1, 1, 0))); // 4500 samples into a buffer of MaxBufferedSamples
-		Assert.InRange(sender.DroppedSamples, 4500L - SpeakerAudioSender.MaxBufferedSamples - 2, 4500L - SpeakerAudioSender.MaxBufferedSamples + 2);
+		for (int i = 0; i < 9 && sender.Underruns == 0; i++)
+		{
+			sender.Push(FourChannel(48, _ => (3000, 3000, 0)));
+			sender.TakeFrame(opus);
+		}
+		Assert.Equal(1, sender.Underruns); // counted when audio arrived after the dry frame
+		Assert.Equal(0, sender.DroppedSamples);
+		sender.Push(FourChannel(12000, _ => (1, 1, 0))); // ~11 000 samples into a buffer of MaxBufferedSamples
+		Assert.Equal(SpeakerAudioSender.MaxBufferedSamples, sender.Buffered);
+		Assert.InRange(sender.DroppedSamples, 1000L, 2000L);
 	}
 
 	[Fact]
@@ -282,23 +289,24 @@ public class SpeakerAudioTests
 		{
 			session.Haptics.Push(50, 50);
 		}
-		session.PushSpeakerAudio(FourChannel(1100, _ => (3000, 3000, 0))); // ~1031 samples (past the prefill): three Opus frames
+		session.PushSpeakerAudio(FourChannel(2800, _ => (3000, 3000, 0))); // ~2625 samples (past the prefill): six Opus frames
 		SpinWait.SpinUntil(() => link.Writes.Count(w => w[0] == 0x32) >= 2, 3000);
 
 		List<byte[]> stream = link.Writes.Where(w => w[0] is 0x32 or 0x36).ToList();
-		Assert.True(stream.Count >= 4);
-		// First the three frames of speech (with haptics inside), then haptics-only reports; the counter runs on.
-		Assert.Equal(0x36, stream[0][0]);
-		Assert.Equal(0x36, stream[1][0]);
-		Assert.Equal(0x36, stream[2][0]);
-		Assert.Equal(0x32, stream[3][0]);
+		Assert.True(stream.Count >= 7);
+		// First the six frames of speech (with haptics inside), then haptics-only reports; the counter runs on.
+		for (int i = 0; i < 6; i++)
+		{
+			Assert.Equal(0x36, stream[i][0]);
+		}
+		Assert.Equal(0x32, stream[6][0]);
 		Assert.True((sbyte)stream[0][13] > 0); // the mixer's haptics are inside the speaker report
 		Assert.Equal(stream[0][10] + 1, stream[1][10]);
-		Assert.Equal(stream[2][10] + 1, stream[3][10]);
+		Assert.Equal(stream[5][10] + 1, stream[6][10]);
 		Assert.All(stream, w => Assert.Equal(547, w.Length));
 		Assert.Equal(Crc.Compute(Crc.OutputSeed, stream[0].AsSpan(0, 394)), BinaryPrimitives.ReadUInt32LittleEndian(stream[0].AsSpan(394)));
-		Assert.All(stream[3].AsSpan(142).ToArray(), b => Assert.Equal(0, b));
-		Assert.Equal(3, session.SpeakerReports);
+		Assert.All(stream[6].AsSpan(142).ToArray(), b => Assert.Equal(0, b));
+		Assert.Equal(6, session.SpeakerReports);
 	}
 
 	[Fact]

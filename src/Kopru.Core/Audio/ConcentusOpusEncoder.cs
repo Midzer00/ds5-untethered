@@ -121,6 +121,31 @@ public static class OpusEncoders
 				// Fall back to the managed encoder.
 			}
 		}
+		WarmUp();
 		return new ConcentusOpusEncoder();
+	}
+
+	private static int warmedUp;
+
+	// The first Concentus encodes run through the JIT and took long enough to stall the report thread while the game's
+	// audio piled up (the samples dropped at the first sound of a session). A throwaway encoder runs them once, here, off
+	// the audio path; the encoder handed out starts from a clean state.
+	private static void WarmUp()
+	{
+		if (Interlocked.Exchange(ref warmedUp, 1) != 0)
+		{
+			return;
+		}
+		ConcentusOpusEncoder encoder = new();
+		short[] pcm = new short[SpeakerAudioSender.FrameSamples * 2];
+		byte[] packet = new byte[SpeakerReports.OpusFrameBytes];
+		for (int frame = 0; frame < 4; frame++)
+		{
+			for (int i = 0; i < pcm.Length; i++)
+			{
+				pcm[i] = (short)(1000 * Math.Sin(i * 0.05 + frame));
+			}
+			encoder.Encode(pcm, packet);
+		}
 	}
 }

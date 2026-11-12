@@ -61,8 +61,12 @@ public sealed partial class BridgeHost
 			_ => new VirtualDualSense(identity, host.BusId)
 		};
 
+		// A pad swap keeps the app's mute LED in the new bridge, so no game report gets the game's own value through before
+		// the mic settings are applied again.
 		private ControllerBridge CreateBridge() => new(Session, pad)
 		{
+			LogSlot = host.LogSlot,
+			AppMuteLed = Bridge?.AppMuteLed ?? ControllerBridge.NoAppMuteLed,
 			RumbleFeel = host.profile.Feel,
 			LightFromGame = host.profile.LightFromGame,
 			TriggerIntensity = host.profile.TriggerIntensity,

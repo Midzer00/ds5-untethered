@@ -76,7 +76,8 @@ public interface IGameWatcher
 // folder name of the exe's path, the exe's product name or file description, or the window title. Lookups are cached
 // per process (id and path): version info is read once per process; only the window title of an unknown process is read
 // again (games often set it after the window opens). Ignores this app and common desktop apps. details defaults to
-// processes when that implements IProcessDetails (SystemProcessSource does).
+// processes when that implements IProcessDetails (SystemProcessSource does). Each recognition is logged once per process
+// ("game: <name> recognised by <signal> (<exe file name>)", never a path).
 public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes = null, SteamLibrary? steam = null,
 	IProcessDetails? details = null, Action<string>? log = null) : IGameWatcher
 {
@@ -221,6 +222,7 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		{
 			if (UserGameMatches(game, process, exe))
 			{
+				log($"game: {game.Name} recognised as a game you added ({exe})");
 				return new Entry(new ForegroundGame(exe, current.Find(exe), process.Id, process.Path, game.Name));
 			}
 		}
@@ -230,11 +232,11 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		}
 		if (current.Find(exe) is { } match)
 		{
-			return new Entry(new ForegroundGame(exe, match, process.Id, process.Path));
+			return new Entry(Found(match, "exe name", process, exe));
 		}
 		if (steam?.AppIdFor(process.Path) is long appId && current.FindBySteamAppId(appId) is { } byApp)
 		{
-			return new Entry(new ForegroundGame(exe, byApp, process.Id, process.Path));
+			return new Entry(Found(byApp, "Steam library folder", process, exe));
 		}
 		return ByName(process, exe);
 	}

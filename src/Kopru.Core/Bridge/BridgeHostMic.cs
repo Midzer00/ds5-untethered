@@ -99,6 +99,10 @@ public sealed partial class BridgeHost
 		bool appOwnsButton = s.Button || c.PadType != Virtual.VirtualPadType.DualSense;
 		if (!appOwnsButton)
 		{
+			if (c.MuteLedSent != ControllerBridge.NoAppMuteLed)
+			{
+				LogMuteLedOverrides(c);
+			}
 			c.Bridge.AppMuteLed = ControllerBridge.NoAppMuteLed;
 			if (c.MuteLedSent != ControllerBridge.NoAppMuteLed)
 			{
@@ -108,14 +112,25 @@ public sealed partial class BridgeHost
 			return;
 		}
 		byte value = s.IsLive ? OutputBlock.MuteLedOn : OutputBlock.MuteLedOff;
-		c.Bridge.AppMuteLed = value;
 		if (c.MuteLedSent == value)
 		{
+			c.Bridge.AppMuteLed = value;
 			return;
 		}
+		// What the game asked for while the previous value showed (one line per kind, once per change).
+		LogMuteLedOverrides(c);
+		// Set before the write: game reports relayed from now on carry the new value (ControllerBridge reads it under the
+		// session's output lock, so none built earlier can be sent after this write).
+		c.Bridge.AppMuteLed = value;
 		try
 		{
-			c.Session.UpdateOutput(b => OutputBlock.SetMuteLed(b, value));
+			c.Session.UpdateOutput(b =>
+			{
+				OutputBlock.SetMuteLed(b, value);
+				// The output state is the game's last report while a game drives the controller: a light bar setup or
+				// "release LEDs" left in it would be repeated in this report and undo the value (DualSense Mode, game light).
+				ControllerBridge.ClearOneShotLedCommands(b);
+			});
 		}
 		catch (Exception e)
 		{
@@ -124,7 +139,15 @@ public sealed partial class BridgeHost
 			return;
 		}
 		c.MuteLedSent = value;
-		Diagnostics.AppLog.Write($"mute led{LogSlot}: {(value == OutputBlock.MuteLedOn ? "on" : "off")} ({reason}: {MuteLedReason(s)})");
+		Diagnostics.AppLog.Write($"mute led{LogSlot}: {ControllerBridge.MuteLedName(value)} ({reason}: {MuteLedReason(s)}; {c.Bridge.MuteLedDelivery})");
+	}
+
+	private void LogMuteLedOverrides(Connection c)
+	{
+		foreach (string line in c.Bridge.TakeMuteLedOverrides())
+		{
+			Diagnostics.AppLog.Write($"mute led{LogSlot}: {line}");
+		}
 	}
 
 	private static string MuteLedReason(MicSettings s) => s.Live is { } live

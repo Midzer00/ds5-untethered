@@ -64,6 +64,17 @@ public sealed class SteamLibrary(ISteamEnvironment environment, Func<long>? cloc
 		}
 	}
 
+	// Reads Steam's files again now (not waiting for RefreshInterval), e.g. for a scan the user asked for.
+	public IReadOnlyList<(string Folder, long AppId)> ReadNow()
+	{
+		lock (gate)
+		{
+			readAt = clock();
+			installs = Read();
+			return installs;
+		}
+	}
+
 	// The Steam app id of the game the exe at path belongs to, or null.
 	public long? AppIdFor(string? exePath)
 	{

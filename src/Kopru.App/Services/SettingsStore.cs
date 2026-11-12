@@ -100,6 +100,11 @@ public sealed class AppSettings
 	public DateTimeOffset? GameListCheckedAt { get; set; }
 	// Supported games list: download game pictures from Steam (else only pictures already on this PC).
 	public bool DownloadGameImages { get; set; } = true;
+	// Supported games list: "Installed" chosen instead of "All", the extra folders searched for games and the supported
+	// games seen running before with their folders (missing in older files: All, none, none).
+	public bool InstalledGamesOnly { get; set; }
+	public List<string>? GameFolders { get; set; }
+	public List<SeenGame>? SeenGames { get; set; }
 
 	// DualSense supported mode: the switch when the user turned it on without a game, whether to ask when a known game
 	// starts, the games that turn it on without asking ("always", by game key), the games never asked about and the games
