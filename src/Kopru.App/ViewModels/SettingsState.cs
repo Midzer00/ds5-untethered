@@ -80,6 +80,7 @@ public sealed partial class SettingsState : ViewModelBase
 			AutoStartBridge = saved.AutoStartBridge;
 			LoadAudioDefaults(saved);
 			LoadInstalledGames(saved);
+			LoadUpdates(saved);
 			_loading = false;
 			service.Games.LoadMemory(saved.ToGameMemory(service.Games.Catalog));
 		}
@@ -305,7 +306,7 @@ public sealed partial class SettingsState : ViewModelBase
 		Mic = ToMicSettings()
 	};
 
-	public AppSettings ToAppSettings() => WithInstalledGames(WithLight(new AppSettings
+	public AppSettings ToAppSettings() => WithUpdates(WithInstalledGames(WithLight(new AppSettings
 	{
 		Language = Localizer.Chosen switch { Language.Turkish => "tr", Language.English => "en", _ => null },
 		GameHapticsLevel = GameHapticsLevel,
@@ -357,7 +358,7 @@ public sealed partial class SettingsState : ViewModelBase
 		ControllerSpeakerChosen = AudioChoices.ControllerSpeakerChosen,
 		ControllerMicChosen = AudioChoices.ControllerMicChosen,
 		SetupCompleted = SetupCompleted,
-	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers)));
+	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers))));
 
 	// Writes a pending change at once (also called by the debounce timer and on exit).
 	public void SaveNow()

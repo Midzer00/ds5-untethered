@@ -26,7 +26,8 @@ public sealed class SingleInstance : IDisposable
 	public const string DefaultName = "DS5Untethered";
 	public static readonly TimeSpan DefaultAnswerTimeout = TimeSpan.FromSeconds(3);
 
-	private readonly Mutex _mutex;
+	private Mutex _mutex;
+	private Mutex? _updating;
 	private readonly EventWaitHandle? _show;
 	private readonly EventWaitHandle? _shown;
 	private readonly string _name;
@@ -49,6 +50,52 @@ public sealed class SingleInstance : IDisposable
 	public static string MutexName(string name) => name + ".Running";
 	public static string ShowEventName(string name) => name + ".Show";
 	public static string ShownEventName(string name) => name + ".Shown";
+	// Held while this copy hands over to the installer during an update (until the process is gone).
+	public static string UpdatingMutexName(string name) => name + ".Updating";
+
+	// True while a copy is handing over to the installer: a start in that moment exits (the installer is about to replace
+	// the files and starts the new version itself).
+	public static bool IsUpdating(string name = DefaultName)
+	{
+		if (!OperatingSystem.IsWindows())
+		{
+			return false;
+		}
+		try
+		{
+			if (Mutex.TryOpenExisting(UpdatingMutexName(name), out Mutex? m))
+			{
+				m.Dispose();
+				return true;
+			}
+			return false;
+		}
+		catch (UnauthorizedAccessException)
+		{
+			return true;
+		}
+	}
+
+	// Update: from now until this process ends, the "updating" mutex is held instead of the "running" one. The
+	// installer's AppMutex check (the running mutex) then passes at once, and its update wait (the updating mutex, see
+	// DS5Untethered.iss) lasts until this process has exited and its files are free. Returns how to take it back when
+	// the installer could not be started.
+	public Action HandOverToUpdate()
+	{
+		ObjectDisposedException.ThrowIf(_disposed, this);
+		_updating ??= new Mutex(false, UpdatingMutexName(_name));
+		_mutex.Dispose();
+		return () =>
+		{
+			if (_disposed)
+			{
+				return;
+			}
+			_mutex = new Mutex(false, MutexName(_name));
+			_updating?.Dispose();
+			_updating = null;
+		};
+	}
 
 	// Never throws for a running other copy: a mutex that exists but cannot be opened (e.g. made by an elevated copy)
 	// counts as "another copy runs".
@@ -168,5 +215,6 @@ public sealed class SingleInstance : IDisposable
 		_show?.Dispose();
 		_shown?.Dispose();
 		_mutex.Dispose();
+		// _updating is left to Windows: it is closed when the process ends, after its files are released.
 	}
 }

@@ -39,7 +39,8 @@ public class AppTests
 			.Where(p => p.PropertyType == typeof(string) && p.Name is not (nameof(SettingsViewModel.ToolResult) or nameof(OverviewViewModel.Warning) or nameof(SupportedGamesViewModel.SearchText)
 				or nameof(SticksViewModel.CalibrationText) or nameof(OverviewViewModel.PowerOffResult) or nameof(OverviewViewModel.SteamWarning)
 				or nameof(SupportedGamesViewModel.SteamText) or nameof(OverviewViewModel.PrimaryTip) or nameof(OverviewViewModel.BridgeRowTip)
-				or nameof(OverviewViewModel.LastBatteryText) or nameof(OverviewViewModel.HeroActionText)))
+				or nameof(OverviewViewModel.LastBatteryText) or nameof(OverviewViewModel.HeroActionText)
+				or nameof(SettingsState.LastRunVersion) or nameof(SettingsState.UpdateToastedVersion)))
 			.Select(p => (p.Name, (string?)p.GetValue(o)));
 
 	[AvaloniaFact]

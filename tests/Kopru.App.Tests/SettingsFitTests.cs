@@ -196,18 +196,119 @@ public sealed class SettingsFitTests
 		}
 	}
 
+	// The General tab's Updates block in each of its states (up to date; a new version with notes; the confirmation while
+	// playing; downloading; an error; a zip copy's download page button) fits at every size in both languages. Writes the
+	// up-to-date and new-version pictures (1100x700 and 960x640) to docs/screens with KOPRU_RENDER_SCREENS=1.
+	[AvaloniaFact]
+	public async Task GeneralTab_UpdatesBlock_FitsInEveryState()
+	{
+		List<string> problems = [];
+		Language? before = Localizer.Chosen;
+		bool writeDocs = Environment.GetEnvironmentVariable("KOPRU_RENDER_SCREENS") == "1";
+		string? fitDir = Environment.GetEnvironmentVariable("KOPRU_FIT_RENDER_DIR") is { Length: > 0 } d ? d : null;
+		List<TaskCompletionSource> stalled = [];
+		try
+		{
+			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			{
+				Localizer.Chosen = language;
+				foreach (string state in new[] { "idle", "ready", "confirm", "downloading", "error", "zip" })
+				{
+					var fakes = new UpdateFakes { ManifestVersion = state == "idle" ? "0.1.5" : UpdateFakes.Version, Installed = state != "zip" };
+					if (state == "downloading")
+					{
+						stalled.Add(fakes.Stall(42));
+					}
+					if (state == "error")
+					{
+						fakes.Download = (_, _) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+					}
+					(MainWindowViewModel vm, FakeControllerService _) = FullCase(code, fakes);
+					UpdatesViewModel updates = vm.Updates;
+					await updates.RunScheduledCheckAsync();
+					Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+					if (state is "confirm" or "error" or "downloading")
+					{
+						// The virtual controller feeds a game in the full case: the first click asks.
+						await updates.ActCommand.ExecuteAsync(null);
+						Assert.Equal(UpdatePhase.Confirming, updates.Phase);
+					}
+					if (state is "error")
+					{
+						await updates.ActCommand.ExecuteAsync(null);
+					}
+					if (state is "downloading")
+					{
+						_ = updates.ActCommand.ExecuteAsync(null);
+						for (int i = 0; i < 300 && updates.Progress < 42; i++)
+						{
+							await Task.Delay(10);
+							Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+						}
+					}
+					Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+					UpdatePhase expected = state switch
+					{
+						"idle" => UpdatePhase.Idle,
+						"confirm" => UpdatePhase.Confirming,
+						"downloading" => UpdatePhase.Downloading,
+						"error" => UpdatePhase.Error,
+						_ => UpdatePhase.Ready
+					};
+					Assert.Equal(expected, updates.Phase);
+					foreach ((double width, double height) in FitCheck.Matrix)
+					{
+						var window = new MainWindow { DataContext = vm, Width = width, Height = height };
+						window.Show();
+						vm.OpenSettingsAt(SettingsViewModel.GeneralTab);
+						FitCheck.Settle(window);
+						problems.AddRange(Check(window).Select(p => $"{code} {width}x{height} updates {state}: {p}"));
+						bool docs = writeDocs && state is "idle" or "ready" && (width, height) is (1100, 700) or (960, 640);
+						if (fitDir != null || docs)
+						{
+							Thread.Sleep(320);
+							FitCheck.Settle(window);
+							using var frame = window.CaptureRenderedFrame();
+							if (fitDir != null)
+							{
+								Directory.CreateDirectory(fitDir);
+								frame!.Save(Path.Combine(fitDir, $"settings-updates-{state}-{width}x{height}-{code}.png"));
+							}
+							if (docs)
+							{
+								string size = (width, height) == (1100, 700) ? "" : $"-{width}x{height}";
+								frame!.Save(Path.Combine(AppTests.RepoRoot(), "docs", "screens", $"settings-updates-{state}{size}-{code}.png"));
+							}
+						}
+						window.Close();
+					}
+				}
+			}
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+			foreach (TaskCompletionSource release in stalled)
+			{
+				release.TrySetResult();
+			}
+		}
+		Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+	}
+
 	private static ControllerEntry Entry(string id, int slot = 1, double battery = 78, bool edge = false) =>
 		new(id, slot, edge ? "DualSense Edge" : "DualSense", edge, true, battery, false, BridgeState.Stopped);
 
 	// Settings with everything that can make a tab taller shown.
-	internal static (MainWindowViewModel Vm, FakeControllerService Fake) FullCase(string code)
+	internal static (MainWindowViewModel Vm, FakeControllerService Fake) FullCase(string code, UpdateFakes? updates = null)
 	{
 		var fake = new FakeControllerService(animate: false)
 		{
 			Details = ControllerInfoAppTests.Details(),
 			ConnectedSince = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(4 * 60 + 7)
 		};
-		var vm = new MainWindowViewModel(fake, new AppEnvironment(new MemorySettingsStore(new AppSettings { GameListCheckedAt = DateTimeOffset.Now, Language = code })));
+		var vm = new MainWindowViewModel(fake, new AppEnvironment(new MemorySettingsStore(new AppSettings { GameListCheckedAt = DateTimeOffset.Now, Language = code }),
+			Updates: updates?.Services()));
 		vm.Sticks.StopPreview();
 		vm.Overview.ToggleBridgeCommand.Execute(null);
 		fake.Tick();

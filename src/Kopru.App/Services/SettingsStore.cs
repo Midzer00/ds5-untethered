@@ -98,6 +98,11 @@ public sealed class AppSettings
 	// Supported games list: the weekly automatic check and when it last ran.
 	public bool AutoUpdateGameList { get; set; } = true;
 	public DateTimeOffset? GameListCheckedAt { get; set; }
+	// In-app updates (missing in older files: automatic check on, never checked, no toast shown, unknown last version).
+	public bool AutoCheckUpdates { get; set; } = true;
+	public DateTimeOffset? UpdateCheckedAt { get; set; }
+	public string? UpdateToastedVersion { get; set; }
+	public string? LastRunVersion { get; set; }
 	// Supported games list: download game pictures from Steam (else only pictures already on this PC).
 	public bool DownloadGameImages { get; set; } = true;
 	// Supported games list: "Installed" chosen instead of "All", the extra folders searched for games and the supported

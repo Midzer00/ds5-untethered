@@ -37,7 +37,9 @@ public enum NotificationType
 	// The bridged controller was plugged in by cable
 	CableConnected,
 	// The Bluetooth link stayed weak long enough to feel (LinkQualityMonitor)
-	LinkWeak
+	LinkWeak,
+	// A newer version of the app is out (once per version, see UpdatesViewModel)
+	UpdateAvailable
 }
 
 // The page a click on a toast opens.
@@ -301,6 +303,10 @@ public sealed partial class NotificationCenter
 		BridgeError.ControllerLost => Text.NotifyBridgeLost(),
 		_ => Text.NotifyBridgeOther()
 	};
+
+	// "New Version Ready · 0.1.6 · Settings > General".
+	public static AppNotification UpdateAvailable(string version) =>
+		new(NotificationType.UpdateAvailable, NotificationKind.Info, Text.NotifyUpdateTitle(), Text.NotifyUpdateBody(version), AppPage.SettingsGeneral);
 
 	public static AppNotification TrayHint() =>
 		new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(), Text.NotifyTrayBody(), AppPage.SettingsGeneral);

@@ -592,6 +592,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string AboutTagline => Text.AboutTagline();
 	// The compact controller line under the version.
 	public ControllerInfoViewModel Info { get; }
+	// The Updates block (set by the main window's view model; null when the page is built on its own in tests).
+	public UpdatesViewModel? Updates { get; set; }
 	public string RunWizardText => Text.RunSetupWizard();
 	public string TestAdapterText => Text.TestBluetoothAdapter();
 	public string ExportText => Text.ExportDiagnostics();

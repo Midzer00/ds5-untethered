@@ -26,6 +26,9 @@
 #define AppExe "Kopru.App.exe"
 ; Held by every running copy (SingleInstance.MutexName in Kopru.Core; session namespace, no Global\ prefix).
 #define AppMutex "DS5Untethered.Running"
+; Held instead of AppMutex while the app hands over to this installer during an in-app update, until its process has
+; ended (SingleInstance.UpdatingMutexName / HandOverToUpdate in Kopru.Core).
+#define UpdatingMutex "DS5Untethered.Updating"
 ; HKCU Run value written by the app's "Start with Windows" (RunKeyStartupRegistration.ValueName).
 #define RunKey "Software\Microsoft\Windows\CurrentVersion\Run"
 #define RunValue "Untethered"
@@ -82,15 +85,15 @@ Name: "tr"; MessagesFile: "compiler:Languages\Turkish.isl"
 
 [Messages]
 en.SetupAppRunningError=%1 is running.%n%nRight-click its tray icon and choose Exit (this releases the controller), then click OK to continue, or Cancel to exit.
-tr.SetupAppRunningError=%1 çalışıyor.%n%nSistem tepsisindeki simgesine sağ tıklayıp Çıkış'ı seçin (kumanda serbest bırakılır), sonra devam etmek için Tamam'a, çıkmak için İptal'e tıklayın.
+tr.SetupAppRunningError=%1 çalışıyor.%n%nSaat yanındaki simgesine sağ tıklayıp Çıkış'ı seçin (kumanda serbest bırakılır), sonra devam etmek için Tamam'a, çıkmak için İptal'e tıklayın.
 en.UninstallAppRunningError=%1 is running.%n%nRight-click its tray icon and choose Exit (this releases the controller), then click OK to continue, or Cancel to exit.
-tr.UninstallAppRunningError=%1 çalışıyor.%n%nSistem tepsisindeki simgesine sağ tıklayıp Çıkış'ı seçin (kumanda serbest bırakılır), sonra devam etmek için Tamam'a, çıkmak için İptal'e tıklayın.
+tr.UninstallAppRunningError=%1 çalışıyor.%n%nSaat yanındaki simgesine sağ tıklayıp Çıkış'ı seçin (kumanda serbest bırakılır), sonra devam etmek için Tamam'a, çıkmak için İptal'e tıklayın.
 
 [CustomMessages]
 en.AppRunning=DS5 Untethered is running. Right-click its tray icon and choose Exit (this releases the controller), then click Retry.
-tr.AppRunning=DS5 Untethered çalışıyor. Sistem tepsisindeki simgesine sağ tıklayıp Çıkış'ı seçin (kumanda serbest bırakılır), sonra Yeniden Dene'ye tıklayın.
+tr.AppRunning=DS5 Untethered çalışıyor. Saat yanındaki simgesine sağ tıklayıp Çıkış'ı seçin (kumanda serbest bırakılır), sonra Yeniden Dene'ye tıklayın.
 en.AppStillRunning=DS5 Untethered is still running. Exit it from the tray icon and run Setup again.
-tr.AppStillRunning=DS5 Untethered hâlâ çalışıyor. Sistem tepsisindeki simgesinden çıkıp kurulumu yeniden başlatın.
+tr.AppStillRunning=DS5 Untethered hâlâ çalışıyor. Saat yanındaki simgesinden çıkıp kurulumu yeniden başlatın.
 en.DeleteData=Also delete DS5 Untethered's settings, profiles and logs?
 tr.DeleteData=DS5 Untethered'ın ayarları, profilleri ve günlükleri de silinsin mi?
 en.DriversNote=DS5 Untethered was removed. The two drivers it used were left installed: if no other program needs them, you can remove "USBip" and "HidHide" in Windows Settings > Apps > Installed apps.
@@ -108,8 +111,45 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; In-app update (always silent, /UPDATE=1): start the new version once its files are in place. An ordinary silent
+; install (no /UPDATE=1) starts nothing, as before.
+Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Flags: nowait skipifnotsilent; Check: IsAppUpdate
 
 [Code]
+var
+  UpdateInstalled: Boolean;
+
+// In-app update: the app starts Setup with /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /NOCANCEL /UPDATE=1 after it has
+// stopped the virtual controller (the same shutdown as Exit) and swapped its AppMutex for UpdatingMutex, which it holds
+// until its process has ended. {param:UPDATE} reads "/UPDATE=1" from the command line.
+function IsAppUpdate(): Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;
+
+// Waits while one of the mutexes exists, at most TimeoutMs. True: none is left.
+function WaitWhileMutex(const Mutexes: String; TimeoutMs: Integer): Boolean;
+var
+  Waited: Integer;
+begin
+  Waited := 0;
+  while CheckForMutexes(Mutexes) and (Waited < TimeoutMs) do
+  begin
+    Sleep(250);
+    Waited := Waited + 250;
+  end;
+  Result := not CheckForMutexes(Mutexes);
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+  // The app gives up AppMutex before it starts Setup; this only covers a slow hand-over, so a silent update never
+  // meets the "is running" prompt (which cannot be answered while message boxes are suppressed).
+  if IsAppUpdate() then
+    WaitWhileMutex('{#AppMutex}', 30000);
+end;
+
 // AppMutex is checked when Setup starts; the app may have been started again since (e.g. from the Start menu), so it is
 // checked once more right before files are replaced.
 function WaitForAppExit(): Boolean;
@@ -128,8 +168,46 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
-  if not WaitForAppExit() then
+  if IsAppUpdate() then
+  begin
+    // The old copy is still closing: wait until its process is gone (it holds UpdatingMutex until then), plus a moment
+    // for Windows to release its files. A copy started meanwhile (AppMutex again) stops the update.
+    if not WaitWhileMutex('{#UpdatingMutex}', 60000) then
+      Result := CustomMessage('AppStillRunning')
+    else
+    begin
+      Sleep(1500);
+      if CheckForMutexes('{#AppMutex}') then
+        Result := CustomMessage('AppStillRunning');
+    end;
+  end
+  else if not WaitForAppExit() then
     Result := CustomMessage('AppStillRunning');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssDone then
+    UpdateInstalled := True;
+end;
+
+// An in-app update that stopped before installing (the old copy never closed, an error): start the copy that is there,
+// so the user is not left without the app.
+procedure DeinitializeSetup();
+var
+  Exe: String;
+  ResultCode: Integer;
+begin
+  if IsAppUpdate() and not UpdateInstalled then
+  begin
+    try
+      Exe := ExpandConstant('{app}\{#AppExe}');
+      if FileExists(Exe) then
+        Exec(Exe, '', ExtractFileDir(Exe), SW_SHOWNORMAL, ewNoWait, ResultCode);
+    except
+      // {app} is not known yet: nothing to start.
+    end;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

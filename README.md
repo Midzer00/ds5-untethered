@@ -57,6 +57,8 @@ to be installed for the app itself.
 - Network: with "Download Pictures" on (Supported Games page, on by default), the app fetches game header pictures
   from Steam's public CDN (and, for newer games, Steam's public app details) and keeps them only in
   `%LOCALAPPDATA%\Untethered\cache\game-images`. A request names only the game's Steam app id; nothing about you is sent.
+  The app also checks GitHub for a new version at start and once a week ("Check For Updates Automatically" in
+  Settings > General turns it off); this only requests a file, nothing about you is sent.
 - To uninstall: turn off "Start with Windows", exit the app from the tray icon, uninstall "DS5 Untethered" in Windows
   Settings → Apps (or delete the zip folder), and delete `%LOCALAPPDATA%\Untethered` if you want the settings gone.
   If nothing else uses them, uninstall "USBip" and "HidHide" too.
@@ -122,27 +124,27 @@ GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PART
 
 Oyunun kendi haptiğini ve adaptif tetiklerini DualSense'te Bluetooth üzerinden çalıştırır.
 
-### Feragat
+### Yasal uyarı
 
-DS5 Untethered resmi bir proje değildir. Sony Interactive Entertainment ile bağlantısı yoktur; Sony Interactive
-Entertainment bu projeyi onaylamamış ve desteklememiştir. "DualSense", "DualSense Edge", "PlayStation" ve "PS5",
+DS5 Untethered resmi bir proje değildir. Sony Interactive Entertainment ile bağlantısı yoktur, şirketin onayını
+ya da desteğini de almamıştır. "DualSense", "DualSense Edge", "PlayStation" ve "PS5",
 Sony Interactive Entertainment Inc.'in ticari markalarıdır ve burada yalnızca uyumluluğu belirtmek için kullanılmıştır.
 "DS5" de yalnızca uyumluluğu belirtmek için, yaygın bir kısaltma olarak kullanılmıştır. Projede Sony'ye ait hiçbir
 donanım yazılımı, yazılım, görsel ya da logo yoktur. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
-kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Kullanımdan doğan
-risk size aittir; yazılım için hiçbir garanti verilmez.
+kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Yazılımın herhangi
+bir garantisi yoktur. Kullanımdan doğabilecek her türlü sorumluluk size aittir.
 
 ### Sorun
 
 PC'de DualSense'in oyun haptiği ve adaptif tetikleri yalnızca kumanda USB kabloyla bağlıyken çalışır. Bluetooth'la
-bağlanınca oyunlar başka bir cihaz görür, bu özellikler de kaybolur. DS5 Untethered bu özellikleri Bluetooth üzerinden
-kumandaya taşır; oyunlar kabloyla bağlı bir kumanda görür.
+bağlanınca oyunlar başka bir cihaz görür, bu özellikler de kaybolur. DS5 Untethered oyunlara kabloyla bağlı bir kumanda
+gösterip bu özellikleri Bluetooth üzerinden kumandaya taşır.
 
 ### Nasıl çalışır
 
-DS5 Untethered kumandaya Bluetooth'la bağlanır; yerel bir USB/IP sunucusu ve usbip-win2 üzerinden aynı bilgisayarda
+DS5 Untethered kumandaya Bluetooth'la bağlanıp yerel bir USB/IP sunucusu ve usbip-win2 üzerinden aynı bilgisayarda
 kabloyla bağlı görünen sanal bir DualSense oluşturur. Oyunlar bu sanal kumandayı bilgisayara takılı sanıp onunla
-haberleşir. Gerçek kumandadan gelen girdi sanal kumandaya aktarılır; oyunun gönderdiği çıktı (adaptif tetikler,
+haberleşir. Gerçek kumandadan gelen girdi sanal kumandaya aktarılırken oyunun gönderdiği çıktı (adaptif tetikler,
 ışıklar) ve haptik sesi dönüştürülüp Bluetooth'la kumandaya geri yollanır. HidHide gerçek kumandayı oyunlardan
 gizlediği için oyunlar yalnızca sanal kumandayı görür.
 
@@ -159,38 +161,40 @@ flowchart LR
 
 ### İndirme
 
-Güncel sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz. İki
-biçimde gelir: kurulum dosyası (`DS5-Untethered-<sürüm>-Setup.exe`; yalnızca geçerli kullanıcıya kurar, yönetici izni
-istemez) ve zip (`DS5-Untethered-<sürüm>-win-x64.zip`; istediğiniz yere açıp `Kopru.App.exe` dosyasını çalıştırırsınız).
-.NET ikisinin de içindedir; uygulama için başka bir şey kurmanız gerekmez.
+Güncel sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz.
+Kurulum dosyası (`DS5-Untethered-<sürüm>-Setup.exe`) uygulamayı yalnızca sizin hesabınıza kurar ve yönetici izni
+istemez. Zip'i (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp `Kopru.App.exe`'yi çalıştırmanız yeterli.
+.NET ikisinin de içinde olduğundan uygulama için başka bir şey kurmanız gerekmez.
 
 - Derleme imzalı olmadığından Windows SmartScreen uyarı gösterebilir. "Ek bilgi"ye, ardından "Yine de çalıştır"a
   tıklayın.
 - Kurulum sayfası, bir kez tamamlanana kadar uygulama her açıldığında karşınıza çıkar. Sayfa iki sürücünün, usbip-win2
-  ile HidHide'ın kurulu olup olmadığına bakar ve resmi indirme sayfalarını açar (sürücüleri uygulama kurmaz; kurulum
+  ile HidHide'ın kurulu olup olmadığına bakar ve resmi indirme sayfalarını açar (sürücüleri uygulama kurmaz, kurulum
   programları yönetici izni ister), sonra kumandayı Bluetooth'la eşleştirirken size yol gösterir. İki sürücü de
-  şarttır; sürücüler olmadan sanal kumanda başlamaz.
+  kurulmadan sanal kumanda başlamaz.
 - Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe durur.
 - Ağ erişimi: "Oyun Görsellerini İndir" açıkken (Desteklenen Oyunlar sayfasındadır, baştan açık gelir) uygulama oyun
   görsellerini Steam'in herkese açık CDN'inden (yeni oyunlarda Steam'in herkese açık uygulama bilgilerinden de) indirir
-  ve yalnızca `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe tutar. İsteklerde yalnızca oyunun Steam uygulama
-  kimliği yer alır; size ait hiçbir bilgi gönderilmez.
+  ve yalnızca `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe tutar. İsteklerle yalnızca oyunun Steam uygulama
+  kimliği gönderilir, size ait hiçbir bilgi gitmez.
+  Uygulama ayrıca açılışta ve haftada bir GitHub'da yeni sürüm var mı diye bakar (Ayarlar > Genel'deki "Güncellemeleri
+  Otomatik Denetle" ile kapatılır); bu yalnızca bir dosya isteğidir, size ait hiçbir bilgi gitmez.
 - Kaldırma: "Windows ile Başlat"ı kapatın, saat yanındaki simgeden uygulamadan çıkın, Windows Ayarlar →
   Uygulamalar'dan "DS5 Untethered"ı kaldırın (zip kullandıysanız klasörü silin). Ayarların da silinmesini istiyorsanız
   `%LOCALAPPDATA%\Untethered` klasörünü silin. Başka bir program kullanmıyorsa "USBip" ve "HidHide"ı da kaldırın.
 
-### Durum
+### Ne durumda
 
-Özelliklerin çoğu yalnızca kod testlerinden geçti; gerçek kumandada ölçülenler aşağıda listelenmiştir.
+Özelliklerin çoğu şimdilik yalnızca kod testlerinden geçti.
 
 Tamamlandı, donanımda doğrulandı:
 - Bluetooth oturumu: girdi okuma, çıktı raporları, haptik akışı; Bluetooth adaptör testi.
 - usbip-win2 ile sanal kablolu DualSense: Windows kablolu DualSense olarak tanıyor, girdi uygulamalara ulaşıyor,
   oyun sesi geliyor.
-- Köprü (60 saniyelik test): girdi yaklaşık 750 Hz'de, az ek gecikmeyle ve kayıpsız aktarıldı; tetik ve ışık çıktısı
-  iletildi; oyunun haptik sesi Bluetooth haptik raporlarına dönüştürüldü.
-- Bluetooth'ta mikrofon: Windows kumandanın mikrofonundan kayıt alıyor, sanal kumandada hayalet girdi oluşmuyor;
-  kumandadaki mikrofon tuşu mikrofonu açıp kapatıyor.
+- Köprü (60 saniyelik test): girdi yaklaşık 750 Hz'de, az ek gecikmeyle ve kayıpsız aktarıldı. Tetik ve ışık çıktısı
+  iletildi, oyunun haptik sesi de Bluetooth haptik raporlarına dönüştürüldü.
+- Bluetooth'ta mikrofon: Windows kumandanın mikrofonundan kayıt alıyor, sanal kumandada hayalet girdi oluşmuyor.
+  Kumandadaki mikrofon tuşu mikrofonu açıp kapatıyor.
 - Kumanda hoparlörü: kumandanın hoparlöründen çalınan sesi kumandanın kendi mikrofonu duyuyor.
 
 Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:

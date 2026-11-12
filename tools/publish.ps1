@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Builds the user download: artifacts\DS5-Untethered-<version>-win-x64.zip, plus
-# artifacts\DS5-Untethered-<version>-Setup.exe when Inno Setup 6 is installed (tools\installer\DS5Untethered.iss).
+# artifacts\DS5-Untethered-<version>-Setup.exe when Inno Setup 6 is installed (tools\installer\DS5Untethered.iss), and with
+# both, artifacts\update.json: the next update manifest for the repository root (tools\release\make-update-json.ps1;
+# docs\RELEASING.md has the release order).
 #
 #   powershell -ExecutionPolicy Bypass -File tools\publish.ps1
 #
@@ -51,6 +53,7 @@ if (-not [string]::IsNullOrWhiteSpace($StagingDir)) {
 $zip = Join-Path $artifacts "$name.zip"
 $iss = Join-Path $PSScriptRoot 'installer\DS5Untethered.iss'
 $setup = Join-Path $artifacts "DS5-Untethered-$version-Setup.exe"
+$manifest = Join-Path $artifacts 'update.json'
 Write-Host "Version: $version"
 
 if (Test-Path $staging) {
@@ -66,7 +69,7 @@ if (Test-Path $staging) {
 	}
 	Remove-Item -Recurse -Force $staging
 }
-foreach ($old in @($zip, $setup)) {
+foreach ($old in @($zip, $setup, $manifest)) {
 	if (Test-Path $old) {
 		Remove-Item -Force $old
 	}
@@ -247,7 +250,7 @@ else {
 }
 Write-Host ''
 if (-not $iscc) {
-	Write-Host 'Installer skipped: Inno Setup 6 (ISCC.exe) was not found; only the zip was made.' -ForegroundColor Yellow
+	Write-Host 'Installer skipped: Inno Setup 6 (ISCC.exe) was not found; only the zip was made (no update.json either).' -ForegroundColor Yellow
 	exit 0
 }
 & $iscc '/Q' "/DAppVersion=$version" "/DAppVersionNumeric=$numericVersion" "/DStagingDir=$staging" "/DOutputDir=$artifacts" $iss
@@ -266,3 +269,12 @@ $setupInfo = Get-Item $setup
 Write-Host "Setup:   $($setupInfo.FullName)"
 Write-Host ("Size:    {0:N1} MB" -f ($setupInfo.Length / 1MB))
 Write-Host "SHA-256: $((Get-FileHash -Algorithm SHA256 $setup).Hash)"
+
+# --- Update manifest (artifacts\update.json) ---
+& (Join-Path $releaseFiles 'make-update-json.ps1') -Version $version -Setup $setup -Zip $zip -Out $manifest
+Write-Host ''
+Write-Host 'Release order (docs\RELEASING.md):' -ForegroundColor Cyan
+Write-Host "  1. Create the GitHub release v$version and upload both files above."
+Write-Host '  2. Check that both download links work.'
+Write-Host '  3. Only then copy artifacts\update.json over the repository''s update.json, commit and push it to main.'
+Write-Host '     (Running copies see the new version within a week, or at once with Check Now.)'

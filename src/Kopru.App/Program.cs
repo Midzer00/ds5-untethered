@@ -14,6 +14,12 @@ internal static class Program
 	[STAThread]
 	public static void Main(string[] args)
 	{
+		// The running copy is handing over to the installer (in-app update): the installer starts the new version itself.
+		if (SingleInstance.IsUpdating())
+		{
+			AppLog.Write("start: an update is being installed; exits");
+			return;
+		}
 		// One copy per user session, from any folder: two copies would fight over the controller.
 		using SingleInstance instance = SingleInstance.Acquire();
 		bool minimized = args.Contains(RunKeyStartupRegistration.MinimizedArgument, StringComparer.OrdinalIgnoreCase);

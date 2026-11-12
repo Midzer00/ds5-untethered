@@ -68,15 +68,24 @@ public partial class App : Application
 		service.UseManager(manager);
 		service.AudioDevices = audioDevices;
 		var startup = new RunKeyStartupRegistration();
+		// First start of another version: settings.json is copied before this version saves anything.
+		Kopru.Core.Updates.SettingsBackup.Run(Kopru.Core.Updates.PhysicalUpdateFiles.Instance, Kopru.Core.AppPaths.Settings,
+			Kopru.Core.Updates.AppVersion.Parse(AppInfo.Version)!);
+		var downloader = Kopru.Core.Updates.UpdateDownloader.CreateDefault();
+		// Installers from an earlier update are no longer needed.
+		_ = Task.Run(downloader.CleanUp);
+		var updates = new UpdateServices(Kopru.Core.Updates.UpdateChecker.CreateDefault(), downloader, Kopru.Core.Updates.InnoInstallKind.CreateDefault(),
+			new ShellUrlLauncher(), AppInfo.Version);
 		// Game pictures: downloads follow the setting (read when a row loads; the view model exists by then).
 		MainWindowViewModel? created = null;
 		var images = new GameImageService(Kopru.Core.Games.GameImageResolver.CreateDefault(() => created?.Settings.DownloadGameImages == true));
 		var environment = new AppEnvironment(JsonSettingsStore.CreateDefault(), startup,
 			() => new SetupWizard(SystemCheck.CreateDefault(), new ShellUrlLauncher()), FullScreenDetector.IsForegroundFullScreen,
 			GameList: Kopru.Core.Games.GameCatalogUpdater.CreateDefault(), GameImages: images, Restart: RestartServices.CreateDefault(),
-			InstalledGames: new Kopru.Core.Games.InstalledGames(Kopru.Core.Games.InstalledGameFinder.CreateDefault()));
+			InstalledGames: new Kopru.Core.Games.InstalledGames(Kopru.Core.Games.InstalledGameFinder.CreateDefault()), Updates: updates);
 		var vm = new MainWindowViewModel(service, environment);
 		created = vm;
+		vm.Settings.MarkRunVersion(AppInfo.Version);
 		if (audioGuard != null)
 		{
 			vm.Settings.AttachAudioGuard(audioGuard);
@@ -143,6 +152,12 @@ public partial class App : Application
 				shell.Exit();
 			}
 		};
+		// "Update": the same shutdown as exit (settings saved, virtual controller stopped, hiding undone), then the installer
+		// starts and the app exits; the installer waits for this process to end (SingleInstance.HandOverToUpdate).
+		var installer = new Kopru.Core.Updates.UpdateInstaller(downloader, new Kopru.Core.Updates.ShellProcessLauncher(), () => Task.Run(Shutdown),
+			() => Program.Instance?.HandOverToUpdate(), () => Avalonia.Threading.Dispatcher.UIThread.Post(shell.Exit));
+		updates.Install = installer.InstallAsync;
+		vm.Updates.StartSchedule();
 		desktop.Exit += (_, _) => Shutdown();
 		AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown();
 		bool minimized = desktop.Args?.Contains(RunKeyStartupRegistration.MinimizedArgument, StringComparer.OrdinalIgnoreCase) == true;

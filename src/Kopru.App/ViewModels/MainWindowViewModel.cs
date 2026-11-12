@@ -18,11 +18,12 @@ public sealed class NavItem(PageViewModel page, string iconData) : ViewModelBase
 // FullScreen: whether a full-screen app is in front (for "don't notify while playing"). GameList: downloads the supported
 // games list (null: no update button); Now: the wall clock for its weekly automatic check. GameImages: the pictures of the
 // supported games list (null: placeholders only). InstalledGames: finds the supported games installed on this PC (null:
-// nothing counts as installed).
+// nothing counts as installed). Updates: the in-app update check, download and install (null: the Updates block only
+// shows the version).
 public sealed record AppEnvironment(ISettingsStore? Store = null, IStartupRegistration? Startup = null, Func<SetupWizard>? Wizard = null,
 	Func<bool>? FullScreen = null, Func<long>? Clock = null, Kopru.Core.Games.GameCatalogUpdater? GameList = null,
 	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null, RestartServices? Restart = null,
-	Kopru.Core.Games.InstalledGames? InstalledGames = null);
+	Kopru.Core.Games.InstalledGames? InstalledGames = null, UpdateServices? Updates = null);
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -59,6 +60,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		Notifications = new NotificationCenter(service, Settings, _environment.FullScreen, _environment.Clock);
 		SupportedGames.ListUpdatedAutomatically += added => Notifications.Post(NotificationCenter.GameListUpdated(added));
 		AutoUpdateTask = SupportedGames.AutoUpdateAsync();
+		Updates = new UpdatesViewModel(service, Settings, Notifications, _environment.Updates, _environment.Now, _environment.FullScreen);
+		SettingsPage.Updates = Updates;
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
 		// The virtual controller connected to games: setup works, whatever the wizard last saw.
 		_service.StateChanged += (_, _) => RunOnUi(() =>
@@ -246,6 +249,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	}
 
 	public NotificationCenter Notifications { get; }
+
+	// In-app updates (Settings > General).
+	public UpdatesViewModel Updates { get; }
 
 	// The automatic game list check started with the window (tests await it).
 	public Task AutoUpdateTask { get; }

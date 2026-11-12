@@ -103,6 +103,29 @@ public class SingleInstanceTests
 	}
 
 	[Fact]
-	public void MutexNameIsWhatTheInstallerChecks() =>
+	public void MutexNameIsWhatTheInstallerChecks()
+	{
 		Assert.Equal("DS5Untethered.Running", SingleInstance.MutexName(SingleInstance.DefaultName));
+		Assert.Equal("DS5Untethered.Updating", SingleInstance.UpdatingMutexName(SingleInstance.DefaultName));
+	}
+
+	// Update: the running lock is swapped for the updating one (a new start then sees "updating" and the installer's
+	// AppMutex check passes); taking it back restores the running lock.
+	[Fact]
+	public void HandOverToUpdate_SwapsTheLocks_AndCanBeTakenBack()
+	{
+		string name = UniqueName();
+		using SingleInstance first = SingleInstance.Acquire(name);
+		Assert.False(SingleInstance.IsUpdating(name));
+		Action takeBack = first.HandOverToUpdate();
+		Assert.True(SingleInstance.IsUpdating(name));
+		using (SingleInstance during = SingleInstance.Acquire(name))
+		{
+			Assert.True(during.IsFirst);
+		}
+		takeBack();
+		Assert.False(SingleInstance.IsUpdating(name));
+		using SingleInstance later = SingleInstance.Acquire(name);
+		Assert.False(later.IsFirst);
+	}
 }

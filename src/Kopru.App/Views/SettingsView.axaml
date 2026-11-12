@@ -248,21 +248,38 @@
             </Border>
           </DockPanel>
 
-          <!-- About: the logo with the name, version and what the app does -->
+          <!-- Updates (the former About card): the version with the update state and its one button (Check Now, Update or
+               Open Download Page), and the automatic check switch. What the app does is the version's tooltip; the
+               release notes are the row's (the General tab has no room for them as a line). -->
           <DockPanel Classes="card">
-            <TextBlock Classes="section" Text="{Binding AboutLabel}" />
-            <Border Classes="panel">
-              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapLarge}">
-                <Image Source="/Assets/logo.png" Height="48" RenderOptions.BitmapInterpolationMode="HighQuality" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <WrapPanel ItemSpacing="{StaticResource GapSmall}">
-                    <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding AppName}" />
-                    <TextBlock Classes="caption" Text="{Binding VersionText, Converter={x:Static v:KeepLastWords.Instance}}" VerticalAlignment="Center" />
-                  </WrapPanel>
-                  <TextBlock Classes="caption" Text="{Binding Info.Compact, Converter={x:Static v:KeepLastWords.Instance}}" />
-                  <TextBlock Classes="body" Text="{Binding AboutTagline, Converter={x:Static v:KeepLastWords.Instance}}" />
-                </StackPanel>
-              </Grid>
+            <TextBlock Classes="section" Text="{Binding Updates.GroupLabel, FallbackValue=''}" />
+            <Border Classes="panel" Padding="20,0" Name="UpdatesPanel">
+              <StackPanel>
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="UpdateRow" ToolTip.Tip="{Binding Updates.NotesTip, FallbackValue={x:Null}}">
+                  <StackPanel Classes="text">
+                    <TextBlock Classes="label" Name="UpdateVersion" Text="{Binding VersionText}" ToolTip.Tip="{Binding AboutTagline}" />
+                    <TextBlock Classes="body" Name="UpdateState" Text="{Binding Updates.StateText, FallbackValue='', Converter={x:Static v:KeepLastWords.Instance}}"
+                               IsVisible="{Binding !Updates.HasError, FallbackValue=True}" />
+                    <TextBlock Classes="body" Name="UpdateError" Foreground="{StaticResource DangerBrush}"
+                               Text="{Binding Updates.StateText, FallbackValue='', Converter={x:Static v:KeepLastWords.Instance}}"
+                               IsVisible="{Binding Updates.HasError, FallbackValue=False}" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Name="UpdateCheckButton" Content="{Binding Updates.ActionText, FallbackValue=''}"
+                          Command="{Binding Updates.ActCommand, FallbackValue={x:Null}}" IsVisible="{Binding !Updates.IsPrimaryAction, FallbackValue=True}"
+                          AutomationProperties.Name="{Binding Updates.ActionText, FallbackValue=''}" />
+                  <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Name="UpdateButton" Content="{Binding Updates.ActionText, FallbackValue=''}"
+                          Command="{Binding Updates.ActCommand, FallbackValue={x:Null}}" IsVisible="{Binding Updates.IsPrimaryAction, FallbackValue=False}"
+                          AutomationProperties.Name="{Binding Updates.ActionText, FallbackValue=''}" />
+                </Grid>
+                <Border Classes="divider" />
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Updates.AutoCheckHint, FallbackValue={x:Null}}">
+                  <StackPanel Classes="text">
+                    <TextBlock Classes="label" Text="{Binding Updates.AutoCheckLabel, FallbackValue='', Converter={x:Static v:KeepLastWords.Instance}}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Name="UpdateAutoSwitch" IsChecked="{Binding Settings.AutoCheckUpdates}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                AutomationProperties.Name="{Binding Updates.AutoCheckLabel, FallbackValue=''}" AutomationProperties.HelpText="{Binding Updates.AutoCheckHint, FallbackValue=''}" />
+                </Grid>
+              </StackPanel>
             </Border>
           </DockPanel>
         </c:SettingsLayout>
