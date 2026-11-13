@@ -1,19 +1,8 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "published": "2026-11-12",
-  "setup": {
-    "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.5/DS5-Untethered-0.1.5-Setup.exe",
-    "sha256": "5597AE84FA70269FACFC55A1E90D37597042FBD58B688E971337F44E7D305497",
-    "size": 36674384
-  },
-  "zip": {
-    "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.5/DS5-Untethered-0.1.5-win-x64.zip",
-    "sha256": "5A2B521CF409022D3832F7AE4044DFD77AF54C7E0343AA56F0E13B23B96A3BDA",
-    "size": 47113764
-  },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.5",
-  "notes": {
-    "tr": "Desteklenen Oyunlar sayfasında Kurulu görünümü.",
-    "en": "An Installed view on the Supported Games page."
-  }
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.6/DS5-Untethered-0.1.6-Setup.exe", "sha256": "247B75507760C1A6E719BE39FF269D0FFEEEAD4A1C1166930A6ADDADE908BE5A", "size": 36688414 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.6/DS5-Untethered-0.1.6-win-x64.zip", "sha256": "D2331622D03DE58514559AC55C06A272AFABB66ED71516D2E2484CD8A2AE2E00", "size": 47136124 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.6",
+  "notes": { "tr": "Uygulama artık yeni sürümü kendisi bulup tek tıkla kurabiliyor.", "en": "The app can now find a new version and install it with one click." }
 }
