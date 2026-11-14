@@ -1,10 +1,25 @@
 <p align="center"><img src="docs/brand/logo.png" alt="DS5 Untethered logo" width="480"></p>
 
-# DS5 Untethered
+<h1 align="center">DS5 Untethered</h1>
 
-For DualSense — the game's own haptics and adaptive triggers over Bluetooth.
+<p align="center">For DualSense — the game's own haptics and adaptive triggers over Bluetooth.</p>
 
-[English](#english) | [Türkçe](#türkçe)
+<p align="center">
+  <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/github/v/release/Midzer00/ds5-untethered?label=release&color=2ea44f" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="License: GPL-3.0-or-later"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/.NET-8-512BD4" alt=".NET 8">
+  <img src="https://img.shields.io/badge/price-free-2ea44f" alt="Free">
+  <a href="https://github.com/Midzer00/ds5-untethered/stargazers"><img src="https://img.shields.io/github/stars/Midzer00/ds5-untethered?style=flat&color=e3b341" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/badge/Download-for%20Windows-2ea44f?style=for-the-badge" alt="Download for Windows"></a>
+</p>
+
+<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a></p>
+
+<p align="center"><img src="docs/screens/overview-en.png" alt="DS5 Untethered overview page" width="820"></p>
 
 ## Disclaimer
 
