@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Kopru.App.ViewModels;
 using Kopru.Core.Localization;
 
@@ -29,39 +30,21 @@ public partial class SupportedGamesView : UserControl
 		{
 			flyout.Opening += (_, _) => (DataContext as SupportedGamesViewModel)?.RefreshRunningApps();
 		}
-		// The game's panel: beside the list where the card is wide, the whole card otherwise; it takes the keyboard when it
-		// opens, and Esc closes it wherever the keyboard is in the window (while this page is shown).
-		GamesArea.SizeChanged += (_, e) =>
+		// The game's settings pop-up: a click on the backdrop closes it; Esc closes it wherever the keyboard is in the window
+		// (while this page is shown).
+		GameDialogBackdrop.PointerPressed += (_, e) =>
 		{
-			_narrow = e.NewSize.Width < BesideWidth;
-			PlacePanel();
+			_panel?.CloseCommand.Execute(null);
+			e.Handled = true;
 		};
 		AttachedToVisualTree += (_, _) => TopLevel.GetTopLevel(this)?.AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
 		DetachedFromVisualTree += (_, e) => (e.Root as TopLevel)?.RemoveHandler(KeyDownEvent, OnKeyDown);
 	}
 
-	// The game's panel beside the list: PanelWidth wide, the list keeps at least ListMinWidth (its rows' pickers stack, its
-	// header keeps the views only). Below that the panel takes the list's place. Layout units, as GamesArea's size.
-	public const double PanelWidth = 340;
-	public const double ListMinWidth = 400;
-	public const double BesideWidth = PanelWidth + 12 + ListMinWidth;
-
-	private bool _narrow;
-
-	// Beside the list (PanelWidth wide), or in the list's place on a narrow page; as tall as its content either way (it scrolls
-	// inside when that is taller than the page).
-	private void PlacePanel()
-	{
-		bool open = _panel is { IsOpen: true };
-		bool instead = _narrow && open;
-		ListCard.IsVisible = !instead;
-		ListCard.Classes.Set("compact", open && !instead);
-		Grid.SetColumn(GamePanelCard, instead ? 0 : 1);
-		Grid.SetColumnSpan(GamePanelCard, instead ? 2 : 1);
-		GamePanelCard.Width = instead ? double.NaN : PanelWidth;
-	}
-
 	private GamePanelViewModel? _panel;
+
+	// The game whose dialog is open (its row gets the keyboard back when it closes).
+	private GameItemViewModel? _openedGame;
 
 	protected override void OnDataContextChanged(EventArgs e)
 	{
@@ -76,7 +59,6 @@ public partial class SupportedGamesView : UserControl
 			_panel.PropertyChanged += OnPanelChanged;
 			_panel.PickStartFile = PickStartFileAsync;
 		}
-		PlacePanel();
 	}
 
 	private void OnPanelChanged(object? sender, PropertyChangedEventArgs e)
@@ -85,10 +67,17 @@ public partial class SupportedGamesView : UserControl
 		{
 			return;
 		}
-		PlacePanel();
+		// The keyboard goes into the dialog when it opens and back to the game's row when it closes.
 		if (_panel is { IsOpen: true })
 		{
+			_openedGame = _panel.Game;
 			Dispatcher.UIThread.Post(GamePanel.FocusClose, DispatcherPriority.Loaded);
+		}
+		else if (_openedGame is { } game)
+		{
+			_openedGame = null;
+			Dispatcher.UIThread.Post(() => this.GetVisualDescendants().OfType<Border>()
+				.FirstOrDefault(b => b.Classes.Contains("gameRow") && ReferenceEquals(b.DataContext, game))?.Focus(), DispatcherPriority.Loaded);
 		}
 	}
 

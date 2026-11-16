@@ -1,14 +1,20 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" xmlns:c="using:Kopru.App.Controls" xmlns:gm="using:Kopru.Core.Games" x:Class="Kopru.App.Views.SupportedGamesView" x:DataType="vm:SupportedGamesViewModel">
   <UserControl.Styles>
-    <!-- The list beside an open game panel ("compact"): the views and the rows only; adding, scanning, folders and the
-         list's update wait until the panel is closed -->
-    <Style Selector="Border.compact Border.iconTile, Border.compact TextBlock#ListCount, Border.compact Button#AddGameButton,
-                     Border.compact Button#ScanAgainButton, Border.compact Button#FoldersButton, Border.compact Grid#ListOptions">
-      <Setter Property="IsVisible" Value="False" />
+    <!-- The game's settings pop-up: a dimmed backdrop over the page and one opaque, rounded dialog card filling it -->
+    <Style Selector="Border.dialogBackdrop">
+      <Setter Property="Background" Value="#99000000" />
     </Style>
-    <!-- The views take the icon's place (the hidden icon's column gap taken back) -->
-    <Style Selector="Border.compact ListBox#GameViewChoice">
-      <Setter Property="Margin" Value="-12,0,0,0" />
+    <Style Selector="Border.dialog">
+      <Setter Property="Background" Value="{StaticResource ToastBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
+      <Setter Property="Padding" Value="26,20,14,20" />
+      <!-- As big as the page with a margin around it (on very wide screens no wider than this, centred) -->
+      <Setter Property="MaxWidth" Value="1240" />
+      <Setter Property="Margin" Value="28" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
     <!-- The list update's outcome when it failed -->
     <Style Selector="TextBlock.caption.error">
@@ -33,6 +39,7 @@
     <Thickness x:Key="ListInset">0,0,12,0</Thickness>
   </UserControl.Resources>
   <!-- Fills the window: the game list takes the free height and scrolls itself -->
+  <Panel>
   <Grid RowDefinitions="Auto,Auto,*" Classes="page wide">
     <!-- Header: title and intro left, the game in the foreground right -->
     <Grid Classes="pageHeader" ColumnDefinitions="*,Auto" Margin="{StaticResource BlockGap}">
@@ -58,10 +65,7 @@
     <!-- The games: Supported (all, or only those installed here) or Unsupported (found or added, not in the list), search, the
          default controller type, one row per game, then the list's online update and pictures. Fills the height: the list
          scrolls inside -->
-    <!-- The list card, and the clicked game's panel as a card of its own beside it (sized to its content; on a narrow page
-         it takes the list's place). Esc or Close closes it. -->
-    <Grid Grid.Row="2" Name="GamesArea" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
-    <Border Name="ListCard" Classes="panel fill" Padding="{StaticResource ListCardPadding}">
+    <Border Grid.Row="2" Name="ListCard" Classes="panel fill" Padding="{StaticResource ListCardPadding}">
       <Panel>
         <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
           <!-- Supported | Unsupported (n), the count shown, Add Game -->
@@ -196,9 +200,13 @@
         </Grid>
       </Panel>
     </Border>
-    <Border Grid.Column="1" Name="GamePanelCard" Classes="panel" Width="340" Padding="18,16,8,16" IsVisible="{Binding Panel.IsOpen}">
+  </Grid>
+  <!-- The clicked game's settings as a pop-up over the page: Esc, Close or a click on the backdrop closes it -->
+  <Panel Name="GameDialogLayer" IsVisible="{Binding Panel.IsOpen}">
+    <Border Name="GameDialogBackdrop" Classes="dialogBackdrop" />
+    <Border Name="GameDialog" Classes="dialog">
       <v:GamePanelView Name="GamePanel" DataContext="{Binding Panel}" />
     </Border>
-    </Grid>
-  </Grid>
+  </Panel>
+  </Panel>
 </UserControl>

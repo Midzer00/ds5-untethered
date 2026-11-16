@@ -42,7 +42,10 @@
       <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
-    <Style Selector="Border.gameRow:pointerover">
+    <Style Selector="Border.gameRow">
+      <Setter Property="Focusable" Value="True" />
+    </Style>
+    <Style Selector="Border.gameRow:pointerover, Border.gameRow:focus-visible">
       <Setter Property="Background" Value="{StaticResource NavHoverBrush}" />
     </Style>
     <Style Selector="Border.gameRow ComboBox, Border.gameRow Button">

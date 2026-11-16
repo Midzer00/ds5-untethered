@@ -17,7 +17,8 @@ using Kopru.Core.Profiles;
 
 namespace Kopru.App.Tests;
 
-// A game's panel on the Games page: a click on the row opens it (its pickers and buttons don't), Esc and Close close it;
+// A game's settings pop-up on the Games page: a click on the row opens it (its pickers and buttons don't), Esc, Close and a
+// click on the backdrop close it;
 // "Settings For This Game" gives the game a profile of its own whose settings are edited there (only that profile, live when
 // it is the active one); "Back To Default" puts the game back. Fits every window size in both languages. Writes
 // game-panel-{supported|unsupported}-{w}x{h}-tr.png to KOPRU_PAGE_RENDER_DIR and game-panel-fit-*.png to
@@ -45,13 +46,30 @@ public sealed class GamePanelTests
 		TextBlock name = window.GetVisualDescendants().OfType<TextBlock>().First(t => t.DataContext is GameItemViewModel g && t.Text == g.Name && t.IsEffectivelyVisible);
 		Click(window, name);
 		Assert.Same(name.DataContext, vm.SupportedGames.Panel.Game);
-		Border sheet = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "GamePanelCard");
+		Border sheet = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "GameDialog");
 		Assert.True(sheet.IsEffectivelyVisible);
+		// The keyboard is in the dialog.
+		Assert.Contains(sheet, (window.FocusManager?.GetFocusedElement() as Visual)?.GetVisualAncestors() ?? []);
 
 		window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
 		FitCheck.Settle(window);
 		Assert.False(vm.SupportedGames.Panel.IsOpen);
 		Assert.False(sheet.IsEffectivelyVisible);
+		// ... and back on the game's row.
+		Border row = Assert.IsType<Border>(window.FocusManager?.GetFocusedElement());
+		Assert.Same(name.DataContext, row.DataContext);
+
+		// Enter on the focused row opens it again; a click on the backdrop (outside the dialog) closes it.
+		window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+		FitCheck.Settle(window);
+		Assert.Same(name.DataContext, vm.SupportedGames.Panel.Game);
+		Rect dialog = FitCheck.Bounds(sheet, window);
+		Rect page = FitCheck.Bounds(window.GetVisualDescendants().OfType<SupportedGamesView>().Single(), window);
+		var outside = new Point((page.Left + dialog.Left) / 2, dialog.Top + 10);
+		window.MouseDown(outside, MouseButton.Left);
+		window.MouseUp(outside, MouseButton.Left);
+		FitCheck.Settle(window);
+		Assert.False(vm.SupportedGames.Panel.IsOpen);
 		window.Close();
 	}
 
@@ -197,34 +215,40 @@ public sealed class GamePanelTests
 					{
 						(MainWindowViewModel vm, MainWindow window) = await OpenPanel(kind, code, width, height);
 						string where = $"{width}x{height} {code} {kind}";
-						// The panel is a card of its own: inside the window, beside the list card (not over it) or in its place, its
-						// controls inside it and its text whole.
-						Border sheet = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "GamePanelCard");
+						// A pop-up over the page: the backdrop covers the page, the dialog lies fully inside it, the list keeps its
+						// normal layout underneath.
+						Border sheet = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "GameDialog");
+						Border backdrop = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "GameDialogBackdrop");
 						Border list = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ListCard");
+						SupportedGamesView page = window.GetVisualDescendants().OfType<SupportedGamesView>().Single();
 						Rect sheetRect = FitCheck.Bounds(sheet, window);
-						if (sheetRect.Right > window.ClientSize.Width + 0.5 || sheetRect.Bottom > window.ClientSize.Height + 0.5 || sheetRect.Height < 100)
+						Rect pageRect = FitCheck.Bounds(page, window);
+						if (!pageRect.Contains(sheetRect) || sheetRect.Height < 100)
 						{
-							problems.Add($"{where}: panel {sheetRect} outside the window");
+							problems.Add($"{where}: dialog {sheetRect} outside the page {pageRect}");
 						}
-						if (list.IsEffectivelyVisible && FitCheck.Bounds(list, window).Intersects(sheetRect))
+						if (!backdrop.IsEffectivelyVisible || FitCheck.Bounds(backdrop, window) != pageRect)
 						{
-							problems.Add($"{where}: panel {sheetRect} over the list {FitCheck.Bounds(list, window)}");
+							problems.Add($"{where}: backdrop {FitCheck.Bounds(backdrop, window)} does not cover the page {pageRect}");
 						}
-						// Beside the list at every size of the matrix (down to the 1100x700 window): the list keeps its minimum,
-						// and its compact header and rows are whole and inside it.
 						if (!list.IsEffectivelyVisible)
 						{
-							problems.Add($"{where}: the panel took the list's place");
+							problems.Add($"{where}: the list is hidden under the dialog");
 						}
-						else
+						// As big as the page with a margin around it (up to its widest), two columns where there is room, and at the
+						// owner's window and 1920x1080 everything in view without scrolling.
+						if (page.Bounds.Width - sheet.Bounds.Width > 2 * 28 + 1 && sheet.Bounds.Width < sheet.MaxWidth - 1)
 						{
-							// In layout units (the window may draw its content scaled).
-							if (list.Bounds.Width < SupportedGamesView.ListMinWidth - 0.5)
-							{
-								problems.Add($"{where}: list beside the panel only {list.Bounds.Width:F0} wide");
-							}
-							problems.AddRange(FitCheck.Inside(list, window).Select(p => $"{where}: {p}"));
-							problems.AddRange(FitCheck.CutText(list).Where(p => !vm.SupportedGames.Games.Any(g => p.Contains(g.Name))).Select(p => $"{where}: {p}"));
+							problems.Add($"{where}: dialog {sheet.Bounds.Width:F0} wide in a {page.Bounds.Width:F0} page");
+						}
+						GamePanelView panelView = sheet.GetVisualDescendants().OfType<GamePanelView>().Single();
+						if (!panelView.IsTwoColumns)
+						{
+							problems.Add($"{where}: one column in a {panelView.Bounds.Width:F0} wide dialog");
+						}
+						if ((width, height) is (1152, 700) or (1920, 1080))
+						{
+							problems.AddRange(FitCheck.Scrolls(panelView.GetVisualDescendants().OfType<ScrollViewer>().Single(v => v.Name == "PanelScroll"), where));
 						}
 						problems.AddRange(FitCheck.CutText(sheet).Where(p => !p.Contains(vm.SupportedGames.Panel.Game!.Name)).Select(p => $"{where}: {p}"));
 						foreach (Control c in sheet.GetVisualDescendants().OfType<Control>().Where(c => c.IsEffectivelyVisible && c.TemplatedParent == null && FitCheck.IsContent(c)))
@@ -232,7 +256,7 @@ public sealed class GamePanelTests
 							Rect r = FitCheck.Bounds(c, window);
 							if (r.Width > 0.5 && (r.Left < sheetRect.Left - 0.5 || r.Right > sheetRect.Right + 0.5))
 							{
-								problems.Add($"{where}: {FitCheck.Describe(c)} {r} outside the panel {sheetRect}");
+								problems.Add($"{where}: {FitCheck.Describe(c)} {r} outside the dialog {sheetRect}");
 							}
 						}
 						if (outDir != null)

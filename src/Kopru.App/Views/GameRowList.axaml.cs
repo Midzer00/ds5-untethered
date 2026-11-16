@@ -29,6 +29,16 @@ public partial class GameRowList : UserControl
 		InitializeComponent();
 		SizeChanged += (_, e) => Classes.Set("roomy", e.NewSize.Width >= RoomyWidth);
 		Rows.AddHandler(TappedEvent, OnRowTapped);
+		// Enter or Space on a focused row opens its game too.
+		Rows.AddHandler(KeyDownEvent, (_, e) =>
+		{
+			if (e.Key is Key.Enter or Key.Space && e.Source is Border { DataContext: GameItemViewModel game } row && row.Classes.Contains("gameRow")
+				&& OpenCommand?.CanExecute(game) == true)
+			{
+				OpenCommand.Execute(game);
+				e.Handled = true;
+			}
+		});
 	}
 
 	// Runs with a row's game when the row itself is clicked (not one of its pickers or buttons).
