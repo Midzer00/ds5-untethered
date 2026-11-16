@@ -16,13 +16,15 @@ public sealed partial class SettingsViewModel
 	public string StartWithWindowsShort => Text.StartWithWindowsShort();
 	public string KeepInTrayShort => Text.KeepInTrayShort();
 	public string AutoStartBridgeShort => Text.AutoStartBridgeShort();
+	public string ShowTipsLabel => Text.ShowTips();
+	public string ShowTipsHint => Text.ShowTipsHint();
 	public string BridgeRowShort => Text.BridgeRowShort();
 	public string BridgeRowHint => Text.BridgeRowHint();
 	public string PowerOffWhenIdleShort => Text.PowerOffWhenIdleShort();
 	public string AutoLowPowerShort => Text.AutoLowPowerShort();
+	public string PauseHapticsShort => Text.PauseHapticsInSilenceShort();
 	public string AudioOutputShort => Text.AudioOutputShort();
 	public string AudioInputShort => Text.AudioInputShort();
-	public string SpeakerSendShort => Text.SpeakerSendShort();
 	public string MicSendShort => Text.MicSendShort();
 	public string MicButtonModeShort => Text.MicButtonModeShort();
 	public string ProtectDefaultAudioShort => Text.ProtectDefaultAudioShort();

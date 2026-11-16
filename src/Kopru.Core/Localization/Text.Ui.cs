@@ -6,8 +6,6 @@ public static partial class Text
 {
 	// Navigation
 	public static string NavOverview(Language? l = null) => Pick(l, $"Genel Bakış", $"Overview");
-	public static string NavSupportedGames(Language? l = null) => Pick(l, $"Desteklenen Oyunlar", $"Supported Games");
-	public static string NavOtherGames(Language? l = null) => Pick(l, $"Diğer Oyunlar", $"Other Games");
 	public static string NavLight(Language? l = null) => Pick(l, $"Işık", $"Light");
 	public static string NavSettings(Language? l = null) => Pick(l, $"Ayarlar", $"Settings");
 
@@ -56,19 +54,18 @@ public static partial class Text
 		$"Game haptics can feel weak over Bluetooth; raise the level here.");
 	public static string GameHapticsHint(Language? l = null) => Pick(l,
 		$"Oyunun gönderdiği haptik sesin gücü. Önerilen: %150.",
-		$"Strength of the haptics the game sends. Recommended: 150%.");
+		$"Strength of the game's haptics. Recommended: 150%.");
 	public static string RumbleHint(Language? l = null) => Pick(l,
 		$"Klasik titreşim, Bluetooth'ta haptik olarak çalınır.",
 		$"Classic rumble is played as haptics over Bluetooth.");
 	public static string TestBoth(Language? l = null) => Pick(l, $"İki Taraf", $"Both Sides");
 	public static string TestRumble(Language? l = null) => Pick(l, $"Titreşimi Dene", $"Try Rumble");
-	public static string Tests(Language? l = null) => Pick(l, $"Testler", $"Tests");
 
 	// Triggers
 	public static string TriggerStrength(Language? l = null) => Pick(l, $"Tetik Gücü", $"Trigger Strength");
 	public static string TriggerStrengthHint(Language? l = null) => Pick(l,
-		$"Desteklenen oyunların tetik efektlerinin ve test efektlerinin gücü. %0 tetikleri kapatır.",
-		$"Strength of supported games' trigger effects and of the test effects. 0% turns the triggers off.");
+		$"Oyunun tetik efektlerinin gücü. %0 tetikleri kapatır.",
+		$"Strength of the game's trigger effects. 0% turns them off.");
 	public static string EffectOff(Language? l = null) => Pick(l, $"Kapalı", $"Off");
 	public static string EffectFeedback(Language? l = null) => Pick(l, $"Direnç", $"Feedback");
 	public static string EffectWeapon(Language? l = null) => Pick(l, $"Silah", $"Weapon");
@@ -199,14 +196,20 @@ public static partial class Text
 	public static string LiveTitle(Language? l = null) => Pick(l, $"Canlı", $"Live");
 	public static string LiveIdle(Language? l = null) => Pick(l, $"Sanal kumanda çalışırken burada görünür.", $"Shows here while the virtual controller runs.");
 	public static string LiveLast30s(Language? l = null) => Pick(l, $"Son 30 sn", $"Last 30 s");
-	public static string LiveRateRange(double min, double avg, Language? l = null) => Pick(l, $"en düşük {min:F0} · ort. {avg:F0}", $"min {min:F0} · avg {avg:F0}");
+	// The live card: the input rate's low of the last 30 s, the delay headline's second line, the chart's note (all under
+	// the "you can feel it" limit, or what its dashed line means), and the triggers group.
+	public static string LiveRateMin(double min, Language? l = null) => Pick(l, $"en düşük {min:F0}", $"min {min:F0}");
+	public static string DelayMs(double ms, Language? l = null) => Pick(l, $"{ms:F1} ms", $"{ms:F1} ms");
+	public static string LiveDelayWorst(double ms, Language? l = null) => Pick(l, $"Gecikme · en kötü {ms:F1} ms", $"Delay · worst {ms:F1} ms");
+	public static string LiveUnderLimit(double ms, Language? l = null) => Pick(l, $"{ms:F0} ms'nin altında", $"Under {ms:F0} ms");
+	public static string LiveOverLimit(double ms, Language? l = null) => Pick(l, $"{ms:F0} ms üstü hissedilir", $"Above {ms:F0} ms you can feel it");
+	public static string LiveTriggers(Language? l = null) => Pick(l, $"Tetikler", $"Triggers");
 	public static string LiveBridgeUptime(string duration, Language? l = null) => Pick(l, $"Sanal kumanda açık · {duration}", $"Virtual controller on · {duration}");
 	public static string LiveConnectedFor(string duration, Language? l = null) => Pick(l, $"Bağlı · {duration}", $"Connected · {duration}");
 	public static string LiveSpeaker(Language? l = null) => Pick(l, $"Hoparlör", $"Speaker");
 	public static string LiveMic(Language? l = null) => Pick(l, $"Mikrofon", $"Microphone");
 	public static string LiveMuted(Language? l = null) => Pick(l, $"Sessizde", $"Muted");
 	public static string LiveOnVolume(double percent, Language? l = null) => Pick(l, $"Açık · %{percent:F0}", $"On · {percent:F0}%");
-	public static string LatencyShort(double p50, double p99, Language? l = null) => Pick(l, $"{p50:F1} ms · en kötü {p99:F1}", $"{p50:F1} ms · worst {p99:F1}");
 	public static string ControlsNeedController(Language? l = null) => Pick(l, $"Kumanda bağlanınca kullanılabilir", $"Available once the controller connects");
 	public static string TryAction(Language? l = null) => Pick(l, $"Dene", $"Try");
 	public static string HealthDriver(Language? l = null) => Pick(l, $"Sürücü", $"Driver");
@@ -229,18 +232,12 @@ public static partial class Text
 	public static string GroupPowerSaving(Language? l = null) => Pick(l, $"Güç Tasarrufu", $"Power Saving");
 
 	// Game modes: supported (native DualSense) and other games
-	public static string SupportedGamesIntro(Language? l = null) => Pick(l,
-		$"DualSense'i doğrudan destekleyen oyunlar kendi haptiğini, tetik efektlerini ve ışığını gönderir.",
-		$"Games that support the DualSense natively send their own haptics, trigger effects and light.");
-	public static string OtherGamesIntro(Language? l = null) => Pick(l,
-		$"Yalnızca klasik titreşim gönderen oyunlar. Titreşim haptik olarak çalınır, tetiklere yedek efekt verilebilir.",
-		$"Games that only send classic rumble. Rumble is played as haptics, and the triggers can get a fallback effect.");
-	public static string ProfileSettings(Language? l = null) => Pick(l, $"Bu Oyunlar için Ayarlar", $"Settings for These Games");
-	public static string LightFromGame(Language? l = null) => Pick(l, $"Oyunun Işığını Kullan", $"Use the Game's Light");
+	public static string LightFromGame(Language? l = null) => Pick(l, $"Oyunun Işığını Kullan", $"Use The Game's Light");
 	public static string LightFromGameHint(Language? l = null) => Pick(l,
-		$"Kapalıyken ışık çubuğu sizin renginizde kalır.",
-		$"When off, the light bar keeps your colour.");
+		$"Oyun renk gönderirse o yanar; göndermezse veya bu kapalıysa senin ışığın yanar.",
+		$"If the game sends a colour, it is shown; if not, or when this is off, your light is shown.");
 	public static string SupportedGameList(Language? l = null) => Pick(l, $"Desteklenen Oyun Listesi", $"Supported Games List");
+	// The "Installed" view's list title: everything on this PC, supported or not.
 	public static string SearchGames(Language? l = null) => Pick(l, $"Oyun Ara", $"Search Games");
 	public static string GameCount(double count, Language? l = null) => Pick(l, $"{count:F0} oyun", $"{count:F0} games");
 	public static string NoMatchingGames(Language? l = null) => Pick(l, $"Eşleşen oyun yok.", $"No matching games.");
@@ -267,48 +264,20 @@ public static partial class Text
 			: Pick(l, $"{count:F0} oyun", $"{count:F0} games");
 	public static string BadgeHaptics(Language? l = null) => Pick(l, $"Haptik", $"Haptics");
 	public static string BadgeTriggers(Language? l = null) => Pick(l, $"Tetik", $"Triggers");
-	public static string MarkAlways(Language? l = null) => Pick(l, $"Otomatik Aç", $"Auto");
-	public static string MarkAlwaysTip(Language? l = null) => Pick(l, $"Bu oyun açılınca mod sormadan açılır.", $"The mode turns on without asking when this game starts.");
-	public static string MarkNeverAsk(Language? l = null) => Pick(l, $"Sorma", $"Don't Ask");
-	public static string MarkNeverAskTip(Language? l = null) => Pick(l, $"Bu oyun açılınca soru gösterilmez.", $"No question when this game starts.");
 	public static string MarkUserAdded(Language? l = null) => Pick(l, $"Eklendi", $"Added");
-	public static string RemoveMark(Language? l = null) => Pick(l, $"İşareti Kaldır", $"Remove Mark");
 	public static string AddGame(Language? l = null) => Pick(l, $"Oyun Ekle", $"Add Game");
 	public static string AddGameFromFile(Language? l = null) => Pick(l, $"Dosyadan Seç…", $"Choose File…");
 	public static string AddGameRunningHeader(Language? l = null) => Pick(l, $"Açık Uygulamalar", $"Running Apps");
 	public static string AddGameNoRunning(Language? l = null) => Pick(l, $"Açık uygulama yok", $"No running apps");
 	public static string RemoveGame(Language? l = null) => Pick(l, $"Kaldır", $"Remove");
 	public static string GameListHint(Language? l = null) => Pick(l,
-		$"Listedeki ya da eklediğiniz bir oyun açılınca sorulur. Otomatik Aç işaretli oyunlarda mod sormadan açılır.",
-		$"You're asked when a listed or added game starts. Games marked Auto turn the mode on without asking.");
+		$"Listedeki, bilgisayarında bulunan ve eklediğin oyunlar açılınca tanınır. Her oyuna kumanda türü ve profil seçebilirsin.",
+		$"Listed, found and added games are recognised when they start. You can pick a controller type and profile for each.");
 
-	// The supported mode switch and the question when a known game starts.
-	public static string SupportedMode(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
-	public static string SupportedModeShort(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
-	// One line under the switch where there is room.
-	public static string SupportedModeHelper(Language? l = null) => Pick(l, $"Oyunun haptiği, tetikleri, ışığı ve hoparlör sesleri", $"The game's haptics, triggers, light and speaker sounds");
-	public static string SupportedModeHint(Language? l = null) => Pick(l,
-		$"Açıkken oyunun kendi haptiği, tetik efektleri, ışığı ve kumanda hoparlörü kullanılır; kapalıyken klasik titreşim (diğer oyunlar profili).",
-		$"When on, the game's own haptics, trigger effects, light and the controller speaker are used; when off, classic rumble (the other games profile).");
-	public static string ModeShortSupported(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
-	public static string AskGameBody(Language? l = null) => Pick(l, $"DualSense modu açılsın mı?", $"Turn on DualSense mode?");
-	public static string AskTurnOn(Language? l = null) => Pick(l, $"Aç", $"Turn On");
-	public static string AskNotNow(Language? l = null) => Pick(l, $"Şimdi Değil", $"Not Now");
-	public static string AskAlways(Language? l = null) => Pick(l, $"Her Zaman", $"Always");
-	public static string AskOnKnownGame(Language? l = null) => Pick(l, $"Tanınan Oyunda Sor", $"Ask When a Known Game Starts");
-	public static string AskOnKnownGameHint(Language? l = null) => Pick(l,
-		$"Mod kapalıyken listedeki bir oyun açılınca bildirimle sorar.",
-		$"Asks with a notification when a listed game starts while the mode is off.");
-	public static string TraySupportedMode(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
+	// The removed DualSense Mode switch (obsolete: GameModeText.Mode on the games pages still reads these).
 	public static string ModeSupported(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
 	public static string ModeUnsupported(Language? l = null) => Pick(l, $"Klasik Titreşim", $"Classic Rumble");
-	public static string ModeShortClassic(Language? l = null) => Pick(l, $"Klasik Titreşim", $"Classic Rumble");
-	public static string ReasonGame(Language? l = null) => Pick(l, $"bu oyun için açıldı", $"turned on for this game");
-	public static string ReasonAlways(Language? l = null) => Pick(l, $"her zaman açılır", $"always on for this game");
-	public static string ReasonUser(Language? l = null) => Pick(l, $"sizin seçiminiz", $"your choice");
-	public static string ReasonDefault(Language? l = null) => Pick(l, $"varsayılan", $"default");
 	public static string NoGameYet(Language? l = null) => Pick(l, $"Tanınan oyun açık değil", $"No known game running");
-	public static string ActiveNow(Language? l = null) => Pick(l, $"Şu An Etkin", $"Active Now");
 	public static string RumbleFeelLabel(Language? l = null) => Pick(l, $"Titreşim Hissi", $"Rumble Feel");
 	public static string RumbleFeelSoft(Language? l = null) => Pick(l, $"Yumuşak", $"Soft");
 	public static string RumbleFeelPunchy(Language? l = null) => Pick(l, $"Sert", $"Punchy");
@@ -317,8 +286,8 @@ public static partial class Text
 		$"Soft: low, smooth tones. Punchy: higher, shorter, sharper hits.");
 	public static string FallbackTriggerLabel(Language? l = null) => Pick(l, $"Yedek Tetik Efekti", $"Fallback Trigger Effect");
 	public static string FallbackTriggerHint(Language? l = null) => Pick(l,
-		$"Oyun tetik efekti göndermediği için L2 ve R2'ye uygulanır.",
-		$"Applied to L2 and R2, since the game sends no trigger effects.");
+		$"Oyun tetiklere efekt göndermiyorsa tetiklere bu efekt verilir.",
+		$"Used when the game sends no trigger effect.");
 	public static string FallbackStrength(Language? l = null) => Pick(l, $"Efekt Gücü", $"Effect Strength");
 	public static string TestFallbackTrigger(Language? l = null) => Pick(l, $"Tetik Efektini Dene", $"Try Trigger Effect");
 
@@ -356,7 +325,6 @@ public static partial class Text
 	public static string NotifyBatteryCriticalBody(double percent, Language? l = null) => Pick(l, $"%{percent:F0} kaldı, yakında kapanır", $"{percent:F0}% left, turning off soon");
 	public static string NotifyChargedTitle(Language? l = null) => Pick(l, $"Şarj Doldu", $"Fully Charged");
 	public static string NotifyChargedBody(Language? l = null) => Pick(l, $"Kabloyu çıkarabilirsiniz", $"You can unplug it");
-	public static string NotifyGameSupported(Language? l = null) => Pick(l, $"DualSense modu açık", $"DualSense mode is on");
 	public static string NotifySteamInputTitle(Language? l = null) => Pick(l, $"Steam Input Açık", $"Steam Input Is On");
 	public static string NotifySteamInputBody(Language? l = null) => Pick(l, $"Haptik çalışmayabilir", $"Haptics may not work");
 	public static string NotifyPoweredOffTitle(Language? l = null) => Pick(l, $"Kumanda Kapandı", $"Controller Off");
@@ -383,7 +351,7 @@ public static partial class Text
 	public static string NotifyBatterySetting(Language? l = null) => Pick(l, $"Pil", $"Battery");
 	public static string NotifyBatteryHint(Language? l = null) => Pick(l, $"%20 ve %10'da birer kez, şarj bitince.", $"At 20% and 10%, and when fully charged.");
 	public static string NotifyGameSetting(Language? l = null) => Pick(l, $"Oyun Algılama", $"Game Detection");
-	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Desteklenen bir oyun DualSense modu açıkken başlayınca.", $"When a supported game starts with DualSense mode on.");
+	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Tanınan bir oyun başlayınca ve kumanda türü değişince.", $"When a known game starts and when the controller type changes.");
 	public static string NotifySteamInputSetting(Language? l = null) => Pick(l, $"Steam Input Uyarısı", $"Steam Input Warning");
 	public static string NotifySteamInputHint(Language? l = null) => Pick(l, $"Oyun oturumu başına bir kez.", $"Once per game session.");
 	public static string NotifyPowerOffSetting(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");

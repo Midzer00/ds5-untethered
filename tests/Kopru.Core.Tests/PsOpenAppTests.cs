@@ -175,7 +175,7 @@ public class PsOpenAppTests
 		{
 			Assert.False(PsOf(Step(Body(), 20)));
 		}
-		Assert.Equal([ShortcutAction.ToggleSupportedMode], fired);
+		Assert.Empty(fired);
 		Assert.Equal(0, asked);
 		Assert.Equal(["ps tap: 28 ms -> combo (modifier used)"], log);
 	}

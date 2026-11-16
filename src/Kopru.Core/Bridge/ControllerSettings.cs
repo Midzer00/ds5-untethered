@@ -4,9 +4,10 @@ using Kopru.Core.Input;
 
 namespace Kopru.Core.Bridge;
 
-// User-adjustable bridge settings the UI pushes to the service. Levels are percentages. GameHapticsLevel,
-// TriggerStrength (the game's trigger effects, 0-100 %) and LightFromGame are the supported games profile; RumbleLevel,
-// RumbleFeel and the fallback trigger the profile for other games.
+// User-adjustable bridge settings the UI pushes to the service. Levels are percentages. GameHapticsLevel and
+// TriggerStrength (0-100 %) set how strong the game's own haptics and trigger effects feel; RumbleLevel, RumbleFeel and the
+// fallback trigger apply where the game sends only classic rumble or no trigger effect; LightFromGame shows the game's
+// colour when it sends one. Together they are the one game profile (Game).
 public sealed record ControllerSettings(
 	double GameHapticsLevel = 150,
 	double RumbleLevel = 100,
@@ -20,16 +21,23 @@ public sealed record ControllerSettings(
 	FallbackTrigger FallbackTrigger = FallbackTrigger.Off,
 	double FallbackStrength = 50)
 {
-	// The game controlled light mode always lets a supported game's light through.
-	public SupportedProfile Supported => new(GameHapticsLevel / 100, Math.Clamp(TriggerStrength / 100, 0, 1),
-		LightFromGame || LightOptions.Mode == Kopru.Core.Lighting.LightMode.Game);
+	// The profile every game runs with (LightFromGame is the only switch for the game's light).
+	public GameProfile Game => new(GameHapticsLevel / 100, Math.Clamp(TriggerStrength / 100, 0, 1), LightFromGame,
+		RumbleLevel / 100, RumbleFeel, FallbackTrigger, Math.Clamp(FallbackStrength / 100, 0, 1))
+	{
+		AudioHaptics = new Kopru.Core.Audio.AudioHapticsSettings(AudioHapticsOn, Math.Clamp(AudioHapticsStrength / 100, 0, Kopru.Core.Audio.AudioHapticsDsp.MaxStrength),
+			AudioHapticsBand)
+	};
+
+	// "Turn sound into haptics" (the game's sound felt on the controller; AudioHapticsRunner): on, strength 0-200 %, band.
+	public bool AudioHapticsOn { get; init; }
+	public double AudioHapticsStrength { get; init; } = 100;
+	public Kopru.Core.Audio.AudioHapticsBand AudioHapticsBand { get; init; } = Kopru.Core.Audio.AudioHapticsBand.Bass;
 
 	// Light effect, player LED pattern and brightness, mute LED.
 	public Kopru.Core.Lighting.LightOptions LightOptions { get; init; } = Kopru.Core.Lighting.LightOptions.Default;
 
 	public LightSettings Light => LightSettings.FromRgb(LightbarColour, Brightness / 100, PlayerLeds) with { Options = LightOptions };
-
-	public UnsupportedProfile Unsupported => new(RumbleLevel / 100, RumbleFeel, FallbackTrigger, Math.Clamp(FallbackStrength / 100, 0, 1));
 
 	// Stick and trigger tuning applied to the input games receive.
 	public InputTuning Tuning { get; init; } = InputTuning.Default;
@@ -50,7 +58,8 @@ public sealed record ControllerSettings(
 	// "Also In Games": with PsOpensApp on, the tap opens the app while a game is in front too (PsTapRule).
 	public bool PsOpensAppInGames { get; init; } = true;
 
-	// Experimental controller speaker (game audio to the controller; off by default).
+	// The controller speaker: the one switch (plays what the game sends to the controller's speaker; only a virtual
+	// DualSense has one). Off in this record's default; the app's setting is on by default.
 	public SpeakerSettings Speaker { get; init; } = SpeakerSettings.Off;
 	// Desktop mode: on (the controller drives Windows, games get a neutral pad) and its tuning.
 	public bool DesktopModeOn { get; init; }
@@ -58,4 +67,17 @@ public sealed record ControllerSettings(
 
 	// Controller microphone (mute button, experimental passthrough; off by default).
 	public MicSettings Mic { get; init; } = MicSettings.Off;
+
+	// DSX mod support: listen for game mods made for DSX on 127.0.0.1 (Mods.DsxListener); off by default.
+	public bool DsxModSupport { get; init; }
+
+	// "Pause Haptics In Silence" (app setting, not per profile; off by default): no haptics reports while the game is
+	// silent (BluetoothSession.PauseHapticsInSilence).
+	public bool PauseHapticsInSilence { get; init; }
+
+	// Low Power mode turns the pause on as well while it is active (LowPower.Apply), without changing the setting.
+	public bool PauseHapticsForLowPower { get; init; }
+
+	// Whether the pause is on, and why (for the log): "setting", "low power" or null when off.
+	public string? PauseHapticsReason => PauseHapticsInSilence ? "setting" : PauseHapticsForLowPower ? "low power" : null;
 }

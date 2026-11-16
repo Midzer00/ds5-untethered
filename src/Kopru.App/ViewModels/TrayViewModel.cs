@@ -27,13 +27,23 @@ public sealed partial class TrayViewModel : ViewModelBase
 	private readonly IControllerService _service;
 	private readonly SettingsState _settings;
 	private readonly IAppShell _shell;
+	private readonly ShownProperties _shown;
 
 	public TrayViewModel(IControllerService service, SettingsState settings, IAppShell shell)
 	{
 		_service = service;
 		_settings = settings;
 		_shell = shell;
-		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
+		// The tray rebuilds its tooltip and menu on any change: one whole refresh, and only when something it shows changed.
+		_shown = new ShownProperties(_ => { }, (nameof(ToolTip), () => ToolTip), (nameof(BridgeText), () => BridgeText),
+			(nameof(CanReconnect), () => CanReconnect), (nameof(CanPowerOff), () => CanPowerOff));
+		_service.StateChanged += (_, _) => RunOnUi(() =>
+		{
+			if (_shown.Refresh() > 0)
+			{
+				OnPropertyChanged(string.Empty);
+			}
+		});
 		// "PS: Open The App": the controller's PS tap shows the window like the tray icon does (on its current page), and
 		// hides it again when it is already in front.
 		_service.Shortcut += (_, action) =>
@@ -79,8 +89,6 @@ public sealed partial class TrayViewModel : ViewModelBase
 	public string ReconnectText => Text.ReconnectController();
 	public bool CanReconnect => _service.IsConnected || _service.Details != null;
 	public bool CanPowerOff => _service.IsConnected && _service.IsBridgeRunning;
-	public string SupportedModeText => Text.TraySupportedMode();
-	public bool IsSupportedModeOn => _service.Games.IsSupportedModeOn;
 	public string NotificationsText => _settings.NotificationsEnabled ? Text.TrayNotificationsOff() : Text.TrayNotificationsOn();
 	public string DesktopModeText => Text.TrayDesktopMode();
 	public bool IsDesktopModeOn => _settings.DesktopModeOn;
@@ -99,14 +107,7 @@ public sealed partial class TrayViewModel : ViewModelBase
 	private Task Reconnect() => _service.ReconnectAsync();
 
 	[RelayCommand]
-	private void ToggleSupportedMode()
-	{
-		_service.Games.SetSupportedMode(!_service.Games.IsSupportedModeOn);
-		OnPropertyChanged(nameof(IsSupportedModeOn));
-	}
-
-	[RelayCommand]
-	private void ToggleDesktopMode() => _settings.DesktopModeOn = !_settings.DesktopModeOn;
+	private void ToggleDesktopMode() => _settings.SetDesktopMode(!_settings.DesktopModeOn, "tray menu");
 
 	[RelayCommand]
 	private void ToggleNotifications() => _settings.NotificationsEnabled = !_settings.NotificationsEnabled;

@@ -22,6 +22,60 @@ public sealed partial class SettingsState
 	[ObservableProperty]
 	private IReadOnlyList<SeenGame> _seenGames = [];
 
+	// Found games hidden from the list (and no longer recognised).
+	[ObservableProperty]
+	private IReadOnlyList<HiddenGame> _hiddenGames = [];
+
+	// The file "Oyna" starts for a game, chosen by the user (game key -> path); it wins over the way the app finds itself.
+	[ObservableProperty]
+	private IReadOnlyDictionary<string, string> _startFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+	public string? StartFileFor(string key) => StartFiles.TryGetValue(key, out string? path) ? path : null;
+
+	// Sets (or with null clears) a game's start file; false when nothing changed.
+	public bool SetStartFile(string key, string? path)
+	{
+		if (string.IsNullOrWhiteSpace(key) || string.Equals(StartFileFor(key), path, StringComparison.OrdinalIgnoreCase))
+		{
+			return false;
+		}
+		var next = new Dictionary<string, string>(StartFiles, StringComparer.OrdinalIgnoreCase);
+		if (string.IsNullOrWhiteSpace(path))
+		{
+			next.Remove(key);
+		}
+		else
+		{
+			next[key] = path;
+		}
+		StartFiles = next;
+		return true;
+	}
+
+	public bool IsGameHidden(string key) => HiddenGames.Any(h => string.Equals(h.Key, key, StringComparison.OrdinalIgnoreCase));
+
+	// False when it is blank or hidden already.
+	public bool HideGame(string key, string name)
+	{
+		if (string.IsNullOrWhiteSpace(key) || IsGameHidden(key))
+		{
+			return false;
+		}
+		HiddenGames = [.. HiddenGames, new HiddenGame(key, string.IsNullOrWhiteSpace(name) ? key : name)];
+		return true;
+	}
+
+	public bool ShowGame(string key)
+	{
+		List<HiddenGame> left = HiddenGames.Where(h => !string.Equals(h.Key, key, StringComparison.OrdinalIgnoreCase)).ToList();
+		if (left.Count == HiddenGames.Count)
+		{
+			return false;
+		}
+		HiddenGames = left;
+		return true;
+	}
+
 	// False when the folder is blank or already there.
 	public bool AddGameFolder(string folder)
 	{
@@ -69,6 +123,17 @@ public sealed partial class SettingsState
 		InstalledGamesOnly = saved.InstalledGamesOnly;
 		GameFolders = (saved.GameFolders ?? []).Where(f => !string.IsNullOrWhiteSpace(f)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 		SeenGames = (saved.SeenGames ?? []).Where(s => !string.IsNullOrWhiteSpace(s.Name) && !string.IsNullOrWhiteSpace(s.Folder)).ToList();
+		HiddenGames = (saved.HiddenGames ?? []).Where(h => !string.IsNullOrWhiteSpace(h.Key))
+			.DistinctBy(h => h.Key, StringComparer.OrdinalIgnoreCase).Select(h => h with { Name = h.Name ?? h.Key }).ToList();
+		var startFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		foreach ((string key, string path) in saved.StartFiles ?? [])
+		{
+			if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(path))
+			{
+				startFiles[key] = path;
+			}
+		}
+		StartFiles = startFiles;
 	}
 
 	private AppSettings WithInstalledGames(AppSettings settings)
@@ -76,6 +141,8 @@ public sealed partial class SettingsState
 		settings.InstalledGamesOnly = InstalledGamesOnly;
 		settings.GameFolders = GameFolders.Count > 0 ? GameFolders.ToList() : null;
 		settings.SeenGames = SeenGames.Count > 0 ? SeenGames.ToList() : null;
+		settings.HiddenGames = HiddenGames.Count > 0 ? HiddenGames.ToList() : null;
+		settings.StartFiles = StartFiles.Count > 0 ? new Dictionary<string, string>(StartFiles, StringComparer.OrdinalIgnoreCase) : null;
 		return settings;
 	}
 }

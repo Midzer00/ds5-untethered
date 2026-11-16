@@ -41,11 +41,11 @@ public sealed class DualShock4AppTests : IDisposable
 	{
 		using FakeControllerService fake = new(animate: false);
 		GamePadTypePicker picker = new(fake.Games, "exe:old.exe");
-		Assert.Equal([VirtualPadType.DualSense, VirtualPadType.Xbox360, VirtualPadType.DualShock4], picker.Options.Select(o => o.Type));
+		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.Xbox360], picker.Options.Select(o => o.Type));
 		Assert.Equal("DualShock 4", picker.Options[2].Name);
-		// Every pad type is offered exactly once.
-		Assert.Equal(Enum.GetValues<VirtualPadType>().Order(), picker.Options.Select(o => o.Type).Order());
-		Assert.Equal(VirtualPadType.DualSense, picker.Selected!.Type);
+		// Automatic, then every pad type exactly once.
+		Assert.Equal(Enum.GetValues<VirtualPadType>().Order(), picker.Options.Skip(1).Select(o => o.Type!.Value).Order());
+		Assert.Null(picker.Selected!.Type);
 
 		picker.Selected = picker.Options[2];
 		Assert.Equal(VirtualPadType.DualShock4, fake.Games.PadTypeFor("exe:old.exe"));
@@ -57,21 +57,23 @@ public sealed class DualShock4AppTests : IDisposable
 	public void GamePicker_TipExplainsDualShock4()
 	{
 		using FakeControllerService fake = new(animate: false);
-		string tip = new GamePadTypePicker(fake.Games, "exe:old.exe").Tip;
-		Assert.Equal(Text.PadTypeTip() + " " + Text.PadTypeDualShock4Tip(), tip);
-		Assert.Contains("DualShock 4", Text.PadTypeDualShock4Tip(Language.Turkish));
-		Assert.Contains("PS4", Text.PadTypeDualShock4Tip(Language.Turkish));
-		Assert.Contains("DualShock 4", Text.PadTypeDualShock4Tip(Language.English));
+		GamePadTypePicker picker = new(fake.Games, "exe:old.exe");
+		Assert.Equal(Text.PadTypeGameHint() + "\n" + Text.PadTypeAutoLine(), picker.Tip);
+		picker.Selected = picker.Options[2];
+		Assert.Equal(Text.PadTypeGameHint() + "\n" + Text.PadTypeDualShock4Line(), picker.Tip);
+		Assert.Equal(Text.PadTypeDualShock4Line(), picker.Options[2].Line);
+		Assert.Contains("PS4", Text.PadTypeDualShock4Line(Language.Turkish));
+		Assert.Contains("PS4", Text.PadTypeDualShock4Line(Language.English));
 	}
 
 	[Fact]
 	public void PadTypeToast_NamesDualShock4Mode()
 	{
-		AppNotification notice = NotificationCenter.PadTypeNotice(nameof(VirtualPadType.DualShock4));
+		AppNotification notice = NotificationCenter.PadTypeNotice(VirtualPadType.DualShock4, Kopru.Core.Games.PadTypeSource.Game, gameRunning: true);
 		Assert.Equal(Text.PadModeDualShock4Title(), notice.Title);
-		Assert.Equal(Text.PadModeDualShock4Body(), notice.Body);
+		Assert.Equal(Text.PadSwapRestartHint(), notice.Body);
 		Assert.Equal("DualShock 4 Modu", Text.PadModeDualShock4Title(Language.Turkish));
 		Assert.Equal("DualShock 4 Mode", Text.PadModeDualShock4Title(Language.English));
-		Assert.Equal(Text.PadModeDualSenseTitle(), NotificationCenter.PadTypeNotice("nonsense").Title);
+		Assert.Equal(Text.PadModeDualSenseTitle(), NotificationCenter.PadTypeTitle((VirtualPadType)99));
 	}
 }

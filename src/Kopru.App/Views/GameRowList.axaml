@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
+             xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.GameRowList" x:Name="Root">
+  <!-- The Games list (its own control, reusable by another page): the default controller type, the page's own lines (no match, empty,
+       searching), then one compact row per game that scrolls by itself and only builds the rows in view. Every row shares
+       one column layout: picture, name with its features, the controller type and profile pickers. Where the list is wide
+       enough ("roomy") the two pickers sit side by side, otherwise one above the other. -->
+  <UserControl.Resources>
+    <x:Double x:Key="ThumbWidth">72</x:Double>
+    <x:Double x:Key="ThumbHeight">34</x:Double>
+    <x:Double x:Key="RowPickerWidth">132</x:Double>
+    <x:Double x:Key="RowControlHeight">28</x:Double>
+    <x:Double x:Key="RowActionHeight">24</x:Double>
+    <x:Double x:Key="PickerGap">6</x:Double>
+    <Thickness x:Key="GameRowMargin">0,6</Thickness>
+    <!-- The rows leave the scroll bar room at the right -->
+    <Thickness x:Key="ListInset">0,0,12,0</Thickness>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <!-- An added game's Remove and a found game's Hide sit in the line under its name, as compact as the captions next to it -->
+    <Style Selector="Button.rowAction">
+      <Setter Property="Height" Value="{StaticResource RowActionHeight}" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+    </Style>
+    <!-- The pickers keep their popup from scrolling the list (see PopupScrollGuard) -->
+    <Style Selector="ComboBox.rowPicker">
+      <Setter Property="Width" Value="{StaticResource RowPickerWidth}" />
+      <Setter Property="Height" Value="{StaticResource RowControlHeight}" />
+      <Setter Property="MinHeight" Value="{StaticResource RowControlHeight}" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="c:PopupScrollGuard.Contain" Value="True" />
+    </Style>
+    <!-- The controller type waiting for the running game: a quiet tinted box above the rows -->
+    <Style Selector="Border.pending">
+      <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
+    <!-- A row opens its game's panel: the hand cursor and a quiet hover background -->
+    <Style Selector="Border.gameRow">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.gameRow:pointerover">
+      <Setter Property="Background" Value="{StaticResource NavHoverBrush}" />
+    </Style>
+    <Style Selector="Border.gameRow ComboBox, Border.gameRow Button">
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="StackPanel.pickers">
+      <Setter Property="Orientation" Value="Vertical" />
+      <Setter Property="Spacing" Value="4" />
+    </Style>
+    <Style Selector="v|GameRowList.roomy StackPanel.pickers">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="{StaticResource PickerGap}" />
+    </Style>
+    <!-- The default controller type sits above the rows' controller type pickers: side by side, room for the profile
+         picker is kept at its right -->
+    <Style Selector="Border.profileSpace">
+      <Setter Property="IsVisible" Value="False" />
+      <Setter Property="Width" Value="{StaticResource RowPickerWidth}" />
+      <Setter Property="Margin" Value="6,0,0,0" />
+    </Style>
+    <Style Selector="v|GameRowList.roomy Border.profileSpace">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </UserControl.Styles>
+  <DockPanel>
+    <!-- The default controller type (the same choice as in Quick Settings): what games without their own choice see; the
+         label's line says so. Each option's meaning is its tooltip. -->
+    <Grid DockPanel.Dock="Top" Name="PadChoiceRow" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Margin="0,0,12,4"
+          IsVisible="{Binding #Root.PadChoice, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <!-- One line where the list is wide enough, the meaning under the label otherwise -->
+      <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="1" VerticalAlignment="Center">
+        <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding #Root.PadChoice.DefaultLabel}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <TextBlock Classes="caption" Text="{Binding #Root.PadChoice.Hint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </WrapPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+        <!-- As wide as its choice needs ("Otomatik (Oyuna Göre)"), at least as wide as the rows' pickers, on their right edge -->
+        <ComboBox Name="PadTypeChoicePicker" Classes="rowPicker" Width="NaN" MinWidth="{StaticResource RowPickerWidth}" ItemsSource="{Binding #Root.PadChoice.Options}" ToolTip.Tip="{Binding #Root.PadChoice.Selected.Line}"
+                  SelectedItem="{Binding #Root.PadChoice.Selected}" AutomationProperties.Name="{Binding #Root.PadChoice.DefaultLabel}" VerticalAlignment="Center">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:PadChoiceOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Border Classes="profileSpace" />
+      </StackPanel>
+    </Grid>
+    <!-- A controller type change waiting for the running game: the note, the game and type, and Apply Now -->
+    <Border DockPanel.Dock="Top" Name="PendingPadType" Classes="pending" Margin="0,4,12,6" IsVisible="{Binding #Root.Pending.HasPendingPadType, FallbackValue=False}">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+        <StackPanel Spacing="1" VerticalAlignment="Center" ToolTip.Tip="{Binding #Root.Pending.PendingPadTypeHint}">
+          <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding #Root.Pending.PendingPadTypeText}" TextWrapping="Wrap" />
+          <TextBlock Classes="caption" Text="{Binding #Root.PendingLine}" TextWrapping="Wrap" />
+          <TextBlock Classes="caption" Text="{Binding #Root.Pending.PendingPadTypeHint}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="1" Name="ApplyPadTypeNowButton" Theme="{StaticResource QuietButton}" Height="30" Padding="12,0" VerticalAlignment="Center"
+                Command="{Binding #Root.Pending.ApplyPadTypeNowCommand}" Content="{Binding #Root.Pending.ApplyPadTypeNowText}" />
+      </Grid>
+    </Border>
+    <!-- The page's own lines above the rows -->
+    <ContentPresenter DockPanel.Dock="Top" Content="{Binding #Root.Messages}" />
+    <!-- The page's own line under the rows -->
+    <ContentPresenter DockPanel.Dock="Bottom" Content="{Binding #Root.Footer}" />
+    <ItemsControl Name="Rows" ItemsSource="{Binding #Root.Items}">
+      <ItemsControl.Template>
+        <ControlTemplate>
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="{StaticResource ListInset}" />
+          </ScrollViewer>
+        </ControlTemplate>
+      </ItemsControl.Template>
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:GameItemViewModel">
+          <StackPanel>
+            <!-- Clicking the row (not its pickers or buttons) opens the game's panel -->
+            <Border Classes="gameRow">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}" Margin="{StaticResource GameRowMargin}">
+                <!-- The game's picture in the Steam header shape (460x215), loaded only while the row is in view -->
+                <c:GameThumbnail Source="{Binding Image}" Width="{StaticResource ThumbWidth}" Height="{StaticResource ThumbHeight}" CornerRadius="{StaticResource RadiusSmall}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding PathTip}" />
+                  <!-- Features; where it came from; added games can be removed, found games hidden -->
+                  <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasHaptics}" VerticalAlignment="Center">
+                      <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Haptics}" />
+                      <TextBlock Classes="caption" Text="{Binding HapticsText}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasTriggers}" VerticalAlignment="Center">
+                      <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Trigger}" />
+                      <TextBlock Classes="caption" Text="{Binding TriggersText}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Classes="caption" IsVisible="{Binding IsUserAdded}" Text="{Binding UserAddedText}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    <!-- Installed on this PC: plain text; the tooltip says where it was found -->
+                    <TextBlock Classes="caption" IsVisible="{Binding IsInstalled}" Text="{Binding InstalledText}" ToolTip.Tip="{Binding InstalledTip}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    <!-- A game found on this PC that the list does not know: where it came from, and Hide when it is not a game -->
+                    <TextBlock Classes="caption" IsVisible="{Binding IsFound}" Text="{Binding FoundText}" ToolTip.Tip="{Binding FoundTip}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    <!-- Starts the game where we know how (Steam, Epic, or its exe) -->
+                    <Button Classes="rowAction play" Theme="{StaticResource QuietButton}" IsVisible="{Binding CanLaunch}" Command="{Binding PlayGameCommand}"
+                            Content="{Binding PlayText}" ToolTip.Tip="{Binding PlayTip}" VerticalAlignment="Center" />
+                    <Button Classes="rowAction" Theme="{StaticResource QuietButton}" IsVisible="{Binding IsUserAdded}" Command="{Binding RemoveGameCommand}"
+                            Content="{Binding RemoveGameText}" VerticalAlignment="Center" />
+                    <Button Classes="rowAction" Theme="{StaticResource QuietButton}" IsVisible="{Binding IsFound}" Command="{Binding HideGameCommand}"
+                            Content="{Binding HideText}" ToolTip.Tip="{Binding HideTip}" VerticalAlignment="Center" />
+                  </WrapPanel>
+                </StackPanel>
+                <!-- Controller type (Automatic: the default type, unless chosen), then the profile for this game (Default unless chosen) -->
+                <StackPanel Grid.Column="2" Classes="pickers" VerticalAlignment="Center">
+                  <ComboBox Classes="rowPicker" ItemsSource="{Binding PadType.Options}" SelectedItem="{Binding PadType.Selected}"
+                            ToolTip.Tip="{Binding PadType.Tip}" AutomationProperties.Name="{Binding PadType.Label}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <ComboBox Classes="rowPicker" ItemsSource="{Binding Profile.Options}" SelectedItem="{Binding Profile.Selected}"
+                            ToolTip.Tip="{Binding Profile.Tip}" AutomationProperties.Name="{Binding Profile.Tip}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Classes="divider" />
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </DockPanel>
+</UserControl>

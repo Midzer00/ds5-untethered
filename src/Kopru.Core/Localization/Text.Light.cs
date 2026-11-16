@@ -9,7 +9,6 @@ public static partial class Text
 	public static string LightModeBreathing(Language? l = null) => Pick(l, $"Nefes", $"Breathing");
 	public static string LightModeRainbow(Language? l = null) => Pick(l, $"Gökkuşağı", $"Rainbow");
 	public static string LightModeBattery(Language? l = null) => Pick(l, $"Pil Rengi", $"Battery Colour");
-	public static string LightModeGame(Language? l = null) => Pick(l, $"Oyun Kontrolünde", $"Game Controlled");
 
 	public static string LightModeStaticHint(Language? l = null) => Pick(l,
 		$"Işık çubuğu seçtiğin renkte sabit yanar.",
@@ -26,10 +25,6 @@ public static partial class Text
 	public static string LightModeBatteryHint(Language? l = null) => Pick(l,
 		$"Yeşil, turuncu ve kırmızı pil seviyesini gösterir; %10'un altında kırmızı yanıp söner.",
 		$"Green, amber and red show the battery level; under 10% red pulses.");
-
-	public static string LightModeGameHint(Language? l = null) => Pick(l,
-		$"Desteklenen bir oyun kendi rengini gönderdiğinde o renk kullanılır; o zamana kadar seçtiğin renk yanar.",
-		$"When a supported game sends its own colour, that colour is used; until then your colour is shown.");
 
 	public static string BreathingPeriodLabel(Language? l = null) => Pick(l, $"Nefes Süresi", $"Breathing Period");
 	public static string BreathingMinLabel(Language? l = null) => Pick(l, $"En Düşük Parlaklık", $"Lowest Brightness");
@@ -48,4 +43,15 @@ public static partial class Text
 	public static string LedBrightnessLow(Language? l = null) => Pick(l, $"Düşük", $"Low");
 	public static string LedBrightnessMedium(Language? l = null) => Pick(l, $"Orta", $"Medium");
 	public static string LedBrightnessHigh(Language? l = null) => Pick(l, $"Yüksek", $"High");
+
+	// The Light page's group of the user's own light (below the Use The Game's Light switch).
+	public static string LightOwnGroup(Language? l = null) => Pick(l, $"Senin Işığın", $"Your Light");
+
+	// Why Use The Game's Light does nothing now (Low Power, or the Xbox 360 type).
+	public static string LightOffLowPower(Language? l = null) => Pick(l,
+		$"Düşük Güç açıkken ışık kapalı.",
+		$"The light is off while Low Power is on.");
+	public static string GameLightOffXbox(Language? l = null) => Pick(l,
+		$"Xbox 360 türünde oyunlar ışığı değiştiremez.",
+		$"With the Xbox 360 type, games can't change the light.");
 }

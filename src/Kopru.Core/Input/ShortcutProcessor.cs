@@ -11,14 +11,16 @@ public enum ShortcutAction
 	HapticsUp,
 	HapticsDown,
 	PowerOff,
-	ToggleSupportedMode,
 	ToggleDesktopMode,
 	// The controller's mic button (BridgeHostMic, not a PS combo); the app decides what it does (Audio.MicButtonRules).
 	MicButton,
 	// A single short PS tap with no game in front (TapRoute): bring the app's window to the front.
 	OpenApp,
 	// A single short PS tap while the app's window is the foreground window: hide it (like closing it).
-	HideApp
+	HideApp,
+	// Two quick touchpad presses while the app's window is in front and Mouse Mode is off (TouchpadDoublePress): turn
+	// Mouse Mode on.
+	TouchpadDoublePress
 }
 
 // Where a single short PS tap (no combo) goes.
@@ -53,11 +55,14 @@ public static class PsTapRule
 }
 
 // Controller shortcuts with the PS button held as a modifier: PS + D-pad left/right = previous/next profile, PS + D-pad
-// up/down = game haptics level up/down, PS + Square = supported mode on/off, PS + Options = desktop mode on/off, PS + Triangle held PowerOffHold = turn the
-// controller off. Works on the 63-byte input body in place, before games see it:
+// up/down = game haptics level up/down, PS + Options = desktop mode on/off, PS + Triangle held PowerOffHold = turn the
+// controller off. PS + Square does nothing (it used to switch the removed DualSense Mode; still taken as a combo, so the
+// game gets no Square and the PS release is no tap). Works on the 63-byte input body in place, before games see it:
 // - while PS is held it is hidden from the game; released without a combo, it is passed on as a short tap (TapLength),
 //   so a plain PS press still reaches the game; a short one (OpenAppMaxHold) asks TapRoute first and may open the app instead;
 // - a button used in a combo is hidden until it is released (even after PS is let go).
+// Two quick touchpad presses (TouchpadDoublePress) raise TouchpadDoublePress, only while AppInFront and not MouseModeOn
+// (and not while PS is held); the presses still reach the game (games use the touchpad).
 // Apply is called on the input thread only; Enabled and the Triggered handlers may be touched from any thread.
 // Triggered is raised on the input thread: handlers must be short (post the work elsewhere).
 //
@@ -67,7 +72,7 @@ public sealed class ShortcutProcessor
 {
 	public const int Buttons0 = 7, Buttons1 = 8, Buttons2 = 9;
 	public const byte OptionsBit = 0x20;
-	public const byte HatMask = 0x0F, HatNone = 0x08, SquareBit = 0x10, TriangleBit = 0x80, PsBit = 0x01;
+	public const byte HatMask = 0x0F, HatNone = 0x08, SquareBit = 0x10, TriangleBit = 0x80, PsBit = 0x01, TouchpadBit = 0x02;
 
 	public static readonly TimeSpan PowerOffHold = TimeSpan.FromSeconds(1);
 	public static readonly TimeSpan TapLength = TimeSpan.FromMilliseconds(100);
@@ -107,6 +112,13 @@ public sealed class ShortcutProcessor
 	// One line per PS press: its length, where it went and why (input thread; tests replace it).
 	public Action<string> Log { get; set; } = Diagnostics.AppLog.Write;
 
+	// Asked on the input thread when the touchpad goes down (keep them cheap): the app's own main window is the foreground
+	// window, and Mouse Mode is on. Null (or a throw): not in front / off.
+	public Func<bool>? AppInFront { get; set; }
+	public Func<bool>? MouseModeOn { get; set; }
+
+	private readonly TouchpadDoublePress doublePress = new();
+
 	private bool psDownWhileOff;
 	private long psDownWhileOffSince;
 
@@ -119,6 +131,7 @@ public sealed class ShortcutProcessor
 		hatMasked = squareMasked = triangleMasked = false;
 		lastOptions = optionsMasked = false;
 		triangleTiming = powerFired = false;
+		doublePress.Reset();
 	}
 
 	public void Apply(Span<byte> body)
@@ -135,6 +148,7 @@ public sealed class ShortcutProcessor
 			{
 				Reset();
 			}
+			doublePress.Reset();
 			if (ps && !psDownWhileOff)
 			{
 				psDownWhileOff = true;
@@ -173,7 +187,6 @@ public sealed class ShortcutProcessor
 			if (square && !lastSquare)
 			{
 				comboUsed = squareMasked = true;
-				Triggered?.Invoke(ShortcutAction.ToggleSupportedMode);
 			}
 			if (options && !lastOptions)
 			{
@@ -225,6 +238,11 @@ public sealed class ShortcutProcessor
 		if (!triangle)
 		{
 			triangleTiming = false;
+		}
+		bool touchpad = (body[Buttons2] & TouchpadBit) != 0;
+		if (doublePress.Update(touchpad, now, time.TimestampFrequency, DoublePressAllowed))
+		{
+			Triggered?.Invoke(ShortcutAction.TouchpadDoublePress);
 		}
 		lastDirection = direction;
 		lastSquare = square;
@@ -278,6 +296,19 @@ public sealed class ShortcutProcessor
 		if (optionsMasked)
 		{
 			body[Buttons1] &= unchecked((byte)~OptionsBit);
+		}
+	}
+
+	// The touchpad double press counts only with the app's window in front, Mouse Mode off and PS not held.
+	private bool DoublePressAllowed()
+	{
+		try
+		{
+			return !psHeld && AppInFront?.Invoke() == true && MouseModeOn?.Invoke() != true;
+		}
+		catch (Exception)
+		{
+			return false;
 		}
 	}
 

@@ -67,6 +67,173 @@ public sealed class OverviewFitTests
 		});
 	}
 
+	// The controller type states: what the game sees (DualSense), DualShock 4 with a change held back for the running game
+	// ("Şimdi Uygula" in the hero and the sidebar), Low Power (its note under the card's title, the Speaker tile off with
+	// the reason), and headphones in the controller (the sound output picker shows beside the microphone's).
+	// Every size and both languages fit like the default state; the hero's and the sidebar's pad lines are whole
+	// and inside their cards. With KOPRU_FIT_RENDER_DIR set: overview-{state}-{w}x{h}-{lang}.png at 1100x700 and 1920x1080.
+	[AvaloniaFact]
+	public void Overview_Fits_InEveryControllerTypeState()
+	{
+		string? dir = Environment.GetEnvironmentVariable("KOPRU_FIT_RENDER_DIR") is { Length: > 0 } d ? d : null;
+		foreach (string state in new[] { "dualsense", "ds4-pending", "lowpower", "headphones" })
+		{
+			ForEachLanguage((window, code, fake) =>
+			{
+				var vm = (MainWindowViewModel)window.DataContext!;
+				Apply(vm, fake, state);
+				foreach ((double w, double h) in Sizes)
+				{
+					string at = $"{state} {code} {w}x{h}";
+					Layout layout = Show(window, w, h);
+					CheckRhythm(layout, at);
+					double viewHeight = layout.View.Bounds.Height;
+					Assert.True(layout.FooterBottom <= viewHeight + 0.5, $"{at}: the page ends at {layout.FooterBottom:0.#}, below the visible {viewHeight:0.#}");
+					foreach (TextBlock label in layout.Card.GetVisualDescendants().OfType<TextBlock>()
+						.Where(t => t.IsEffectivelyVisible && (t.Classes.Contains("label") || t.Classes.Contains("tileLabel") || t.Classes.Contains("tileState"))))
+					{
+						Assert.False(label.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: \"{label.Text}\" is trimmed");
+					}
+					CheckPadLines(window, layout, state, at);
+					if (dir != null && (w, h) is (1100, 700) or (1920, 1080))
+					{
+						Directory.CreateDirectory(dir);
+						using var frame = window.CaptureRenderedFrame();
+						frame!.Save(Path.Combine(dir, $"overview-{state}-{w}x{h}-{code}.png"));
+					}
+				}
+			});
+		}
+	}
+
+	private static void Apply(MainWindowViewModel vm, FakeControllerService fake, string state)
+	{
+		switch (state)
+		{
+			case "ds4-pending":
+				// DualShock 4 as the default type (swapped with no game running), then the game back and its own Xbox 360
+				// choice held back while it runs.
+				fake.Watcher.Exit("Cyberpunk2077.exe");
+				fake.Games.Tick();
+				fake.Games.SetForcedPadType(Kopru.Core.Virtual.VirtualPadType.DualShock4);
+				fake.Watcher.Exe = "Cyberpunk2077.exe";
+				fake.Games.Tick();
+				fake.Games.SetPadType(fake.Games.ActiveGame!.Key, Kopru.Core.Virtual.VirtualPadType.Xbox360);
+				Assert.True(vm.Settings.HasPendingPadType);
+				Assert.Equal(Kopru.Core.Virtual.VirtualPadType.DualShock4, vm.Settings.CurrentPadType);
+				break;
+			case "lowpower":
+				vm.Settings.LowPowerOn = true;
+				break;
+			case "headphones":
+				fake.HeadphonesPlugged = true;
+				break;
+		}
+		fake.RaiseStateChanged();
+		Settle();
+	}
+
+	private static void CheckPadLines(MainWindow window, Layout layout, string state, string at)
+	{
+		// The hero: "Oyun Şunu Görüyor: ..." whole, inside its card; with a held-back type the apply button too.
+		TextBlock hero = layout.View.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "HeroPadStatus");
+		Assert.True(hero.IsEffectivelyVisible, $"{at}: no pad status in the hero");
+		Assert.False(hero.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: \"{hero.Text}\" is trimmed");
+		Border heroCard = hero.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("panel"));
+		Button apply = layout.View.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "HeroApplyPadType");
+		Assert.Equal(state == "ds4-pending", apply.IsEffectivelyVisible);
+		// Every line of the hero is whole (the game name, the pad lines, the held-back type).
+		foreach (TextBlock line in heroCard.GetVisualDescendants().OfType<TextBlock>().Where(b => b.IsEffectivelyVisible && !string.IsNullOrEmpty(b.Text)))
+		{
+			Assert.False(line.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: \"{line.Text}\" is cut in the hero");
+		}
+		foreach (Control c in new Control[] { hero, apply }.Where(c => c.IsEffectivelyVisible))
+		{
+			Rect r = Rect(c, heroCard);
+			Assert.True(r.Top >= -0.5 && r.Bottom <= heroCard.Bounds.Height + 0.5 && r.Right <= heroCard.Bounds.Width + 0.5, $"{at}: {c.Name} leaves the hero ({r})");
+		}
+		// The controller drawing is large (a fixed 160 px column, about 1.35 times its old share) and the game's name above
+		// the pad line stays readable: at most two lines, never cut in the hero.
+		Viewbox art = layout.View.GetVisualDescendants().OfType<Viewbox>().Single(v => v.Name == "HeroArt");
+		Assert.True(art.Bounds.Width >= 155, $"{at}: the drawing is {art.Bounds.Width:0.#} wide");
+		Assert.True(Rect(art, heroCard).Bottom <= heroCard.Bounds.Height + 0.5, $"{at}: the drawing leaves the hero");
+		// The sidebar card: the same line, whole.
+		TextBlock side = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "PadStatus");
+		Assert.True(side.IsEffectivelyVisible);
+		Assert.False(side.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: sidebar \"{side.Text}\" is trimmed");
+		Border sideCard = side.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("panel"));
+		// (In window pixels: the content is scaled by UiScale.)
+		double sideBottom = sideCard.TranslatePoint(new Point(0, sideCard.Bounds.Height), window)!.Value.Y;
+		Assert.True(sideBottom <= window.Bounds.Height + 0.5, $"{at}: the sidebar card ends at {sideBottom:0.#}, below the window ({window.Bounds.Height:0.#})");
+		// Its last line stays inside the card.
+		Assert.True(Rect(side, sideCard).Bottom <= sideCard.Bounds.Height + 0.5, $"{at}: the sidebar pad line leaves its card");
+		// The quick "Kumanda Türü" picker shows its choice whole ("Otomatik (Oyuna Göre)" is the longest).
+		ComboBox picker = layout.Card.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "QuickPadTypePicker");
+		foreach (TextBlock t in picker.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)))
+		{
+			Assert.False(t.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: the controller type picker cuts \"{t.Text}\" ({t.Bounds.Width:0.#} for {t.DesiredSize.Width:0.#}, picker {picker.Bounds.Width:0.#}, font {t.FontSize})");
+		}
+		// Sound pickers: the output picker only with headphones in the controller (under the Speaker tile, the microphone under
+		// the Microphone tile); without them the microphone picker takes the whole row, edge to edge with the tiles.
+		ComboBox output = layout.Card.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "QuickOutputPicker");
+		ComboBox input = layout.Card.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "QuickInputPicker");
+		Assert.Equal(state == "headphones", output.IsEffectivelyVisible);
+		Rect tilesBox = Rect(layout.Card.GetVisualDescendants().OfType<Grid>().Single(g => g.Classes.Contains("tiles")), layout.Card);
+		Rect inputBox = Rect(input, layout.Card);
+		Assert.InRange(inputBox.Right, tilesBox.Right - 0.5, tilesBox.Right + 0.5);
+		if (output.IsEffectivelyVisible)
+		{
+			Rect outputBox = Rect(output, layout.Card);
+			Assert.InRange(outputBox.Left, tilesBox.Left - 0.5, tilesBox.Left + 0.5);
+			Assert.InRange(outputBox.Top, inputBox.Top - 0.5, inputBox.Top + 0.5);
+			Assert.True(outputBox.Right < inputBox.Left, $"{at}: the sound pickers overlap");
+		}
+		else
+		{
+			Assert.InRange(inputBox.Left, tilesBox.Left - 0.5, tilesBox.Left + 0.5);
+		}
+		// Low Power: its note under the card's title, whole.
+		TextBlock note = layout.Card.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "LowPowerOffNote");
+		Assert.Equal(state == "lowpower", note.IsEffectivelyVisible);
+		if (note.IsEffectivelyVisible)
+		{
+			Assert.False(note.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: \"{note.Text}\" is trimmed");
+		}
+	}
+
+	// The live card in its three looks (a good link at rest, triggers and haptics moving, a weak link with spikes and the
+	// advice line): every size and both languages fit like the default state, the card ends on the quick settings' line,
+	// and its headline, advice, input rate and meter texts are whole and inside the card.
+	[AvaloniaFact]
+	public void LiveCard_Fits_InEveryState()
+	{
+		foreach (string state in LiveCardRenderTests.States)
+		{
+			ForEachLanguage((window, code, fake) =>
+			{
+				var vm = (MainWindowViewModel)window.DataContext!;
+				LiveCardRenderTests.Apply(vm, fake, state);
+				Settle();
+				foreach ((double w, double h) in Sizes)
+				{
+					string at = $"live {state} {code} {w}x{h}";
+					Layout layout = Show(window, w, h);
+					CheckRhythm(layout, at);
+					Assert.True(layout.FooterBottom <= layout.View.Bounds.Height + 0.5, $"{at}: the page ends below the window");
+					Border live = layout.View.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("panel") && b.Classes.Contains("fill") && !b.Classes.Contains("quickCard"));
+					foreach (TextBlock text in live.GetVisualDescendants().OfType<TextBlock>().Where(b => b.IsEffectivelyVisible && !string.IsNullOrEmpty(b.Text)))
+					{
+						Assert.False(text.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: \"{text.Text}\" is cut");
+						Rect r = Rect(text, live);
+						Assert.True(r.Bottom <= live.Bounds.Height + 0.5 && r.Right <= live.Bounds.Width + 0.5, $"{at}: \"{text.Text}\" leaves the live card");
+					}
+					TextBlock advice = live.GetVisualDescendants().OfType<TextBlock>().Single(b => b.Name == "LinkAdvice");
+					Assert.Equal(state == "weak", advice.IsEffectivelyVisible);
+				}
+			});
+		}
+	}
+
 	// Spare height goes into the gaps: a tall window spreads the rows more than the design size, up to the cap.
 	[AvaloniaFact]
 	public void SpareHeight_WidensTheGaps_UpToTheCap()
@@ -183,7 +350,9 @@ public sealed class OverviewFitTests
 	}
 
 	// The Overview with the bridge on and a game running (the live parts filled), in Turkish and English.
-	private static void ForEachLanguage(Action<MainWindow, string> check)
+	private static void ForEachLanguage(Action<MainWindow, string> check) => ForEachLanguage((window, code, _) => check(window, code));
+
+	private static void ForEachLanguage(Action<MainWindow, string, FakeControllerService> check)
 	{
 		Language? before = Localizer.Chosen;
 		try
@@ -200,7 +369,7 @@ public sealed class OverviewFitTests
 				vm.SelectedNav = vm.NavItems[0];
 				try
 				{
-					check(window, code);
+					check(window, code, fake);
 				}
 				finally
 				{

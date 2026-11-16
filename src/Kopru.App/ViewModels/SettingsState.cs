@@ -20,7 +20,7 @@ public sealed partial class SettingsState : ViewModelBase
 	private readonly IStartupRegistration? _startup;
 	private readonly Timer? _saveTimer;
 	private readonly bool _loading;
-	private AppSettings? _pending;
+	private PendingSave? _pending;
 
 	public SettingsState(IControllerService service, ISettingsStore? store = null, IStartupRegistration? startup = null)
 	{
@@ -28,10 +28,17 @@ public sealed partial class SettingsState : ViewModelBase
 		_store = store;
 		_startup = startup;
 		AppSettings? saved = store?.Load();
+		bool migrated = false;
 		IsFirstRun = store != null && saved == null;
 		SetupCompleted = saved != null ? saved.SetupCompleted : false;
 		if (saved != null)
 		{
+			// Before anything is read: the removed DualSense Mode is folded into the settings and the saved profiles.
+			migrated = saved.MigrateUnifiedProfile();
+			if (migrated)
+			{
+				Kopru.Core.Diagnostics.AppLog.Write("settings: moved to one game profile (DualSense Mode switch removed)");
+			}
 			_loading = true;
 			Localizer.Chosen = saved.Language switch { "tr" => Language.Turkish, "en" => Language.English, _ => null };
 			GameHapticsLevel = saved.GameHapticsLevel;
@@ -49,6 +56,8 @@ public sealed partial class SettingsState : ViewModelBase
 			PowerOffWhenIdle = saved.PowerOffWhenIdle;
 			LowPowerOn = saved.LowPowerOn;
 			AutoLowPower = saved.AutoLowPower;
+			DsxModSupport = saved.DsxModSupport;
+			PauseHapticsInSilence = saved.PauseHapticsInSilence;
 			Tuning = saved.Tuning ?? InputTuning.Default;
 			Remap = saved.Remap ?? RemapSettings.Default;
 			Gyro = saved.Gyro ?? GyroSettings.Default;
@@ -67,7 +76,6 @@ public sealed partial class SettingsState : ViewModelBase
 			AutoUpdateGameList = saved.AutoUpdateGameList;
 			GameListCheckedAt = saved.GameListCheckedAt;
 			DownloadGameImages = saved.DownloadGameImages;
-			AskOnKnownGame = saved.AskOnKnownGame;
 			LoadLight(saved);
 			ShortcutsEnabled = saved.ShortcutsEnabled;
 			PsOpensApp = saved.PsOpensApp;
@@ -81,27 +89,34 @@ public sealed partial class SettingsState : ViewModelBase
 			LoadAudioDefaults(saved);
 			LoadInstalledGames(saved);
 			LoadUpdates(saved);
+			LoadTips(saved);
 			_loading = false;
 			service.Games.LoadMemory(saved.ToGameMemory(service.Games.Catalog));
 		}
 		else if (IsFirstRun)
 		{
-			// A fresh install starts with the saved defaults (DualSense Mode on).
+			// A fresh install starts with the saved defaults.
 			service.Games.LoadMemory(new AppSettings().ToGameMemory(service.Games.Catalog));
 		}
 		InitProfiles(saved);
 		InitDesktop();
 		InitControllerProfiles(saved);
 		InitLowPower();
-		InitDualSenseMode();
+		InitPadType();
 		InitAudioDevices();
+		InitAudioHaptics();
 		if (store != null)
 		{
-			_saveTimer = new Timer(_ => SaveNow());
+			_saveTimer = new Timer(_ => Save(includeBattery: false));
 			Localizer.LanguageChanged += _ => ScheduleSave();
 			service.Games.MemoryChanged += ScheduleSave;
 		}
 		Push();
+		if (migrated)
+		{
+			// The marker is saved at once, so the migration runs only once.
+			ScheduleSave();
+		}
 	}
 
 	// No settings were saved before.
@@ -156,6 +171,14 @@ public sealed partial class SettingsState : ViewModelBase
 	[ObservableProperty]
 	private bool _powerOffWhenIdle;
 
+	// DSX mod support (Settings, General): takes trigger and light commands from game mods made for DSX.
+	[ObservableProperty]
+	private bool _dsxModSupport;
+
+	// "Pause Haptics In Silence" (Settings, General, Power): no haptics reports while the game is silent. Not per profile.
+	[ObservableProperty]
+	private bool _pauseHapticsInSilence;
+
 	// Notifications and the tray (see NotificationCenter).
 	[ObservableProperty]
 	private bool _notificationsEnabled = true;
@@ -197,10 +220,6 @@ public sealed partial class SettingsState : ViewModelBase
 	[ObservableProperty]
 	private bool _autoUpdateGameList = true;
 
-	// Ask when a known game starts while the supported mode is off.
-	[ObservableProperty]
-	private bool _askOnKnownGame = true;
-
 	[ObservableProperty]
 	private DateTimeOffset? _gameListCheckedAt;
 
@@ -223,9 +242,9 @@ public sealed partial class SettingsState : ViewModelBase
 	[ObservableProperty]
 	private bool _lightFromGame = true;
 
-	// Experimental controller speaker: the switch and the volumes in percent.
+	// The controller speaker: the one switch (on by default) and the volumes in percent.
 	[ObservableProperty]
-	private bool _speakerEnabled;
+	private bool _speakerEnabled = true;
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(SpeakerVolumeText))]
@@ -260,7 +279,7 @@ public sealed partial class SettingsState : ViewModelBase
 		base.OnPropertyChanged(e);
 		if (_loading || _applyingProfile || string.IsNullOrEmpty(e.PropertyName) || e.PropertyName.EndsWith("Text", StringComparison.Ordinal)
 			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity) or nameof(ActiveProfileName) or nameof(ActiveProfileLine)
-			|| MicStateNames.Contains(e.PropertyName))
+			|| MicStateNames.Contains(e.PropertyName) || PadStateNames.Contains(e.PropertyName) || AudioHapticsStateNames.Contains(e.PropertyName))
 		{
 			return;
 		}
@@ -303,10 +322,15 @@ public sealed partial class SettingsState : ViewModelBase
 		Speaker = new SpeakerSettings(SpeakerEnabled, Math.Clamp(SpeakerVolume / 100, 0, 1), Math.Clamp(HeadphoneVolume / 100, 0, 1)),
 		DesktopModeOn = DesktopModeOn,
 		Desktop = DesktopMode,
-		Mic = ToMicSettings()
+		Mic = ToMicSettings(),
+		AudioHapticsOn = AudioHapticsOn,
+		AudioHapticsStrength = AudioHapticsStrength,
+		AudioHapticsBand = AudioHapticsBand,
+		DsxModSupport = DsxModSupport,
+		PauseHapticsInSilence = PauseHapticsInSilence
 	};
 
-	public AppSettings ToAppSettings() => WithUpdates(WithInstalledGames(WithLight(new AppSettings
+	public AppSettings ToAppSettings() => WithTips(WithUpdates(WithInstalledGames(WithLight(new AppSettings
 	{
 		Language = Localizer.Chosen switch { Language.Turkish => "tr", Language.English => "en", _ => null },
 		GameHapticsLevel = GameHapticsLevel,
@@ -320,6 +344,8 @@ public sealed partial class SettingsState : ViewModelBase
 		PowerOffWhenIdle = PowerOffWhenIdle,
 		LowPowerOn = LowPowerOn,
 		AutoLowPower = AutoLowPower,
+		DsxModSupport = DsxModSupport,
+		PauseHapticsInSilence = PauseHapticsInSilence,
 		Tuning = Tuning,
 		Remap = Remap,
 		Gyro = Gyro,
@@ -346,6 +372,7 @@ public sealed partial class SettingsState : ViewModelBase
 		PsOpensApp = PsOpensApp,
 		PsOpensAppInGames = PsOpensAppInGames,
 		SpeakerEnabled = SpeakerEnabled,
+		UnifiedProfile = true,
 		SpeakerVolume = SpeakerVolume,
 		HeadphoneVolume = HeadphoneVolume,
 		DesktopMode = DesktopMode,
@@ -358,19 +385,35 @@ public sealed partial class SettingsState : ViewModelBase
 		ControllerSpeakerChosen = AudioChoices.ControllerSpeakerChosen,
 		ControllerMicChosen = AudioChoices.ControllerMicChosen,
 		SetupCompleted = SetupCompleted,
-	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers))));
+	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers)))));
 
 	// Writes a pending change at once (also called by the debounce timer and on exit).
-	public void SaveNow()
+	public void SaveNow() => Save(includeBattery: true);
+
+	// includeBattery: also a remembered battery reading that waits for the next save (exit, Restart, explicit saves; the
+	// debounce timer writes only the pending change).
+	private void Save(bool includeBattery)
 	{
-		AppSettings? pending = Interlocked.Exchange(ref _pending, null);
+		PendingSave? pending = Interlocked.Exchange(ref _pending, null);
+		if (pending == null && includeBattery && BatteryUnsaved && _store != null)
+		{
+			// A remembered battery reading waited for the next save (SettingsState.Controllers).
+			pending = Snapshot();
+		}
 		if (pending == null || _store == null)
 		{
 			return;
 		}
 		try
 		{
-			_store.Save(pending);
+			_store.Save(pending.Settings);
+			Kopru.Core.Diagnostics.BackgroundWork.SettingsSave();
+			// Only the battery readings this snapshot was taken after count as saved.
+			long saved;
+			while ((saved = Interlocked.Read(ref _batteryVersionSaved)) < pending.BatteryVersion &&
+				Interlocked.CompareExchange(ref _batteryVersionSaved, pending.BatteryVersion, saved) != saved)
+			{
+			}
 		}
 		catch (Exception e) when (e is IOException or UnauthorizedAccessException)
 		{
@@ -384,8 +427,17 @@ public sealed partial class SettingsState : ViewModelBase
 		{
 			return;
 		}
-		_pending = ToAppSettings();
+		_pending = Snapshot();
 		_saveTimer?.Change(SaveDelay, Timeout.InfiniteTimeSpan);
+	}
+
+	// The settings to write, with the battery-only change count they include (read before the snapshot is taken).
+	private sealed record PendingSave(AppSettings Settings, long BatteryVersion);
+
+	private PendingSave Snapshot()
+	{
+		long version = Interlocked.Read(ref _batteryVersion);
+		return new PendingSave(ToAppSettings(), version);
 	}
 
 	// Sends the effective settings (Low Power applied) when they differ from the last ones sent: one user change is one
@@ -393,14 +445,13 @@ public sealed partial class SettingsState : ViewModelBase
 	// off, or a second notification for the same change) sends nothing.
 	private void Push()
 	{
-		_service.Games.AskOnKnownGame = AskOnKnownGame;
 		ControllerSettings next = Effective(ToSettings());
 		if (next != _pushed)
 		{
 			if (_pushed == null || _pushed.Speaker.Enabled != next.Speaker.Enabled || _pushed.Mic.Enabled != next.Mic.Enabled)
 			{
 				Kopru.Core.Diagnostics.AppLog.Write($"settings push: speaker {(next.Speaker.Enabled ? "on" : "off")}, mic {(next.Mic.Enabled ? "on" : "off")} " +
-					$"(DualSense Mode {(_modeOn ? "on" : "off")}, Low Power {(LowPowerOn ? "on" : "off")})");
+					$"(Low Power {(LowPowerOn ? "on" : "off")})");
 			}
 			_pushed = next;
 			_service.ApplySettings(next);

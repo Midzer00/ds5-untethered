@@ -3,8 +3,9 @@ using Kopru.Core.Bridge;
 
 namespace Kopru.Core.Lighting;
 
-// Sends the user's light while the controller is connected: ticks at about 30 Hz, but writes only when the LED state
-// changed (a static light is written once), at most once per Interval, and never while the game controls the light.
+// Sends the user's light while the controller is connected: ticks at about 30 Hz while the light changes over time
+// (SteadyInterval otherwise), but writes only when the LED state changed (a static light is written once), at most once
+// per Interval, and never while the game controls the light.
 // Each write changes only the light bytes of the shared output block and goes out as one ordinary output report with
 // the rest of the current output (haptics mode, triggers); it never touches rumble or haptics bits.
 public sealed class LightSender : IDisposable
@@ -26,6 +27,7 @@ public sealed class LightSender : IDisposable
 	private DateTimeOffset lastSentAt;
 	private bool haveSent;
 	private DateTimeOffset holdUntil;
+	private long? gameWritesSeen;
 
 	public LightSender(Action<Action<byte[]>> write, Func<LightSettings> light, Func<BatteryStatus?> battery, Func<bool> gameControls,
 		TimeProvider? time = null)
@@ -40,11 +42,83 @@ public sealed class LightSender : IDisposable
 
 	public long Sent { get; private set; }
 
+	// How many game reports changed the light bar on the controller so far (ControllerBridge.GameLightWrites); null: none
+	// to follow. A new one (a "light out" setup from a game that does not hold the light, say) makes the next tick that
+	// may write send the user's light again even when its frame did not change, so the light bar never stays dark.
+	public Func<long>? GameLightWrites { get; init; }
+
+	// The tick interval while nothing on the light changes over time (a static colour, the battery colour, a game
+	// driving the light): a change of the battery colour or the game letting go shows within this.
+	public static readonly TimeSpan SteadyInterval = TimeSpan.FromMilliseconds(250);
+
+	private TimeSpan period = Interval;
+
+	// The timer's current interval (Interval for an animated light or during a hold, else SteadyInterval).
+	public TimeSpan TickInterval
+	{
+		get
+		{
+			lock (gate)
+			{
+				return period;
+			}
+		}
+	}
+
 	public void Start()
 	{
 		lock (gate)
 		{
-			timer ??= time.CreateTimer(_ => Tick(), null, TimeSpan.Zero, Interval);
+			if (timer == null)
+			{
+				period = Interval;
+				timer = time.CreateTimer(_ => TimerTick(), null, TimeSpan.Zero, Interval);
+			}
+		}
+	}
+
+	// The interval the light needs now: about 30 Hz while it changes over time (an animation the game is not covering)
+	// or a hold runs out, else SteadyInterval.
+	public TimeSpan WantedInterval()
+	{
+		bool fast;
+		lock (gate)
+		{
+			fast = time.GetUtcNow() < holdUntil;
+		}
+		fast = fast || (!SafeGameControls() && LightAnimator.IsAnimated(light(), battery()));
+		return fast ? Interval : SteadyInterval;
+	}
+
+	private bool SafeGameControls()
+	{
+		try
+		{
+			return gameControls();
+		}
+		catch (Exception)
+		{
+			return false;
+		}
+	}
+
+	private void TimerTick()
+	{
+		Tick();
+		AdjustInterval();
+	}
+
+	private void AdjustInterval()
+	{
+		TimeSpan wanted = WantedInterval();
+		lock (gate)
+		{
+			if (timer == null || wanted == period)
+			{
+				return;
+			}
+			period = wanted;
+			timer.Change(wanted, wanted);
 		}
 	}
 
@@ -57,6 +131,7 @@ public sealed class LightSender : IDisposable
 			haveSent = false;
 		}
 		Tick();
+		AdjustInterval();
 	}
 
 	// Writes nothing for a while (something else, like the profile indicator, shows on the LEDs); the full state is sent
@@ -68,6 +143,7 @@ public sealed class LightSender : IDisposable
 			holdUntil = time.GetUtcNow() + duration;
 			last = null;
 		}
+		AdjustInterval();
 	}
 
 	// One step; true when a report was written.
@@ -75,6 +151,15 @@ public sealed class LightSender : IDisposable
 	{
 		lock (gate)
 		{
+			if (GameLightWrites is { } writes)
+			{
+				long seen = writes();
+				if (gameWritesSeen is { } before && before != seen)
+				{
+					last = null;
+				}
+				gameWritesSeen = seen;
+			}
 			if (gameControls())
 			{
 				// Sent again in full once the game lets go.
@@ -98,7 +183,12 @@ public sealed class LightSender : IDisposable
 			}
 			try
 			{
-				write(frame.WriteTo);
+				// One-shot LED commands a game left in the output state (light bar setup, release LEDs) are not repeated.
+				write(b =>
+				{
+					frame.WriteTo(b);
+					ControllerBridge.ClearOneShotLedCommands(b);
+				});
 			}
 			catch (Exception)
 			{

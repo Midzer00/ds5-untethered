@@ -38,13 +38,15 @@ public class DesktopModeAppTests
 		vm.Settings.ShortcutFeedback += (title, _) => toasts.Add(title);
 		Assert.False(fake.Settings.DesktopModeOn);
 
-		vm.Settings.DesktopPanel.Settings.DesktopModeOn = true;
+		// Switched in the app: no toast (the switch shows it).
+		vm.Settings.DesktopPanel.DesktopModeOn = true;
 		Assert.True(fake.Settings.DesktopModeOn);
-		Assert.Equal([Text.DesktopOnTitle()], toasts);
+		Assert.Empty(toasts);
 
+		// From the controller: a toast.
 		vm.Settings.HandleShortcut(ShortcutAction.ToggleDesktopMode);
 		Assert.False(fake.Settings.DesktopModeOn);
-		Assert.Equal(Text.DesktopOffTitle(), toasts[^1]);
+		Assert.Equal([Text.DesktopOffTitle()], toasts);
 
 		var tray = new TrayViewModel(fake, vm.Settings, new NoShell());
 		Assert.False(tray.IsDesktopModeOn);
@@ -52,7 +54,44 @@ public class DesktopModeAppTests
 		tray.ToggleDesktopModeCommand.Execute(null);
 		Assert.True(tray.IsDesktopModeOn);
 		Assert.True(fake.Settings.DesktopModeOn);
-		Assert.Equal(3, toasts.Count);
+		Assert.Single(toasts);
+	}
+
+	// From the controller (the touchpad double press, PS + Options) Mouse Mode shows a short toast through the notification
+	// center, one size like every toast; switched with the mouse in the app it shows none; notifications off: none.
+	[AvaloniaFact]
+	public void FromTheController_AToast_FromTheApp_None()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
+		var raised = new List<AppNotification>();
+		vm.Notifications.Raised += raised.Add;
+		Language? before = Localizer.Chosen;
+		try
+		{
+			Localizer.Chosen = Language.Turkish;
+			fake.RaiseShortcut(ShortcutAction.TouchpadDoublePress);
+			Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+			AppNotification on = Assert.Single(raised);
+			Assert.Equal(("Fare Modu Açık", "Kumanda fare oldu.", NotificationType.Shortcut), (on.Title, on.Body, on.Type));
+			fake.RaiseShortcut(ShortcutAction.ToggleDesktopMode);
+			Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+			Assert.Equal(("Fare Modu Kapalı", "Kumanda oyunlara döndü."), (raised[^1].Title, raised[^1].Body));
+			Assert.Equal(2, raised.Count);
+
+			vm.Overview.Quick.MouseModeOn = true;
+			vm.Overview.Quick.MouseModeOn = false;
+			Assert.Equal(2, raised.Count);
+
+			vm.Settings.NotificationsEnabled = false;
+			fake.RaiseShortcut(ShortcutAction.ToggleDesktopMode);
+			Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+			Assert.True(vm.Settings.DesktopModeOn);
+			Assert.Equal(2, raised.Count);
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
 	}
 
 	[AvaloniaFact]
@@ -71,6 +110,8 @@ public class DesktopModeAppTests
 
 		var bodies = new List<string>();
 		vm.Settings.ShortcutFeedback += (_, body) => bodies.Add(body);
+		var autoOff = new List<(string?, string)>();
+		vm.Settings.DesktopAutoOff += (game, exe) => autoOff.Add((game, exe));
 		var lines = new List<string>();
 		void Watch(string line)
 		{
@@ -98,8 +139,11 @@ public class DesktopModeAppTests
 		}
 		Assert.False(vm.Settings.DesktopModeOn);
 		Assert.False(fake.Settings.DesktopModeOn);
-		Assert.Single(bodies);
-		Assert.Contains("Cyberpunk2077", bodies[0]);
+		// The automatic switch-off raises its own toast (NotificationCenter), not the shortcut one.
+		Assert.Empty(bodies);
+		(string? name, string exe) = Assert.Single(autoOff);
+		Assert.Contains("Cyberpunk2077", name);
+		Assert.Equal("Cyberpunk2077.exe", exe);
 
 		// Option off: the game coming back leaves it on.
 		vm.Settings.DesktopPanel.AutoOffInGame = false;

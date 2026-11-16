@@ -28,8 +28,49 @@ public sealed record HidDevice(string Path, int VendorId, int ProductId, int Inp
 // Finds DualSense controllers and opens them through the Windows HID class driver (hid.dll and SetupAPI).
 public static class WindowsHid
 {
+	// The periodic lookers (presence, health, the controller manager) share one listing per tick: a listing younger than
+	// this is reused.
+	public static readonly TimeSpan SharedListingAge = TimeSpan.FromSeconds(1);
+
+	private static readonly object ListingGate = new();
+	private static IReadOnlyList<HidDevice>? lastListing;
+	private static long lastListingAt;
+
+	// A listing at most maxAge old (a fresh one otherwise, which the next callers share).
+	public static IReadOnlyList<HidDevice> FindDualSenses(TimeSpan maxAge)
+	{
+		lock (ListingGate)
+		{
+			long now = Environment.TickCount64;
+			if (lastListing != null && now - lastListingAt < maxAge.TotalMilliseconds)
+			{
+				return lastListing;
+			}
+			IReadOnlyList<HidDevice> fresh = FindDualSenses();
+			lastListing = fresh;
+			lastListingAt = Environment.TickCount64;
+			return fresh;
+		}
+	}
+
+	// Whether an interface path may belong to a DualSense: its hardware id part names Sony's vendor id and a DualSense or
+	// Edge product id ("vid_054c&pid_0ce6" over USB, "_vid&0002054c_pid&0ce6" over Bluetooth). Paths that name another
+	// vendor are skipped without opening the device; a path in a form without a vendor id is opened and checked as before.
+	public static bool MayBeDualSense(string path)
+	{
+		bool hasVendor = path.Contains("vid_", StringComparison.OrdinalIgnoreCase) || path.Contains("vid&", StringComparison.OrdinalIgnoreCase);
+		if (!hasVendor)
+		{
+			return true;
+		}
+		return path.Contains("054c", StringComparison.OrdinalIgnoreCase) &&
+			(path.Contains("0ce6", StringComparison.OrdinalIgnoreCase) || path.Contains("0df2", StringComparison.OrdinalIgnoreCase));
+	}
+
+	// A fresh listing; only interfaces whose path may be a DualSense are opened (MayBeDualSense).
 	public static IReadOnlyList<HidDevice> FindDualSenses()
 	{
+		Diagnostics.BackgroundWork.HidListing();
 		List<HidDevice> found = [];
 		Native.HidD_GetHidGuid(out Guid hidGuid);
 		IntPtr set = Native.SetupDiGetClassDevsW(ref hidGuid, null, IntPtr.Zero, Native.DigcfPresent | Native.DigcfDeviceInterface);
@@ -46,7 +87,7 @@ public static class WindowsHid
 				{
 					break;
 				}
-				if (InterfacePath(set, ref data) is { } path && Describe(path) is { } device)
+				if (InterfacePath(set, ref data) is { } path && MayBeDualSense(path) && Describe(path) is { } device)
 				{
 					found.Add(device);
 				}

@@ -5,7 +5,7 @@ using Kopru.Core.Steam;
 
 namespace Kopru.Core.Tests;
 
-// Known-game recognition (catalog exe, Steam library, user-added) and the supported mode switch with its question.
+// Known-game recognition (catalog exe, Steam library, user-added) and the DualSense Mode switch (only the user changes it).
 public class GameModeTests
 {
 	private const string SteamRoot = @"C:\Program Files (x86)\Steam";
@@ -179,221 +179,57 @@ public class GameModeTests
 		Assert.Equal(reads, files.Reads);
 	}
 
+	// One profile for every game: the game's own effects pass through (scaled) and the classic rumble settings and the
+	// fallback trigger effect go along for what the game does not send.
 	[Fact]
-	public void Switch_IsOffByDefault_AndPicksTheProfile()
+	public void OneProfile_GoesToTheBridge_WithOrWithoutAGame()
 	{
 		var bridge = new GamesTests.FakeBridge();
 		var processes = new FakeProcesses();
 		var games = new GameModeController(Catalog, new GameWatcher(Catalog, processes), bridge);
-		games.SetProfiles(new SupportedProfile(2.0, 0.5, true), new UnsupportedProfile(0.8, RumbleFeel.Punchy, FallbackTrigger.Weapon, 1));
-		Assert.False(games.IsSupportedModeOn);
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-		Assert.False(bridge.Applied[^1].LightFromGame);
-		Assert.Equal(1, bridge.Applied[^1].TriggerIntensity);
-
-		games.SetSupportedMode(true);
-		Assert.Equal((GameMode.Supported, ModeReason.User), (games.State.Mode, games.State.Reason));
-		Assert.Equal(0.5, bridge.Applied[^1].TriggerIntensity);
-		Assert.True(bridge.Applied[^1].LightFromGame);
+		games.SetProfile(new GameProfile(2.0, 0.5, true, 0.8, RumbleFeel.Punchy, FallbackTrigger.Weapon, 1));
+		Assert.Equal(GameMode.Supported, games.State.Mode);
+		BridgeProfile p = bridge.Applied[^1];
+		Assert.Equal((2.0, 0.5, true, 0.8, RumbleFeel.Punchy), (p.GameHapticsLevel, p.TriggerIntensity, p.LightFromGame, p.RumbleLevel, p.Feel));
+		Assert.Equal(GameProfiles.Effect(FallbackTrigger.Weapon, 1), p.FallbackTrigger);
 		int applied = bridge.Applied.Count;
-		games.SetProfiles(new SupportedProfile(2.0, 0.5, true), new UnsupportedProfile(0.8, RumbleFeel.Punchy, FallbackTrigger.Weapon, 1));
+		games.SetProfile(new GameProfile(2.0, 0.5, true, 0.8, RumbleFeel.Punchy, FallbackTrigger.Weapon, 1));
 		Assert.Equal(applied, bridge.Applied.Count);
 
 		// Unknown apps in front change nothing.
 		processes.Show("chrome.exe");
 		games.Tick();
 		Assert.Null(games.State.Name);
-		Assert.Equal(GameMode.Supported, games.State.Mode);
+		Assert.Equal(applied, bridge.Applied.Count);
 	}
 
+	// Every game session (a known game starting, ending or taking over) is a new GameSession in the profile: the fallback
+	// trigger effect may come back for the next game.
 	[Fact]
-	public void Ask_OncePerLaunch_NotOnAltTab()
+	public void GameSessions_AreCounted_InTheBridgeProfile()
 	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
+		var bridge = new GamesTests.FakeBridge();
+		var processes = new FakeProcesses();
+		var games = new GameModeController(Catalog, new GameWatcher(Catalog, processes), bridge);
+		long start = bridge.Applied[^1].GameSession;
 		processes.Show("acc.exe");
 		games.Tick();
-		Assert.Equal("Assetto Corsa Competizione", Assert.Single(asked).Name);
-		Assert.Equal("Assetto Corsa Competizione", games.State.Name);
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-
-		// Alt-tab to the desktop and back: the same launch.
+		long playing = bridge.Applied[^1].GameSession;
+		Assert.NotEqual(start, playing);
 		processes.Show("explorer.exe");
 		games.Tick();
 		processes.Show("acc.exe");
 		games.Tick();
-		games.Tick();
-		Assert.Single(asked);
-
-		// Closed and started again: a new launch, asked again.
+		Assert.Equal(playing, bridge.Applied[^1].GameSession);
 		processes.Exit("acc.exe");
 		games.Tick();
-		Assert.Null(games.State.Name);
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Equal(2, asked.Count);
-	}
-
-	[Fact]
-	public void Ask_NotWhenOff_NotWhenOn_NotForNeverAsk()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		games.AskOnKnownGame = false;
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Empty(asked);
-
-		games.AskOnKnownGame = true;
-		processes.Exit("acc.exe");
-		games.Tick();
-		games.SetSupportedMode(true);
-		processes.Show("Returnal-Win64-Shipping.exe");
-		games.Tick();
-		Assert.Empty(asked);
-
-		games.SetSupportedMode(false);
-		games.SetNeverAsk("Returnal", true);
-		processes.Exit("Returnal-Win64-Shipping.exe");
-		games.Tick();
-		processes.Show("Returnal-Win64-Shipping.exe");
-		games.Tick();
-		Assert.Empty(asked);
-	}
-
-	[Fact]
-	public void Answer_TurnOn_ForThisLaunch_OffWhenTheGameExits()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		processes.Show("acc.exe");
-		games.Tick();
-		games.Answer(asked[0], AskAnswer.TurnOn);
-		Assert.Equal((GameMode.Supported, ModeReason.Game), (games.State.Mode, games.State.Reason));
-		Assert.Empty(games.SnapshotMemory().Always);
-		Assert.False(games.SnapshotMemory().SupportedModeOn);
-
-		processes.Show("explorer.exe");
-		games.Tick();
-		Assert.Equal(GameMode.Supported, games.State.Mode);
-		processes.Exit("acc.exe");
-		games.Tick();
-		Assert.Equal((GameMode.Unsupported, ModeReason.Default), (games.State.Mode, games.State.Reason));
-		Assert.Null(games.State.Name);
-	}
-
-	[Fact]
-	public void Answer_NotNow_StaysOff()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		processes.Show("acc.exe");
-		games.Tick();
-		games.Answer(asked[0], AskAnswer.NotNow);
-		games.Tick();
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-		Assert.Single(asked);
-		Assert.Empty(games.SnapshotMemory().Always);
-	}
-
-	[Fact]
-	public void Answer_Always_RemembersAndTurnsOnNextTimeWithoutAsking()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		int memory = 0;
-		games.MemoryChanged += () => memory++;
-		processes.Show("acc.exe");
-		games.Tick();
-		games.Answer(asked[0], AskAnswer.Always);
-		Assert.Equal((GameMode.Supported, ModeReason.Always), (games.State.Mode, games.State.Reason));
-		Assert.True(games.IsAlways("Assetto Corsa Competizione"));
-		Assert.Equal(["Assetto Corsa Competizione"], games.SnapshotMemory().Always);
-		Assert.Equal(1, memory);
-
-		processes.Exit("acc.exe");
-		games.Tick();
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Single(asked);
-		Assert.Equal((GameMode.Supported, ModeReason.Always), (games.State.Mode, games.State.Reason));
-
-		// Removing the mark: asked again on the next launch.
-		games.SetAlways("Assetto Corsa Competizione", false);
-		processes.Exit("acc.exe");
-		games.Tick();
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Equal(2, asked.Count);
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-	}
-
-	[Fact]
-	public void Answer_ForAGameThatAlreadyEnded_DoesNotTurnOn()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		processes.Show("acc.exe");
-		games.Tick();
-		processes.Exit("acc.exe");
-		games.Tick();
-		games.Answer(asked[0], AskAnswer.TurnOn);
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-	}
-
-	[Fact]
-	public void AnotherKnownGame_TakesOver_TurnsTheFirstGamesSwitchOff()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		processes.Show("acc.exe");
-		games.Tick();
-		games.Answer(asked[0], AskAnswer.TurnOn);
-		processes.Show("Returnal-Win64-Shipping.exe");
-		games.Tick();
-		Assert.Equal("Returnal", games.State.Name);
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-		Assert.Equal(2, asked.Count);
-	}
-
-	[Fact]
-	public void Manual_OnWithoutGame_StaysOnAfterAGameExits_AndIsSaved()
-	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
-		games.SetSupportedMode(true);
-		Assert.True(games.SnapshotMemory().SupportedModeOn);
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Empty(asked);
-		processes.Exit("acc.exe");
-		games.Tick();
-		Assert.Equal((GameMode.Supported, ModeReason.User), (games.State.Mode, games.State.Reason));
-	}
-
-	[Fact]
-	public void Manual_FlipDuringAGame_WinsUntilItExits()
-	{
-		(GameModeController games, FakeProcesses processes, _) = Setup();
-		games.LoadMemory(GameMemory.Default with { Always = ["Assetto Corsa Competizione"] });
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Equal(ModeReason.Always, games.State.Reason);
-
-		// Turned off by hand: stays off while the game runs, even across alt-tabs.
-		games.SetSupportedMode(false);
-		processes.Show("explorer.exe");
-		games.Tick();
-		processes.Show("acc.exe");
-		games.Tick();
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
-
-		// Turned on by hand with the game in front: belongs to the game, off when it exits.
-		games.SetSupportedMode(true);
-		Assert.Equal(ModeReason.User, games.State.Reason);
-		Assert.False(games.SnapshotMemory().SupportedModeOn);
-		processes.Exit("acc.exe");
-		games.Tick();
-		Assert.Equal(GameMode.Unsupported, games.State.Mode);
+		Assert.NotEqual(playing, bridge.Applied[^1].GameSession);
 	}
 
 	[Fact]
 	public void UserGames_AddRemove_KnownGamesAndMemory()
 	{
-		(GameModeController games, FakeProcesses processes, List<ForegroundGame> asked) = Setup();
+		(GameModeController games, FakeProcesses processes) = Setup();
 		int catalogChanged = 0;
 		games.CatalogChanged += () => catalogChanged++;
 		Assert.True(games.AddUserGame(new UserGame("Indie", @"C:\Games\Indie.exe")));
@@ -406,7 +242,7 @@ public class GameModeTests
 
 		processes.Show("Indie.exe", @"C:\Games\Indie.exe");
 		games.Tick();
-		Assert.Equal("Indie", Assert.Single(asked).Name);
+		Assert.Equal("Indie", games.State.Name);
 
 		GameMemory saved = games.SnapshotMemory();
 		var again = new GameModeController(Catalog, new GameWatcher(Catalog, processes), null);
@@ -419,18 +255,13 @@ public class GameModeTests
 	}
 
 	[Fact]
-	public void Memory_LoadsTheSwitchAndLists()
+	public void Memory_LoadsTheUserGames()
 	{
 		var games = new GameModeController(Catalog, new GameWatcher(Catalog, new FakeProcesses()), null);
-		games.LoadMemory(new GameMemory(true, false, ["Returnal", " "], ["acc.exe"], [new UserGame("A", "a.exe"), new UserGame("A2", "A.EXE")]));
-		Assert.True(games.IsSupportedModeOn);
-		Assert.False(games.AskOnKnownGame);
-		Assert.True(games.IsAlways("returnal"));
-		Assert.True(games.IsNeverAsk("ACC.EXE"));
+		games.LoadMemory(new GameMemory([new UserGame("A", "a.exe"), new UserGame("A2", "A.EXE")]));
+		Assert.Equal(GameMode.Supported, games.State.Mode);
 		Assert.Single(games.UserGames);
-		GameMemory snapshot = games.SnapshotMemory();
-		Assert.True(snapshot.SupportedModeOn);
-		Assert.Equal(["Returnal"], snapshot.Always);
+		Assert.Single(games.SnapshotMemory().UserGames);
 	}
 
 	[Fact]
@@ -451,13 +282,11 @@ public class GameModeTests
 		Assert.Equal("Assetto Corsa Competizione", games.State.Name);
 	}
 
-	private static (GameModeController, FakeProcesses, List<ForegroundGame>) Setup()
+	private static (GameModeController, FakeProcesses) Setup()
 	{
 		var processes = new FakeProcesses();
 		var games = new GameModeController(Catalog, new GameWatcher(Catalog, processes), new GamesTests.FakeBridge());
-		var asked = new List<ForegroundGame>();
-		games.AskRequested += asked.Add;
-		return (games, processes, asked);
+		return (games, processes);
 	}
 
 	// Processes by exe name: Show starts one (or brings it to the front), Exit ends it.
@@ -491,6 +320,23 @@ public class GameModeTests
 		public bool IsRunning(ProcessInfo process) => running.Values.Any(p => p.Id == process.Id);
 
 		public IReadOnlyList<ProcessInfo> WindowedApps() => running.Values.ToList();
+
+		// A process that runs without coming to the front (a game starting behind its launcher).
+		public void Start(string exe, string? path = null)
+		{
+			if (!running.ContainsKey(exe))
+			{
+				running[exe] = new ProcessInfo(nextId++, exe, path);
+			}
+		}
+
+		public int AllProcessesCalls { get; private set; }
+
+		public IReadOnlyList<ProcessInfo> AllProcesses()
+		{
+			AllProcessesCalls++;
+			return running.Values.ToList();
+		}
 	}
 
 	// Steam's files in memory.

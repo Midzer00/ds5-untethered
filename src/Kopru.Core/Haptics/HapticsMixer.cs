@@ -15,6 +15,9 @@ public sealed class HapticsMixer
 
 	private int count;
 
+	// Buffered frames that are not silent (left or right not 0).
+	private int audible;
+
 	private int peakLeft, peakRight;
 
 	public int Buffered
@@ -28,17 +31,53 @@ public sealed class HapticsMixer
 		}
 	}
 
+	// Buffered frames that are not silent: the haptics stream has something to play only while this is above 0.
+	public int Audible
+	{
+		get
+		{
+			lock (gate)
+			{
+				return audible;
+			}
+		}
+	}
+
 	public void Push(sbyte left, sbyte right)
 	{
 		lock (gate)
 		{
-			if (count == MaxFrames)
+			Add(left, right);
+		}
+	}
+
+	// Pushes a block of frames under one lock (left and right of equal length).
+	public void Push(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right)
+	{
+		if (left.Length != right.Length)
+		{
+			throw new ArgumentException("left and right differ in length", nameof(right));
+		}
+		lock (gate)
+		{
+			for (int i = 0; i < left.Length; i++)
 			{
-				head = (head + 1) % MaxFrames;
-				count--;
+				Add(left[i], right[i]);
 			}
-			ring[(head + count) % MaxFrames] = (left, right);
-			count++;
+		}
+	}
+
+	// While only silence is buffered, keeps at most the newest `keep` frames of it (the cushion a sound starting next
+	// plays behind); does nothing while anything audible is buffered.
+	public void TrimSilence(int keep)
+	{
+		lock (gate)
+		{
+			if (audible == 0 && count > keep)
+			{
+				head = (head + count - keep) % MaxFrames;
+				count = keep;
+			}
 		}
 	}
 
@@ -56,6 +95,10 @@ public sealed class HapticsMixer
 					(l, r) = ring[head];
 					head = (head + 1) % MaxFrames;
 					count--;
+					if (l != 0 || r != 0)
+					{
+						audible--;
+					}
 				}
 				left[i] = l;
 				right[i] = r;
@@ -75,6 +118,26 @@ public sealed class HapticsMixer
 			(double, double) peaks = (Math.Min(peakLeft, 127) / 127.0, Math.Min(peakRight, 127) / 127.0);
 			peakLeft = peakRight = 0;
 			return peaks;
+		}
+	}
+
+	private void Add(sbyte left, sbyte right)
+	{
+		if (count == MaxFrames)
+		{
+			(sbyte l, sbyte r) = ring[head];
+			if (l != 0 || r != 0)
+			{
+				audible--;
+			}
+			head = (head + 1) % MaxFrames;
+			count--;
+		}
+		ring[(head + count) % MaxFrames] = (left, right);
+		count++;
+		if (left != 0 || right != 0)
+		{
+			audible++;
 		}
 	}
 }

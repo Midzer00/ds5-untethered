@@ -35,7 +35,19 @@ public sealed class VirtualDualSense : IVirtualPad
 
 	private readonly Queue<(uint Sequence, Action<SubmitResult> Complete)> inputWaiting = new();
 
+	// Scheduled completions, in due order (guarded by gate).
 	private readonly List<IsoCompletion> isoScheduled = [];
+
+	// Completions taken out as due (only touched by the iso thread).
+	private readonly List<IsoCompletion> isoDue = [];
+
+	// Set when the iso thread should look again: something scheduled earlier than it waits for, or disposal.
+	private readonly AutoResetEvent isoWake = new(false);
+
+	// The due time the iso thread waits for (ms on clock; +inf while nothing is scheduled). Guarded by gate.
+	private double isoWaitingFor = double.PositiveInfinity;
+
+	private long isoWakeups;
 
 	private readonly Dictionary<(byte Request, ushort Value, ushort Index), byte[]> audioControls = [];
 
@@ -166,8 +178,16 @@ public sealed class VirtualDualSense : IVirtualPad
 	public void Dispose()
 	{
 		disposed = true;
+		isoWake.Set();
 		isoThread.Join(500);
 	}
+
+	// Times the iso thread woke up (diagnostics, tests): once per due completion, none while nothing is scheduled.
+	public long IsoWakeups => Interlocked.Read(ref isoWakeups);
+
+	// Makes the wait the iso thread completes transfers on time with (tests); null = Bluetooth.PreciseWait.Create. Read
+	// when the first transfer is scheduled (the thread starts in the constructor, before initialisers run).
+	public Func<Bluetooth.IPreciseWait>? PreciseWaitFactory { get; init; }
 
 	// ---------------------------------------------------------------- control transfers
 	// How many control requests the host sent (diagnostics).
@@ -302,7 +322,11 @@ public sealed class VirtualDualSense : IVirtualPad
 	// ---------------------------------------------------------------- isochronous audio
 	private void ScheduleAudioOut(SubmitCommand command, Action<SubmitResult> complete)
 	{
-		IsoPacket[] done = command.Packets.Select(p => p with { ActualLength = p.Length, Status = 0 }).ToArray();
+		IsoPacket[] done = new IsoPacket[command.Packets.Length];
+		for (int i = 0; i < done.Length; i++)
+		{
+			done[i] = command.Packets[i] with { ActualLength = command.Packets[i].Length, Status = 0 };
+		}
 		int startFrame = NextFrames(command, out double dueMs);
 		Schedule(command.Sequence, dueMs, complete, new SubmitResult(0, command.Length, [], startFrame, done));
 		AudioReceived?.Invoke(command.Data);
@@ -348,34 +372,90 @@ public sealed class VirtualDualSense : IVirtualPad
 
 	private void Schedule(uint sequence, double dueMs, Action<SubmitResult> complete, SubmitResult result)
 	{
+		bool earlier;
 		lock (gate)
 		{
-			isoScheduled.Add(new IsoCompletion(sequence, dueMs, complete, result));
+			// Usually appended (consecutive transfers get later frames).
+			int at = isoScheduled.Count;
+			while (at > 0 && isoScheduled[at - 1].DueMs > dueMs)
+			{
+				at--;
+			}
+			isoScheduled.Insert(at, new IsoCompletion(sequence, dueMs, complete, result));
+			earlier = dueMs < isoWaitingFor;
+			if (earlier)
+			{
+				isoWaitingFor = dueMs;
+			}
+		}
+		if (earlier)
+		{
+			isoWake.Set();
 		}
 	}
 
+	// Completes scheduled transfers when they are due: waits for the earliest due time (high-resolution timer), or without
+	// a timer while nothing is scheduled. Allocates nothing per pass.
 	private void IsoLoop()
+	{
+		Bluetooth.IPreciseWait? wait = null;
+		try
+		{
+			IsoPasses(ref wait);
+		}
+		finally
+		{
+			wait?.Dispose();
+		}
+	}
+
+	private void IsoPasses(ref Bluetooth.IPreciseWait? wait)
 	{
 		while (!disposed)
 		{
-			List<IsoCompletion> due = [];
+			double dueMs;
 			lock (gate)
 			{
 				double now = clock.Elapsed.TotalMilliseconds;
-				for (int i = isoScheduled.Count - 1; i >= 0; i--)
+				int taken = 0;
+				while (taken < isoScheduled.Count && isoScheduled[taken].DueMs <= now)
 				{
-					if (isoScheduled[i].DueMs <= now)
-					{
-						due.Add(isoScheduled[i]);
-						isoScheduled.RemoveAt(i);
-					}
+					isoDue.Add(isoScheduled[taken]);
+					taken++;
 				}
+				isoScheduled.RemoveRange(0, taken);
+				dueMs = isoScheduled.Count > 0 ? isoScheduled[0].DueMs : double.PositiveInfinity;
+				isoWaitingFor = dueMs;
 			}
-			foreach (IsoCompletion c in due.OrderBy(c => c.DueMs))
+			foreach (IsoCompletion c in isoDue)
 			{
 				c.Complete(c.Result);
 			}
-			Thread.Sleep(1);
+			isoDue.Clear();
+			if (double.IsPositiveInfinity(dueMs))
+			{
+				wait?.Idle();
+				isoWake.WaitOne();
+			}
+			else
+			{
+				wait ??= CreateWait();
+				long at = Stopwatch.GetTimestamp() + (long)((dueMs - clock.Elapsed.TotalMilliseconds) * Stopwatch.Frequency / 1000);
+				wait.WaitUntil(at, false, isoWake);
+			}
+			Interlocked.Increment(ref isoWakeups);
+		}
+	}
+
+	private Bluetooth.IPreciseWait CreateWait()
+	{
+		try
+		{
+			return (PreciseWaitFactory ?? Bluetooth.PreciseWait.Create)();
+		}
+		catch (Exception)
+		{
+			return Bluetooth.PreciseWait.CreateFallback();
 		}
 	}
 }

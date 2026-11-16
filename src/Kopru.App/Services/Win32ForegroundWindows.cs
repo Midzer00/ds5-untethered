@@ -59,6 +59,23 @@ public sealed class Win32ForegroundWindows : IForegroundWindows
 
 	public bool Exists(IntPtr window) => OperatingSystem.IsWindows() && window != IntPtr.Zero && IsWindow(window);
 
+	public IntPtr MainWindowOf(int processId)
+	{
+		if (!OperatingSystem.IsWindows() || processId <= 0)
+		{
+			return IntPtr.Zero;
+		}
+		try
+		{
+			using var process = System.Diagnostics.Process.GetProcessById(processId);
+			return process.MainWindowHandle;
+		}
+		catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+		{
+			return IntPtr.Zero;
+		}
+	}
+
 	private const int SwShow = 5;
 	private const int SwRestore = 9;
 	private const byte VkMenu = 0x12;

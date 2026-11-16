@@ -129,11 +129,12 @@ public class ShortcutProcessorTests
 	}
 
 	[Fact]
-	public void PsPlusSquare_TogglesSupportedMode_AndHidesSquare()
+	public void PsPlusSquare_DoesNothing_ButStillHidesSquare()
 	{
+		// The DualSense Mode switch is gone: the combo fires nothing, and Square still stays out of the game.
 		Step(Body(ps: true));
 		byte[] game = Step(Body(square: true, ps: true));
-		Assert.Equal([ShortcutAction.ToggleSupportedMode], fired);
+		Assert.Empty(fired);
 		Assert.Equal(0, game[Hat] & 0x10);
 		Assert.Equal(0, Step(Body(square: true))[Hat] & 0x10);
 		Step(Body());

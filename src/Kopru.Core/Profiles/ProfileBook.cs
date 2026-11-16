@@ -8,8 +8,8 @@ using Kopru.Core.Lighting;
 
 namespace Kopru.Core.Profiles;
 
-// The settings a profile holds, in the units the app shows (levels in percent): the supported games profile, the other
-// games profile, stick/trigger tuning, button remap, gyro aiming and the light with its effects. Fields missing from
+// The settings a profile holds, in the units the app shows (levels in percent): the game profile (the strength of the
+// game's own effects, the classic rumble feel and fallback trigger, the game's light switch), stick/trigger tuning, button remap, gyro aiming and the light with its effects. Fields missing from
 // older saved or exported profiles read as the defaults.
 public sealed record ProfileValues
 {
@@ -20,6 +20,10 @@ public sealed record ProfileValues
 	public RumbleFeel RumbleFeel { get; init; } = RumbleFeel.Soft;
 	public FallbackTrigger FallbackTrigger { get; init; } = FallbackTrigger.Off;
 	public double FallbackStrength { get; init; } = 50;
+	// "Turn sound into haptics" (missing in older profiles: off, 100 %, bass); strength in percent (0-200).
+	public bool AudioHaptics { get; init; }
+	public double AudioHapticsStrength { get; init; } = 100;
+	public Audio.AudioHapticsBand AudioHapticsBand { get; init; } = Audio.AudioHapticsBand.Bass;
 	public InputTuning Tuning { get; init; } = InputTuning.Default;
 	public uint LightbarColour { get; init; } = 0x2F6BFF;
 	public double Brightness { get; init; } = 80;
@@ -35,15 +39,28 @@ public sealed record ProfileValues
 	// Null (profiles saved before the pattern existed): player 1 when PlayerLeds is on, otherwise off.
 	public PlayerLedPattern? PlayerLedPattern { get; init; }
 	public LedBrightness PlayerLedBrightness { get; init; } = LedBrightness.High;
-	// Experimental controller speaker (missing in older profiles: off); volumes in percent.
-	public bool SpeakerEnabled { get; init; }
+	// The controller speaker, the one switch (missing in older profiles: on); volumes in percent.
+	public bool SpeakerEnabled { get; init; } = true;
 	public double SpeakerVolume { get; init; } = 80;
 	public double HeadphoneVolume { get; init; } = 60;
 	// Controller microphone (missing in older profiles: off); gain in percent.
 	public bool MicEnabled { get; init; }
 	public double MicGain { get; init; } = 100;
 	public bool MicNoiseGate { get; init; } = true;
-}
+
+	// The "Game" light mode is gone: Static with the game's light on (what that mode did). Other values stay as they are.
+	public ProfileValues WithoutGameLightMode() => LightMode == LightMode.Game ? this with { LightMode = LightMode.Static, LightFromGame = true } : this;
+
+	// From the removed DualSense Mode (once, see AppSettings.MigrateUnifiedProfile), keeping what the controller did: with
+	// the mode on, the speaker switch is the mode's own speaker switch; with it off, the game's light was blocked, so the
+	// game's light is turned off unless the light mode was Game (that mode let it through). Then WithoutGameLightMode.
+	public ProfileValues FromDualSenseMode(bool modeOn, bool modeSpeaker)
+	{
+		ProfileValues v = modeOn
+			? this with { SpeakerEnabled = modeSpeaker }
+			: LightMode == LightMode.Game ? this : this with { LightFromGame = false };
+		return v.WithoutGameLightMode();
+	}}
 
 // A named settings bundle. The default profile (Id "default") always exists; its name is shown localized.
 public sealed record ControllerProfile(string Id, string Name, ProfileValues Values)
@@ -95,11 +112,11 @@ public sealed class ProfileBook
 			}
 			if (p.IsDefault)
 			{
-				book.profiles[0] = p with { Name = "Default" };
+				book.profiles[0] = p with { Name = "Default", Values = p.Values.WithoutGameLightMode() };
 			}
 			else if (!book.profiles.Any(x => x.Id == p.Id))
 			{
-				book.profiles.Add(p with { Name = Clean(p.Name) is { Length: > 0 } n ? n : p.Id });
+				book.profiles.Add(p with { Name = Clean(p.Name) is { Length: > 0 } n ? n : p.Id, Values = p.Values.WithoutGameLightMode() });
 			}
 		}
 		foreach ((string key, string id) in gameProfiles ?? new Dictionary<string, string>())
@@ -368,7 +385,8 @@ public sealed class ProfileBook
 			return null;
 		}
 		string name = Clean(file.Name ?? string.Empty);
-		return Create(name.Length > 0 ? name : defaultName, file.Values);
+		// An older export may hold the removed "Game" light mode.
+		return Create(name.Length > 0 ? name : defaultName, file.Values.WithoutGameLightMode());
 	}
 
 	private static string Clean(string? name)

@@ -19,6 +19,25 @@ public sealed partial class BridgeHost
 	// When on, IdleTimeout also turns the controller off.
 	public bool PowerOffWhenIdle { get; set; }
 
+	private string? pauseHapticsReason;
+
+	// "Pause Haptics In Silence" for this host's controller (null reason: off): applied to the running connection at once
+	// and to every later one. reason ("setting" or "low power") goes to the log line written on a change.
+	public bool PauseHapticsInSilence => Volatile.Read(ref pauseHapticsReason) != null;
+
+	public void SetPauseHapticsInSilence(string? reason)
+	{
+		string? was = Interlocked.Exchange(ref pauseHapticsReason, reason);
+		if ((was != null) != (reason != null) || (reason != null && was != reason))
+		{
+			AppLog.Write($"haptics{LogSlot}: pause in silence {(reason != null ? "on" : "off")} ({reason ?? was ?? "setting"})");
+		}
+		if (current is { } c)
+		{
+			c.Session.PauseHapticsInSilence = reason != null;
+		}
+	}
+
 	// Raised after a power-off attempt (true: the radio accepted the disconnect); the second argument is true for idle.
 	public event Action<bool, bool>? PoweredOff;
 

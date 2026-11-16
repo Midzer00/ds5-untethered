@@ -711,7 +711,10 @@ public class DualShock4EmulationTests
 		processes.Show("old.exe");
 		games.Tick();
 		string key = games.ActiveGame!.Key;
+		// Chosen while the game runs: saved, and waits until the game restarts (or "apply now").
 		games.SetPadType(key, VirtualPadType.DualShock4);
+		Assert.Equal(VirtualPadType.DualShock4, games.PendingPadType);
+		games.ApplyPadTypeNow();
 		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
 		int count = bridge.Pads.Count;
 		games.SetPadType(key, VirtualPadType.DualShock4);

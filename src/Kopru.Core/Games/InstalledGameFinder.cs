@@ -17,17 +17,41 @@ public enum InstalledSource
 
 // A supported game installed on this PC: the catalog game, where it was found and its install folder (null when the
 // source does not say).
-public sealed record InstalledGame(CatalogGame Game, InstalledSource Source, string? Folder);
+// LaunchId: how its launcher knows it (the Steam app id of the manifest it was found by, or the Epic AppName); LaunchExe: the
+// exe its launcher starts (Epic), as a full path. Both null when the source does not say.
+public sealed record InstalledGame(CatalogGame Game, InstalledSource Source, string? Folder, string? LaunchId = null, string? LaunchExe = null);
 
 // A supported game the watcher once recognised running, with the folder it ran from (saved with the settings).
 public sealed record SeenGame(string Name, string Folder);
 
-// One scan: the games found (sorted by name) and how long it took.
+// A found game the user hid from the list (FoundGame.Key and its name, to show it again); saved with the settings.
+public sealed record HiddenGame(string Key, string Name);
+
+// A game installed on this PC that the catalog does not list, as its launcher reports it (Steam or Epic only: their files
+// say plainly that it is a game and where it lives). Id: the Steam app id or the Epic AppName. LaunchExe: Epic's launch exe
+// as a full path (null for Steam). Key: what the per-game settings and the hidden list use ("steam:<appid>", "epic:<AppName>").
+public sealed record FoundGame(string Name, InstalledSource Source, string Folder, string Id, string? LaunchExe = null)
+{
+	public string Key => KeyFor(Source, Id);
+
+	public long? SteamAppId => Source == InstalledSource.Steam && long.TryParse(Id, System.Globalization.NumberStyles.None,
+		System.Globalization.CultureInfo.InvariantCulture, out long id) ? id : null;
+
+	public static string KeyFor(InstalledSource source, string id) => (source == InstalledSource.Epic ? "epic:" : "steam:") + id;
+}
+
+// One scan: the catalog games found (sorted by name), the other games found (FoundGame, sorted by name), how many launcher
+// entries were left out as not games, and how long it took.
 public sealed record InstalledScan(IReadOnlyList<InstalledGame> Games, TimeSpan Took)
 {
 	public static InstalledScan Empty { get; } = new([], TimeSpan.Zero);
 
-	public int Count(InstalledSource source) => Games.Count(g => g.Source == source);
+	public IReadOnlyList<FoundGame> Found { get; init; } = [];
+
+	public int NotGames { get; init; }
+
+	// Catalog games and other found games from this source.
+	public int Count(InstalledSource source) => Games.Count(g => g.Source == source) + Found.Count(g => g.Source == source);
 }
 
 // The file system as the finder reads it: directory listings and small text files only (faked in tests). Every call may
@@ -63,7 +87,9 @@ public interface IUninstallEntries
 // folders the user added (by folder name or a catalog exe at the top or in Binaries\Win64), (5) games the watcher saw
 // running before, while their folder still exists. Never walks a whole drive: directory listings only; unreadable places
 // are skipped quietly. Names match like the watcher's name fallback: GameCatalog.NormalizeName, the whole name, at least
-// GameCatalog.MinNameLength characters. Logs one summary line per scan (no paths).
+// GameCatalog.MinNameLength characters. Besides the catalog games, the other games Steam and Epic report installed are
+// returned as FoundGame (Steam's own tools and runtimes, SteamNonGames, and Epic add-ons and engines left out); a found game
+// that is a catalog game found any way is left to the catalog row. Logs one summary line per scan (no paths).
 public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntries? registry = null, SteamLibrary? steam = null,
 	string? epicManifests = null, Action<string>? log = null)
 {
@@ -79,22 +105,57 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 	{
 		var watch = Stopwatch.StartNew();
 		var found = new Dictionary<string, InstalledGame>(StringComparer.OrdinalIgnoreCase);
-		void Add(CatalogGame? game, InstalledSource source, string? folder)
+		void Add(CatalogGame? game, InstalledSource source, string? folder, string? launchId = null, string? launchExe = null)
 		{
 			if (game != null)
 			{
-				found.TryAdd(game.Name, new InstalledGame(game, source, folder));
+				found.TryAdd(game.Name, new InstalledGame(game, source, folder, launchId, launchExe));
 			}
 		}
 		Dictionary<string, CatalogGame> names = NameIndex(catalog);
+		var others = new List<FoundGame>();
+		int notGames = 0;
 
-		foreach ((string folder, long appId) in SteamInstalls())
+		foreach (SteamApp app in SteamApps())
 		{
-			Add(catalog.FindBySteamAppId(appId), InstalledSource.Steam, folder);
+			// The catalog by app id, else (an installed app) by its whole name or install folder name.
+			CatalogGame? game = catalog.FindBySteamAppId(app.AppId)
+				?? (app.Installed ? ByName(names, app.Name) ?? catalog.FindByInstallDir(app.InstallDir) : null);
+			if (game != null)
+			{
+				Add(game, InstalledSource.Steam, app.Folder, app.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+			}
+			else if (!app.Installed || !Safe(() => files.DirectoryExists(app.Folder)))
+			{
+				// Being downloaded, or the folder is gone: not on this PC yet.
+			}
+			else if (SteamNonGames.IsNonGame(app.AppId, app.Name))
+			{
+				notGames++;
+			}
+			else
+			{
+				others.Add(new FoundGame(app.Name, InstalledSource.Steam, app.Folder, app.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+			}
 		}
-		foreach ((CatalogGame game, string? folder) in Epic(catalog, names))
+		foreach (EpicEntry entry in EpicEntries())
 		{
-			Add(game, InstalledSource.Epic, folder);
+			// The launch exe first, then the display name, then the install folder's name.
+			string? folderName = entry.Location == null ? null : Path.GetFileName(entry.Location);
+			if ((catalog.Find(entry.Launch) ?? ByName(names, entry.Name) ?? ByName(names, folderName)) is { } game)
+			{
+				Add(game, InstalledSource.Epic, entry.Location, entry.AppName,
+					entry.Location != null && !string.IsNullOrWhiteSpace(entry.Launch) ? Path.Combine(entry.Location, entry.Launch.TrimStart('\\')) : null);
+			}
+			else if (entry.NotGame)
+			{
+				notGames++;
+			}
+			else if (entry.Location != null && !string.IsNullOrWhiteSpace(entry.Launch) && !string.IsNullOrWhiteSpace(entry.Name))
+			{
+				others.Add(new FoundGame(entry.Name, InstalledSource.Epic, entry.Location, entry.AppName ?? GameCatalog.NormalizeName(entry.Name),
+					Path.Combine(entry.Location, entry.Launch.TrimStart('\\'))));
+			}
 		}
 		foreach ((CatalogGame game, string? folder) in Registry(names))
 		{
@@ -113,13 +174,27 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 			}
 		}
 
+		// A found game that is a catalog game found another way (same folder or name) is shown once, as the catalog game.
+		var catalogFolders = new HashSet<string>(found.Values.Where(g => g.Folder != null).Select(g => Trim(g.Folder!)), StringComparer.OrdinalIgnoreCase);
+		var catalogNames = new HashSet<string>(found.Values.Select(g => GameCatalog.NormalizeName(g.Game.Name)), StringComparer.Ordinal);
+		List<FoundGame> rest = others
+			.Where(g => !catalogFolders.Contains(Trim(g.Folder)) && !catalogNames.Contains(GameCatalog.NormalizeName(g.Name)))
+			.GroupBy(g => g.Key, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+			.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
 		watch.Stop();
-		var scan = new InstalledScan(found.Values.OrderBy(g => g.Game.Name, StringComparer.CurrentCultureIgnoreCase).ToList(), watch.Elapsed);
-		log($"installed games: {scan.Games.Count} found (steam {scan.Count(InstalledSource.Steam)}, epic {scan.Count(InstalledSource.Epic)}, " +
-			$"registry {scan.Count(InstalledSource.Registry)}, folders {scan.Count(InstalledSource.Folder)}, seen {scan.Count(InstalledSource.Seen)}) " +
-			$"in {(long)watch.Elapsed.TotalMilliseconds} ms");
+		var scan = new InstalledScan(found.Values.OrderBy(g => g.Game.Name, StringComparer.CurrentCultureIgnoreCase).ToList(), watch.Elapsed)
+		{
+			Found = rest,
+			NotGames = notGames
+		};
+		log($"installed games: {scan.Games.Count + scan.Found.Count} found (steam {scan.Count(InstalledSource.Steam)}, epic {scan.Count(InstalledSource.Epic)}, " +
+			$"registry {scan.Count(InstalledSource.Registry)}, folders {scan.Count(InstalledSource.Folder)}, seen {scan.Count(InstalledSource.Seen)}; " +
+			$"{scan.Games.Count} in the list, {scan.Found.Count} others, {notGames} not games left out) in {(long)watch.Elapsed.TotalMilliseconds} ms");
 		return scan;
 	}
+
+	private static string Trim(string path) => path.Replace('/', '\\').TrimEnd('\\');
 
 	// The install folder of a game whose exe runs at exePath: the exe's folder, or for an Unreal Engine game binary
 	// ("<Game>\<Project>\Binaries\Win64\X-Win64-Shipping.exe") the game's folder. Null for a bare file name.
@@ -163,11 +238,11 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 		return key.Length >= GameCatalog.MinNameLength && names.TryGetValue(key, out CatalogGame? game) ? game : null;
 	}
 
-	private IReadOnlyList<(string Folder, long AppId)> SteamInstalls()
+	private IReadOnlyList<SteamApp> SteamApps()
 	{
 		try
 		{
-			return steam?.ReadNow() ?? [];
+			return steam?.ReadAppsNow() ?? [];
 		}
 		catch (Exception e) when (IsSkippable(e))
 		{
@@ -175,8 +250,13 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 		}
 	}
 
-	// Epic manifests: the launch exe first, then the display name, then the install folder's name.
-	private IEnumerable<(CatalogGame, string?)> Epic(GameCatalog catalog, Dictionary<string, CatalogGame> names)
+	// One Epic Games Launcher manifest (*.item). Location: the install folder (null when the manifest has none); Launch: the
+	// launch exe relative to it. NotGame: an add-on (MainGameAppName names another app), an engine or plug-in (AppCategories
+	// without "games"), or an entry that cannot be started (bIsApplication or bIsExecutable false, no LaunchExecutable).
+	private sealed record EpicEntry(string? Name, string? Location, string? Launch, string? AppName, bool NotGame);
+
+	// Epic manifests whose install folder exists (or is not given) and that are fully installed.
+	private IEnumerable<EpicEntry> EpicEntries()
 	{
 		if (string.IsNullOrEmpty(epicManifests))
 		{
@@ -184,37 +264,50 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 		}
 		foreach (string manifest in List(() => files.Files(epicManifests, "*.item")))
 		{
-			string? name = null, location = null, launch = null;
+			EpicEntry? entry;
 			try
 			{
-				using JsonDocument doc = JsonDocument.Parse(files.ReadAllText(manifest));
-				if (doc.RootElement.ValueKind != JsonValueKind.Object)
-				{
-					continue;
-				}
-				name = Read(doc.RootElement, "DisplayName");
-				location = Read(doc.RootElement, "InstallLocation");
-				launch = Read(doc.RootElement, "LaunchExecutable");
+				entry = ParseEpic(files.ReadAllText(manifest));
 			}
 			catch (Exception e) when (e is JsonException || IsSkippable(e))
 			{
 				continue;
 			}
-			if (!string.IsNullOrWhiteSpace(location) && !Safe(() => files.DirectoryExists(location)))
+			if (entry == null || (entry.Location != null && !Safe(() => files.DirectoryExists(entry.Location))))
 			{
 				continue;
 			}
-			string? folderName = string.IsNullOrWhiteSpace(location) ? null : Path.GetFileName(location.Replace('/', '\\').TrimEnd('\\'));
-			CatalogGame? game = catalog.Find(launch?.Replace('/', '\\')) ?? ByName(names, name) ?? ByName(names, folderName);
-			if (game != null)
-			{
-				yield return (game, string.IsNullOrWhiteSpace(location) ? null : location);
-			}
+			yield return entry;
 		}
+	}
+
+	// Null for a manifest that is not an object or whose install is incomplete. Throws JsonException on malformed JSON.
+	private static EpicEntry? ParseEpic(string text)
+	{
+		using JsonDocument doc = JsonDocument.Parse(text);
+		JsonElement root = doc.RootElement;
+		if (root.ValueKind != JsonValueKind.Object || Flag(root, "bIsIncompleteInstall") == true)
+		{
+			return null;
+		}
+		string? location = Read(root, "InstallLocation") is { } l && !string.IsNullOrWhiteSpace(l) ? Trim(l.Trim()) : null;
+		string? launch = Read(root, "LaunchExecutable")?.Trim().Replace('/', '\\');
+		string? appName = Read(root, "AppName");
+		string? mainGame = Read(root, "MainGameAppName");
+		bool addOn = !string.IsNullOrWhiteSpace(mainGame) && !string.Equals(mainGame, appName, StringComparison.OrdinalIgnoreCase);
+		bool notGameCategory = root.TryGetProperty("AppCategories", out JsonElement categories) && categories.ValueKind == JsonValueKind.Array
+			&& categories.GetArrayLength() > 0
+			&& !categories.EnumerateArray().Any(c => c.ValueKind == JsonValueKind.String && string.Equals(c.GetString(), "games", StringComparison.OrdinalIgnoreCase));
+		bool notGame = addOn || notGameCategory || Flag(root, "bIsApplication") == false || Flag(root, "bIsExecutable") == false
+			|| string.IsNullOrWhiteSpace(launch);
+		return new EpicEntry(Read(root, "DisplayName")?.Trim(), location, launch, string.IsNullOrWhiteSpace(appName) ? null : appName.Trim(), notGame);
 	}
 
 	private static string? Read(JsonElement root, string property) =>
 		root.TryGetProperty(property, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+	private static bool? Flag(JsonElement root, string property) =>
+		root.TryGetProperty(property, out JsonElement value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : null;
 
 	// Uninstall keys: the whole display name; an entry whose install folder is gone is left out.
 	private IEnumerable<(CatalogGame, string?)> Registry(Dictionary<string, CatalogGame> names)

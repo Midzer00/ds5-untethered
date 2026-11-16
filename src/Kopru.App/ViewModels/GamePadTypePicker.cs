@@ -6,14 +6,16 @@ using Kopru.Core.Virtual;
 
 namespace Kopru.App.ViewModels;
 
-public sealed record PadTypeOption(VirtualPadType Type, string Name);
+// One choice of a game's controller type: Type null is Automatic (the default type). Line: what the choice means.
+public sealed record PadTypeOption(VirtualPadType? Type, string Name, string Line);
 
-// Product names, the same in every language.
-// The controller type picker on a games row: DualSense (default) or Xbox 360 for games that don't support DualSense.
+// The controller type picker on a games row: Automatic (the default type) or the type this game always sees. Never off: a
+// game's own choice wins over the default type.
 public sealed class GamePadTypePicker : ObservableObject
 {
 	private readonly GameModeController _games;
 	private readonly string _key;
+	private IReadOnlyList<PadTypeOption>? _options;
 
 	public GamePadTypePicker(GameModeController games, string key)
 	{
@@ -21,35 +23,38 @@ public sealed class GamePadTypePicker : ObservableObject
 		_key = key;
 	}
 
-	public IReadOnlyList<PadTypeOption> Options { get; } =
+	public IReadOnlyList<PadTypeOption> Options => _options ??=
 	[
-		new(VirtualPadType.DualSense, "DualSense"),
-		new(VirtualPadType.Xbox360, "Xbox 360"),
-		new(VirtualPadType.DualShock4, "DualShock 4")
+		new(null, Text.PadChoiceAuto(), Text.PadTypeAutoLine()),
+		.. PadTypeChoiceViewModel.TypeOptions().Select(o => new PadTypeOption(o.Type, o.Name, o.Line))
 	];
 
 	public string Label => Text.PadTypeLabel();
 
-	public string Tip => Text.PadTypeTip() + " " + Text.PadTypeDualShock4Tip();
+	// What the picker is for, then what the chosen type means.
+	public string Tip => Selected is { } chosen ? Text.PadTypeGameHint() + "\n" + chosen.Line : Text.PadTypeGameHint();
 
-	// Off while a controller type is forced for every game (the choice is kept and applies again on Automatic).
-	public bool IsEnabled => _games.ForcedPadType == null;
-
-	public void Refresh() => OnPropertyChanged(nameof(IsEnabled));
+	public void Refresh()
+	{
+		OnPropertyChanged(nameof(Selected));
+		OnPropertyChanged(nameof(Tip));
+	}
 
 	public PadTypeOption? Selected
 	{
 		get
 		{
-			VirtualPadType type = _games.PadTypeFor(_key);
-			return Options.FirstOrDefault(o => o.Type == type);
+			VirtualPadType? choice = _games.PadChoiceFor(_key);
+			return Options.FirstOrDefault(o => o.Type == choice);
 		}
 		set
 		{
-			if (value != null && value.Type != _games.PadTypeFor(_key))
+			// A cleared selection (null while the list is rebuilt) leaves the choice alone.
+			if (value != null && value.Type != _games.PadChoiceFor(_key))
 			{
 				_games.SetPadType(_key, value.Type);
 				OnPropertyChanged();
+				OnPropertyChanged(nameof(Tip));
 			}
 		}
 	}

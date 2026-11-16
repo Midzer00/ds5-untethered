@@ -172,6 +172,21 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 	// What the game sent since the last call; nothing while no game is connected.
 	public GameSignals TakeGameSignals() => current?.Bridge.TakeGameSignals() ?? default;
 
+	// A program with the virtual pad open started using the controller as a game does (ControllerBridge.GameUseStarted);
+	// raised on the bridge's report or audio thread.
+	public event Action<GameUse>? GameUseStarted;
+
+	private void OnGameUse(GameUse use) => GameUseStarted?.Invoke(use);
+
+	// The last connection's game use edge state (seeds the next connection's bridge, ControllerBridge.SeedGameUse).
+	private GameUseState? lastGameUse;
+
+	// The last connection's game light hold (seeds the next connection's bridge, ControllerBridge.SeedGameLight).
+	private GameLightCarry? lastGameLight;
+
+	// What the game is doing with this controller right now (ControllerBridge.GameUseNow); null while none or no bridge.
+	public GameUse? GameUseNow => current?.Bridge.GameUseNow;
+
 	public double RumbleLevel
 	{
 		get => rumbleLevel;
@@ -407,6 +422,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 					return;
 				}
 				current = connection;
+				// Again after publishing it: a change made while the connection was being set up reaches it too.
+				connection.Session.PauseHapticsInSilence = PauseHapticsInSilence;
 				StartLightSender(connection);
 				SetState(BridgeState.Running);
 				linkQuality.Restart(NowMs, "connected");
@@ -491,6 +508,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			return true;
 		}
 		LogMicCheck(c, now);
+		c.Bridge.CheckGameOutputIdle();
 		if (c.Watchdog.Check(now, c.ServerAlive, c.Session.IsHapticsStreaming, haptics) is { } reason)
 		{
 			c.WatchdogReason = reason;
@@ -613,7 +631,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			this.identity = CalibrationOverlay.Apply(
 				EdgeIdentity.Choose(identity, link.Device.IsEdge, host.inputTransform.RemapSettings.PresentAsEdge).ForSlot(host.Slot), link);
 			pad = CreatePad(host.padType);
-			Session = new BluetoothSession(link);
+			Session = new BluetoothSession(link) { PauseHapticsInSilence = host.PauseHapticsInSilence };
 			Bridge = CreateBridge();
 			host.Shortcuts.Reset();
 			DateTimeOffset now = host.time.GetUtcNow();
@@ -686,6 +704,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			int attached = port.Value;
 			host.NotifyPadAudio(a => a.PadAttached(host.Slot, attached));
 			host.RecordAttached(attached, server.Port);
+			// Games see the pad from now on: their first reports to it are no new use of the controller.
+			Bridge.QuietGameUse(ControllerBridge.GameUseSettle);
 		}
 
 		// Unplug first, so games never see a pad that stopped answering; then the bridge, server, controller and pad.
@@ -709,6 +729,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				}
 			}
 			Session.InputBodyReceived -= OnInput;
+			host.lastGameUse = Bridge.CaptureGameUse();
+			host.lastGameLight = Bridge.CaptureGameLight();
 			Bridge.Dispose();
 			if (server != null)
 			{

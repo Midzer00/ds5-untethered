@@ -270,8 +270,22 @@ public sealed class GameProfilePicker : ObservableObject
 		_key = key;
 	}
 
-	public IReadOnlyList<ProfileOption> Options => _settings.Profiles.Profiles
-		.Select(p => new ProfileOption(p.Id, SettingsState.DisplayName(p))).ToList();
+	private IReadOnlyList<ProfileOption> _options = [];
+
+	// The same list until a profile is added, removed or renamed: a picked profile changes the profiles' memory, which
+	// refreshes the pickers, and a new list there would make the open picker drop the choice it is making.
+	public IReadOnlyList<ProfileOption> Options
+	{
+		get
+		{
+			List<ProfileOption> now = _settings.Profiles.Profiles.Select(p => new ProfileOption(p.Id, SettingsState.DisplayName(p))).ToList();
+			if (!now.SequenceEqual(_options))
+			{
+				_options = now;
+			}
+			return _options;
+		}
+	}
 
 	public string Tip => Text.GameProfileTip();
 
@@ -328,7 +342,6 @@ public sealed class ShortcutsViewModel : ViewModelBase
 	[
 		new(Text.ShortcutKeysProfile(), Text.ShortcutDoesProfile()),
 		new(Text.ShortcutKeysHaptics(), Text.ShortcutDoesHaptics()),
-		new(Text.ShortcutKeysMode(), Text.ShortcutDoesMode()),
 		new(Text.ShortcutKeysPower(), Text.ShortcutDoesPower()),
 		new(Text.ShortcutKeysDesktop(), Text.ShortcutDoesDesktop()),
 	];

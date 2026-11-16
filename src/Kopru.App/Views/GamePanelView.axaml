@@ -1,0 +1,181 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels"
+             xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.GamePanelView" x:DataType="vm:GamePanelViewModel">
+  <!-- One game's panel (see GamePanelViewModel): its picture, name and source, Play, Hide/Remove and its start file, controller type and
+       profile, then either "Settings For This Game" or that profile's settings (sound to haptics first for a game that is not
+       in the supported list, the game's own effects first for one that is). Scrolls inside when the window is short. -->
+  <UserControl.Resources>
+    <!-- Sound to haptics: the switch, its strength, Bass or All Sound, and the status line (off until the engine is there) -->
+    <DataTemplate x:Key="AudioSection" x:DataType="vm:GamePanelViewModel">
+      <StackPanel Classes="section" Name="PanelAudio">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Background="Transparent" ToolTip.Tip="{Binding AudioHint}">
+          <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding AudioTitle}" VerticalAlignment="Center" TextWrapping="Wrap" />
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding AudioHaptics.On}" IsEnabled="{Binding AudioHaptics.Available}" OnContent="{x:Null}" OffContent="{x:Null}" />
+        </Grid>
+        <StackPanel Spacing="8" IsEnabled="{Binding AudioHaptics.Available}">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="caption" Text="{Binding AudioStrengthLabel}" />
+            <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding AudioHaptics.Strength}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding AudioHaptics.IsBass}" Content="{Binding AudioBassText}" />
+            <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding AudioHaptics.IsFull}" Content="{Binding AudioFullText}" />
+          </StackPanel>
+        </StackPanel>
+        <TextBlock Classes="caption" Text="{Binding AudioHaptics.Status}" TextWrapping="Wrap" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- One setting: its name and value on a line, the control under it; the explanation is the tooltip -->
+    <Style Selector="StackPanel.setting">
+      <Setter Property="Spacing" Value="2" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="StackPanel.section">
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style Selector="ComboBox.panelPicker">
+      <Setter Property="MinWidth" Value="160" />
+      <Setter Property="c:PopupScrollGuard.Contain" Value="True" />
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*">
+    <!-- The game: picture, name, where it comes from; Close -->
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}" Margin="0,0,0,12">
+      <c:GameThumbnail Source="{Binding Game.Image, FallbackValue={x:Null}}" Width="88" Height="41" CornerRadius="{StaticResource RadiusSmall}" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+        <TextBlock Name="PanelTitle" Classes="h2" Text="{Binding Game.Name, FallbackValue=''}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+        <TextBlock Classes="caption" Text="{Binding SourceText}" TextWrapping="Wrap" />
+      </StackPanel>
+      <Button Grid.Column="2" Name="ClosePanelButton" Theme="{StaticResource QuietButton}" Height="30" Padding="12,0" VerticalAlignment="Top"
+              Command="{Binding CloseCommand}" Content="{Binding CloseText}" />
+    </Grid>
+    <ScrollViewer Grid.Row="1" Name="PanelScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="14" Margin="0,0,10,0">
+        <!-- Play (where we know how) and Hide or Remove -->
+        <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+          <Button Name="PanelPlayButton" Theme="{StaticResource PrimaryButton}" Height="32" Padding="16,0" IsVisible="{Binding Game.CanLaunch, FallbackValue=False}"
+                  Command="{Binding PlayCommand}" Content="{Binding Game.PlayText, FallbackValue=''}" ToolTip.Tip="{Binding Game.PlayTip, FallbackValue=''}" />
+          <Button Theme="{StaticResource QuietButton}" Height="32" Padding="14,0" IsVisible="{Binding CanHideOrRemove}"
+                  Command="{Binding HideOrRemoveCommand}" Content="{Binding HideOrRemoveText}" />
+          <!-- The file Oyna starts, chosen by hand (for games we can't start, or instead of our way) -->
+          <Button Name="ChooseStartFileButton" Theme="{StaticResource QuietButton}" Height="32" Padding="14,0" IsVisible="{Binding HasNoStartFile}"
+                  Command="{Binding ChooseStartFileCommand}" Content="{Binding ChooseStartFileText}" ToolTip.Tip="{Binding StartFileHint}" />
+        </WrapPanel>
+        <StackPanel Name="StartFileRow" Spacing="8" IsVisible="{Binding HasStartFile}">
+          <TextBlock Classes="body" Text="{Binding StartFileLine}" ToolTip.Tip="{Binding StartFileTip}" TextWrapping="Wrap" />
+          <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+            <Button Theme="{StaticResource QuietButton}" Height="30" Padding="12,0" Command="{Binding ChooseStartFileCommand}" Content="{Binding ChangeStartFileText}" />
+            <Button Theme="{StaticResource QuietButton}" Height="30" Padding="12,0" Command="{Binding RemoveStartFileCommand}" Content="{Binding RemoveStartFileText}" />
+          </WrapPanel>
+        </StackPanel>
+
+        <!-- Controller type and profile: the same choices as the row -->
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Gap}" RowSpacing="8">
+          <TextBlock Classes="label" Text="{Binding PadTypeLabel}" VerticalAlignment="Center" />
+          <ComboBox Grid.Column="1" Name="PanelPadType" Classes="panelPicker" ItemsSource="{Binding Game.PadType.Options, FallbackValue={x:Null}}"
+                    SelectedItem="{Binding Game.PadType.Selected, FallbackValue={x:Null}}" ToolTip.Tip="{Binding Game.PadType.Tip, FallbackValue=''}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Grid.Row="1" Classes="label" Text="{Binding ProfileLabel}" VerticalAlignment="Center" />
+          <ComboBox Grid.Row="1" Grid.Column="1" Name="PanelProfile" Classes="panelPicker" ItemsSource="{Binding Game.Profile.Options, FallbackValue={x:Null}}"
+                    SelectedItem="{Binding Game.Profile.Selected, FallbackValue={x:Null}}" ToolTip.Tip="{Binding Game.Profile.Tip, FallbackValue=''}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
+
+        <Border Classes="divider" />
+
+        <!-- On the default profile: one button gives the game settings of its own -->
+        <StackPanel Name="OwnSettingsOffer" Classes="section" IsVisible="{Binding UsesDefault}">
+          <TextBlock Classes="body" Text="{Binding UsesDefaultText}" TextWrapping="Wrap" />
+          <Button Name="OwnSettingsButton" Theme="{StaticResource QuietButton}" Height="32" Padding="14,0" HorizontalAlignment="Left"
+                  Command="{Binding UseOwnSettingsCommand}" Content="{Binding OwnSettingsText}" />
+          <TextBlock Classes="caption" Text="{Binding OwnSettingsHint}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- The game's own profile: its name and Back To Default, then its settings -->
+        <StackPanel Name="OwnSettings" Spacing="14" IsVisible="{Binding HasOwnProfile}">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+            <TextBlock Classes="label" Text="{Binding ProfileLine}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" Name="ResetButton" Theme="{StaticResource QuietButton}" Height="30" Padding="12,0" Command="{Binding ResetToDefaultCommand}"
+                    Content="{Binding ResetText}" ToolTip.Tip="{Binding ResetHint}" />
+          </Grid>
+
+          <!-- Sound to haptics first for a game that is not in the supported list -->
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioSection}" IsVisible="{Binding IsUnsupported}" />
+
+          <!-- The game's own effects (supported games) -->
+          <StackPanel Name="PanelGameEffects" Classes="section" IsVisible="{Binding IsSupported}">
+            <TextBlock Classes="section" Text="{Binding Feel.GameCardTitle}" />
+            <StackPanel Classes="setting" ToolTip.Tip="{Binding Feel.GameHapticsHint}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding Feel.GameHapticsLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.GameHapticsText}" />
+              </Grid>
+              <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.GameHapticsLevel}" />
+            </StackPanel>
+            <StackPanel Classes="setting" ToolTip.Tip="{Binding Feel.TriggerHint}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" />
+              </Grid>
+              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Classic rumble: level, feel, the fallback trigger effect and its strength -->
+          <StackPanel Name="PanelClassicRumble" Classes="section">
+            <TextBlock Classes="section" Text="{Binding Feel.RumbleCardTitle}" />
+            <StackPanel Classes="setting" ToolTip.Tip="{Binding Feel.RumbleHint}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding Feel.RumbleLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.RumbleText}" />
+              </Grid>
+              <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.RumbleLevel}" />
+            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Background="Transparent" ToolTip.Tip="{Binding Feel.FeelHint}">
+              <TextBlock Classes="label" Text="{Binding Feel.FeelLabel}" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsSoft}" Content="{Binding Feel.SoftText}" />
+                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsPunchy}" Content="{Binding Feel.PunchyText}" />
+              </StackPanel>
+            </Grid>
+            <StackPanel Spacing="6" Background="Transparent" ToolTip.Tip="{Binding Feel.FallbackHint}">
+              <TextBlock Classes="label" Text="{Binding Feel.FallbackLabel}" TextWrapping="Wrap" />
+              <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsFallbackOff}" Content="{Binding Feel.OffText}" />
+                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsFallbackFeedback}" Content="{Binding Feel.FeedbackText}" />
+                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsFallbackWeapon}" Content="{Binding Feel.WeaponText}" />
+                <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsFallbackVibration}" Content="{Binding Feel.VibrationText}" />
+              </WrapPanel>
+            </StackPanel>
+            <StackPanel Classes="setting" IsEnabled="{Binding Feel.HasFallback}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="{Binding Feel.FallbackStrengthLabel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.FallbackStrengthText}" />
+              </Grid>
+              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.FallbackStrength}" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- The game's light -->
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Background="Transparent" ToolTip.Tip="{Binding Feel.LightHint}">
+            <TextBlock Classes="label" Text="{Binding Feel.LightLabel}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" Name="PanelLightSwitch" IsChecked="{Binding Feel.LightFromGame}" OnContent="{x:Null}" OffContent="{x:Null}" />
+          </Grid>
+
+          <!-- Sound to haptics last for a supported game (it sends its own haptics) -->
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioSection}" IsVisible="{Binding IsSupported}" />
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

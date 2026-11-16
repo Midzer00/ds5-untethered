@@ -7,7 +7,8 @@ using Kopru.Core.Virtual;
 
 namespace Kopru.Core.Tests;
 
-// The global controller type ("Kumanda Türü"): Automatic follows the per-game choice; any other value wins everywhere.
+/// The controller type model: a game's own choice, else the default type (ForcedPadType; null = Automatic), else DualSense.
+// The type is put in when the game starts; a change while it runs waits (pending) until it exits or "apply now".
 public class ForcedPadTypeTests
 {
 	private static readonly GameCatalog Catalog = new([
@@ -23,66 +24,179 @@ public class ForcedPadTypeTests
 	}
 
 	[Fact]
-	public void Forced_WinsOverThePerGameChoice_AndOneSwapPerChange()
+	public void NoGameRunning_DefaultTypeSwapsAtOnce_OneSwapPerChange()
 	{
-		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
-		processes.Show("old.exe");
-		games.Tick();
-		string key = games.ActiveGame!.Key;
-		games.SetPadType(key, VirtualPadType.Xbox360);
-		Assert.Equal(VirtualPadType.Xbox360, bridge.Pads[^1]);
-
+		(GameModeController games, _, PadBridge bridge) = Make();
+		Assert.Equal([VirtualPadType.DualSense], bridge.Pads);
 		int saves = 0;
 		games.MemoryChanged += () => saves++;
-		int before = bridge.Pads.Count;
+		List<PadSwap> swaps = [];
+		games.PadSwapped += swaps.Add;
 		games.SetForcedPadType(VirtualPadType.DualShock4);
-		Assert.Equal(before + 1, bridge.Pads.Count);
 		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
 		Assert.Equal(VirtualPadType.DualShock4, games.CurrentPadType);
+		Assert.Null(games.PendingPadType);
 		Assert.Equal(1, saves);
-		// The per-game choice is kept.
-		Assert.Equal(VirtualPadType.Xbox360, games.PadTypeFor(key));
+		Assert.Equal(new PadSwap(VirtualPadType.DualSense, VirtualPadType.DualShock4, null, null), Assert.Single(swaps));
+		Assert.Equal(PadTypeSource.DefaultSetting, games.PadStatus.Source);
 
 		// The same value again: nothing.
 		games.SetForcedPadType(VirtualPadType.DualShock4);
-		Assert.Equal(before + 1, bridge.Pads.Count);
+		Assert.Equal(2, bridge.Pads.Count);
 		Assert.Equal(1, saves);
-
-		// Forced DualSense also wins over the game's Xbox 360.
-		games.SetForcedPadType(VirtualPadType.DualSense);
-		Assert.Equal(VirtualPadType.DualSense, bridge.Pads[^1]);
 	}
 
 	[Fact]
-	public void GameStartingWhileForced_StaysForced_AndAutomaticBringsTheGameChoiceBackAtOnce()
+	public void GamesOwnChoice_WinsOverTheDefaultType_AndIsPutInWhenTheGameStarts()
+	{
+		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
+		games.SetForcedPadType(VirtualPadType.DualShock4);
+		games.SetPadType("Racer", VirtualPadType.Xbox360);
+		games.SetPadType("Old Game", VirtualPadType.DualSense);
+		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
+		Assert.Equal(VirtualPadType.Xbox360, games.PadTypeFor("Racer"));
+		Assert.Equal(VirtualPadType.DualShock4, games.PadTypeFor("Unknown Game"));
+		Assert.Null(games.PadChoiceFor("Unknown Game"));
+
+		processes.Show("racer.exe");
+		games.Tick();
+		Assert.Equal(VirtualPadType.Xbox360, bridge.Pads[^1]);
+		Assert.Equal(PadTypeSource.Game, games.PadStatus.Source);
+		processes.Exit("racer.exe");
+		games.Tick();
+		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
+
+		// An explicit DualSense for a game beats the default type too; Automatic (null) brings the default back.
+		processes.Show("old.exe");
+		games.Tick();
+		Assert.Equal(VirtualPadType.DualSense, bridge.Pads[^1]);
+		processes.Exit("old.exe");
+		games.Tick();
+		games.SetPadType("Old Game", null);
+		Assert.Null(games.PadChoiceFor("Old Game"));
+		Assert.Equal(VirtualPadType.DualShock4, games.PadTypeFor("Old Game"));
+	}
+
+	[Fact]
+	public void ChangeWhileAGameRuns_IsSavedButPending_UntilTheGameExits()
 	{
 		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
 		processes.Show("racer.exe");
 		games.Tick();
-		string racer = games.ActiveGame!.Key;
-		games.SetPadType(racer, VirtualPadType.Xbox360);
+		int saves = 0, states = 0;
+		games.MemoryChanged += () => saves++;
+		games.PadStateChanged += () => states++;
+		int pads = bridge.Pads.Count;
+
+		games.SetPadType("Racer", VirtualPadType.Xbox360);
+		Assert.Equal(1, saves);
+		Assert.Equal(pads, bridge.Pads.Count);
+		Assert.Equal(VirtualPadType.DualSense, games.CurrentPadType);
+		Assert.Equal(VirtualPadType.Xbox360, games.PendingPadType);
+		Assert.True(games.PadStatus.HasPending);
+		Assert.Equal("Racer", games.PadStatus.GameName);
+		Assert.Equal(1, states);
+
+		// The default type changing while the game runs waits too (and does not touch this game's choice).
+		games.SetForcedPadType(VirtualPadType.DualShock4);
+		Assert.Equal(pads, bridge.Pads.Count);
+		Assert.Equal(VirtualPadType.Xbox360, games.PendingPadType);
+
+		// Still running at the next ticks: nothing changes.
+		games.Tick();
+		games.Tick();
+		Assert.Equal(pads, bridge.Pads.Count);
+
+		// The game exits: back to the default type at once, nothing pending.
 		processes.Exit("racer.exe");
 		games.Tick();
-		Assert.Equal(VirtualPadType.DualSense, bridge.Pads[^1]);
+		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
+		Assert.Null(games.PendingPadType);
 
-		games.SetForcedPadType(VirtualPadType.DualShock4);
-		int count = bridge.Pads.Count;
+		// Starting again: its choice is put in at the start.
 		processes.Show("racer.exe");
 		games.Tick();
-		// The game's own Xbox 360 choice does not apply: no swap at all.
-		Assert.Equal(count, bridge.Pads.Count);
-		Assert.Equal(VirtualPadType.DualShock4, games.CurrentPadType);
-
-		// Back to Automatic while the game runs: its choice applies at once.
-		games.SetForcedPadType(null);
 		Assert.Equal(VirtualPadType.Xbox360, bridge.Pads[^1]);
-		Assert.Equal(count + 1, bridge.Pads.Count);
-		Assert.Null(games.ForcedPadType);
+	}
 
-		// Without a game, Automatic is DualSense.
+	[Fact]
+	public void ChangingBack_ClearsThePending_AndApplyNowSwapsWithTheGameRunning()
+	{
+		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
+		processes.Show("racer.exe");
+		games.Tick();
+		games.SetPadType("Racer", VirtualPadType.Xbox360);
+		games.SetPadType("Racer", VirtualPadType.DualSense);
+		Assert.Null(games.PendingPadType);
+		Assert.False(games.ApplyPadTypeNow());
+
+		games.SetPadType("Racer", VirtualPadType.DualShock4);
+		List<PadSwap> swaps = [];
+		games.PadSwapped += swaps.Add;
+		Assert.True(games.ApplyPadTypeNow());
+		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
+		Assert.Null(games.PendingPadType);
+		Assert.Equal(new PadSwap(VirtualPadType.DualSense, VirtualPadType.DualShock4, "Racer", "Racer"), Assert.Single(swaps));
+	}
+
+	[Fact]
+	public void AnotherGameTakingOver_WhileTheFirstRuns_Waits()
+	{
+		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
+		games.SetPadType("Old Game", VirtualPadType.Xbox360);
+		processes.Show("racer.exe");
+		games.Tick();
+		int pads = bridge.Pads.Count;
+		processes.Show("old.exe");
+		games.Tick();
+		Assert.Equal("Old Game", games.State.Name);
+		Assert.Equal(pads, bridge.Pads.Count);
+		Assert.Equal(VirtualPadType.Xbox360, games.PendingPadType);
+	}
+
+	// A game with its own type is found when its process appears, before it comes to the front (a launcher in front, or the
+	// game still loading behind another window).
+	[Fact]
+	public void GameProcessAppearing_GetsItsTypeBeforeComingToTheFront()
+	{
+		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
+		games.SetPadType("Racer", VirtualPadType.Xbox360);
+		processes.Show("explorer.exe");
+		games.Tick();
+		processes.Start("racer.exe");
+		games.Tick();
+		Assert.Equal(VirtualPadType.Xbox360, bridge.Pads[^1]);
+		Assert.Equal("Racer", games.State.Name);
+		Assert.False(games.IsGameInFront);
+
+		// It comes to the front: the same launch, no new swap.
+		int pads = bridge.Pads.Count;
+		processes.Show("racer.exe");
+		games.Tick();
+		Assert.Equal(pads, bridge.Pads.Count);
+
 		processes.Exit("racer.exe");
+		processes.Show("explorer.exe");
 		games.Tick();
 		Assert.Equal(VirtualPadType.DualSense, bridge.Pads[^1]);
+	}
+
+	// No process look-up while nothing needs one: no game with its own type, or its type is the current one, or a game runs.
+	[Fact]
+	public void ProcessLookup_OnlyWhileAGameNeedsAnotherType()
+	{
+		(GameModeController games, GameModeTests.FakeProcesses processes, _) = Make();
+		games.Tick();
+		Assert.Equal(0, processes.AllProcessesCalls);
+		games.SetPadType("Racer", VirtualPadType.DualSense);
+		games.Tick();
+		Assert.Equal(0, processes.AllProcessesCalls);
+		games.SetPadType("Racer", VirtualPadType.Xbox360);
+		games.Tick();
+		Assert.Equal(1, processes.AllProcessesCalls);
+		processes.Show("old.exe");
+		games.Tick();
+		Assert.Equal(1, processes.AllProcessesCalls);
 	}
 
 	[Fact]
@@ -186,7 +300,7 @@ public class ForcedPadTypeTests
 		new Dictionary<int, string> { [1] = "Sony Interactive Entertainment" },
 		new Dictionary<byte, byte[]> { [0x05] = [0x05, 1, 2, 3], [DeviceIdentity.PairingFeature] = new byte[20] });
 
-	private sealed class PadBridge : IGameBridge
+	internal sealed class PadBridge : IGameBridge
 	{
 		public List<VirtualPadType> Pads { get; } = [];
 

@@ -99,6 +99,26 @@ public sealed partial class ControllerInfoViewModel : ViewModelBase
 		ReconnectCommand.NotifyCanExecuteChanged();
 	}
 
+	// The "connected for" clock ticks only while the main window is on screen; shown again, it is brought up to date at once.
+	public void SetShown(bool shown)
+	{
+		if (_timer == null || shown == _timer.IsEnabled)
+		{
+			return;
+		}
+		if (shown)
+		{
+			Tick();
+			_timer.Start();
+		}
+		else
+		{
+			_timer.Stop();
+		}
+	}
+
+	public bool IsTicking => _timer?.IsEnabled == true;
+
 	// Once a second: only the duration changes.
 	public void Tick()
 	{

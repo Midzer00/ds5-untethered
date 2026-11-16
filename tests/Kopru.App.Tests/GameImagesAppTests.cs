@@ -129,14 +129,25 @@ public sealed class GameImagesAppTests : IDisposable
 				{
 					GameListCheckedAt = DateTimeOffset.Now,
 					Language = code,
-					AlwaysGames = ["Returnal"],
 					UserGames = [new UserGame("Indie Game", @"C:\Games\Indie\Indie.exe")]
 				}, height: 760); // tall enough that the fourth row (above the list: the controller type for every game) is in view
 				WaitForPictures(window);
 				Dictionary<string, GameImageSource> sources = Thumbnails(window).ToDictionary(t => ((GameItemViewModel)t.DataContext!).Name, t => t.Shown!.Source);
 				Assert.Equal(GameImageSource.SteamLibrary, sources["Cyberpunk 2077"]);
 				Assert.Equal(GameImageSource.Placeholder, sources["Marvel's Spider-Man Remastered"]);
-				Assert.Equal(GameImageSource.ExeIcon, sources["Indie Game"]);
+				// The added game is on "Unsupported": its exe's icon there.
+				vm.SupportedGames.ShowUnsupported = true;
+				GameImageSource? indie = null;
+				for (int i = 0; i < 200 && indie == null; i++)
+				{
+					Dispatcher.UIThread.RunJobs();
+					AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+					indie = Thumbnails(window).FirstOrDefault(t => t.DataContext is GameItemViewModel { Name: "Indie Game" } && t.Shown != null)?.Shown!.Source;
+					Thread.Sleep(15);
+				}
+				Assert.Equal(GameImageSource.ExeIcon, indie);
+				vm.SupportedGames.ShowUnsupported = false;
+				Dispatcher.UIThread.RunJobs();
 				// The download switch is on the page, on by default.
 				CheckBox box = window.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Name == "DownloadImagesBox");
 				Assert.True(box.IsChecked);

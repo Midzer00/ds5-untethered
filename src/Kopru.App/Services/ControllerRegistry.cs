@@ -53,6 +53,10 @@ public sealed class ControllerRegistry
 
 	public event Action? Changed;
 
+	// Only a remembered battery reading changed (Changed is not raised for that alone: settings.json need not be written
+	// on every rounded percent).
+	public event Action? BatteryChanged;
+
 	public event Action<string>? Forgotten;
 
 	// Connected ones first, then the most recently seen.
@@ -91,9 +95,11 @@ public sealed class ControllerRegistry
 	public void Observe(IReadOnlyList<ControllerEntry> present)
 	{
 		List<string> forgotten;
+		bool batteryOnly = false;
 		lock (_gate)
 		{
 			bool changed = false;
+			bool batteryMoved = false;
 			DateTimeOffset now = Clock();
 			HashSet<string> here = new(present.Select(p => p.Id), StringComparer.OrdinalIgnoreCase);
 			foreach (ControllerEntry e in present)
@@ -118,7 +124,14 @@ public sealed class ControllerRegistry
 					if (next != c)
 					{
 						_items[index] = next;
-						changed = true;
+						if (next with { LastBattery = c.LastBattery } == c)
+						{
+							batteryMoved = true;
+						}
+						else
+						{
+							changed = true;
+						}
 					}
 				}
 			}
@@ -136,8 +149,17 @@ public sealed class ControllerRegistry
 			forgotten = Prune(here);
 			if (!changed && forgotten.Count == 0)
 			{
-				return;
+				if (!batteryMoved)
+				{
+					return;
+				}
+				batteryOnly = true;
 			}
+		}
+		if (batteryOnly)
+		{
+			BatteryChanged?.Invoke();
+			return;
 		}
 		Raise(forgotten);
 	}

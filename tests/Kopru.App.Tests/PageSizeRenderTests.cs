@@ -38,7 +38,6 @@ public sealed class PageSizeRenderTests
 				{
 					GameListCheckedAt = DateTimeOffset.Now,
 					Language = code,
-					AlwaysGames = ["Returnal"],
 					UserGames = [new Kopru.Core.Games.UserGame("Indie Game", @"C:\Games\Indie\Indie.exe")]
 				})));
 				vm.Overview.ToggleBridgeCommand.Execute(null);

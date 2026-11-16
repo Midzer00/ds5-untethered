@@ -8,6 +8,7 @@ using Kopru.Core.Localization;
 using Kopru.Core.Setup;
 using Kopru.Core.Diagnostics;
 using Kopru.Core.Health;
+using Kopru.Core.Virtual;
 
 namespace Kopru.App.ViewModels;
 
@@ -21,6 +22,9 @@ public sealed partial class OverviewViewModel : PageViewModel
 	private Avalonia.Threading.DispatcherTimer? _inputTimer;
 	private Avalonia.Threading.DispatcherTimer? _sampleTimer;
 	private bool _syncingProfile;
+
+	// "Back To Game" in the header while a known game runs (set by the main window's view model; null in a bare page).
+	public GameReturn? BackToGame { get; set; }
 
 	public OverviewViewModel(IControllerService service, SettingsState settings)
 	{
@@ -45,6 +49,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 				OnPropertyChanged(nameof(ArtLightIntensity));
 				OnPropertyChanged(nameof(ArtPlayerLeds));
 			}
+			OnPadStateChanged(e.PropertyName);
 		};
 		SyncProfiles();
 		UpdateHealth();
@@ -125,15 +130,15 @@ public sealed partial class OverviewViewModel : PageViewModel
 	private bool IsBridgeProblem => BridgeHealth.Level == HealthLevel.Error;
 	private bool IsBridgeStarting => _bridgeBusy && _service.IsBridgeRunning;
 	public string VirtualLabel => Text.RowVirtualPad();
-	// Running as a DualShock 4 or an Xbox 360 controller: "Açık · DS4" / "Açık · Xbox" (what games lose is in the tooltip).
+	// The type games see is on its own line under it (GameSeesText).
 	public string VirtualStateText =>
 		IsBridgeProblem ? Text.HealthError()
 		: IsBridgeStarting ? Text.BridgeConnecting()
-		: _service.IsBridgeRunning ? PadTypeChoiceViewModel.ShortName(PadNow) is { } pad ? GameModeText.Join(Text.HealthOn(), pad) : Text.HealthOn()
+		: _service.IsBridgeRunning ? Text.HealthOn()
 		: Text.HealthOff();
 	public bool IsVirtualStateOn => _service.IsBridgeRunning && !IsBridgeProblem && !IsBridgeStarting;
 	public bool IsVirtualStateProblem => IsBridgeProblem;
-	public string VirtualStatusTip => PadTypeChoiceViewModel.ShownAs(PadNow) is { } shown ? BridgeStatusTip + Environment.NewLine + shown : BridgeStatusTip;
+	public string VirtualStatusTip => BridgeStatusTip;
 	private string BridgeStatusTip =>
 		IsBridgeStarting ? Text.HealthBridgeConnecting()
 		: _service.IsBridgeRunning && !_service.IsConnected ? Text.HealthBridgeWaiting()
@@ -211,28 +216,59 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public bool HasLastBattery => LastBatteryText.Length > 0;
 	public bool ShowsLastBatteryInHero => ShowsNoController && HasLastBattery;
 
-	// DualSense supported mode for the current game (off: the other games profile).
-	public string SupportedModeLabel => Text.SupportedMode();
-	public string SupportedModeHint => Text.SupportedModeHint();
-	// The virtual controller's type now (forced, or the game in front's choice): as a DualShock 4 or an Xbox 360
-	// controller the hero says what games get instead of the DualSense features.
-	private Kopru.Core.Virtual.VirtualPadType PadNow => _service.Games.CurrentPadType;
-	public string SupportedModeHelper => PadTypeChoiceViewModel.ShownAs(PadNow) ?? Text.SupportedModeHelper();
-	public string SupportedModeTip => PadTypeChoiceViewModel.ShownAs(PadNow) is { } shown
-		? SupportedModeLabel + Environment.NewLine + SupportedModeHint + Environment.NewLine + GameDetail + Environment.NewLine + shown
-		: SupportedModeLabel + Environment.NewLine + SupportedModeHint + Environment.NewLine + GameDetail;
-	public bool IsSupportedMode => _service.Games.State.Mode == Kopru.Core.Games.GameMode.Supported;
-	public string ModeValue => PadTypeChoiceViewModel.ShortName(PadNow) is { } pad
-		? GameModeText.Join(IsSupportedMode ? Text.ModeShortSupported() : Text.ModeShortClassic(), pad)
-		: IsSupportedMode ? Text.ModeShortSupported() : Text.ModeShortClassic();
-	public string GameDetail => GameModeText.Line(_service.Games.State);
-	public bool IsSupportedModeOn
+	// The controller type games see (hero and sidebar card): "Oyun Şunu Görüyor: DualShock 4", one line on what that type
+	// lacks (none for DualSense), and a type held back for the running game with "Şimdi Uygula".
+	private VirtualPadType PadNow => Settings.CurrentPadType;
+	public string GameSeesText => Settings.GameSeesText;
+	// Shown in the hero while the virtual controller runs for a connected controller.
+	public bool ShowsPadStatus => _service.IsConnected && _service.IsBridgeRunning && !IsOnCable;
+	public string PadLossLine => PadLoss(PadNow) ?? string.Empty;
+	public bool HasPadLoss => PadLoss(PadNow) != null;
+	// The hero has room for one of the two: a held-back type comes first (what the type lacks stays in the tooltip).
+	public bool ShowsPadLoss => HasPadLoss && !HasPendingPadType;
+	// The type's full line (what works, what doesn't) as the tooltip.
+	public string PadTypeTip => PadNow switch
 	{
-		get => _service.Games.IsSupportedModeOn;
-		set
+		VirtualPadType.DualShock4 => Text.PadTypeDualShock4Line(),
+		VirtualPadType.Xbox360 => Text.PadTypeXboxLine(),
+		_ => Text.PadTypeDualSenseLine()
+	};
+	public bool HasPendingPadType => Settings.HasPendingPadType;
+	// "Xbox 360 · Oyunu Yeniden Başlatınca Geçerli Olur".
+	public string PendingPadLine => Settings.PendingPadType is { } pending
+		? GameModeText.Join(SettingsState.PadTypeName(pending), Settings.PendingPadTypeText)
+		: string.Empty;
+	public string PendingPadTip => Settings.PendingPadTypeHint;
+	public string ApplyPadTypeNowText => Settings.ApplyPadTypeNowText;
+	public IRelayCommand ApplyPadTypeNowCommand => Settings.ApplyPadTypeNowCommand;
+
+	// What a type lacks, short: the part of its line after "for which games:" ("Titreşim ve ışık var; adaptif tetik ... yok.").
+	// Null for DualSense (nothing is missing).
+	public static string? PadLoss(VirtualPadType type)
+	{
+		string? line = type switch
 		{
-			_service.Games.SetSupportedMode(value);
-			OnPropertyChanged();
+			VirtualPadType.DualShock4 => Text.PadTypeDualShock4Line(),
+			VirtualPadType.Xbox360 => Text.PadTypeXboxLine(),
+			_ => null
+		};
+		if (line == null)
+		{
+			return null;
+		}
+		int at = line.IndexOf(": ", StringComparison.Ordinal);
+		string rest = at < 0 ? line : line[(at + 2)..];
+		return rest.Length == 0 ? line : char.ToUpper(rest[0], Localizer.Culture(Localizer.Current)) + rest[1..];
+	}
+
+	private void OnPadStateChanged(string? name)
+	{
+		if (name is nameof(SettingsState.PadStatus) or nameof(SettingsState.CurrentPadType) or nameof(SettingsState.HasPendingPadType))
+		{
+			foreach (string p in new[] { nameof(GameSeesText), nameof(PadLossLine), nameof(HasPadLoss), nameof(ShowsPadLoss), nameof(PadTypeTip), nameof(HasPendingPadType), nameof(PendingPadLine) })
+			{
+				OnPropertyChanged(p);
+			}
 		}
 	}
 
@@ -278,22 +314,20 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public string StatLatencyLabel => Text.StatLatency();
 	public string RateValue => Text.InputRate(Math.Round(_service.InputRateHz));
 	public bool HasLatency => _service.Latency != null;
-	public string LatencyValue => _service.Latency is { } r ? Text.LatencyShort(r.LinkP50Ms, r.LinkP99Ms) : Text.HealthUnknown();
 	public string LatencyTip => _service.Latency is { } r
 		? Text.LatencyValue(r.LinkP50Ms, r.LinkP99Ms, r.RelayMs) + Environment.NewLine + Text.LatencyHint()
 		: Text.LatencyHint();
-	// How the link feels (LinkQualityMonitor), as a word in its colour and one sentence on what to do; the numbers stay
-	// beside the word and in the tooltip.
+	// How the link feels (LinkQualityMonitor), as a word in its colour beside the delay headline (Live.DelayValue), and
+	// one short sentence on what to do only when the player must do something.
 	public LinkQuality LinkState => _service.LinkQuality?.State ?? LinkQuality.Measuring;
-	public string LinkLabel => Text.LinkLabel();
 	public string LinkStateText => LinkWord(LinkState);
 	public string LinkAdvice => LinkState switch
 	{
-		LinkQuality.Good => Text.LinkAdviceGood(),
 		LinkQuality.Borderline => Text.LinkAdviceBorderline(),
 		LinkQuality.Poor => Text.LinkAdvicePoor(),
-		_ => Text.LinkAdviceMeasuring()
+		_ => string.Empty
 	};
+	public bool HasLinkAdvice => LinkAdvice.Length > 0;
 	public bool IsLinkGood => LinkState == LinkQuality.Good;
 	public bool IsLinkBorderline => LinkState == LinkQuality.Borderline;
 	public bool IsLinkPoor => LinkState == LinkQuality.Poor;
@@ -334,6 +368,9 @@ public sealed partial class OverviewViewModel : PageViewModel
 		OnPropertyChanged(nameof(ShowsHealthChips));
 		OnPropertyChanged(nameof(HealthSummary));
 	}
+
+	// Whether the drawing and the graph follow the controller now (the page is in view in a shown window).
+	public bool IsFollowing => _inputTimer != null;
 
 	// Shown or left: while shown, the drawing follows the controller's buttons (when the bridge runs).
 	public void SetVisible(bool visible)
@@ -574,6 +611,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 		_selectedLanguage = Languages.First(o => o.Language == Localizer.Chosen);
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(nameof(HeadphonesPlugged)));
 		InitMic();
+		InitDsx();
 	}
 
 	public SettingsState Settings { get; }
@@ -606,6 +644,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string ExportActionText => Text.ActionExport();
 	public string PowerOffWhenIdleLabel => Text.PowerOffWhenIdleSetting();
 	public string PowerOffWhenIdleHint => Text.PowerOffWhenIdleHint();
+	public string HapticsGroupLabel => Text.CardHaptics();
+	public string PauseHapticsLabel => Text.PauseHapticsInSilence();
+	public string PauseHapticsHint => Text.PauseHapticsInSilenceHint();
 	public string AutoLowPowerLabel => Text.AutoLowPower();
 	public string AutoLowPowerHint => Text.AutoLowPowerHint();
 	public string KeepInTrayLabel => Text.KeepInTray();

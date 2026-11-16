@@ -5,27 +5,20 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 	// Live card.
-	public static string LinkLabel(Language? l = null) => Pick(l, $"Bağlantı", $"Link");
 	public static string LinkGood(Language? l = null) => Pick(l, $"İyi", $"Good");
-	public static string LinkBorderline(Language? l = null) => Pick(l, $"Sınırda", $"Borderline");
+	public static string LinkBorderline(Language? l = null) => Pick(l, $"Orta", $"Fair");
 	public static string LinkPoor(Language? l = null) => Pick(l, $"Zayıf", $"Weak");
 	public static string LinkMeasuring(Language? l = null) => Pick(l, $"Ölçülüyor", $"Measuring");
-	public static string LinkAdviceGood(Language? l = null) => Pick(l,
-		$"Bağlantı sağlam, bir şey yapmanız gerekmiyor.",
-		$"The link is solid, nothing to do.");
+	// What to do, only when the player must do something (Borderline, Weak).
 	public static string LinkAdviceBorderline(Language? l = null) => Pick(l,
-		$"Ara sıra gecikme var. Kumandayı adaptöre yaklaştırın, aradaki engelleri kaldırın.",
-		$"Some delay now and then. Move the controller closer to the adapter and clear the way between them.");
+		$"Ara sıra gecikme var: kumandayı adaptöre yaklaştır.",
+		$"Some delay now and then: move the controller closer to the adapter.");
 	public static string LinkAdvicePoor(Language? l = null) => Pick(l,
-		$"Gecikme hissedilebilir. Yaklaşın, adaptörü USB uzatma kablosuyla öne alın, 2,4 GHz cihazlardan uzak tutun.",
-		$"You may feel the delay. Move closer, put the adapter on a USB extension cable, away from 2.4 GHz devices.");
-	public static string LinkAdviceMeasuring(Language? l = null) => Pick(l,
-		$"Bağlantı birkaç saniye ölçülüyor.",
-		$"Measuring the link for a few seconds.");
-	public static string LinkLimitLabel(Language? l = null) => Pick(l, $"Hissedilir", $"Noticeable");
+		$"Gecikme hissedilir: yaklaş, adaptörü USB uzatma kablosuyla öne al, 2,4 GHz cihazlardan uzak tut.",
+		$"You can feel the delay: move closer, bring the adapter forward on a USB extension cable, away from 2.4 GHz devices.");
 	public static string LinkGraphTip(Language? l = null) => Pick(l,
-		$"Kalın çizgi: her saniyenin en kötü gecikmesi; ince çizgi: tipik gecikme. Kesikli çizginin üstü hissedilir, oraya çıkan anlar kırmızıyla işaretlenir.",
-		$"Thick line: the worst delay of each second; thin line: the typical delay. Above the dashed line you can feel it; moments that go there are marked in red.");
+		$"Kalın çizgi: her saniyenin en kötü gecikmesi; ince çizgi: tipik gecikme. Kesikli çizginin üstü hissedilir.",
+		$"Thick line: the worst delay of each second; thin line: the typical delay. Above the dashed line you can feel it.");
 
 	// Warning toast and its switch.
 	public static string NotifyLinkTitle(Language? l = null) => Pick(l, $"Bağlantı Zayıf", $"Weak Link");

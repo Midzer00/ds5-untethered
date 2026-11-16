@@ -63,20 +63,44 @@ public sealed partial class BridgeHost
 
 		// A pad swap keeps the app's mute LED in the new bridge, so no game report gets the game's own value through before
 		// the mic settings are applied again.
-		private ControllerBridge CreateBridge() => new(Session, pad)
+		private ControllerBridge CreateBridge()
+		{
+			ControllerBridge bridge = NewBridge();
+			// A pad swap or a reconnect: what the game was already doing does not count as it starting again (the previous
+			// bridge's edge state), and the game's first reports to the new pad don't either (quiet until the pad settled).
+			if ((Bridge?.CaptureGameUse() ?? host.lastGameUse) is { } previous)
+			{
+				bridge.SeedGameUse(previous);
+			}
+			bridge.QuietGameUse(ControllerBridge.GameUseSettle);
+			// The game's light goes on with the new bridge where the new pad lets a game set the light (not Xbox 360).
+			if (pad.Type != VirtualPadType.Xbox360 && (Bridge?.CaptureGameLight() ?? host.lastGameLight) is { } light)
+			{
+				bridge.SeedGameLight(light);
+			}
+			bridge.SeedModOutput(host.modOutput);
+			bridge.GameUseStarted += host.OnGameUse;
+			return bridge;
+		}
+
+		private ControllerBridge NewBridge() => new(Session, pad)
 		{
 			LogSlot = host.LogSlot,
+			Time = host.time,
+			GameLightIdle = host.GameLightIdle,
 			AppMuteLed = Bridge?.AppMuteLed ?? ControllerBridge.NoAppMuteLed,
 			RumbleFeel = host.profile.Feel,
 			LightFromGame = host.profile.LightFromGame,
 			TriggerIntensity = host.profile.TriggerIntensity,
 			FallbackTrigger = host.profile.FallbackTrigger,
+			GameSession = host.profile.GameSession,
 			GameHapticsLevel = host.gameHapticsLevel,
 			RumbleLevel = host.rumbleLevel,
 			InputTransform = host.inputTransform,
 			Shortcuts = host.Shortcuts,
 			Desktop = host.Desktop,
-			GyroMouse = host.GyroMouse
+			GyroMouse = host.GyroMouse,
+			ModLightAllowed = host.light.Brightness > 0
 		};
 
 		// Detach before attach: games never see two pads, nor one that stopped answering.
@@ -105,6 +129,8 @@ public sealed partial class BridgeHost
 			pad.Dispose();
 			pad = CreatePad(type);
 			Bridge = CreateBridge();
+			Bridge.RestoreGameLight();
+			host.SyncModOutput(Bridge);
 			await AttachAsync(token).ConfigureAwait(false);
 		}
 	}

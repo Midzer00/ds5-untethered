@@ -25,7 +25,18 @@ public static partial class Text
 		_ => Pick(l, $"Daha önce bu klasörden açıldı", $"Opened from this folder before")
 	};
 
-	public static string InstalledEmpty(Language? l = null) => Pick(l, $"Bu bilgisayarda desteklenen oyun bulunamadı.", $"No supported games were found on this PC.");
+	public static string InstalledEmpty(Language? l = null) => Pick(l, $"Bu bilgisayarda oyun bulunamadı.", $"No games were found on this PC.");
+
+	// The "Installed" view's one line under the list: a game that was not found is added by hand.
+	public static string InstalledAddHint(Language? l = null) => Pick(l, $"Oyununu bulamadık mı? Oyun Ekle ile ekle.", $"Can't find your game? Add it with Add Game.");
+
+	public static string HideGame(Language? l = null) => Pick(l, $"Gizle", $"Hide");
+
+	public static string HideGameTip(Language? l = null) => Pick(l, $"Oyun değilse listeden kaldırın", $"Not a game? Take it off the list");
+
+	public static string HiddenGamesHeader(Language? l = null) => Pick(l, $"Gizlenen Oyunlar", $"Hidden Games");
+
+	public static string ShowGameAgain(Language? l = null) => Pick(l, $"Göster", $"Show");
 
 	public static string InstalledSearching(Language? l = null) => Pick(l, $"Oyunlar aranıyor…", $"Looking for games…");
 

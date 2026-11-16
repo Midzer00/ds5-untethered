@@ -18,6 +18,9 @@ public class AudioToggleTests
 	{
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake, new AppEnvironment(null));
+		// The speaker is on by default: these tests start from off.
+		vm.Settings.SpeakerEnabled = false;
+		Settle();
 		return (vm, fake);
 	}
 

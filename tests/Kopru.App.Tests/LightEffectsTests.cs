@@ -89,12 +89,12 @@ public class LightEffectsTests
 	}
 
 	[Fact]
-	public void GameControlledMode_AlwaysLetsTheGamesLightThrough()
+	public void UseTheGamesLight_IsTheOnlySwitch_TheGameModeIsGone()
 	{
 		var s = new ControllerSettings(LightFromGame: false);
-		Assert.False(s.Supported.LightFromGame);
-		Assert.True((s with { LightOptions = new LightOptions(LightMode.Game) }).Supported.LightFromGame);
-		Assert.True((s with { LightFromGame = true, LightOptions = new LightOptions(LightMode.Rainbow) }).Supported.LightFromGame);
+		Assert.False(s.Game.LightFromGame);
+		Assert.False((s with { LightOptions = new LightOptions(LightMode.Game) }).Game.LightFromGame);
+		Assert.True((s with { LightFromGame = true, LightOptions = new LightOptions(LightMode.Rainbow) }).Game.LightFromGame);
 	}
 
 	[AvaloniaFact]
@@ -103,7 +103,8 @@ public class LightEffectsTests
 		var service = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(service);
 		LightViewModel light = vm.Light;
-		Assert.Equal(5, light.Modes.Count);
+		// Static, Breathing, Rainbow, Battery: the "Game Controlled" mode is gone.
+		Assert.Equal(4, light.Modes.Count);
 		Assert.Equal(6, light.Patterns.Count);
 		Assert.Equal(3, light.LedLevels.Count);
 		Assert.Equal(LightMode.Static, ((LightChoice<LightMode>)light.SelectedMode!).Value);

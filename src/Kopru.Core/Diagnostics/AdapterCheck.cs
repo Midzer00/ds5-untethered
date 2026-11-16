@@ -250,13 +250,15 @@ public static class AdapterCheck
 		}
 	}
 
-	// A faint 80 Hz tone, so the haptics stream runs at full rate (silence would stop it) without a strong buzz.
+	// A faint 80 Hz tone, so the haptics stream runs at full rate (silence would stop it) without a strong buzz. Topped up
+	// to TestAheadFrames every ~10-16 ms (Task.Delay without the 1 ms timer resolution); the rate measured is the
+	// stream's own report count over time, which the feeder's timing does not affect as long as it never runs dry.
 	private static async Task FeedQuietToneAsync(BluetoothSession session, CancellationToken cancel)
 	{
 		double phase = 0;
 		while (!cancel.IsCancellationRequested)
 		{
-			while (session.Haptics.Buffered < Haptics.HapticsMixer.MaxFrames / 2)
+			while (session.Haptics.Buffered < Bridge.BridgeHost.TestAheadFrames)
 			{
 				sbyte v = (sbyte)Math.Round(12 * Math.Sin(phase));
 				session.Haptics.Push(v, v);

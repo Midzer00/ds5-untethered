@@ -26,6 +26,8 @@ public sealed partial class GameItemViewModel
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(IsInstalled))]
 	[NotifyPropertyChangedFor(nameof(InstalledTip))]
+	[NotifyPropertyChangedFor(nameof(Launch))]
+	[NotifyPropertyChangedFor(nameof(CanLaunch))]
 	private InstalledGame? _installed;
 
 	public bool IsInstalled => Installed != null;
@@ -69,20 +71,79 @@ public sealed partial class SupportedGamesViewModel
 		}
 	}
 
-	public int InstalledCount => _all.Count(g => g.IsInstalled);
+	// The supported games installed on this PC ("Installed (n)").
+	public int InstalledCount => InstalledGames.Count;
+
+	// The line under the list on "Installed" and "Unsupported": a game not found is added with Add Game.
+	public string InstalledAddHint => Text.InstalledAddHint();
+
+	// The line under the rows: on "Unsupported" what these games get first ("these games use the Classic Rumble settings of
+	// the profile you pick"), then the Add Game hint.
+	public string AddHintLine => ShowUnsupported ? Text.UnsupportedGamesHint() + " " + Text.InstalledAddHint() : Text.InstalledAddHint();
+	public bool ShowsAddHint => (ShowUnsupported || InstalledOnly) && !IsSearchingInstalled;
+
+	// Found games the user hid (shown again from the Folders menu).
+	public string HiddenGamesHeader => Text.HiddenGamesHeader();
+	public string ShowGameText => Text.ShowGameAgain();
+	public IReadOnlyList<HiddenGame> HiddenGames => Settings.HiddenGames;
+	public bool HasHiddenGames => Settings.HiddenGames.Count > 0;
+
+	// The found games of the last scan (hidden ones included).
+	private IReadOnlyList<FoundGame> _found = [];
+
+	// The found games shown and recognised: not hidden, and not a game the user added (its exe inside the folder).
+	private IEnumerable<FoundGame> VisibleFound(IReadOnlyList<KnownGame> known)
+	{
+		List<string> added = known.Where(g => g.IsUserAdded && g.Path != null && Path.IsPathRooted(g.Path)).Select(g => g.Path!).ToList();
+		return _found.Where(f => !Settings.IsGameHidden(f.Key)
+			&& !added.Any(p => p.StartsWith(f.Folder.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)));
+	}
+
+	// Gives the watcher the found games it may recognise (after every catalog match).
+	// Only when the list changed (a new list makes the watcher look at the game in front again).
+	private void PushFound(IReadOnlyList<KnownGame> known)
+	{
+		List<FoundGame> visible = VisibleFound(known).ToList();
+		if (_installedGames != null && !visible.SequenceEqual(Service.Games.FoundGames))
+		{
+			Service.Games.FoundGames = visible;
+		}
+	}
+
+	private void HideFound(GameItemViewModel row)
+	{
+		if (row.Found is { } found && Settings.HideGame(found.Key, found.Name))
+		{
+			Rebuild();
+		}
+	}
+
+	[RelayCommand]
+	private void ShowHidden(HiddenGame? game)
+	{
+		if (game != null && Settings.ShowGame(game.Key))
+		{
+			Rebuild();
+		}
+	}
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(ScanText))]
 	[NotifyPropertyChangedFor(nameof(HasNoInstalled))]
 	[NotifyPropertyChangedFor(nameof(IsSearchingInstalled))]
 	[NotifyPropertyChangedFor(nameof(HasNoMatch))]
+	[NotifyPropertyChangedFor(nameof(ShowsAddHint))]
 	private bool _isScanning;
 
 	public string ScanText => IsScanning ? Text.ScanningGames() : Text.ScanGamesAgain();
 
-	// The "Installed" view with nothing found: one sentence and "Add Folder". While the first scan runs: "Looking for games".
-	public bool HasNoInstalled => InstalledOnly && InstalledCount == 0 && !IsScanning;
-	public bool IsSearchingInstalled => InstalledOnly && InstalledCount == 0 && IsScanning;
+	// "Installed" or "Unsupported" with nothing found: one sentence and "Add Folder". While the first scan runs: "Looking for
+	// games".
+	public bool HasNoInstalled => ShownCountOnThisPc == 0 && !IsScanning;
+	public bool IsSearchingInstalled => ShownCountOnThisPc == 0 && IsScanning;
+
+	// The games of the shown view that are on this PC (-1 on "All": it lists the whole catalog).
+	private int ShownCountOnThisPc => ShowUnsupported ? UnsupportedGames.Count : InstalledOnly ? InstalledCount : -1;
 	public string InstalledEmptyText => Text.InstalledEmpty();
 	public string InstalledSearchingText => Text.InstalledSearching();
 
@@ -118,6 +179,11 @@ public sealed partial class SupportedGamesViewModel
 			{
 				OnPropertyChanged(nameof(Folders));
 				OnPropertyChanged(nameof(HasNoFolders));
+			}
+			else if (e.PropertyName == nameof(SettingsState.HiddenGames))
+			{
+				OnPropertyChanged(nameof(HiddenGames));
+				OnPropertyChanged(nameof(HasHiddenGames));
 			}
 		};
 		// An updated list may hold games installed here: look again (not for an added game of the user's).
@@ -201,7 +267,8 @@ public sealed partial class SupportedGamesViewModel
 	private void ApplyInstalled(InstalledScan scan)
 	{
 		_installedByName = scan.Games.ToDictionary(g => g.Game.Name, StringComparer.OrdinalIgnoreCase);
-		MarkInstalled();
+		_found = scan.Found;
+		Rebuild();
 	}
 
 	// The catalog rows found installed carry their mark (a game the user added keeps its own row as it is).
@@ -214,15 +281,29 @@ public sealed partial class SupportedGamesViewModel
 		RefreshList();
 	}
 
+	// The games found or added that are not in the supported list ("Unsupported (n)"), taken once per rebuild.
+	public IReadOnlyList<GameItemViewModel> UnsupportedGames { get; private set; } = [];
+
+	// Everything on this PC (counted for "Installed (n)"), taken once per rebuild.
+	public IReadOnlyList<GameItemViewModel> InstalledGames { get; private set; } = [];
+
 	private void RefreshList()
 	{
+		InstalledGames = _all.Where(g => !g.IsUnsupported && g.IsInstalled).ToList();
+		UnsupportedGames = _all.Where(g => g.IsUnsupported).ToList();
+		ViewFilters[1].Refresh();
+		OnPropertyChanged(nameof(UnsupportedGames));
 		InstalledFilters[1].Refresh();
+		OnPropertyChanged(nameof(ListLabel));
 		OnPropertyChanged(nameof(InstalledCount));
+		OnPropertyChanged(nameof(InstalledGames));
 		OnPropertyChanged(nameof(InstalledFilterName));
 		OnPropertyChanged(nameof(Games));
 		OnPropertyChanged(nameof(CountText));
 		OnPropertyChanged(nameof(HasNoMatch));
 		OnPropertyChanged(nameof(HasNoInstalled));
 		OnPropertyChanged(nameof(IsSearchingInstalled));
+		OnPropertyChanged(nameof(ShowsAddHint));
+		OnPropertyChanged(nameof(AddHintLine));
 	}
 }

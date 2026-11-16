@@ -38,9 +38,11 @@ public class AppTests
 		o.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			.Where(p => p.PropertyType == typeof(string) && p.Name is not (nameof(SettingsViewModel.ToolResult) or nameof(OverviewViewModel.Warning) or nameof(SupportedGamesViewModel.SearchText)
 				or nameof(SticksViewModel.CalibrationText) or nameof(OverviewViewModel.PowerOffResult) or nameof(OverviewViewModel.SteamWarning)
-				or nameof(SupportedGamesViewModel.SteamText) or nameof(OverviewViewModel.PrimaryTip) or nameof(OverviewViewModel.BridgeRowTip)
+				or nameof(SupportedGamesViewModel.SteamText) or nameof(SupportedGamesViewModel.PendingGameLine) or nameof(OverviewViewModel.PrimaryTip) or nameof(OverviewViewModel.BridgeRowTip)
 				or nameof(OverviewViewModel.LastBatteryText) or nameof(OverviewViewModel.HeroActionText)
-				or nameof(SettingsState.LastRunVersion) or nameof(SettingsState.UpdateToastedVersion)))
+				or nameof(OverviewViewModel.PadLossLine) or nameof(OverviewViewModel.PendingPadLine) or nameof(OverviewViewModel.LinkAdvice)
+				or nameof(SettingsState.LastRunVersion) or nameof(SettingsState.UpdateToastedVersion)
+				or nameof(LightViewModel.GameLightOffReason) or nameof(SettingsViewModel.SpeakerOffReason)))
 			.Select(p => (p.Name, (string?)p.GetValue(o)));
 
 	[AvaloniaFact]
@@ -234,7 +236,6 @@ public class AppTests
 						{
 							GameListCheckedAt = DateTimeOffset.Now,
 							Language = code,
-							AlwaysGames = ["Returnal"],
 							UserGames = [new Kopru.Core.Games.UserGame("Indie Game", @"C:\Games\Indie\Indie.exe")],
 							GamePadTypes = new() { [Kopru.Core.Games.ForegroundGame.KeyOf(null, "Indie.exe")] = Kopru.Core.Virtual.VirtualPadType.Xbox360 }
 						}),
@@ -269,7 +270,6 @@ public class AppTests
 						// Overview with the bridge running and a (simulated) game connected.
 						vm.SelectedNav = vm.NavItems[0];
 						vm.Overview.ToggleBridgeCommand.Execute(null);
-						vm.Overview.IsSupportedModeOn = true;
 						var running = (FakeControllerService)ServiceOf(vm);
 						running.Tick();
 						// 30 s of live history (a varying delay), with the speaker and the microphone on.

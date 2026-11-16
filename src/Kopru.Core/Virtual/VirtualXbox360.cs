@@ -64,6 +64,10 @@ public sealed class VirtualXbox360 : IVirtualPad
 
 	private byte[] latestInput = XboxReports.FromDualSense([]);
 
+	// The last report the host got. A change that came while no IN transfer was waiting goes out with the next one, so
+	// a state the controller then keeps (a button released, a stick back at rest) is never lost.
+	private byte[] lastSent = XboxReports.FromDualSense([]);
+
 	private byte configuration;
 
 	public VirtualXbox360(string busId = BusId)
@@ -112,6 +116,7 @@ public sealed class VirtualXbox360 : IVirtualPad
 			if (inputWaiting.Count > 0)
 			{
 				waiting = inputWaiting.Dequeue();
+				lastSent = report;
 			}
 		}
 		waiting?.Item2(SubmitResult.In(report));
@@ -126,9 +131,21 @@ public sealed class VirtualXbox360 : IVirtualPad
 		}
 		if (command.Endpoint == InEndpoint && command.IsIn)
 		{
+			byte[]? pending = null;
 			lock (gate)
 			{
-				inputWaiting.Enqueue((command.Sequence, complete));
+				if (!latestInput.AsSpan().SequenceEqual(lastSent))
+				{
+					pending = lastSent = latestInput;
+				}
+				else
+				{
+					inputWaiting.Enqueue((command.Sequence, complete));
+				}
+			}
+			if (pending != null)
+			{
+				complete(SubmitResult.In(pending));
 			}
 			return;
 		}
@@ -178,6 +195,8 @@ public sealed class VirtualXbox360 : IVirtualPad
 			inputWaiting.Clear();
 			idleWaiting.Clear();
 			configuration = 0;
+			// A host that attaches again starts from a pad at rest: the current state goes out with its first IN.
+			lastSent = XboxReports.FromDualSense([]);
 		}
 	}
 

@@ -136,6 +136,8 @@ public class InstalledGameFinderTests
 		Assert.Equal(new[] { "Cyberpunk 2077", "Returnal" }, found.Keys.Order());
 		Assert.Equal(InstalledSource.Steam, found["Returnal"].Source);
 		Assert.Equal(@"D:\SteamLibrary\steamapps\common\Returnal", found["Returnal"].Folder);
+		// The manifest's app id, for "Oyna".
+		Assert.Equal("1649240", found["Returnal"].LaunchId);
 	}
 
 	[Fact]
@@ -161,6 +163,9 @@ public class InstalledGameFinderTests
 		Assert.Equal(new[] { "Alan Wake 2", "Stellar Blade" }, found.Keys.Order());
 		Assert.Equal(InstalledSource.Epic, found["Alan Wake 2"].Source);
 		Assert.Equal(@"C:\Epic\AlanWake2", found["Alan Wake 2"].Folder);
+		// The launch exe as a full path (these manifests have no AppName).
+		Assert.Null(found["Alan Wake 2"].LaunchId);
+		Assert.Equal(@"C:\Epic\AlanWake2\AlanWake2.exe", found["Alan Wake 2"].LaunchExe);
 	}
 
 	[Fact]
@@ -263,7 +268,7 @@ public class InstalledGameFinderTests
 		Assert.Equal(InstalledSource.Steam, ByName(scan)["Lego Batman: Legacy of the Dark Knight"].Source);
 		Assert.Equal(InstalledSource.Folder, ByName(scan)["Stellar Blade"].Source);
 		string line = Assert.Single(logged);
-		Assert.Matches(@"^installed games: 2 found \(steam 1, epic 0, registry 0, folders 1, seen 0\) in \d+ ms$", line);
+		Assert.Matches(@"^installed games: 2 found \(steam 1, epic 0, registry 0, folders 1, seen 0; 2 in the list, 0 others, 0 not games left out\) in \d+ ms$", line);
 		Assert.DoesNotContain("\\", line);
 	}
 

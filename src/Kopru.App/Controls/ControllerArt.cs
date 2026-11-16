@@ -7,9 +7,11 @@ using Avalonia.Platform;
 
 namespace Kopru.App.Controls;
 
-// Front view of the controller (Assets/controller.png, or the dark controller-edge.png for the Edge), scaled to fit.
-// The touchpad and the light strips around it are vector shapes over the bitmap (clean edges at any size), the strips
-// painted live in LightColor at LightIntensity; the player LEDs under the touchpad are drawn on top. No logos.
+// Front view of the controller (Assets/controller.png, or controller-edge.png for the Edge), scaled to fit. The pictures
+// are renders of a model built from the same geometry (tools/art/controller). The light strip is lit live: LightColor is
+// painted through three masks rendered with the art (the diffuser channel, its bright middle, and the light it throws on
+// the shell and touchpad around it; LightTint has them in colour), stronger with LightIntensity and with the colour's own brightness, so breathing and
+// the other effects look like the strip glowing. The player LEDs under the touchpad glow softly on top. No logos.
 public sealed class ControllerArt : Control
 {
 	public static readonly StyledProperty<bool> IsEdgeProperty = AvaloniaProperty.Register<ControllerArt, bool>(nameof(IsEdge));
@@ -20,9 +22,23 @@ public sealed class ControllerArt : Control
 	public static readonly StyledProperty<bool> PlayerLedsProperty = AvaloniaProperty.Register<ControllerArt, bool>(nameof(PlayerLeds), true);
 	// Player LED bits 0..4 left to right; -1 uses PlayerLeds (the middle one).
 	public static readonly StyledProperty<int> PlayerLedMaskProperty = AvaloniaProperty.Register<ControllerArt, int>(nameof(PlayerLedMask), -1);
+	// The player LEDs' brightness 0..1 (the controller's low / medium / high).
+	public static readonly StyledProperty<double> PlayerLedLevelProperty = AvaloniaProperty.Register<ControllerArt, double>(nameof(PlayerLedLevel), 1.0);
 
 	private static readonly Lazy<Bitmap> Standard = new(() => Load("controller.png"));
 	private static readonly Lazy<Bitmap> Edge = new(() => Load("controller-edge.png"));
+	// Rendered with the art for drawing a moved stick: each stick's surroundings without its cap, and the cap alone.
+	private static readonly Lazy<Bitmap>[] Wells =
+	[
+		new(() => Load("controller-well-left.png")), new(() => Load("controller-well-right.png")),
+		new(() => Load("controller-edge-well-left.png")), new(() => Load("controller-edge-well-right.png")),
+	];
+	private static readonly Lazy<Bitmap> StandardCap = new(() => Load("controller-cap.png"));
+	private static readonly Lazy<Bitmap> EdgeCap = new(() => Load("controller-edge-cap.png"));
+	private static readonly IImmutableBrush LedGlow = new RadialGradientBrush
+	{
+		GradientStops = { new GradientStop(Color.FromArgb(150, 255, 255, 255), 0), new GradientStop(Color.FromArgb(0, 255, 255, 255), 1) },
+	}.ToImmutable();
 
 	// Image geometry (pixels of the asset): aspect ratio and where the player LEDs sit, under the touchpad.
 	private const double ImageWidth = 2290;
@@ -30,17 +46,14 @@ public sealed class ControllerArt : Control
 	private const double LedCentreX = 1144;
 	private const double LedY = 552;
 	private const double LedSpacing = 34;
-	private static readonly Color LightOff = Color.Parse("#3A3E44");
-	private static readonly IBrush PadBrush = new SolidColorBrush(Color.Parse("#D4D9E2"));
-	private static readonly IBrush EdgePadBrush = new SolidColorBrush(Color.Parse("#41444C"));
 	private static readonly Lazy<(Geometry Pad, Geometry Band)> Shapes = new(BuildShapes);
 
-	// The drawn touchpad in asset pixels (the input overlay outlines it on a touchpad click).
+	// The touchpad in asset pixels, as modelled in the render (the input overlay outlines it on a touchpad click).
 	internal static Geometry PadGeometry => Shapes.Value.Pad;
 
 	static ControllerArt()
 	{
-		AffectsRender<ControllerArt>(IsEdgeProperty, LightColorProperty, LightIntensityProperty, PlayerLedsProperty, PlayerLedMaskProperty);
+		AffectsRender<ControllerArt>(IsEdgeProperty, LightColorProperty, LightIntensityProperty, PlayerLedsProperty, PlayerLedMaskProperty, PlayerLedLevelProperty);
 	}
 
 	// The asset is larger than most places it is shown; smooth downscaling keeps the outlines clean.
@@ -71,13 +84,26 @@ public sealed class ControllerArt : Control
 		set => SetValue(PlayerLedMaskProperty, value);
 	}
 
+	public double PlayerLedLevel
+	{
+		get => GetValue(PlayerLedLevelProperty);
+		set => SetValue(PlayerLedLevelProperty, value);
+	}
+
 	public bool PlayerLeds
 	{
 		get => GetValue(PlayerLedsProperty);
 		set => SetValue(PlayerLedsProperty, value);
 	}
 
+	public static Bitmap ArtBitmap(bool edge) => (edge ? Edge : Standard).Value;
+
+	public static Bitmap StickWellSprite(bool edge, bool left) => Wells[(edge ? 2 : 0) + (left ? 0 : 1)].Value;
+
+	public static Bitmap StickCapSprite(bool edge) => (edge ? EdgeCap : StandardCap).Value;
+
 	private static Bitmap Load(string name) => new(AssetLoader.Open(new Uri($"avares://Kopru.App/Assets/{name}")));
+
 
 	protected override Size MeasureOverride(Size availableSize)
 	{
@@ -103,28 +129,52 @@ public sealed class ControllerArt : Control
 		var rect = new Rect((Bounds.Width - ImageWidth * scale) / 2, (Bounds.Height - ImageHeight * scale) / 2, ImageWidth * scale, ImageHeight * scale);
 		context.DrawImage(IsEdge ? Edge.Value : Standard.Value, rect);
 
-		// Touchpad and light strips as vectors over the bitmap, so their edges stay clean at every size; the light is the
-		// chosen colour dimmed by brightness. No bloom.
-		double intensity = Math.Clamp(LightIntensity, 0, 1);
-		Color lit = Lerp(LightOff, LightColor, 0.25 + 0.75 * intensity);
+		// The light: the colour at full brightness (its own brightness, e.g. breathing, and LightIntensity set how strongly
+		// it shows), through the masks: the glow on the surroundings, the diffuser, its hot middle.
+		Color colour = LightColor;
+		double peak = Math.Max(colour.R, Math.Max(colour.G, colour.B)) / 255.0;
+		Color hue = peak > 0 ? Color.FromRgb((byte)(colour.R / peak), (byte)(colour.G / peak), (byte)(colour.B / peak)) : Colors.Black;
+		double level = peak * (0.2 + 0.8 * Math.Clamp(LightIntensity, 0, 1));
+		bool edge = IsEdge;
 		using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(rect.X, rect.Y)))
 		{
-			context.DrawGeometry(IsEdge ? EdgePadBrush : PadBrush, null, Shapes.Value.Pad);
-			context.DrawGeometry(new SolidColorBrush(lit), null, Shapes.Value.Band);
-		}
+			Rect light = ControllerLayout.LightRect;
+			Paint(context, edge, LightTint.Glow, light, hue, Math.Min(1, 0.95 * level));
+			Paint(context, edge, LightTint.Strip, light, hue, Math.Min(1, 0.25 * Math.Min(1, peak * 8) + 0.75 * level));
+			Paint(context, edge, LightTint.Core, light, Lerp(hue, Colors.White, 0.55), 0.85 * Math.Pow(level, 1.2));
 
-		// Player LEDs (the mask, or the middle one lit when enabled).
-		int mask = PlayerLedMask;
-		for (int i = 0; i < 5; i++)
+			// Player LEDs (the mask, or the middle one lit when enabled): lit ones glow softly, unlit ones are faint slots.
+			int mask = PlayerLedMask;
+			double ledLevel = Math.Clamp(PlayerLedLevel, 0, 1);
+			for (int i = 0; i < 5; i++)
+			{
+				bool on = mask >= 0 ? (mask >> i & 1) != 0 : PlayerLeds && i == 2;
+				var centre = new Point(LedCentreX + (i - 2) * LedSpacing, LedY);
+				if (on)
+				{
+					using (context.PushOpacity(ledLevel))
+					{
+						context.DrawEllipse(LedGlow, null, centre, 24, 15);
+					}
+				}
+				byte alpha = on ? (byte)(46 + 194 * ledLevel) : (byte)46;
+				context.DrawRectangle(new SolidColorBrush(Color.FromArgb(alpha, 255, 255, 255)), null,
+					new RoundedRect(new Rect(centre.X - 10, centre.Y - 4, 20, 8), 4));
+			}
+		}
+	}
+
+	// A light mask in colour over rect, at opacity (drawn like the art: a bitmap into a rectangle).
+	private static void Paint(DrawingContext context, bool edge, int part, Rect rect, Color colour, double opacity)
+	{
+		if (opacity <= 0.004 || colour == Colors.Black)
 		{
-			bool on = mask >= 0 ? (mask >> i & 1) != 0 : PlayerLeds && i == 2;
-			var led = new Rect(
-				rect.X + (LedCentreX + (i - 2) * LedSpacing - 10) * scale,
-				rect.Y + (LedY - 4) * scale,
-				20 * scale,
-				8 * scale);
-			context.DrawRectangle(new SolidColorBrush(on ? Color.FromArgb(235, 255, 255, 255) : Color.FromArgb(60, 255, 255, 255)), null,
-				new RoundedRect(led, 4 * scale));
+			return;
+		}
+		Bitmap tinted = LightTint.Get(edge, part, colour);
+		using (context.PushOpacity(opacity))
+		{
+			context.DrawImage(tinted, new Rect(tinted.Size), rect);
 		}
 	}
 

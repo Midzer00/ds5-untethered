@@ -44,6 +44,96 @@ public static class TriggerEffects
 		return [0x26, (byte)active, (byte)(active >> 8), (byte)packed, (byte)(packed >> 8), (byte)(packed >> 16), (byte)(packed >> 24), 0, 0, (byte)frequency, 0];
 	}
 
+	// Resistance between zone start (0-8) and end (start+1..8) that lets go with a snap: strength and snap force 1-8
+	// (either 0 = off).
+	public static byte[] Bow(int start, int end, int strength, int snap)
+	{
+		Check(start is >= 0 and <= 8 && end > start && end <= 8 && strength is >= 0 and <= 8 && snap is >= 0 and <= 8);
+		if (strength == 0 || snap == 0)
+		{
+			return Off();
+		}
+		int zones = (1 << start) | (1 << end);
+		return [BowMode, (byte)zones, (byte)(zones >> 8), (byte)((strength - 1) | (snap - 1) << 3), 0, 0, 0, 0, 0, 0, 0];
+	}
+
+	// A galloping rhythm between zone start (0-8) and end (start+1..9): two feet (first 0-6, second first+1..7) at
+	// `frequency` 1-255 Hz (0 = off). The bit order of the two feet in byte 3 (first in bits 0-2, second in bits 3-5) is
+	// our assumption; see docs/DSX-COMPAT.md.
+	public static byte[] Galloping(int start, int end, int firstFoot, int secondFoot, int frequency)
+	{
+		Check(start is >= 0 and <= 8 && end > start && end <= 9 && firstFoot is >= 0 and <= 6 && secondFoot > firstFoot && secondFoot <= 7
+			&& frequency is >= 0 and <= 255);
+		if (frequency == 0)
+		{
+			return Off();
+		}
+		int zones = (1 << start) | (1 << end);
+		return [GallopingMode, (byte)zones, (byte)(zones >> 8), (byte)(firstFoot | secondFoot << 3), (byte)frequency, 0, 0, 0, 0, 0, 0];
+	}
+
+	// A machine-like vibration between zone start (0-8) and end (start+1..9), switching between amplitudes A and B (0-7)
+	// every `period` (tenths of a second, 0-255) at `frequency` 1-255 Hz (0, or both amplitudes 0 = off).
+	public static byte[] Machine(int start, int end, int amplitudeA, int amplitudeB, int frequency, int period)
+	{
+		Check(start is >= 0 and <= 8 && end > start && end <= 9 && amplitudeA is >= 0 and <= 7 && amplitudeB is >= 0 and <= 7
+			&& frequency is >= 0 and <= 255 && period is >= 0 and <= 255);
+		if (frequency == 0 || (amplitudeA == 0 && amplitudeB == 0))
+		{
+			return Off();
+		}
+		int zones = (1 << start) | (1 << end);
+		return [MachineMode, (byte)zones, (byte)(zones >> 8), (byte)(amplitudeA | amplitudeB << 3), (byte)frequency, (byte)period, 0, 0, 0, 0, 0];
+	}
+
+	// Resistance per zone: ten strengths 0-8 (0 = no resistance in that zone; all 0 = off).
+	public static byte[] MultiplePositionFeedback(ReadOnlySpan<int> strengths)
+	{
+		(ushort active, uint packed) = PerZone(strengths);
+		return active == 0 ? Off()
+			: [FeedbackMode, (byte)active, (byte)(active >> 8), (byte)packed, (byte)(packed >> 8), (byte)(packed >> 16), (byte)(packed >> 24), 0, 0, 0, 0];
+	}
+
+	// Vibration per zone: ten amplitudes 0-8 at `frequency` 1-255 Hz (0, or all amplitudes 0 = off).
+	public static byte[] MultiplePositionVibration(int frequency, ReadOnlySpan<int> amplitudes)
+	{
+		Check(frequency is >= 0 and <= 255);
+		(ushort active, uint packed) = PerZone(amplitudes);
+		return active == 0 || frequency == 0 ? Off()
+			: [VibrationMode, (byte)active, (byte)(active >> 8), (byte)packed, (byte)(packed >> 8), (byte)(packed >> 16), (byte)(packed >> 24), 0, 0, (byte)frequency, 0];
+	}
+
+	// Resistance that ramps from `startStrength` at zone start (0-8) to `endStrength` at zone end (start+1..9) and holds the
+	// end strength after it; strengths 1-8.
+	public static byte[] SlopeFeedback(int start, int end, int startStrength, int endStrength)
+	{
+		Check(start is >= 0 and <= 8 && end > start && end <= 9 && startStrength is >= 1 and <= 8 && endStrength is >= 1 and <= 8);
+		Span<int> strengths = stackalloc int[10];
+		for (int zone = start; zone < 10; zone++)
+		{
+			strengths[zone] = zone >= end ? endStrength
+				: (int)Math.Round(startStrength + (endStrength - startStrength) * (double)(zone - start) / (end - start), MidpointRounding.AwayFromZero);
+		}
+		return MultiplePositionFeedback(strengths);
+	}
+
+	private static (ushort Active, uint Packed) PerZone(ReadOnlySpan<int> values)
+	{
+		Check(values.Length == 10);
+		ushort active = 0;
+		uint packed = 0;
+		for (int zone = 0; zone < 10; zone++)
+		{
+			Check(values[zone] is >= 0 and <= 8);
+			if (values[zone] > 0)
+			{
+				active |= (ushort)(1 << zone);
+				packed |= (uint)((values[zone] - 1) & 0x07) << (3 * zone);
+			}
+		}
+		return (active, packed);
+	}
+
 	// Effect mode bytes (byte 0 of the 11). Public DualSense output report facts:
 	// 0x01 simple feedback / "continuous resistance": [1] start position 0-255, [2] force 0-255.
 	// 0x02 simple weapon / "section resistance": [1] start position, [2] end position, [3] force 0-255.

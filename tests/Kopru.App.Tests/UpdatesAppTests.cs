@@ -286,7 +286,8 @@ public sealed class UpdatesAppTests
 	[AvaloniaFact]
 	public void RunVersion_IsSavedOnlyWhenItChanges()
 	{
-		var store = new MemorySettingsStore(new AppSettings { LastRunVersion = "0.1.5" });
+		// Migrated already (a file from before would be saved once for the one-profile marker).
+		var store = new MemorySettingsStore(new AppSettings { LastRunVersion = "0.1.5", UnifiedProfile = true });
 		var vm = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(store));
 		int saves = store.Saves;
 		vm.Settings.MarkRunVersion("0.1.5");

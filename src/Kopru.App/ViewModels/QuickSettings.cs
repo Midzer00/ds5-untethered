@@ -3,11 +3,12 @@ using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
 using Kopru.Core.Bridge;
 using Kopru.Core.Localization;
+using Kopru.Core.Virtual;
 
 namespace Kopru.App.ViewModels;
 
-// The Overview's quick settings card: Low Power, DualSense and Mouse Mode, speaker and microphone, controller shortcuts,
-// the controller type, three-step haptics / trigger / light choices and the profile.
+// The Overview's quick settings card: Low Power, Mouse Mode, controller shortcuts, speaker and microphone, the default
+// controller type, three-step haptics / trigger / light choices and the profile.
 // Every row edits the same settings the detailed pages edit. While Low Power is on the rows it overrides are disabled
 // but keep showing the user's own values.
 public sealed partial class QuickSettingsViewModel : ViewModelBase
@@ -25,6 +26,7 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 				case nameof(SettingsState.LowPowerOn):
 					OnPropertyChanged(nameof(LowPowerOn));
 					OnPropertyChanged(nameof(CanEditOverridden));
+					OnSpeakerStateChanged();
 					break;
 				case nameof(SettingsState.GameHapticsLevel):
 					OnPropertyChanged(nameof(HapticsIndex));
@@ -41,8 +43,9 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 					OnPropertyChanged(nameof(LightCustom));
 					OnPropertyChanged(nameof(HasLightCustom));
 					break;
-				case nameof(SettingsState.SpeakerActive):
-					OnPropertyChanged(nameof(SpeakerOn));
+				case nameof(SettingsState.SpeakerEnabled):
+				case nameof(SettingsState.CurrentPadType):
+					OnSpeakerStateChanged();
 					break;
 				case nameof(SettingsState.MicLive):
 					OnPropertyChanged(nameof(MicTile));
@@ -56,7 +59,13 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 					break;
 			}
 		};
-		service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(nameof(ShowsDisconnectedNote)));
+		service.StateChanged += (_, _) => RunOnUi(() =>
+		{
+			OnPropertyChanged(nameof(ShowsDisconnectedNote));
+			OnPropertyChanged(nameof(ShowsOutputPicker));
+			OnPropertyChanged(nameof(MicPickerColumn));
+			OnPropertyChanged(nameof(MicPickerSpan));
+		});
 		settings.PropertyChanged += (_, e) => OnTileSettingChanged(e.PropertyName);
 	}
 
@@ -68,6 +77,8 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	public string Title => Text.QuickSettingsTitle();
 	public string LowPowerLabel => Text.LowPower();
 	public string LowPowerNote => Text.LowPowerNote();
+	// Under the card's title while Low Power is on.
+	public string LowPowerOffNote => Text.LowPowerOffNote();
 	public string HapticsLabel => Text.HapticsStrength();
 	public string TriggerLabel => Text.TriggerStrength();
 	public string LightLabel => Text.QuickLight();
@@ -125,11 +136,30 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	public string LightCustom => HasLightCustom ? Text.QuickCustom(Math.Round(Settings.Brightness)) : string.Empty;
 	public bool HasLightCustom => LightIndex < 0;
 
-	// On with DualSense Mode (see SettingsState.SpeakerActive).
+	// The Speaker tile: the one speaker switch (SpeakerEnabled). It can play only with the DualSense type and outside Low
+	// Power; otherwise the tile is off and disabled with the reason as its state word, and the saved switch stays as set.
+	public bool SpeakerAvailable => !Settings.LowPowerOn && Settings.CurrentPadType == VirtualPadType.DualSense;
+
 	public bool SpeakerOn
 	{
-		get => Settings.SpeakerActive;
-		set => Settings.SpeakerActive = value;
+		get => Settings.SpeakerEnabled && SpeakerAvailable;
+		set
+		{
+			if (SpeakerAvailable)
+			{
+				Settings.SpeakerEnabled = value;
+			}
+		}
+	}
+
+	// Low Power first: it also holds the speaker off on a DualSense.
+	public string SpeakerUnavailableText => Settings.LowPowerOn ? Text.QuickSpeakerOffLowPower() : Text.QuickSpeakerDualSenseOnly();
+
+	private void OnSpeakerStateChanged()
+	{
+		OnPropertyChanged(nameof(SpeakerAvailable));
+		OnPropertyChanged(nameof(SpeakerOn));
+		OnPropertyChanged(nameof(SpeakerUnavailableText));
 	}
 
 	// The Microphone tile mirrors the controller's mic button: a click is a press (the value clicked is not used), the tile
@@ -151,7 +181,14 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	// The pickers (shared with the Settings page).
 	public AudioDevicesViewModel Audio => Settings.Audio;
 
-	// "Kumanda Türü": Automatic or one controller type for every game (shared with the Supported Games page).
+	// The sound output picker only while headphones are plugged into the controller (to send game sound there); otherwise
+	// it has nothing to do with the controller and stays on Settings > Sound, and the microphone picker takes the whole row.
+	public bool ShowsOutputPicker => _service.HeadphonesPlugged;
+	public int MicPickerColumn => ShowsOutputPicker ? 1 : 0;
+	public int MicPickerSpan => ShowsOutputPicker ? 1 : 2;
+
+	// "Kumanda Türü": the default type, for the games without their own choice (shared with the games pages; its Automatic
+	// choice reads "Otomatik (Oyuna Göre)").
 	public PadTypeChoiceViewModel PadType => Settings.PadType;
 
 	// "Mikrofon Tuşu": 0 = Sessize Al, 1 = Tamamen Kapat.
@@ -182,11 +219,8 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	public bool MouseModeOn
 	{
 		get => Settings.DesktopModeOn;
-		set => Settings.DesktopModeOn = value;
+		set => Settings.SetDesktopMode(value, "quick settings");
 	}
-
-	// DualSense Mode tile label (the tile binds the Overview's own switch, so it stays in sync with the hero and the sidebar).
-	public string SupportedModeLabel => Text.SupportedModeShort();
 
 	// State words under the tile labels; Low Power shows what it does while on.
 	public string OnText => Text.QuickStateOn();
@@ -195,7 +229,6 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 
 	// One plain sentence per setting; the ones Low Power overrides say so while it is on.
 	public string LowPowerTip => Text.QuickLowPowerTip();
-	public string SupportedModeTip => Text.QuickSupportedModeTip();
 	public string MouseModeTip => Text.QuickMouseModeTip();
 	public string SpeakerTip => Overridden(Text.QuickSpeakerTip());
 	// Low Power holds the controller microphone off (a selected PC microphone can still be muted).

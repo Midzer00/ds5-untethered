@@ -78,7 +78,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		host.StatusUpdated += status =>
 		{
 			RecordBattery(status);
-			Raise();
+			OnHostStatus(1, status, host.HeadphonesPlugged);
 		};
 		host.ControllerOpened = OnControllerOpenedAsync;
 		host.DetailsRead += OnDetailsRead;
@@ -89,7 +89,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 			AppLog.Write("shortcut: " + action);
 			Shortcut?.Invoke(this, action);
 		};
-		host.Shortcuts.TapRoute = RoutePsTap;
+		WireHost(host);
 		host.MicButtonPressed += OnMicButton;
 		host.PoweredOff += (ok, idle) =>
 		{
@@ -108,10 +108,11 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		};
 		if (timers)
 		{
-			presenceTimer = new Timer(_ => RefreshPresence(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
-			meterTimer = new Timer(_ => MeterTick(), null, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
+			presenceTimer = new Timer(_ => RefreshPresence(), null, TimeSpan.Zero, ControllerScanInterval);
+			// Runs only while the virtual controller is on (SetMeter).
+			meterTimer = new Timer(_ => MeterTick(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 			gameTimer = new Timer(_ => GameTick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-			healthTimer = new Timer(_ => RequestHealthRefresh(), null, TimeSpan.Zero, HealthInterval);
+			healthTimer = new Timer(_ => RequestHealthRefresh(full: false), null, TimeSpan.Zero, HealthInterval);
 		}
 		Localizer.LanguageChanged += OnLanguageChanged;
 	}
@@ -121,7 +122,10 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		new(BridgeHost.CreateDefault(), HidHideHidingService.CreateDefault(), new HidControllerFinder(),
 			steamCheck: SteamInputCheck.CreateDefault().Check,
 			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, DiagnosticsExport.AdapterResultFileName),
-			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault());
+			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault())
+		{
+			AudioCapture = new Kopru.Core.Audio.WasapiCaptureFactory()
+		};
 
 	private BridgeStatus Status => Selected.Status;
 
@@ -248,6 +252,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 		AppLog.Write("virtual controller start: " + reason);
 		started = true;
+		SetMeter(true);
 		hidHideAppAllowed = null;
 		controllerHidden = null;
 		SetHidingWarning(string.Empty);
@@ -275,6 +280,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 		AppLog.Write("virtual controller stop: " + reason);
 		started = false;
+		SetMeter(false);
 		await StopOthersAsync(reason).ConfigureAwait(false);
 		await host.StopAsync(reason).ConfigureAwait(false);
 		await RestoreHidingAsync().ConfigureAwait(false);
@@ -296,9 +302,11 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 		settingsApplied = true;
 		settings = value;
-		Games.SetProfiles(value.Supported, value.Unsupported);
+		Games.SetProfile(value.Game);
+		QueueAudioHapticsUpdate();
 		host.IdleMinutes = value.IdlePowerOffMinutes;
 		host.PowerOffWhenIdle = value.PowerOffWhenIdle;
+		host.SetPauseHapticsInSilence(value.PauseHapticsReason);
 		host.Shortcuts.Enabled = value.ShortcutsEnabled;
 		psOpensApp = value.PsOpensApp;
 		psOpensAppInGames = value.PsOpensAppInGames;
@@ -318,9 +326,12 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 			primary.Light.Post(value.Light);
 		}
 		ApplyOthers();
+		ApplyDsx(value.DsxModSupport);
 	}
 
 	public double MicLevel => Selected.MicLevel;
+
+	public Kopru.Core.Lighting.LightOutput? ControllerLight => Selected.SentLight;
 
 	public void TestHaptics(HapticSide side) =>
 		RunTest(() => Selected.TestHapticsAsync(side != HapticSide.Right, side != HapticSide.Left, HapticsTestLength));
@@ -486,6 +497,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	{
 		Dispose();
 		started = false;
+		Volatile.Write(ref meterRunning, 0);
 		await StopOthersAsync("app exit").ConfigureAwait(false);
 		await host.StopAsync("app exit").ConfigureAwait(false);
 		// The active hiding session first, then the early registration made at app start.
@@ -500,27 +512,28 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 			meterTimer?.Dispose();
 			gameTimer?.Dispose();
 			healthTimer?.Dispose();
+			DisposeAudioHaptics();
+			StopDsx("app exit");
 			Localizer.LanguageChanged -= OnLanguageChanged;
 		}
 	}
 
 	// Looks for a paired controller while the bridge does not hold one (listing only; nothing is opened).
+	// One listing per tick: the device tick (USB details, cable switch) and the presence look use the same one, and the
+	// controller manager's look (when this tick drives it) shares it too (WindowsHid.SharedListingAge).
 	public void RefreshPresence()
 	{
-		DeviceTick();
+		IReadOnlyList<HidDevice> all = ListControllers();
+		DeviceTick(all);
+		if (driveManager && multi is { } m)
+		{
+			_ = m.RefreshAsync();
+		}
 		if (host.Device != null)
 		{
 			return;
 		}
-		HidDevice? found;
-		try
-		{
-			found = finder.Find().FirstOrDefault(d => d.Transport == Transport.Bluetooth);
-		}
-		catch (Exception)
-		{
-			found = null;
-		}
+		HidDevice? found = all.FirstOrDefault(d => d.Transport == Transport.Bluetooth);
 		if (found != present)
 		{
 			if (present == null)
@@ -573,16 +586,33 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		});
 	}
 
-	// Takes the haptics levels actually sent since the last tick.
+	public static readonly TimeSpan MeterInterval = TimeSpan.FromMilliseconds(100);
+
+	// Whether the haptics level meter ticks (only while the virtual controller is on).
+	public bool IsMeterRunning => Volatile.Read(ref meterRunning) != 0;
+
+	private int meterRunning;
+
+	private void SetMeter(bool run)
+	{
+		Volatile.Write(ref meterRunning, run ? 1 : 0);
+		try
+		{
+			meterTimer?.Change(run ? MeterInterval : Timeout.InfiniteTimeSpan, run ? MeterInterval : Timeout.InfiniteTimeSpan);
+		}
+		catch (ObjectDisposedException)
+		{
+			// Shutting down.
+		}
+	}
+
+	// Takes the haptics levels actually sent since the last tick. No StateChanged: the Overview's live card reads the
+	// levels itself at its own rate while it is shown.
 	public void MeterTick()
 	{
 		(double left, double right) = Selected.TakeHapticsLevels();
-		if (left != HapticsLeftLevel || right != HapticsRightLevel)
-		{
-			HapticsLeftLevel = left;
-			HapticsRightLevel = right;
-			Raise();
-		}
+		HapticsLeftLevel = left;
+		HapticsRightLevel = right;
 	}
 
 	// Whether the app's main window is the foreground window, and the exe of a full-screen foreground program (null: none)
@@ -611,7 +641,159 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		{
 			// Tried again on the next tick.
 		}
+		UpdateAudioHaptics();
 		CheckSteamInput();
+		CheckForeground();
+		RetryDsx();
+	}
+
+	public event EventHandler<GameUse>? GameUsingController;
+
+	public GameUse? GameUsingControllerNow
+	{
+		get
+		{
+			if (host.GameUseNow is { } use)
+			{
+				return use;
+			}
+			BridgeManager? m = multi;
+			for (int slot = 2; m != null && slot <= BridgeManager.MaxControllers; slot++)
+			{
+				if (m.Host(slot).GameUseNow is { } other)
+				{
+					return other;
+				}
+			}
+			return null;
+		}
+	}
+
+	// The foreground window's process: exe and, when readable, full path (set by the app; read at the game tick only while
+	// Mouse Mode is on).
+	public Func<ProcessInfo?>? ForegroundProcess { get; set; }
+
+	private volatile string? possibleGame;
+	// The last foreground exe logged as "not a game" (one line per change of the foreground program).
+	private string? notGameLogged;
+
+	public string? PossibleGameInFront => possibleGame;
+
+	public event EventHandler? ForegroundChanged;
+
+	private volatile bool buttonPageShown;
+
+	public bool ButtonPageShown
+	{
+		get => buttonPageShown;
+		set => buttonPageShown = value;
+	}
+
+	// At the game tick, only while Mouse Mode is on (its only reader): whether the foreground program could be a game.
+	private void CheckForeground()
+	{
+		string? next = null;
+		if (settings.DesktopModeOn)
+		{
+			try
+			{
+				ProcessInfo? process = ForegroundProcess?.Invoke();
+				next = PossibleGame(IsAppInFront?.Invoke() == true, Games.GameInFront, process, out string? notGame);
+				LogNotGame(process, notGame);
+			}
+			catch (Exception)
+			{
+				next = null;
+			}
+		}
+		if (!string.Equals(next, possibleGame, StringComparison.OrdinalIgnoreCase))
+		{
+			possibleGame = next;
+			ForegroundChanged?.Invoke(this, EventArgs.Empty);
+		}
+	}
+
+	// One line when a program in front is passed over for one of Mouse Mode's own reasons (Windows app, unreadable path),
+	// again only after another program came to the front.
+	private void LogNotGame(ProcessInfo? process, string? why)
+	{
+		string? exe = process?.Exe;
+		if (why == null || exe == null)
+		{
+			notGameLogged = null;
+			return;
+		}
+		if (!string.Equals(exe, notGameLogged, StringComparison.OrdinalIgnoreCase))
+		{
+			notGameLogged = exe;
+			Kopru.Core.Diagnostics.AppLog.Write($"mouse mode: {GameCatalog.Normalize(exe)} in front does not count as a game ({why})");
+		}
+	}
+
+	// The foreground program when it could be a game: never this app, a shell process or a common desktop app
+	// (GameWatcher.Ignored), nor Windows' own apps and tools (WindowsTool) or a program whose path can't be read; a known
+	// game in front always. notGame: the reason when Mouse Mode's own rules passed the program over (for the log).
+	public static string? PossibleGame(bool appInFront, string? knownGame, ProcessInfo? foreground, out string? notGame, string? windowsDir = null)
+	{
+		notGame = null;
+		if (appInFront)
+		{
+			return null;
+		}
+		if (knownGame != null)
+		{
+			return knownGame;
+		}
+		string exe = GameCatalog.Normalize(foreground?.Exe);
+		if (exe.Length == 0 || GameWatcher.Ignored.Contains(exe))
+		{
+			return null;
+		}
+		string? path = foreground!.Path;
+		if (string.IsNullOrWhiteSpace(path) || !System.IO.Path.IsPathRooted(path))
+		{
+			notGame = "path not readable";
+			return null;
+		}
+		if (WindowsTool(path, windowsDir ?? Environment.GetFolderPath(Environment.SpecialFolder.Windows)) is { } tool)
+		{
+			notGame = tool;
+			return null;
+		}
+		return exe;
+	}
+
+	public static string? PossibleGame(bool appInFront, string? knownGame, ProcessInfo? foreground, string? windowsDir = null) =>
+		PossibleGame(appInFront, knownGame, foreground, out _, windowsDir);
+
+	// Windows' own apps and tools are never games for Mouse Mode: an exe under the Windows folder (Snipping Tool, Notepad,
+	// Explorer, Settings...) or in a Microsoft package under WindowsApps (Screen Sketch, Calculator, Photos...). The reason
+	// for the log, or null.
+	public static string? WindowsTool(string path, string? windowsDir)
+	{
+		string full = path.Replace('/', '\\');
+		if (!string.IsNullOrEmpty(windowsDir)
+			&& full.StartsWith(windowsDir.Replace('/', '\\').TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Windows folder";
+		}
+		const string Packages = "\\WindowsApps\\";
+		int at = full.IndexOf(Packages, StringComparison.OrdinalIgnoreCase);
+		if (at >= 0 && full.AsSpan(at + Packages.Length).StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Microsoft app";
+		}
+		return null;
+	}
+
+	// Wires one host's controller shortcuts (the PS tap route and the touchpad double press facts) and its game use signal.
+	private void WireHost(BridgeHost target)
+	{
+		target.Shortcuts.TapRoute = RoutePsTap;
+		// The controller page's Test and Remap tabs count as "not in front": the user is trying the buttons there.
+		target.Shortcuts.AppInFront = () => IsAppInFront?.Invoke() == true && !buttonPageShown;
+		target.Shortcuts.MouseModeOn = () => target.Desktop.Active;
+		target.GameUseStarted += use => GameUsingController?.Invoke(this, use);
 	}
 
 	// Runs the Steam Input check at most every SteamCheckInterval, or at once when the game changed. Kept only when the
@@ -731,7 +913,23 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		Raise();
 	}
 
-	private void Raise() => post(() => StateChanged?.Invoke(this, EventArgs.Empty));
+	private readonly ShownStatusFilter shownStatus = new();
+
+	// A host reported its status (four times a second while it runs): StateChanged only when something shown changed.
+	// headphonesPlugged: the host's jack state (HeadphonesPlugged has no event of its own; it rides on the status).
+	public void OnHostStatus(int slot, BridgeStatus status, bool headphonesPlugged = false)
+	{
+		if (shownStatus.Changed(slot, status, headphonesPlugged))
+		{
+			Raise();
+		}
+	}
+
+	private void Raise()
+	{
+		Kopru.Core.Diagnostics.BackgroundWork.StateRefresh();
+		post(() => StateChanged?.Invoke(this, EventArgs.Empty));
+	}
 
 	private void RaiseNotice(ServiceNotice notice) => post(() => Notice?.Invoke(this, notice));
 }

@@ -12,11 +12,13 @@ public sealed record CatalogGame(
 	bool Haptics = false,
 	bool AdaptiveTriggers = false,
 	string? ExeConfidence = null,
-	string? Notes = null);
+	string? Notes = null,
+	// Steam's install folder name when it differs from the game's name ("WWZ" for World War Z); written only when set.
+	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SteamInstallDir = null);
 
 // The list of games with native DualSense support, embedded as supported-games.json. Exe names match
 // case-insensitively, by file name only ("C:\Games\Foo.EXE" matches "foo.exe"), and an Unreal Engine pair matches
-// either way ("Foo.exe" matches "Foo-Win64-Shipping.exe"). A game without exe names can be found by its name (FindByName).
+// either way ("Foo.exe" matches "Foo-Win64-Shipping.exe"). Every game can also be found by its name (FindByName).
 public sealed class GameCatalog
 {
 	public const string ResourceName = "Kopru.Core.Games.supported-games.json";
@@ -26,9 +28,14 @@ public sealed class GameCatalog
 	private readonly Dictionary<string, CatalogGame> byExe = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Dictionary<long, CatalogGame> bySteamAppId = [];
 	private readonly Dictionary<string, CatalogGame> byName = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, CatalogGame> byInstallDir = new(StringComparer.Ordinal);
 
 	// The shortest normalised name FindByName accepts: shorter names ("Luto", "F1 22") are too easy to hit by chance.
 	public const int MinNameLength = 6;
+
+	// The shortest normalised install folder name FindByInstallDir accepts ("WWZ", "AQP"): the catalog stores only
+	// folder names that are not a plain single word, so an acronym is specific enough.
+	public const int MinInstallDirLength = 3;
 
 	// The Unreal Engine game binary next to its small launcher ("Foo.exe" starts "Foo\Binaries\Win64\Foo-Win64-Shipping.exe").
 	public const string ShippingSuffix = "-Win64-Shipping.exe";
@@ -42,21 +49,39 @@ public sealed class GameCatalog
 			{
 				bySteamAppId.TryAdd(appId, game);
 			}
-			bool hasExe = false;
 			foreach (string exe in game.Exe ?? [])
 			{
 				string key = Normalize(exe);
 				if (key.Length > 0)
 				{
-					hasExe = true;
 					byExe.TryAdd(key, game);
 				}
 			}
+			// Every entry, with or without exe names: Steam may start a launcher or anti-cheat stub, or the copy may use
+			// another exe than the ones listed, while the folder or window still carries the game's name.
 			string name = NormalizeName(game.Name);
-			if (!hasExe && name.Length >= MinNameLength)
+			if (name.Length >= MinNameLength)
 			{
 				byName.TryAdd(name, game);
 			}
+		}
+		// Install folder names: one shared by two entries, or equal to a game's name, finds none (never the first one).
+		var shared = new HashSet<string>(StringComparer.Ordinal);
+		foreach (CatalogGame game in Games)
+		{
+			string dir = NormalizeName(game.SteamInstallDir);
+			if (dir.Length < MinInstallDirLength || byName.ContainsKey(dir))
+			{
+				continue;
+			}
+			if (!byInstallDir.TryAdd(dir, game) && byInstallDir[dir] != game)
+			{
+				shared.Add(dir);
+			}
+		}
+		foreach (string dir in shared)
+		{
+			byInstallDir.Remove(dir);
 		}
 	}
 
@@ -85,14 +110,21 @@ public sealed class GameCatalog
 		return ShippingPair(key) is string pair && byExe.TryGetValue(pair, out game) ? game : null;
 	}
 
-	// Whether some game can be found by name (one without exe names).
-	public bool HasNamedGames => byName.Count > 0;
+	// Whether some game can be found by name or install folder name.
+	public bool HasNamedGames => byName.Count > 0 || byInstallDir.Count > 0;
 
-	// The game without exe names whose whole normalised name equals the normalised text, or null. Never a partial match.
+	// The game whose whole normalised name equals the normalised text, or null. Never a partial match.
 	public CatalogGame? FindByName(string? text)
 	{
 		string key = NormalizeName(text);
 		return key.Length >= MinNameLength && byName.TryGetValue(key, out CatalogGame? game) ? game : null;
+	}
+
+	// The game whose Steam install folder name equals the folder name (both normalised), or null. Never a partial match.
+	public CatalogGame? FindByInstallDir(string? folder)
+	{
+		string key = NormalizeName(folder);
+		return key.Length >= MinInstallDirLength && byInstallDir.TryGetValue(key, out CatalogGame? game) ? game : null;
 	}
 
 	// The other half of an Unreal Engine pair: "Foo-Win64-Shipping.exe" -> "Foo.exe" and "Foo.exe" -> "Foo-Win64-Shipping.exe".

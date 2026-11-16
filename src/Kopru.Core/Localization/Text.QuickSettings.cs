@@ -12,6 +12,11 @@ public static partial class Text
 		$"Titreşim, ışık ve ses kısıldı; pil daha uzun gider.",
 		$"Haptics, light and sound are reduced; the battery lasts longer.");
 
+	// Why the game's light, the speaker and the microphone do nothing while Low Power is on.
+	public static string LowPowerOffNote(Language? l = null) => Pick(l,
+		$"Düşük Güç açıkken ışık, hoparlör ve mikrofon kapalıdır.",
+		$"While Low Power is on, the light, speaker and microphone are off.");
+
 	public static string HapticsStrength(Language? l = null) => Pick(l, $"Haptik Gücü", $"Haptics Strength");
 
 	public static string QuickLight(Language? l = null) => Pick(l, $"Işık", $"Light");
@@ -63,17 +68,18 @@ public static partial class Text
 		$"Titreşimi ve tetikleri hafifletir, ışığı ve sesi kapatır, kumandayı boşta daha erken kapatır; pil daha uzun gider.",
 		$"Softens haptics and triggers, turns the light and sound off and powers the controller off sooner when idle, so the battery lasts longer.");
 
-	public static string QuickSupportedModeTip(Language? l = null) => Pick(l,
-		$"Açıkken oyun kumandayı kablolu DualSense gibi kullanır: kendi haptiği, tetik efektleri, ışığı ve kumanda hoparlörüne gönderdiği sesler gelir. Kapalıyken klasik titreşim kullanılır.",
-		$"When on, the game uses the controller like a wired DualSense: its own haptics, trigger effects, light and the sounds it sends to the controller's speaker. When off, classic rumble is used.");
+	// The Speaker tile's state word when it cannot play: the type games see has no speaker, or Low Power holds it off.
+	public static string QuickSpeakerDualSenseOnly(Language? l = null) => Pick(l, $"DualSense'e Özel", $"DualSense Only");
+
+	public static string QuickSpeakerOffLowPower(Language? l = null) => Pick(l, $"Düşük Güç Açık", $"Low Power On");
 
 	public static string QuickMouseModeTip(Language? l = null) => Pick(l,
 		$"Kumandayla Windows'ta fare imlecini oynatır ve tıklarsın; bu sırada oyunlar kumandadan giriş almaz.",
 		$"Move and click the Windows mouse pointer with the controller; games get no input from it meanwhile.");
 
 	public static string QuickSpeakerTip(Language? l = null) => Pick(l,
-		$"Oyunun kumanda hoparlörüne gönderdiği sesleri çalar. DualSense Modu açıkken kendiliğinden açılır.",
-		$"Plays the sounds games send to the controller's speaker. Turns on by itself in DualSense Mode.");
+		$"Oyunun kumanda hoparlörüne gönderdiği sesleri çalar; sadece DualSense türünde çalışır.",
+		$"Plays the sounds the game sends to the controller's speaker; works only with the DualSense type.");
 
 	public static string QuickMicTip(Language? l = null) => Pick(l,
 		$"Kumandanın mikrofonunu oyunlara kablolu kumandanınki gibi açar.",
@@ -100,11 +106,7 @@ public static partial class Text
 		$"Düşük Güç açıkken bunu Düşük Güç belirler.",
 		$"While Low Power is on, Low Power sets this.");
 
-	// The Overview's live level bars: the two haptic motors and the triggers.
-	public static string LiveLeftHaptics(Language? l = null) => Pick(l, $"Sol Haptik", $"Left Haptics");
-
-	public static string LiveRightHaptics(Language? l = null) => Pick(l, $"Sağ Haptik", $"Right Haptics");
-
+	// The Overview's live meters: the two haptic motors and the triggers.
 	public static string LiveLeftHapticsTip(Language? l = null) => Pick(l,
 		$"Kumandanın sol haptik motoruna şu an giden titreşim.",
 		$"The vibration going to the controller's left haptic motor right now.");

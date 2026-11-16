@@ -69,6 +69,9 @@ public sealed partial class SettingsState
 		RumbleFeel = RumbleFeel,
 		FallbackTrigger = FallbackTrigger,
 		FallbackStrength = FallbackStrength,
+		AudioHaptics = AudioHapticsOn,
+		AudioHapticsStrength = AudioHapticsStrength,
+		AudioHapticsBand = AudioHapticsBand,
 		Tuning = Tuning,
 		LightbarColour = LightbarColour,
 		Brightness = Brightness,
@@ -125,13 +128,12 @@ public sealed partial class SettingsState
 				GameHapticsLevel = Math.Clamp(Math.Round((GameHapticsLevel + step) / HapticsStep) * HapticsStep, 0, HapticsMax);
 				ShortcutFeedback?.Invoke(Text.ShortcutHapticsTitle(), Text.ShortcutHapticsBody(GameHapticsLevel));
 				break;
-			case ShortcutAction.ToggleSupportedMode:
-				bool on = !_service.Games.IsSupportedModeOn;
-				_service.Games.SetSupportedMode(on);
-				ShortcutFeedback?.Invoke(Text.ShortcutModeTitle(), Text.ShortcutModeBody(on));
-				break;
 			case ShortcutAction.ToggleDesktopMode:
-				DesktopModeOn = !DesktopModeOn;
+				SetDesktopMode(!DesktopModeOn, ShortcutSource);
+				break;
+			case ShortcutAction.TouchpadDoublePress:
+				// Only ever turns mouse mode on (while on, a touchpad press is a left click).
+				SetDesktopMode(true, TouchpadDoublePressSource);
 				break;
 			case ShortcutAction.PowerOff:
 				_ = _service.PowerOffAsync();
@@ -195,7 +197,8 @@ public sealed partial class SettingsState
 			or nameof(Brightness) or nameof(PlayerLeds) or nameof(Remap) or nameof(Gyro) or nameof(LightMode) or nameof(BreathingPeriod)
 			or nameof(BreathingMin) or nameof(BreathingMax) or nameof(RainbowSpeed) or nameof(PlayerLedPattern) or nameof(PlayerLedBrightness)
 			or nameof(SpeakerEnabled) or nameof(SpeakerVolume) or nameof(HeadphoneVolume)
-			or nameof(MicEnabled) or nameof(MicGain) or nameof(MicNoiseGate))
+			or nameof(MicEnabled) or nameof(MicGain) or nameof(MicNoiseGate)
+			or nameof(AudioHapticsOn) or nameof(AudioHapticsStrength) or nameof(AudioHapticsBand))
 		{
 			_profiles.Update(_profiles.ActiveId, CaptureValues());
 		}
@@ -237,6 +240,9 @@ public sealed partial class SettingsState
 		RumbleFeel = v.RumbleFeel;
 		FallbackTrigger = v.FallbackTrigger;
 		FallbackStrength = v.FallbackStrength;
+		AudioHapticsOn = v.AudioHaptics;
+		AudioHapticsStrength = Math.Clamp(v.AudioHapticsStrength, 0, AudioHapticsStrengthMax);
+		AudioHapticsBand = Enum.IsDefined(v.AudioHapticsBand) ? v.AudioHapticsBand : Kopru.Core.Audio.AudioHapticsBand.Bass;
 		Tuning = v.Tuning ?? InputTuning.Default;
 		LightbarColour = v.LightbarColour;
 		Brightness = v.Brightness;

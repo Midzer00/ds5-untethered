@@ -69,6 +69,8 @@ public class QuickSettingsAppTests
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
 		QuickSettingsViewModel q = vm.Overview.Quick;
+		q.SpeakerOn = false;
+		Assert.False(fake.Settings.Speaker.Enabled);
 		q.SpeakerOn = true;
 		q.MicTile = true;
 		Assert.True(vm.Settings.SpeakerEnabled);
@@ -79,33 +81,104 @@ public class QuickSettingsAppTests
 		Assert.False(q.MicTile);
 	}
 
-	// The Speaker tile shows the speaker as DualSense Mode makes it (SpeakerActive), next to the shortcuts tile.
+	// The Speaker tile is the one speaker switch (SpeakerEnabled), on by default.
 	[AvaloniaFact]
-	public void SpeakerTile_FollowsDualSenseMode_AndKeepsTheUsersOwnSwitch()
+	public void SpeakerTile_IsTheOneSpeakerSwitch()
 	{
 		(MainWindowViewModel vm, _) = Create();
 		QuickSettingsViewModel q = vm.Overview.Quick;
-		vm.Overview.IsSupportedModeOn = false;
-		Settle();
-		vm.Settings.SpeakerEnabled = false;
-		Assert.False(q.SpeakerOn);
+		Assert.True(vm.Settings.SpeakerEnabled);
+		Assert.True(q.SpeakerOn);
+		Assert.True(q.SpeakerAvailable);
 
 		var changed = new List<string?>();
 		q.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-		vm.Overview.IsSupportedModeOn = true;
-		Settle();
-		Assert.True(vm.Settings.SpeakerActive);
-		Assert.True(q.SpeakerOn);
-		Assert.Contains(nameof(QuickSettingsViewModel.SpeakerOn), changed);
-
-		// Off by hand while the mode is on: only this session's choice, the user's own switch stays.
 		q.SpeakerOn = false;
-		Assert.False(vm.Settings.SpeakerActive);
-		Assert.False(vm.Settings.SpeakerEnabled);
-		vm.Overview.IsSupportedModeOn = false;
 		Settle();
-		Assert.False(q.SpeakerOn);
+		Assert.False(vm.Settings.SpeakerEnabled);
+		Assert.Contains(nameof(QuickSettingsViewModel.SpeakerOn), changed);
 		Assert.True(q.ShortcutsOn);
+	}
+
+	// With a type that has no speaker, or in Low Power, the tile is off and locked with the reason; the saved switch stays.
+	[AvaloniaFact]
+	public void SpeakerTile_OffWithTheReason_WhereTheSpeakerCannotPlay()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		QuickSettingsViewModel q = vm.Overview.Quick;
+		fake.Watcher.Exit("Cyberpunk2077.exe");
+		fake.Games.Tick();
+		var changed = new List<string?>();
+		q.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+		WithLanguage(Language.Turkish, () =>
+		{
+			fake.Games.SetForcedPadType(Kopru.Core.Virtual.VirtualPadType.DualShock4);
+			Settle();
+			Assert.False(q.SpeakerAvailable);
+			Assert.False(q.SpeakerOn);
+			Assert.Equal("DualSense'e Özel", q.SpeakerUnavailableText);
+			Assert.Contains(nameof(QuickSettingsViewModel.SpeakerAvailable), changed);
+			// A write while locked changes nothing.
+			q.SpeakerOn = false;
+			Assert.True(vm.Settings.SpeakerEnabled);
+
+			fake.Games.SetForcedPadType(null);
+			Settle();
+			Assert.True(q.SpeakerOn);
+			vm.Settings.LowPowerOn = true;
+			Assert.False(q.SpeakerAvailable);
+			Assert.False(q.SpeakerOn);
+			Assert.Equal("Düşük Güç Açık", q.SpeakerUnavailableText);
+			Assert.True(vm.Settings.SpeakerEnabled);
+		});
+		Assert.Equal("DualSense Only", Text.QuickSpeakerDualSenseOnly(Language.English));
+		Assert.Equal("Low Power On", Text.QuickSpeakerOffLowPower(Language.English));
+	}
+
+	// The sound output picker only while headphones are plugged into the controller; the microphone picker then shares the
+	// row, otherwise it takes the whole row.
+	[AvaloniaFact]
+	public void OutputPicker_OnlyWithHeadphonesInTheController()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		QuickSettingsViewModel q = vm.Overview.Quick;
+		Assert.False(q.ShowsOutputPicker);
+		Assert.Equal((0, 2), (q.MicPickerColumn, q.MicPickerSpan));
+		var changed = new List<string?>();
+		q.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+		fake.HeadphonesPlugged = true;
+		fake.RaiseStateChanged();
+		Settle();
+		Assert.True(q.ShowsOutputPicker);
+		Assert.Equal((1, 1), (q.MicPickerColumn, q.MicPickerSpan));
+		Assert.Contains(nameof(QuickSettingsViewModel.ShowsOutputPicker), changed);
+		fake.HeadphonesPlugged = false;
+		fake.RaiseStateChanged();
+		Settle();
+		Assert.False(q.ShowsOutputPicker);
+	}
+
+	// The quick "Kumanda Türü" row edits the default type; its Automatic reads "Otomatik (Oyuna Göre)".
+	[AvaloniaFact]
+	public void PadTypeRow_EditsTheDefaultType_AutomaticPerGame()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		QuickSettingsViewModel q = vm.Overview.Quick;
+		WithLanguage(Language.Turkish, () =>
+		{
+			Assert.Equal("Otomatik (Oyuna Göre)", q.PadType.Options[0].Name);
+			Assert.Null(q.PadType.Selected!.Type);
+			Assert.Equal(Text.PadTypeDefaultHint(), q.PadType.Tip);
+		});
+		Assert.Same(q.PadType.Options, q.PadType.Options);
+		Assert.Same(vm.Settings.PadType, q.PadType);
+		q.PadType.Selected = q.PadType.Options.Single(o => o.Type == Kopru.Core.Virtual.VirtualPadType.Xbox360);
+		Assert.Equal(Kopru.Core.Virtual.VirtualPadType.Xbox360, fake.Games.ForcedPadType);
+		q.PadType.Selected = null;
+		Assert.Equal(Kopru.Core.Virtual.VirtualPadType.Xbox360, fake.Games.ForcedPadType);
+		q.PadType.Selected = q.PadType.Options[0];
+		Assert.Null(fake.Games.ForcedPadType);
 	}
 
 	[AvaloniaFact]
@@ -194,15 +267,12 @@ public class QuickSettingsAppTests
 		window.Close();
 	}
 
+	// The DualSense Mode tile is gone: no property of the card or the Overview speaks of it.
 	[AvaloniaFact]
-	public void DualSenseModeTile_SharesTheOverviewSwitch()
+	public void DualSenseModeTile_IsGone()
 	{
-		(MainWindowViewModel vm, FakeControllerService fake) = Create();
-		bool before = vm.Overview.IsSupportedModeOn;
-		vm.Overview.IsSupportedModeOn = !before;
-		Assert.Equal(!before, fake.Games.IsSupportedModeOn);
-		vm.Overview.IsSupportedModeOn = before;
-		Assert.Equal(before, fake.Games.IsSupportedModeOn);
+		Assert.DoesNotContain(typeof(QuickSettingsViewModel).GetProperties(), p => p.Name.Contains("SupportedMode", StringComparison.Ordinal));
+		Assert.DoesNotContain(typeof(OverviewViewModel).GetProperties(), p => p.Name.Contains("SupportedMode", StringComparison.Ordinal));
 	}
 
 	[AvaloniaFact]
@@ -214,7 +284,7 @@ public class QuickSettingsAppTests
 			{
 				(MainWindowViewModel vm, _) = Create();
 				QuickSettingsViewModel q = vm.Overview.Quick;
-				string[] tips = [q.LowPowerTip, q.SupportedModeTip, q.MouseModeTip, q.SpeakerTip, q.MicTip, q.ShortcutsTip, q.EditShortcutsTip, q.HapticsTip,
+				string[] tips = [q.LowPowerTip, q.PadType.Tip, q.MouseModeTip, q.SpeakerTip, q.MicTip, q.ShortcutsTip, q.EditShortcutsTip, q.HapticsTip,
 					q.TriggerTip, q.LightTip, q.ProfileTip, q.MicButtonTip, q.Audio.OutputTip, q.Audio.InputTip, vm.Overview.Live.LeftHapticsTip, vm.Overview.Live.RightHapticsTip, vm.Overview.Live.TriggersTip];
 				Assert.All(tips, t => Assert.False(string.IsNullOrWhiteSpace(t)));
 				Assert.Equal(tips.Length, tips.Distinct().Count());
@@ -328,7 +398,9 @@ public class QuickSettingsAppTests
 		Assert.Equal(LowPower.IdleMinutes, fake.Settings.IdlePowerOffMinutes);
 		// The card and the profile keep the user's own values.
 		Assert.Equal(130, vm.Settings.GameHapticsLevel);
-		Assert.True(q.SpeakerOn);
+		// The Speaker tile shows the speaker off (it cannot play); the user's switch stays on.
+		Assert.False(q.SpeakerOn);
+		Assert.True(vm.Settings.SpeakerEnabled);
 		// The microphone tile shows the controller mic as it is (held off), the user's switch stays on.
 		Assert.True(vm.Settings.MicEnabled);
 		Assert.False(q.MicTile);

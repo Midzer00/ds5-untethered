@@ -89,7 +89,8 @@ public sealed class WindowsControllerSource : IControllerSource, IReadOnlyContro
 	{
 		try
 		{
-			return [.. WindowsHid.FindDualSenses().Where(d => d.Transport == Transport.Bluetooth).Select(d => new ControllerPresence(IdOf(d), d))];
+			// The manager's periodic look shares the listing of the same tick (WindowsHid.SharedListingAge).
+			return [.. WindowsHid.FindDualSenses(WindowsHid.SharedListingAge).Where(d => d.Transport == Transport.Bluetooth).Select(d => new ControllerPresence(IdOf(d), d))];
 		}
 		catch (Exception)
 		{

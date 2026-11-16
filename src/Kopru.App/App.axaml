@@ -431,6 +431,25 @@
         <Style Selector="^:selected"><Setter Property="BorderBrush" Value="{StaticResource TextBrush}" /></Style>
         <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
       </ControlTheme>
+
+      <!-- Tooltips, app-wide: an opaque surface of the theme with its text colour (Semi's dark tooltip is a light grey
+           under near-white text), the small radius, a readable width with wrapping, the body size. Both themes reach
+           WCAG AA (TooltipContrastTests). -->
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="ToolTipBackground" Color="#FF2A2D33" />
+          <SolidColorBrush x:Key="ToolTipForeground" Color="#FFE8EAED" />
+          <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#33FFFFFF" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="ToolTipBackground" Color="#FFFFFFFF" />
+          <SolidColorBrush x:Key="ToolTipForeground" Color="#FF1F2329" />
+          <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#26000000" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <CornerRadius x:Key="ToolTipCornerRadius">8</CornerRadius>
+      <x:Double x:Key="ToolTipMaxWidth">320</x:Double>
+      <Thickness x:Key="ToolTipPadding">10,7</Thickness>
     </ResourceDictionary>
   </Application.Resources>
 
@@ -698,6 +717,26 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <!-- Tooltips, last so they win over the TextBlock styles above (colours, radius, width and padding are the ToolTip*
+         resources) -->
+    <Style Selector="ToolTip">
+      <Setter Property="Background" Value="{DynamicResource ToolTipBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToolTipForeground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToolTipBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource ToolTipCornerRadius}" />
+      <Setter Property="MaxWidth" Value="{DynamicResource ToolTipMaxWidth}" />
+      <Setter Property="Padding" Value="{DynamicResource ToolTipPadding}" />
+      <Setter Property="FontSize" Value="{StaticResource FontBody}" />
+    </Style>
+    <!-- The app's TextBlock styles set their own colour: inside a tooltip the tooltip's text colour wins -->
+    <Style Selector="ToolTip TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource ToolTipForeground}" />
+    </Style>
+    <Style Selector="ToolTip /template/ ContentPresenter">
+      <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
   </Application.Styles>
 </Application>

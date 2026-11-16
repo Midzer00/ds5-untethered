@@ -38,8 +38,8 @@ public sealed class XboxEmulationAppTests : IDisposable
 	[Fact]
 	public void PadTypeToast_NamesTheMode()
 	{
-		Assert.Equal(Text.PadModeXboxTitle(), NotificationCenter.PadTypeNotice(nameof(VirtualPadType.Xbox360)).Title);
-		Assert.Equal(Text.PadModeDualSenseTitle(), NotificationCenter.PadTypeNotice(nameof(VirtualPadType.DualSense)).Title);
+		Assert.Equal(Text.PadModeXboxTitle(), NotificationCenter.PadTypeTitle(VirtualPadType.Xbox360));
+		Assert.Equal(Text.PadModeDualSenseTitle(), NotificationCenter.PadTypeTitle(VirtualPadType.DualSense));
 		Assert.Equal("Xbox 360 Modu", Text.PadModeXboxTitle(Language.Turkish));
 		Assert.Equal("Xbox 360 Mode", Text.PadModeXboxTitle(Language.English));
 	}

@@ -109,20 +109,50 @@ public sealed record HealthRuntime(
 	public static HealthRuntime Idle { get; } = new([], false, BridgeState.Stopped, BridgeError.None, null);
 }
 
-// Reads HealthEnvironment from small fakeable probes.
-public sealed class HealthProbe(IInstallRegistry registry, IBluetoothRadio radio, IPairedControllers paired, IRestartProbe? restart, string? adapterResultPath)
+// Reads HealthEnvironment from small fakeable probes. The radio and the paired list change any time and are read on every
+// call; the slow facts (installed drivers and their services, a pending restart, the adapter test file) are read on a
+// full read and otherwise reused for up to StaticInterval.
+public sealed class HealthProbe(IInstallRegistry registry, IBluetoothRadio radio, IPairedControllers paired, IRestartProbe? restart, string? adapterResultPath,
+	Func<long>? clockMs = null)
 {
+	public static readonly TimeSpan StaticInterval = TimeSpan.FromMinutes(1);
+
+	private sealed record StaticFacts(ComponentInfo UsbIp, ComponentInfo HidHide, bool? RestartPending, AdapterSummary? Adapter, long ReadAt);
+
+	private readonly Func<long> clock = clockMs ?? (() => Environment.TickCount64);
+	private readonly object gate = new();
+	private StaticFacts? facts;
+
 	[SupportedOSPlatform("windows")]
 	public static HealthProbe CreateDefault() => new(new WindowsInstallRegistry(), new WindowsBluetoothRadio(), new WindowsPairedControllers(),
 		new WindowsRestartProbe(), Path.Combine(AppPaths.DataDirectory, DiagnosticsExport.AdapterResultFileName));
 
-	public HealthEnvironment Read()
+	// How many times the slow facts were read (tests).
+	public int StaticReads { get; private set; }
+
+	// full: read the slow facts now; otherwise they are read only when older than StaticInterval. True in the out
+	// parameter when they were read by this call.
+	public HealthEnvironment Read(bool full = true) => Read(full, out _);
+
+	public HealthEnvironment Read(bool full, out bool readStatic)
 	{
-		SystemCheck check = new(registry, radio, new NoControllers(), restart ?? new NoRestart());
+		StaticFacts current;
+		lock (gate)
+		{
+			long now = clock();
+			readStatic = full || facts == null || now - facts.ReadAt >= (long)StaticInterval.TotalMilliseconds;
+			if (readStatic)
+			{
+				SystemCheck check = new(registry, radio, new NoControllers(), restart ?? new NoRestart());
+				facts = new StaticFacts(Safe(check.CheckUsbIp, ComponentInfo.Missing), Safe(check.CheckHidHide, ComponentInfo.Missing),
+					restart == null ? null : Safe(restart.IsRestartPending, null), AdapterSummary.Load(adapterResultPath), now);
+				StaticReads++;
+			}
+			current = facts!;
+		}
 		RadioState state = Safe(radio.Query, RadioState.Missing);
 		IReadOnlyList<PairedController> list = state == RadioState.On ? Safe(paired.Find, []) : [];
-		return new HealthEnvironment(Safe(check.CheckUsbIp, ComponentInfo.Missing), Safe(check.CheckHidHide, ComponentInfo.Missing), state,
-			list, restart == null ? null : Safe(restart.IsRestartPending, null), AdapterSummary.Load(adapterResultPath));
+		return new HealthEnvironment(current.UsbIp, current.HidHide, state, list, current.RestartPending, current.Adapter);
 	}
 
 	private static T Safe<T>(Func<T> read, T fallback)

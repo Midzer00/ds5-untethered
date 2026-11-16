@@ -97,20 +97,26 @@ public sealed partial class RealControllerService
 	private static bool IsRealController(ControllerDetails? d) => d is { Address: { } a } && a != PairingInfo.VirtualAddress;
 
 	// Reads USB details once per plug, tracks "connected since" and decides the cable switch.
-	public void DeviceTick()
+	public void DeviceTick() => DeviceTick(ListControllers());
+
+	// The controllers Windows lists now (empty when the listing fails).
+	private IReadOnlyList<HidDevice> ListControllers()
+	{
+		try
+		{
+			return [.. finder.Find()];
+		}
+		catch (Exception)
+		{
+			return [];
+		}
+	}
+
+	private void DeviceTick(IReadOnlyList<HidDevice> all)
 	{
 		if (Volatile.Read(ref disposed) != 0)
 		{
 			return;
-		}
-		List<HidDevice> all;
-		try
-		{
-			all = [.. finder.Find()];
-		}
-		catch (Exception)
-		{
-			all = [];
 		}
 		HidDevice? bt = all.FirstOrDefault(d => d.Transport == Transport.Bluetooth) ?? (host.Device is { Transport: Transport.Bluetooth } h ? h : null);
 		bool changed = false;

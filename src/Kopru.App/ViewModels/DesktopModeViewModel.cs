@@ -61,10 +61,21 @@ public sealed partial class DesktopModeViewModel : ViewModelBase
 					row.Refresh();
 				}
 			}
+			else if (e.PropertyName == nameof(SettingsState.DesktopModeOn))
+			{
+				OnPropertyChanged(nameof(DesktopModeOn));
+			}
 		};
 	}
 
 	public SettingsState Settings { get; }
+
+	// The Mouse Mode switch on this tab (logged as "settings switch").
+	public bool DesktopModeOn
+	{
+		get => Settings.DesktopModeOn;
+		set => Settings.SetDesktopMode(value, "settings switch");
+	}
 
 	public string Title => Text.DesktopModeSection();
 	public string SwitchLabel => Text.DesktopModeSwitch();

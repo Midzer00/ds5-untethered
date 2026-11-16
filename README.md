@@ -4,6 +4,8 @@
 
 <p align="center">For DualSense — the game's own haptics and adaptive triggers over Bluetooth.</p>
 
+<p align="center">Play wirelessly on a Windows PC with the DualSense's haptic feedback and adaptive triggers.<br>Free and open source. No USB cable, no special dongle.</p>
+
 <p align="center">
   <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/github/v/release/Midzer00/ds5-untethered?label=release&color=2ea44f" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="License: GPL-3.0-or-later"></a>
@@ -19,7 +21,7 @@
 
 <p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a></p>
 
-<p align="center"><img src="docs/screens/overview-en.png" alt="DS5 Untethered overview page" width="820"></p>
+<p align="center"><img src="docs/screens/overview-en.png" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="820"></p>
 
 ## Disclaimer
 
@@ -77,6 +79,32 @@ to be installed for the app itself.
 - To uninstall: turn off "Start with Windows", exit the app from the tray icon, uninstall "DS5 Untethered" in Windows
   Settings → Apps (or delete the zip folder), and delete `%LOCALAPPDATA%\Untethered` if you want the settings gone.
   If nothing else uses them, uninstall "USBip" and "HidHide" too.
+
+### Questions
+
+#### Do DualSense haptics and adaptive triggers work over Bluetooth on PC?
+
+Not by themselves: games only send them to a controller connected with a cable. With DS5 Untethered running, games
+see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.
+
+#### Do I need a dongle or extra hardware?
+
+No special hardware. The Bluetooth already in your PC or an ordinary USB Bluetooth adapter is enough. The Setup page
+tests the adapter.
+
+#### Does it add input lag?
+
+In a 60 second test with one controller and one adapter, input was relayed at about 750 Hz with low added latency and
+no loss. The Overview page shows the delay live, so you can check your own setup.
+
+#### Which games does it work with?
+
+Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's
+Supported Games page.
+
+#### Is it free?
+
+Yes. It is free and open source under GPL-3.0, and there is no paid version.
 
 ### Status
 
@@ -197,6 +225,32 @@ istemez. Zip'i (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp
 - Kaldırma: "Windows ile Başlat"ı kapatın, saat yanındaki simgeden uygulamadan çıkın, Windows Ayarlar →
   Uygulamalar'dan "DS5 Untethered"ı kaldırın (zip kullandıysanız klasörü silin). Ayarların da silinmesini istiyorsanız
   `%LOCALAPPDATA%\Untethered` klasörünü silin. Başka bir program kullanmıyorsa "USBip" ve "HidHide"ı da kaldırın.
+
+### Sık sorulanlar
+
+#### DualSense'in haptiği ve adaptif tetikleri PC'de Bluetooth'la çalışır mı?
+
+Kendi başına çalışmaz, oyunlar bunları yalnızca kabloyla bağlı kumandaya yollar. DS5 Untethered açıkken oyun kabloyla
+takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
+
+#### Dongle ya da ek donanım gerekiyor mu?
+
+Özel bir donanım gerekmiyor. Bilgisayarın kendi Bluetooth'u ya da sıradan bir USB Bluetooth adaptörü yetiyor. Kurulum
+sayfası adaptörü test ediyor.
+
+#### Gecikme ekliyor mu?
+
+Tek kumanda ve tek adaptörle yapılan 60 saniyelik testte girdi yaklaşık 750 Hz'de, düşük ek gecikmeyle ve kayıpsız
+aktarıldı. Genel Bakış sayfası gecikmeyi canlı gösteriyor, kendi kurulumunuzda bakabilirsiniz.
+
+#### Hangi oyunlarda çalışır?
+
+DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki
+Desteklenen Oyunlar sayfasında listeleniyor.
+
+#### Ücretli mi?
+
+Hayır. Ücretsiz ve açık kaynak (GPL-3.0), ücretli sürümü yok.
 
 ### Ne durumda
 

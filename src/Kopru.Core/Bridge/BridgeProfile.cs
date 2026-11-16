@@ -16,14 +16,16 @@ public enum RumbleFeel
 
 // What the bridge does with the game's output. GameHapticsLevel and RumbleLevel: 1.0 = as sent. TriggerIntensity
 // 0..1 scales the game's trigger effects (TriggerEffects.Scale). LightFromGame false keeps the user's light.
-// FallbackTrigger: the effect put on both triggers while the game sets none (null = leave them).
+// FallbackTrigger: the effect put on a trigger the game has not set, until the game sends its first real trigger effect
+// (null = leave them). GameSession: a new value starts a new game session for that rule (GameModeController counts them).
 public sealed record BridgeProfile(
 	double GameHapticsLevel = HapticsConverter.DefaultLevel,
 	double RumbleLevel = ControllerBridge.DefaultRumbleLevel,
 	RumbleFeel Feel = RumbleFeel.Soft,
 	double TriggerIntensity = 1,
 	bool LightFromGame = true,
-	byte[]? FallbackTrigger = null)
+	byte[]? FallbackTrigger = null,
+	long GameSession = 0)
 {
 	public static BridgeProfile Default { get; } = new();
 
@@ -39,6 +41,35 @@ public readonly record struct GameSignals(bool Haptics, bool Triggers, bool Rumb
 	public bool IsNative => Haptics || Triggers;
 }
 
+// A strong sign that a program with the virtual pad open started using the controller as a game does
+// (ControllerBridge.GameUseStarted). Weak signs (a steady output stream, light bar writes, the audio interface opened) are
+// not among them: Steam and Windows produce those without a game.
+public enum GameUse
+{
+	// A trigger effect other than off.
+	TriggerEffect,
+	// Haptics audio above silence on channels 3-4.
+	Haptics,
+	// The rumble motors running.
+	Rumble
+}
+
+// A bridge's game use edge state (ControllerBridge.CaptureGameUse / SeedGameUse): trigger effect on, motors running, the
+// last haptics sound (Stopwatch timestamp), and whether the game sent a real trigger effect in this game session (then
+// the fallback trigger effect stays off; TriggerSession is the BridgeProfile.GameSession it was seen in).
+public readonly record struct GameUseState(bool Triggers, bool Rumble, long HapticsAt, bool TriggersSeen = false, long TriggerSession = 0);
+
+public static class GameUseNames
+{
+	// The name in log lines.
+	public static string LogName(this GameUse use) => use switch
+	{
+		GameUse.TriggerEffect => "trigger effect",
+		GameUse.Haptics => "haptics",
+		_ => "rumble"
+	};
+}
+
 // The bridge as GameModeController sees it (BridgeHost; tests use a fake).
 public interface IGameBridge
 {
@@ -46,8 +77,14 @@ public interface IGameBridge
 
 	GameSignals TakeGameSignals();
 
-	// The virtual controller type for the game in front (per-game choice); bridges without emulation ignore it.
+	// The virtual controller type games get (GameModeController decides; see GameModePadTypes); bridges without emulation
+	// ignore it.
 	void UsePad(Kopru.Core.Virtual.VirtualPadType type)
+	{
+	}
+
+	// The active game ended (exited or another took over): the bridge hands the light back to the user.
+	void GameEnded()
 	{
 	}
 }

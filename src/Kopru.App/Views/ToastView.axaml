@@ -31,21 +31,12 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
     </Style>
-    <!-- Action buttons: the design's buttons, smaller to fit the card -->
-    <Style Selector="Button.toastAction">
-      <Setter Property="Height" Value="26" />
-      <Setter Property="MinHeight" Value="26" />
-      <Setter Property="Padding" Value="11,0" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
-      <Setter Property="MinWidth" Value="44" />
-    </Style>
     <Style Selector="Border.card:pointerover">
       <Setter Property="Background" Value="{StaticResource ToastHoverBrush}" />
     </Style>
   </UserControl.Styles>
 
-  <!-- Every toast has the same size: header, then the controller beside a title, a one-line body and (questions only) buttons -->
+  <!-- Every toast has the same size: header, then the controller beside a title and a short body (at most two lines) -->
   <Border Classes="card" Name="Card" Cursor="Hand">
     <Grid RowDefinitions="Auto,*" Margin="14,10,10,12">
       <!-- Header: app mark and name, close -->
@@ -75,20 +66,9 @@
                          VerticalAlignment="Center" />
             </StackPanel>
           </Grid>
-          <TextBlock Name="BodyText" Text="{Binding Body}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="NoWrap" />
-          <!-- Buttons (questions only) -->
-          <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" Margin="0,7,0,0">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:ToastActionViewModel">
-                <Button Theme="{StaticResource PrimaryButton}" Classes="toastAction" Classes.quiet="{Binding !IsPrimary}" Command="{Binding Command}">
-                  <TextBlock Text="{Binding Label}" TextWrapping="NoWrap" />
-                </Button>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <!-- Short, one line for most; a hint such as "restart the game" may take a second line (the card keeps its size) -->
+          <TextBlock Name="BodyText" Text="{Binding Body}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2"
+                     TextTrimming="CharacterEllipsis" />
         </StackPanel>
       </Grid>
     </Grid>

@@ -17,8 +17,8 @@ public sealed partial class SettingsState
 	[ObservableProperty]
 	private bool _autoLowPower;
 
-	// What the controller gets: the settings with DualSense Mode's set, then Low Power on top (Low Power wins).
-	public ControllerSettings Effective(ControllerSettings settings) => DualSenseMode.Effective(settings, _modeOn, _modeChoices, LowPowerOn);
+	// What the controller gets: the settings with Low Power on top (it turns the light, speaker and microphone off).
+	public ControllerSettings Effective(ControllerSettings settings) => LowPower.Apply(settings, LowPowerOn);
 
 	partial void OnAutoLowPowerChanged(bool value)
 	{

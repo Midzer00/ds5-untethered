@@ -88,12 +88,12 @@ public partial class BridgeTests
 	}
 
 	[Fact]
-	public void TriggerStrength_NotAppliedInUnsupportedMode_FallbackAsBefore()
+	public void TriggerStrength_AlwaysApplies_FallbackOnlyUntilTheGamesFirstEffect()
 	{
-		// Unsupported mode runs at intensity 1 with the fallback effect: game effects (if any) pass unchanged.
-		BridgeProfile profile = Games.GameProfiles.For(Games.GameMode.Unsupported, new Games.SupportedProfile(TriggerIntensity: 0.5),
-			new Games.UnsupportedProfile(Trigger: Games.FallbackTrigger.Feedback, FallbackStrength: 0.5));
-		Assert.Equal(1, profile.TriggerIntensity);
+		// One profile: the game's effects are scaled, and the fallback stays only until the game sends an effect.
+		BridgeProfile profile = Games.GameProfiles.For(new Games.GameProfile(TriggerIntensity: 0.5, Trigger: Games.FallbackTrigger.Feedback,
+			FallbackStrength: 0.5));
+		Assert.Equal(0.5, profile.TriggerIntensity);
 
 		FakeLink link = new();
 		using BluetoothSession session = new(link);
@@ -103,6 +103,7 @@ public partial class BridgeTests
 		AssertSent(link, TriggerEffects.Feedback(2, 4), TriggerEffects.Feedback(2, 4));
 		byte[] weapon = TriggerEffects.Weapon(2, 6, 8);
 		SendOutput(pad, b => OutputBlock.SetTriggers(b, weapon, TriggerEffects.Off()));
-		AssertSent(link, weapon, TriggerEffects.Feedback(2, 4));
+		AssertSent(link, TriggerEffects.Weapon(2, 6, 4), TriggerEffects.Off());
+		Assert.True(bridge.TriggersSeen);
 	}
 }

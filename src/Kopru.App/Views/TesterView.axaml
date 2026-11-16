@@ -208,8 +208,8 @@
       <!-- The controller: pressed buttons, stick clicks and touchpad fingers light up on it; the picture grows with the stage -->
       <Border Classes="stage" Padding="10">
         <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
-          <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
-                           PlayerLeds="{Binding Settings.PlayerLeds}" />
+          <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+                           PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" />
           <!-- Sticks -1..1 (Y down) and triggers 0..100 %, the raw input as the cards around it show it -->
           <c:ControllerInputOverlay Pressed="{Binding Pressed}" Touch1="{Binding Touch1}" Touch2="{Binding Touch2}" IsEdge="{Binding IsEdge}"
                                     LeftStickX="{Binding LeftStick.RawX}" LeftStickY="{Binding LeftStick.RawY}"

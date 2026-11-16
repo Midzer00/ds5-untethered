@@ -51,6 +51,14 @@ public sealed class ToastHost
 		{
 			compact = false;
 		}
+		// Two notices about the same moment: the new toast takes the place of the one it replaces.
+		if (notification.Replaces is { } replaced)
+		{
+			foreach (ToastEntry old in _entries.Where(e => e.Type == replaced).ToList())
+			{
+				Close(old);
+			}
+		}
 		while (_entries.Count >= MaxVisible)
 		{
 			Close(_entries[0]);
@@ -79,14 +87,13 @@ public sealed class ToastHost
 			new DoubleTransition { Property = Visual.OpacityProperty, Duration = AnimationTime, Easing = new CubicEaseOut() },
 			new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = AnimationTime, Easing = new CubicEaseOut() },
 		];
-		var entry = new ToastEntry(window, view, notification.Duration);
+		var entry = new ToastEntry(window, view, notification.Duration) { Type = notification.Type };
 		view.Activated += (_, _) =>
 		{
 			Close(entry);
 			_open(notification.Page);
 		};
 		view.Dismissed += (_, _) => Close(entry);
-		model.ActionInvoked += () => Close(entry);
 		view.PointerEntered += (_, _) => entry.Pause();
 		view.PointerExited += (_, _) => entry.Resume();
 		entry.Expired += () => Close(entry);
@@ -166,6 +173,7 @@ public sealed class ToastHost
 
 		public Window Window { get; } = window;
 		public ToastView View { get; } = view;
+		public NotificationType Type { get; init; }
 		public double Width { get; set; }
 		public double Height { get; set; }
 		public bool Paused { get; private set; }

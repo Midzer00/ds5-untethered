@@ -205,8 +205,6 @@ public sealed class GameCatalogUpdaterTests : IDisposable
 		processes.Show("newgame1.exe");
 		var watcher = new GameWatcher(old, processes);
 		var games = new GameModeController(old, watcher, new RecordingBridge());
-		var asked = new List<ForegroundGame>();
-		games.AskRequested += asked.Add;
 		games.Tick();
 		Assert.Null(games.State.Name);
 
@@ -221,7 +219,6 @@ public sealed class GameCatalogUpdaterTests : IDisposable
 		Assert.Contains(games.KnownGames(), g => g.Name == "NewGame 21");
 		games.Tick();
 		Assert.Equal("NewGame 1", games.State.Name);
-		Assert.Equal("NewGame 1", Assert.Single(asked).Name);
 	}
 
 	private sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler

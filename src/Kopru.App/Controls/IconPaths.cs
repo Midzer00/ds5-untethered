@@ -28,6 +28,8 @@ public static class IconPaths
 	public static Geometry Pencil { get; } = Geometry.Parse("M4.5,19.5 L5.3,15.7 L15.6,5.4 C16.4,4.6 17.8,4.6 18.6,5.4 C19.4,6.2 19.4,7.6 18.6,8.4 L8.3,18.7 Z M13.8,7.2 L16.8,10.2");
 	// Command-key loops: button-combo shortcuts.
 	public static Geometry Shortcut { get; } = Geometry.Parse("M9,9 H15 V15 H9 Z M9,9 H6.5 A2.5,2.5 0 1 1 9,6.5 Z M15,9 V6.5 A2.5,2.5 0 1 1 17.5,9 Z M15,15 H17.5 A2.5,2.5 0 1 1 15,17.5 Z M9,15 V17.5 A2.5,2.5 0 1 1 6.5,15 Z");
+	// An arrow pointing back: back to the game.
+	public static Geometry Back { get; } = Geometry.Parse("M10,5.5 L3.5,12 L10,18.5 M4,12 H20.5");
 	public static Geometry ChevronRight { get; } = Geometry.Parse("M9.5,6 L15.5,12 L9.5,18");
 	public static Geometry Battery { get; } = Geometry.Parse("M4,7.5 H17 C18.1,7.5 19,8.4 19,9.5 V14.5 C19,15.6 18.1,16.5 17,16.5 H4 C2.9,16.5 2,15.6 2,14.5 V9.5 C2,8.4 2.9,7.5 4,7.5 Z M22,10.5 V13.5 M5.5,10.5 V13.5 M9,10.5 V13.5");
 }

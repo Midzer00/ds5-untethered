@@ -9,7 +9,7 @@ namespace Kopru.Core.Bridge;
 // Joins a Bluetooth DualSense to the virtual wired one: the controller's input goes to games unchanged, the games'
 // output (triggers, lights) goes to the controller, their haptics audio becomes the controller's haptics stream, and
 // their classic rumble is played as haptics too (rumble bits over Bluetooth would turn audio haptics off).
-public sealed class ControllerBridge : IDisposable
+public sealed partial class ControllerBridge : IDisposable
 {
 	public const double DefaultRumbleLevel = 1.0;
 
@@ -20,7 +20,8 @@ public sealed class ControllerBridge : IDisposable
 	// Haptics audio quieter than this (16-bit sample) counts as silence for native support detection.
 	public const int SilenceThreshold = 256;
 
-	// While the game streams audio, rumble is mixed into it; otherwise a pump keeps this many frames buffered.
+	// While the game streams audio, rumble is mixed into it; otherwise the haptics stream tops it up to this many frames
+	// before each report (BluetoothSession.HapticsRefill).
 	public const int RumbleAheadFrames = 64;
 
 	// The game's speaker channels (1-2) silent for longer than this: speaker audio stops, so the controller stream goes
@@ -44,7 +45,13 @@ public sealed class ControllerBridge : IDisposable
 
 	private readonly byte[] lastBlock = new byte[OutputBlock.Size];
 
-	private readonly Thread rumblePump;
+	// Converted frames of one audio packet (guarded by audioGate; grown when a packet is larger than any before).
+	private sbyte[] frameLeft = new sbyte[Math.Max(RumbleAheadFrames, HapticsConverter.MaxFrames(8192))];
+	private sbyte[] frameRight = new sbyte[Math.Max(RumbleAheadFrames, HapticsConverter.MaxFrames(8192))];
+
+	private readonly Action refill;
+
+	private long rumbleRefills;
 
 	private volatile bool disposed;
 
@@ -114,9 +121,13 @@ public sealed class ControllerBridge : IDisposable
 
 	private long lastGameOutput = long.MinValue / 2;
 
+	// The clock of the game output timing (GameOutputStreaming, the game's hold on the light). Tests replace it.
+	public TimeProvider Time { get; init; } = TimeProvider.System;
+
+	private TimeSpan SinceGameOutput => Time.GetElapsedTime(Interlocked.Read(ref lastGameOutput));
+
 	// The game sent output (relayed or a repeat) within GameStreamingWindow.
-	public bool GameOutputStreaming =>
-		Stopwatch.GetElapsedTime(Interlocked.Read(ref lastGameOutput)) < GameStreamingWindow;
+	public bool GameOutputStreaming => SinceGameOutput < GameStreamingWindow;
 
 	// How the app's mute LED reaches the controller right now (for the "mute led:" log line).
 	public string MuteLedDelivery => GameOutputStreaming ? "sent directly and merged into every game report (game streaming output)"
@@ -205,9 +216,12 @@ public sealed class ControllerBridge : IDisposable
 		session.InputBodyReceived += OnInput;
 		pad.OutputReceived += OnOutput;
 		pad.AudioReceived += OnAudio;
-		rumblePump = new Thread(PumpRumble) { Name = "Rumble as haptics", IsBackground = true };
-		rumblePump.Start();
+		refill = RefillRumble;
+		session.HapticsRefill = refill;
 	}
+
+	// Times rumble was topped up while the game sent no audio (diagnostics, tests).
+	public long RumbleRefills => Interlocked.Read(ref rumbleRefills);
 
 	public double GameHapticsLevel
 	{
@@ -215,17 +229,49 @@ public sealed class ControllerBridge : IDisposable
 		set => converter.Level = value;
 	}
 
-	public double RumbleLevel { get; set; } = DefaultRumbleLevel;
+	// Changing the level or feel while a motor runs starts the stream again: it may have gone idle while the rumble was
+	// silent (level 0), and identical game reports (motors unchanged) are dropped, so nothing else would restart it.
+	public double RumbleLevel
+	{
+		get => Volatile.Read(ref rumbleLevel);
+		set
+		{
+			Volatile.Write(ref rumbleLevel, value);
+			KickRumble();
+		}
+	}
 
-	public RumbleFeel RumbleFeel { get; set; } = RumbleFeel.Soft;
+	private double rumbleLevel = DefaultRumbleLevel;
+
+	public RumbleFeel RumbleFeel
+	{
+		get => rumbleFeel;
+		set
+		{
+			rumbleFeel = value;
+			KickRumble();
+		}
+	}
+
+	private volatile RumbleFeel rumbleFeel = RumbleFeel.Soft;
 
 	// Lets the game's light colour through; false keeps the user's light.
 	public bool LightFromGame { get; set; } = true;
 
+	// No game output for this long: the game's hold on the light ends and the user's light comes back (a game that keeps
+	// streaming its output keeps the light; one that writes again with the light bar takes it back at once).
+	public static readonly TimeSpan DefaultGameLightIdle = TimeSpan.FromSeconds(3);
+
+	public TimeSpan GameLightIdle { get; set; } = DefaultGameLightIdle;
+
+	// Set by a game report with the light bar flag (or carried over from the previous bridge, SeedGameLight); cleared by
+	// the end of the game's output session (EndGameSession: no game output for GameLightIdle, or the active game ended).
 	private volatile bool gameSetLight;
 
-	// The game set the light bar since the last profile change and may: the user's light effect stays out of its way.
-	public bool GameControlsLight => LightFromGame && gameSetLight;
+	private bool GameLightHeld => gameSetLight && SinceGameOutput < GameLightIdle;
+
+	// The game set the light bar, may, and still sends output: the user's light effect stays out of its way.
+	public bool GameControlsLight => LightFromGame && GameLightHeld;
 
 	// 0..1: scales the game's trigger effects (TriggerEffects.Scale).
 	public double TriggerIntensity
@@ -234,21 +280,45 @@ public sealed class ControllerBridge : IDisposable
 		set => Volatile.Write(ref triggerIntensity, Math.Clamp(value, 0, 1));
 	}
 
-	// Put on both triggers while the game sets no trigger effect; null leaves them alone.
+	// Put on a trigger the game has not set (or turned off), until the game sends its first real trigger effect in the game
+	// session (TriggersSeen): a native game that turns its triggers off later keeps them off. Null leaves them alone.
 	public byte[]? FallbackTrigger
 	{
 		get => Volatile.Read(ref fallbackTrigger);
 		set => Volatile.Write(ref fallbackTrigger, value?.ToArray());
 	}
 
+	// The game sent a trigger effect other than off in this game session (the fallback effect stays off from then on).
+	public bool TriggersSeen => triggersSeen;
+
+	// The game session the bridge runs in (BridgeProfile.GameSession); a new one forgets TriggersSeen.
+	public long GameSession
+	{
+		get => Interlocked.Read(ref triggerSession);
+		set
+		{
+			if (Interlocked.Exchange(ref triggerSession, value) != value)
+			{
+				triggersSeen = false;
+			}
+		}
+	}
+
+	private volatile bool triggersSeen;
+	private long triggerSession;
+
 	// Applies a profile; the triggers and light change at once (the game's last output is sent again with it).
 	public void ApplyProfile(BridgeProfile profile)
 	{
+		GameSession = profile.GameSession;
 		GameHapticsLevel = profile.GameHapticsLevel;
 		RumbleLevel = profile.RumbleLevel;
 		RumbleFeel = profile.Feel;
 		LightFromGame = profile.LightFromGame;
-		gameSetLight = false;
+		// The game's hold on the light survives a profile change (a strength slider, the mode switch): while the new
+		// profile lets the game's light through and the hold has not run out, its last light is shown again. A profile
+		// that keeps the user's light makes GameControlsLight false (the host then has the user's light sent).
+		RestoreGameLight();
 		TriggerIntensity = profile.TriggerIntensity;
 		FallbackTrigger = profile.FallbackTrigger;
 		(byte[] right, byte[] left) = ControllerTriggers();
@@ -284,6 +354,78 @@ public sealed class ControllerBridge : IDisposable
 
 	// Game trigger effects in a mode TriggerEffects.Scale does not know (passed through unscaled), for diagnostics.
 	public long UnknownTriggerEffects => Interlocked.Read(ref unknownTriggerEffects);
+
+	// Haptics audio silent for longer than this before a sound: the sound counts as the game starting to use haptics again.
+	public static readonly TimeSpan GameHapticsQuietGap = TimeSpan.FromSeconds(2);
+
+	// The game started using the controller (GameUse): raised once when a strong sign appears after its absence (a trigger
+	// effect after none or off, the motors starting after they stood still, haptics sound after GameHapticsQuietGap of
+	// silence), not for every report while it lasts. Only the game's side of the virtual pad counts (its output reports and
+	// audio); the app's own tests write to the controller session directly and never pass here. Raised on the thread that
+	// got the game's report or audio: handlers must be short.
+	public event Action<GameUse>? GameUseStarted;
+
+	// No GameUseStarted for this long after the virtual pad was plugged in (BridgeHost: a new connection or a pad swap): a
+	// game still running sends its held state again to the new pad, which is not a game starting to use the controller.
+	public static readonly TimeSpan GameUseSettle = TimeSpan.FromSeconds(5);
+
+	// The game's trigger effects were not all off at its last output (written under lastBlock), its motors were running at
+	// its last rumble output (written under rumbleGate), its last haptics sound, and until when GameUseStarted stays quiet.
+	private volatile bool gameTriggersOn, gameRumbleOn;
+	private long lastGameHapticsSound = long.MinValue / 2;
+	private long gameUseQuietUntil = long.MinValue;
+
+	// What the game is doing with the controller right now (the level behind GameUseStarted): a trigger effect not off,
+	// the motors running, or haptics sound within GameHapticsQuietGap. Null: none of them. Lock-free.
+	public GameUse? GameUseNow =>
+		gameTriggersOn ? GameUse.TriggerEffect
+		: gameRumbleOn ? GameUse.Rumble
+		: Stopwatch.GetElapsedTime(Interlocked.Read(ref lastGameHapticsSound)) <= GameHapticsQuietGap ? GameUse.Haptics
+		: null;
+
+	// The edge state (what counts as already on), to carry over to the next bridge of the same controller or slot.
+	public GameUseState CaptureGameUse() => new(gameTriggersOn, gameRumbleOn, Interlocked.Read(ref lastGameHapticsSound), triggersSeen,
+		Interlocked.Read(ref triggerSession));
+
+	// Takes over the edge state of the previous bridge, so a game still holding a trigger effect, its motors or its haptics
+	// sound does not count as starting again.
+	public void SeedGameUse(GameUseState state)
+	{
+		lock (lastBlock)
+		{
+			gameTriggersOn = state.Triggers;
+			// The same game session goes on (a pad swap or a reconnect): a game that sent its trigger effects keeps them.
+			if (state.TriggersSeen && state.TriggerSession == Interlocked.Read(ref triggerSession))
+			{
+				triggersSeen = true;
+			}
+		}
+		lock (rumbleGate)
+		{
+			gameRumbleOn = state.Rumble;
+		}
+		Interlocked.Exchange(ref lastGameHapticsSound, state.HapticsAt);
+	}
+
+	// GameUseStarted stays quiet for `length` from now (the edge state still follows the game).
+	public void QuietGameUse(TimeSpan length) =>
+		Interlocked.Exchange(ref gameUseQuietUntil, Stopwatch.GetTimestamp() + (long)(length.TotalSeconds * Stopwatch.Frequency));
+
+	private void RaiseGameUse(GameUse use)
+	{
+		if (Stopwatch.GetTimestamp() < Interlocked.Read(ref gameUseQuietUntil))
+		{
+			return;
+		}
+		try
+		{
+			GameUseStarted?.Invoke(use);
+		}
+		catch (Exception)
+		{
+			// A handler failing never breaks the bridge.
+		}
+	}
 
 	// What the game sent since the last call (native support detection).
 	public GameSignals TakeGameSignals() => new(Interlocked.Exchange(ref sawHaptics, 0) != 0,
@@ -353,7 +495,10 @@ public sealed class ControllerBridge : IDisposable
 		session.InputBodyReceived -= OnInput;
 		pad.OutputReceived -= OnOutput;
 		pad.AudioReceived -= OnAudio;
-		rumblePump.Join(500);
+		if (session.HapticsRefill == refill)
+		{
+			session.HapticsRefill = null;
+		}
 	}
 
 	private void OnInput(ReadOnlySpan<byte> body)
@@ -370,6 +515,7 @@ public sealed class ControllerBridge : IDisposable
 			transform.Apply(input);
 			GyroMouse?.Apply(transform.Gyro, input);
 		}
+		ApplyModThresholds(input);
 		pad.PushInput(report);
 		Interlocked.Increment(ref inputs);
 	}
@@ -381,50 +527,93 @@ public sealed class ControllerBridge : IDisposable
 			return;
 		}
 		ReadOnlySpan<byte> block = report.AsSpan(1, OutputBlock.Size);
+		// A game taking the light (back): its report goes out even when it repeats the last one, since the user's light
+		// may have been written meanwhile (the hold ran out or the game ended).
+		bool takesLight = false;
 		if ((block[OutputBlock.Flag1] & OutputBlock.LightbarControl) != 0)
 		{
+			takesLight = !GameLightHeld;
 			gameSetLight = true;
 		}
-		Interlocked.Exchange(ref lastGameOutput, Stopwatch.GetTimestamp());
+		RememberGameLight(block);
+		Interlocked.Exchange(ref lastGameOutput, Time.GetTimestamp());
+		CountGameLight(block);
 		byte[] sent;
+		bool triggersStarted = false;
+		bool firstEffect = false;
 		lock (lastBlock)
 		{
 			CountGameMuteLed(block);
 			// Games resend the same state every frame (repeats still go out for a few reports after a mute LED change).
-			if (hasBlock && !resendNext && muteLedResends == 0 && block.SequenceEqual(lastBlock))
+			if (hasBlock && !resendNext && !takesLight && muteLedResends == 0 && block.SequenceEqual(lastBlock))
 			{
-				return;
+				sent = [];
 			}
-			resendNext = false;
-			if (muteLedResends > 0)
+			else
 			{
-				muteLedResends--;
+				resendNext = false;
+				if (muteLedResends > 0)
+				{
+					muteLedResends--;
+				}
+				block.CopyTo(lastBlock);
+				hasBlock = true;
+				sent = block.ToArray();
+				if ((sent[OutputBlock.Flag0] & OutputBlock.RightTriggerEffect) != 0)
+				{
+					gameRight = sent.AsSpan(OutputBlock.RightTrigger, TriggerEffects.Size).ToArray();
+				}
+				if ((sent[OutputBlock.Flag0] & OutputBlock.LeftTriggerEffect) != 0)
+				{
+					gameLeft = sent.AsSpan(OutputBlock.LeftTrigger, TriggerEffects.Size).ToArray();
+				}
+				bool triggersOn = (gameRight != null && !TriggerEffects.IsOff(gameRight)) || (gameLeft != null && !TriggerEffects.IsOff(gameLeft));
+				triggersStarted = triggersOn && !gameTriggersOn;
+				gameTriggersOn = triggersOn;
+				if (triggersOn && !triggersSeen)
+				{
+					triggersSeen = true;
+					firstEffect = true;
+				}
 			}
-			block.CopyTo(lastBlock);
-			hasBlock = true;
-			sent = block.ToArray();
-			if ((sent[OutputBlock.Flag0] & OutputBlock.RightTriggerEffect) != 0)
-			{
-				gameRight = sent.AsSpan(OutputBlock.RightTrigger, TriggerEffects.Size).ToArray();
-			}
-			if ((sent[OutputBlock.Flag0] & OutputBlock.LeftTriggerEffect) != 0)
-			{
-				gameLeft = sent.AsSpan(OutputBlock.LeftTrigger, TriggerEffects.Size).ToArray();
-			}
+		}
+		if (sent.Length == 0)
+		{
+			// Nothing new goes out; a light change held back by the log rate limit is written now.
+			FlushGameLightLog();
+			return;
+		}
+		if (triggersStarted)
+		{
+			RaiseGameUse(GameUse.TriggerEffect);
 		}
 		if ((sent[OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect)) != 0)
 		{
+			bool motorsStarted;
 			lock (rumbleGate)
 			{
+				bool running = sent[OutputBlock.MotorLeft] != 0 || sent[OutputBlock.MotorRight] != 0;
+				motorsStarted = running && !gameRumbleOn;
+				gameRumbleOn = running;
 				leftMotor = sent[OutputBlock.MotorLeft];
 				rightMotor = sent[OutputBlock.MotorRight];
+			}
+			if (motorsStarted)
+			{
+				RaiseGameUse(GameUse.Rumble);
 			}
 			if (sent[OutputBlock.MotorLeft] != 0 || sent[OutputBlock.MotorRight] != 0)
 			{
 				Interlocked.Exchange(ref sawRumble, 1);
+				KickRumble();
 			}
 		}
 		ApplyTriggers(sent, true);
+		if (firstEffect && FallbackTrigger != null)
+		{
+			// The fallback effect may still sit on the trigger this report leaves alone: off with it.
+			ClearUnsetTriggers(sent);
+		}
 		if (!LightFromGame)
 		{
 			sent[OutputBlock.Flag1] &= unchecked((byte)~(OutputBlock.LightbarControl | OutputBlock.PlayerLedControl | OutputBlock.MuteLedControl
@@ -436,6 +625,7 @@ public sealed class ControllerBridge : IDisposable
 		sent[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.ImprovedRumble);
 		bool setupPassed = FilterLightbarSetup(sent);
 		int carried = NoAppMuteLed;
+		byte outFlag1 = 0;
 		session.UpdateOutput(b =>
 		{
 			sent.CopyTo(b, 0);
@@ -444,7 +634,16 @@ public sealed class ControllerBridge : IDisposable
 			// Read under the session's output lock: a mute LED change (BridgeHost.SyncMuteLed sets AppMuteLed, then writes
 			// through the same lock) can never be overtaken by a game report built with the old value.
 			carried = ApplyAppMuteLed(b);
+			// Read before the mod's light: only the game's own light counts as a game light write.
+			outFlag1 = b[OutputBlock.Flag1];
+			// A mod's light (DSX mod support) over the game's; the app's mute LED still wins over the mod's.
+			if (ModOutput != null)
+			{
+				OverlayModLight(b);
+				ApplyAppMuteLed(b);
+			}
 		});
+		NoteForwardedLight(block, sent, outFlag1);
 		if (setupPassed)
 		{
 			// The game's (new) light bar setup went out: the mute LED again right after it, without the command.
@@ -533,7 +732,8 @@ public sealed class ControllerBridge : IDisposable
 		Diagnostics.AppLog.Write($"mute led{LogSlot}: {MuteLedName(carried)} carried by the first game report after the change (+{Stopwatch.GetElapsedTime(changedAt).TotalMilliseconds:F0} ms)");
 	}
 
-	// Scales the game's trigger effects, or puts the fallback effect on when the game sets none. fromGame: a new game
+	// Scales the game's trigger effects, or puts the fallback effect on when the game sets none (only until the game sent
+	// its first real trigger effect in the game session: TriggersSeen). fromGame: a new game
 	// report (counts the native signal and unknown modes), not a re-apply of the last one.
 	private void ApplyTriggers(byte[] block, bool fromGame)
 	{
@@ -563,7 +763,7 @@ public sealed class ControllerBridge : IDisposable
 			TriggerEffects.Scale(left, k).CopyTo(left);
 		}
 		byte[]? fallback = FallbackTrigger;
-		if (fallback != null)
+		if (fallback != null && !triggersSeen)
 		{
 			if (!rightSet || TriggerEffects.IsOff(right))
 			{
@@ -575,43 +775,86 @@ public sealed class ControllerBridge : IDisposable
 			}
 			block[OutputBlock.Flag0] |= OutputBlock.RightTriggerEffect | OutputBlock.LeftTriggerEffect;
 		}
+		ApplyModTriggers(block, fromGame, rightSet, leftSet, k);
 	}
 
-	private static bool HasSound(ReadOnlySpan<byte> audio)
+	// Turns off each trigger the block does not set (with its valid bit), so nothing left from the fallback effect stays on.
+	private static void ClearUnsetTriggers(byte[] block)
 	{
-		for (int i = 4; i + 3 < audio.Length; i += HapticsConverter.Channels * 2)
+		if ((block[OutputBlock.Flag0] & OutputBlock.RightTriggerEffect) == 0)
 		{
-			if (Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[i..])) > SilenceThreshold
-				|| Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[(i + 2)..])) > SilenceThreshold)
+			TriggerEffects.Off().CopyTo(block, OutputBlock.RightTrigger);
+			block[OutputBlock.Flag0] |= OutputBlock.RightTriggerEffect;
+		}
+		if ((block[OutputBlock.Flag0] & OutputBlock.LeftTriggerEffect) == 0)
+		{
+			TriggerEffects.Off().CopyTo(block, OutputBlock.LeftTrigger);
+			block[OutputBlock.Flag0] |= OutputBlock.LeftTriggerEffect;
+		}
+	}
+
+	// One pass over a packet: sound on the haptics channels (3-4, above SilenceThreshold; only looked for when wanted)
+	// and on the speaker channels (1-2, above SpeakerSilenceThreshold). Stops as soon as both answers are known.
+	internal static (bool Haptics, bool Speaker) ScanSound(ReadOnlySpan<byte> audio, bool wantHaptics)
+	{
+		bool haptics = false, speaker = false;
+		for (int i = 0; i + HapticsConverter.Channels * 2 <= audio.Length; i += HapticsConverter.Channels * 2)
+		{
+			if (!speaker && (Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[i..])) > SpeakerSilenceThreshold
+				|| Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[(i + 2)..])) > SpeakerSilenceThreshold))
 			{
-				return true;
+				speaker = true;
+			}
+			if (wantHaptics && !haptics && (Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[(i + 4)..])) > SilenceThreshold
+				|| Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[(i + 6)..])) > SilenceThreshold))
+			{
+				haptics = true;
+			}
+			if (speaker && (haptics || !wantHaptics))
+			{
+				break;
 			}
 		}
-		return false;
+		return (haptics, speaker);
 	}
 
 	private void OnAudio(ReadOnlyMemory<byte> audio)
 	{
-		Interlocked.Add(ref audioBytes, audio.Length);
-		if (Volatile.Read(ref sawHaptics) == 0 && HasSound(audio.Span))
+		ReadOnlySpan<byte> span = audio.Span;
+		Interlocked.Add(ref audioBytes, span.Length);
+		(bool hapticsSound, bool speakerSound) = ScanSound(span, true);
+		if (hapticsSound)
 		{
 			Interlocked.Exchange(ref sawHaptics, 1);
+			// Measured on the game's own channels 3-4 (above SilenceThreshold), not on the session's haptics mixer, which
+			// also carries the app's test tones and the rumble played as haptics.
+			long now = Stopwatch.GetTimestamp();
+			long before = Interlocked.Exchange(ref lastGameHapticsSound, now);
+			if (Stopwatch.GetElapsedTime(before, now) > GameHapticsQuietGap)
+			{
+				RaiseGameUse(GameUse.Haptics);
+			}
 		}
 		lock (audioGate)
 		{
 			Interlocked.Exchange(ref lastAudio, Stopwatch.GetTimestamp());
-			converter.Convert(audio.Span, (l, r) =>
+			int most = HapticsConverter.MaxFrames(span.Length);
+			if (frameLeft.Length < most)
 			{
-				(sbyte rl, sbyte rr) = NextRumble();
-				session.Haptics.Push(Add(l, rl), Add(r, rr));
-			});
+				frameLeft = new sbyte[most];
+				frameRight = new sbyte[most];
+			}
+			int frames = converter.Convert(span, frameLeft, frameRight);
+			MixOverlay(frameLeft.AsSpan(0, frames), frameRight.AsSpan(0, frames));
+			MixRumble(frameLeft.AsSpan(0, frames), frameRight.AsSpan(0, frames));
+			session.Haptics.Push(frameLeft.AsSpan(0, frames), frameRight.AsSpan(0, frames));
 		}
-		session.WakeHaptics();
-		bool speakerSound = HasSpeakerSound(audio.Span);
-		TrackSpeakerChannels(speakerSound, audio.Length / (HapticsConverter.Channels * 2));
+		// Every packet, silent or not, keeps the stream running (it stops only once the game's audio stops altogether).
+		session.FeedHaptics();
+		TrackSpeakerChannels(speakerSound, span.Length / (HapticsConverter.Channels * 2));
 		if (speakerEnabled)
 		{
-			FeedSpeaker(audio.Span, speakerSound);
+			FeedSpeaker(span, speakerSound);
 		}
 	}
 
@@ -695,46 +938,63 @@ public sealed class ControllerBridge : IDisposable
 		Interlocked.Add(ref speakerBytes, audio.Length);
 	}
 
-	private static bool HasSpeakerSound(ReadOnlySpan<byte> audio)
+	// Starts the stream for a running motor (a no-op while it already runs): it tops the rumble up itself while the game
+	// sends no audio (and mixes it into the game's audio while it does), and stops after its silent tail once the motors
+	// are off or the rumble is silent.
+	private void KickRumble()
 	{
-		for (int i = 0; i + 3 < audio.Length; i += HapticsConverter.Channels * 2)
+		if (disposed || Motors == (0, 0) || RumbleLevel <= 0)
 		{
-			if (Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[i..])) > SpeakerSilenceThreshold
-				|| Math.Abs((int)System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(audio[(i + 2)..])) > SpeakerSilenceThreshold)
-			{
-				return true;
-			}
+			return;
 		}
-		return false;
+		RefillRumble();
+		session.StartHaptics("rumble");
 	}
 
-	private void PumpRumble()
+	// On the haptics thread before each report: while the game sends no audio and no audio haptics arrive (for AudioIdleTicks)
+	// and a motor runs, keeps
+	// RumbleAheadFrames of rumble buffered. Nothing to do (and nothing allocated) otherwise.
+	private void RefillRumble()
 	{
-		while (!disposed)
+		if (disposed || Stopwatch.GetTimestamp() - Interlocked.Read(ref lastAudio) <= AudioIdleTicks || AudioHapticsFlowing || Motors == (0, 0))
 		{
-			bool audioIdle = Stopwatch.GetTimestamp() - Interlocked.Read(ref lastAudio) > AudioIdleTicks;
-			if (audioIdle && Motors != (0, 0))
-			{
-				lock (audioGate)
-				{
-					while (session.Haptics.Buffered < RumbleAheadFrames)
-					{
-						(sbyte l, sbyte r) = NextRumble();
-						session.Haptics.Push(l, r);
-					}
-				}
-				session.WakeHaptics();
-			}
-			Thread.Sleep(5);
+			return;
 		}
+		lock (audioGate)
+		{
+			// Only the idle cushion of silence buffered: drop it, so the rumble starts at once instead of behind ~21 ms.
+			if (session.Haptics.Audible == 0)
+			{
+				session.Haptics.TrimSilence(0);
+			}
+			int missing = RumbleAheadFrames - session.Haptics.Buffered;
+			if (missing <= 0)
+			{
+				return;
+			}
+			Span<sbyte> left = frameLeft.AsSpan(0, Math.Min(missing, frameLeft.Length));
+			Span<sbyte> right = frameRight.AsSpan(0, left.Length);
+			left.Clear();
+			right.Clear();
+			MixRumble(left, right);
+			session.Haptics.Push(left, right);
+		}
+		Interlocked.Increment(ref rumbleRefills);
 	}
 
-	// One 3 kHz frame of the rumble tones; silence (and the tones restart) while the motors are off.
-	private (sbyte Left, sbyte Right) NextRumble()
+	// Adds the rumble tones to a block of frames (one lock for the block).
+	private void MixRumble(Span<sbyte> left, Span<sbyte> right)
 	{
+		double level = RumbleLevel;
+		RumbleFeel feel = RumbleFeel;
 		lock (rumbleGate)
 		{
-			return synth.Next(leftMotor, rightMotor, RumbleLevel, RumbleFeel);
+			for (int i = 0; i < left.Length; i++)
+			{
+				(sbyte l, sbyte r) = synth.Next(leftMotor, rightMotor, level, feel);
+				left[i] = Add(left[i], l);
+				right[i] = Add(right[i], r);
+			}
 		}
 	}
 

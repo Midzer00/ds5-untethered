@@ -29,6 +29,8 @@ public partial class App : Application
 	[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 	private void StartDesktop(IClassicDesktopStyleApplicationLifetime desktop)
 	{
+		// One line of background work counts every ten minutes and one at exit (see BackgroundWork).
+		Kopru.Core.Diagnostics.BackgroundWork.StartReporting();
 		HidHideHidingService hiding = HidHideHidingService.CreateDefault();
 		// Undo HidHide changes a crashed run left behind, then allow our exe early (a controller hidden by another
 		// tool stays visible to us). Undone in the reverse order on exit (RealControllerService.ShutdownAsync).
@@ -110,9 +112,20 @@ public partial class App : Application
 		var shell = new DesktopShell(desktop, window, vm, presenter);
 		// After "Restart The Computer" on the setup page: the normal exit (settings saved, bridge and hiding undone).
 		vm.ExitApp = shell.Exit;
+		// "Back To Game" and Mouse Mode off with PS + Options over a game: hide the window, bring the game back.
+		vm.BackToGame.Return = (reason, game) =>
+		{
+			if (!shell.IsExiting)
+			{
+				presenter.ReturnTo(reason, game);
+			}
+		};
 		// For the PS tap ("PS: Open The App"), read on the input thread: the real foreground window, not the Activated flag.
 		service.IsAppInFront = () => presenter.IsInFront;
 		service.FullScreenForeground = FullScreenDetector.ForegroundFullScreenApp;
+		// Mouse Mode's game check (at the game tick, only while Mouse Mode is on): the foreground window's exe and path.
+		var foregroundProcess = new Kopru.Core.Games.SystemProcessSource();
+		service.ForegroundProcess = foregroundProcess.Foreground;
 		// A second start (Start menu, the exe again) shows this copy's window on its current page; that copy then exits.
 		Program.Instance?.Listen(() => ShowFromOtherStart(shell));
 		var toasts = new ToastHost(page => shell.ShowMainWindow(page), FullScreenDetector.IsForegroundFullScreen);
@@ -137,6 +150,7 @@ public partial class App : Application
 			{
 				// Exiting anyway; the next start recovers the hiding state.
 			}
+			Kopru.Core.Diagnostics.BackgroundWork.StopReporting();
 		}
 		// The app lives in the tray: closing the window hides it unless "keep running in tray" is off.
 		desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -192,11 +206,10 @@ public partial class App : Application
 		NativeMenuItem bridge = new() { Command = tray.ToggleBridgeCommand };
 		NativeMenuItem powerOff = new() { Command = tray.PowerOffCommand };
 		NativeMenuItem reconnect = new() { Command = tray.ReconnectCommand };
-		NativeMenuItem supportedMode = new() { Command = tray.ToggleSupportedModeCommand, ToggleType = NativeMenuItemToggleType.CheckBox };
 		NativeMenuItem desktopMode = new() { Command = tray.ToggleDesktopModeCommand, ToggleType = NativeMenuItemToggleType.CheckBox };
 		NativeMenuItem notifications = new() { Command = tray.ToggleNotificationsCommand };
 		NativeMenuItem exit = new() { Command = tray.ExitCommand };
-		NativeMenu menu = [open, new NativeMenuItemSeparator(), bridge, reconnect, powerOff, new NativeMenuItemSeparator(), supportedMode, desktopMode, notifications,
+		NativeMenu menu = [open, new NativeMenuItemSeparator(), bridge, reconnect, powerOff, new NativeMenuItemSeparator(), desktopMode, notifications,
 			new NativeMenuItemSeparator(), exit];
 		var icon = new TrayIcon
 		{
@@ -213,8 +226,6 @@ public partial class App : Application
 			powerOff.IsEnabled = tray.CanPowerOff;
 			reconnect.Header = tray.ReconnectText;
 			reconnect.IsEnabled = tray.CanReconnect;
-			supportedMode.Header = tray.SupportedModeText;
-			supportedMode.IsChecked = tray.IsSupportedModeOn;
 			desktopMode.Header = tray.DesktopModeText;
 			desktopMode.IsChecked = tray.IsDesktopModeOn;
 			notifications.Header = tray.NotificationsText;

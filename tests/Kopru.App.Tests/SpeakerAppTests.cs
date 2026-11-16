@@ -12,16 +12,18 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.Tests;
 
-// The experimental controller speaker group on the Settings page: off by default, pushed to the service, saved in
-// settings.json and in profiles.
+// The controller speaker group on the Settings page: the one speaker switch, on by default, pushed to the service, saved
+// in settings.json and in profiles.
 public class SpeakerAppTests
 {
 	[AvaloniaFact]
-	public void Default_IsOff_AndChangesReachTheService()
+	public void Default_IsOn_AndChangesReachTheService()
 	{
 		var fake = new FakeControllerService(animate: false);
 		var state = new SettingsState(fake);
-		Assert.False(state.SpeakerEnabled);
+		Assert.True(state.SpeakerEnabled);
+		Assert.True(fake.Settings.Speaker.Enabled);
+		state.SpeakerEnabled = false;
 		Assert.Equal(SpeakerSettings.Off, fake.Settings.Speaker);
 
 		state.SpeakerEnabled = true;
@@ -33,7 +35,7 @@ public class SpeakerAppTests
 	}
 
 	[AvaloniaFact]
-	public void SettingsFile_RoundTrips_AndOldFilesLoadWithTheSpeakerOff()
+	public void SettingsFile_RoundTrips_AndOldFilesLoadWithTheSpeakerOn()
 	{
 		string dir = Path.Combine(Path.GetTempPath(), "untethered-" + Guid.NewGuid().ToString("N"));
 		string path = Path.Combine(dir, "settings.json");
@@ -41,8 +43,9 @@ public class SpeakerAppTests
 		try
 		{
 			File.WriteAllText(path, """{ "Brightness": 50 }""");
+			// A file from before the speaker (and before DualSense Mode's own speaker switch): on, as the mode had it.
 			var old = new SettingsState(new FakeControllerService(animate: false), new JsonSettingsStore(path));
-			Assert.False(old.SpeakerEnabled);
+			Assert.True(old.SpeakerEnabled);
 			Assert.Equal(80, old.SpeakerVolume);
 			Assert.Equal(60, old.HeadphoneVolume);
 
@@ -73,6 +76,7 @@ public class SpeakerAppTests
 	{
 		var fake = new FakeControllerService(animate: false);
 		var state = new SettingsState(fake);
+		state.SpeakerEnabled = false;
 		var music = state.Profiles.Create("Music", state.CaptureValues())!;
 		state.ActivateProfile(music.Id);
 		state.SpeakerEnabled = true;
@@ -112,8 +116,10 @@ public class SpeakerAppTests
 				SettingsView view = window.GetLogicalDescendants().OfType<SettingsView>().Single();
 				List<TextBlock> texts = view.GetLogicalDescendants().OfType<TextBlock>().ToList();
 				Assert.Contains(texts, t => t.Text == Text.GroupControllerSpeaker(language));
-				Assert.Contains(texts, t => t.Text == Text.SpeakerSendGameAudio(language));
-				Assert.Contains(texts, t => t.Text == KeepLastWords.Apply(Text.SpeakerSendShort(language)));
+				Assert.Contains(texts, t => t.Text == Text.SpeakerSwitch(language));
+				Assert.Contains(texts, t => t.Text == KeepLastWords.Apply(Text.SpeakerSwitchHint(language)));
+				// No word of the old DualSense Mode default.
+				Assert.DoesNotContain(texts, t => t.IsEffectivelyVisible && (t.Text ?? "").Contains("DualSense Mod", StringComparison.Ordinal));
 				Assert.Contains(view.GetLogicalDescendants().OfType<Grid>(), g => Equals(ToolTip.GetTip(g), Text.SpeakerSendGameAudioHint(language)));
 				Assert.Contains(texts, t => t.Text == Text.SpeakerVolume(language));
 				Assert.Contains(texts, t => t.Text == Text.HeadphoneVolume(language));
@@ -127,14 +133,40 @@ public class SpeakerAppTests
 				Assert.True(plugged.IsVisible);
 
 				Border panel = view.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "SpeakerPanel");
-				ToggleSwitch toggle = panel.GetLogicalDescendants().OfType<ToggleSwitch>().Single(t => Avalonia.Automation.AutomationProperties.GetName(t) == Text.SpeakerSendGameAudio(language));
-				Assert.False(toggle.IsChecked);
+				ToggleSwitch toggle = panel.GetLogicalDescendants().OfType<ToggleSwitch>().Single(t => Avalonia.Automation.AutomationProperties.GetName(t) == Text.SpeakerSwitch(language));
+				// On by default; off disables the volumes.
+				Assert.True(toggle.IsChecked);
+				toggle.IsChecked = false;
+				Settle();
+				Assert.False(state.SpeakerEnabled);
 				Assert.All(panel.GetLogicalDescendants().OfType<Slider>(), s => Assert.False(s.IsEffectivelyEnabled));
 				toggle.IsChecked = true;
 				Settle();
 				Assert.True(state.SpeakerEnabled);
 				Assert.True(fake.Settings.Speaker.Enabled);
 				Assert.All(panel.GetLogicalDescendants().OfType<Slider>(), s => Assert.True(s.IsEffectivelyEnabled));
+
+				// The one-line reason when the speaker can't play: Low Power, or a type without a speaker.
+				fake.Watcher.Exit("Cyberpunk2077.exe");
+				fake.Games.Tick();
+				Settle();
+				TextBlock Reason() => panel.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.IsEffectivelyVisible && t.Classes.Contains("caption")
+					&& t.Text == KeepLastWords.Apply(vm.SpeakerOffReason));
+				Assert.False(vm.HasSpeakerOffReason);
+				state.LowPowerOn = true;
+				Settle();
+				Assert.Equal(Text.SpeakerOffLowPower(language), vm.SpeakerOffReason);
+				Reason();
+				state.LowPowerOn = false;
+				Settle();
+				Assert.False(vm.HasSpeakerOffReason);
+				fake.Games.SetForcedPadType(Kopru.Core.Virtual.VirtualPadType.DualShock4);
+				Settle();
+				Assert.Equal(Text.SpeakerOffPadType("DualShock 4", language), vm.SpeakerOffReason);
+				Reason();
+				fake.Games.SetForcedPadType(Kopru.Core.Virtual.VirtualPadType.DualSense);
+				Settle();
+				Assert.False(vm.HasSpeakerOffReason);
 				window.Close();
 			}
 			finally

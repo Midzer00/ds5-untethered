@@ -60,6 +60,11 @@ public class PsOpenAppAppTests
 
 		public bool Exists(IntPtr window) => Alive.Contains(window);
 
+		// Process id -> its main window.
+		public Dictionary<int, IntPtr> MainWindows { get; } = [];
+
+		public IntPtr MainWindowOf(int processId) => MainWindows.GetValueOrDefault(processId);
+
 		public string? BringToFront(IntPtr window)
 		{
 			Asked.Add(window);
@@ -307,6 +312,36 @@ public class PsOpenAppAppTests
 		presenter.Hide("PS tap");
 		Assert.Empty(foreground.Asked);
 		Assert.Equal("app window: hidden (PS tap)", log.Last());
+	}
+
+	// Back to the game ("Back To Game", Mouse Mode off with PS + Options): hidden like the PS tap, with the game's own window
+	// put in front; without it (unknown, closed) the window that was in front when the app was shown.
+	[Fact]
+	public void Presenter_ReturnTo_PutsTheGameBack()
+	{
+		var window = new FakeWindow();
+		var foreground = new FakeForeground { Foreground = 9 };
+		foreground.Alive.UnionWith([(IntPtr)9, (IntPtr)77]);
+		foreground.MainWindows[1234] = 77;
+		List<string> log = [];
+		var presenter = new MainWindowPresenter(window, foreground, log.Add);
+
+		presenter.Show("open");
+		presenter.ReturnTo("back to game button", 1234);
+		Assert.Equal("hide", window.Calls.Last());
+		Assert.Equal((IntPtr)77, foreground.Foreground);
+		Assert.Equal("app window: hidden (back to game button), game window back in front (attach input)", log.Last());
+
+		foreground.Foreground = 9;
+		presenter.Show("open");
+		foreground.Alive.Remove(77);
+		presenter.ReturnTo("back to game button", 1234);
+		Assert.Equal("app window: hidden (back to game button), previous window back in front (attach input)", log.Last());
+
+		foreground.Foreground = 9;
+		presenter.Show("open");
+		presenter.ReturnTo("mouse mode turned off with PS + Options", 0);
+		Assert.Equal((IntPtr)9, foreground.Foreground);
 	}
 
 	[AvaloniaFact]

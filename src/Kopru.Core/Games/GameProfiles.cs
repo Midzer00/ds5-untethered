@@ -4,43 +4,22 @@ using Kopru.Core.Protocol;
 
 namespace Kopru.Core.Games;
 
-// How the bridge treats the game in the foreground.
+// The two games list pages (the catalog of DualSense games and the other games). Only the pages use it: since the DualSense
+// Mode switch is gone the bridge runs one profile for every game (GameProfile), and GameModeState.Mode is always Supported.
 public enum GameMode
 {
-	// Only classic rumble: rumble is played as haptics with the user's feel, fallback trigger effect, the user's light.
 	Unsupported,
 
-	// Native DualSense: the game's haptics audio, its trigger effects (scaled) and, optionally, its light.
 	Supported
 }
 
-// The per-exe choice older versions saved (read only to migrate settings: Supported -> always, Unsupported -> never ask).
+// The per-exe choice older versions saved (read only to migrate settings: a Supported game the catalog does not know
+// becomes one of the user's games).
 public enum GameOverride
 {
 	Auto,
 	Supported,
 	Unsupported
-}
-
-// Why the supported mode switch is where it is.
-public enum ModeReason
-{
-	// Off: the other games profile.
-	Default,
-	// The user flipped the switch.
-	User,
-	// Turned on for the game in front ("Turn On" on the question).
-	Game,
-	// Turned on by itself: the game is on the "always" list.
-	Always
-}
-
-// The answer to "turn on DualSense supported mode?" when a known game starts.
-public enum AskAnswer
-{
-	TurnOn,
-	NotNow,
-	Always
 }
 
 // A trigger effect for games that send none.
@@ -52,19 +31,21 @@ public enum FallbackTrigger
 	Vibration
 }
 
-// Settings for games with native DualSense support. TriggerIntensity 0..1 scales the game's trigger effects.
-public sealed record SupportedProfile(
+// The one profile every game runs with. Whatever the game sends passes through: its haptics at GameHapticsLevel, its trigger
+// effects scaled by TriggerIntensity (0..1), its light when LightFromGame is on. The classic rumble settings (RumbleLevel,
+// Feel) and the fallback trigger effect (Trigger, FallbackStrength 0..1) apply only where the game sends nothing of its own.
+public sealed record GameProfile(
 	double GameHapticsLevel = HapticsConverter.DefaultLevel,
 	double TriggerIntensity = 1,
-	bool LightFromGame = true);
-
-// Settings for games that only send classic rumble. FallbackStrength 0..1.
-public sealed record UnsupportedProfile(
+	bool LightFromGame = true,
 	double RumbleLevel = ControllerBridge.DefaultRumbleLevel,
 	RumbleFeel Feel = RumbleFeel.Soft,
 	FallbackTrigger Trigger = FallbackTrigger.Off,
 	double FallbackStrength = 0.5)
 {
+	// "Turn sound into haptics" for this game (AudioHapticsRunner; not part of what the bridge runs with).
+	public Audio.AudioHapticsSettings AudioHaptics { get; init; } = Audio.AudioHapticsSettings.Default;
+
 	// The fallback effect bytes, or null when it is off.
 	public byte[]? TriggerEffect => Trigger == FallbackTrigger.Off ? null : GameProfiles.Effect(Trigger, FallbackStrength);
 }
@@ -84,10 +65,8 @@ public static class GameProfiles
 		};
 	}
 
-	// What the bridge runs with in the given mode. Game haptics keep their level in both modes (a misjudged native game
-	// still plays its haptics), the rumble level and feel too; the rest depends on the mode.
-	public static BridgeProfile For(GameMode mode, SupportedProfile supported, UnsupportedProfile unsupported) => mode == GameMode.Supported
-		? new BridgeProfile(supported.GameHapticsLevel, unsupported.RumbleLevel, unsupported.Feel, supported.TriggerIntensity,
-			supported.LightFromGame, null)
-		: new BridgeProfile(supported.GameHapticsLevel, unsupported.RumbleLevel, unsupported.Feel, 1, false, unsupported.TriggerEffect);
+	// What the bridge runs with. gameSession: GameModeController's count of game sessions (a new one lets the fallback
+	// trigger effect back on until the next game sends its first effect; see ControllerBridge.FallbackTrigger).
+	public static BridgeProfile For(GameProfile profile, long gameSession = 0) => new(profile.GameHapticsLevel, profile.RumbleLevel,
+		profile.Feel, Math.Clamp(profile.TriggerIntensity, 0, 1), profile.LightFromGame, profile.TriggerEffect, gameSession);
 }

@@ -26,18 +26,17 @@ public sealed partial class RealControllerService
 	public RealControllerService UseManager(BridgeManager manager, bool watch = true)
 	{
 		multi = manager;
-		manager.Mode = () => Games.State.Mode;
 		for (int slotNumber = 2; slotNumber <= BridgeManager.MaxControllers; slotNumber++)
 		{
 			int s = slotNumber;
 			BridgeHost other = manager.Host(s);
-			other.StatusUpdated += _ => Raise();
+			other.StatusUpdated += status => OnHostStatus(s, status, other.HeadphonesPlugged);
 			other.InputSink = host.InputSink;
 			other.PadTypeChanged += type => RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, type.ToString()));
 			other.ControllerOpened = HideOtherAsync;
 			other.RawInput += body => OnHostRawInput(s, body);
 			other.Shortcuts.Triggered += action => Shortcut?.Invoke(this, action);
-			other.Shortcuts.TapRoute = RoutePsTap;
+			WireHost(other);
 			other.MicButtonPressed += OnMicButton;
 			other.PoweredOff += (ok, idle) =>
 			{
@@ -55,10 +54,21 @@ public sealed partial class RealControllerService
 		ApplyOthers();
 		if (watch)
 		{
-			manager.StartWatching(ControllerScanInterval);
+			if (presenceTimer != null)
+			{
+				// The presence tick (every ControllerScanInterval) drives the manager's look, so both use one listing.
+				driveManager = true;
+				_ = manager.RefreshAsync();
+			}
+			else
+			{
+				manager.StartWatching(ControllerScanInterval);
+			}
 		}
 		return this;
 	}
+
+	private volatile bool driveManager;
 
 	public BridgeManager? Manager => multi;
 
@@ -262,7 +272,7 @@ public sealed partial class RealControllerService
 			if (own != before)
 			{
 				slotProfiles[s] = own;
-				m.SetProfileOverride(s, own?.Supported, own?.Unsupported);
+				m.SetProfileOverride(s, own?.Game);
 			}
 			if (s == 1 && own == null)
 			{
@@ -281,6 +291,7 @@ public sealed partial class RealControllerService
 	{
 		target.IdleMinutes = value.IdlePowerOffMinutes;
 		target.PowerOffWhenIdle = value.PowerOffWhenIdle;
+		target.SetPauseHapticsInSilence(value.PauseHapticsReason);
 		target.Shortcuts.Enabled = value.ShortcutsEnabled;
 		target.Desktop.Settings = value.Desktop;
 		target.Desktop.Active = value.DesktopModeOn;

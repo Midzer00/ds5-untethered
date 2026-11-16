@@ -27,10 +27,75 @@ public interface ISteamEnvironment
 
 	// Files in a folder matching a pattern such as "appmanifest_*.acf" (none when the folder is missing).
 	IEnumerable<string> GetFiles(string path, string pattern) => [];
+
+	// The file's size in bytes, -1 when unknown (with the write time it tells whether a file changed).
+	long GetFileLength(string path) => -1;
+}
+
+// Whether a process runs, without listing every process each time: once one was found its handle is kept and asked
+// (cheap) until it exits; while none runs the processes are listed at most once per ScanInterval.
+public sealed class ProcessPresence(Func<Func<bool>?> find, Func<long>? clockMs = null)
+{
+	public static readonly TimeSpan ScanInterval = TimeSpan.FromMinutes(1);
+
+	private readonly Func<long> clock = clockMs ?? (() => Environment.TickCount64);
+	private readonly object gate = new();
+	private Func<bool>? alive;
+	private long nextScanAt = long.MinValue;
+
+	// How many times the processes were listed (tests).
+	public int Scans { get; private set; }
+
+	public bool IsRunning
+	{
+		get
+		{
+			lock (gate)
+			{
+				if (alive != null)
+				{
+					bool running;
+					try
+					{
+						running = alive();
+					}
+					catch (Exception)
+					{
+						running = false;
+					}
+					if (running)
+					{
+						return true;
+					}
+					// It exited: look again at once (a restart is found without waiting a whole interval).
+					alive = null;
+					nextScanAt = long.MinValue;
+				}
+				long now = clock();
+				if (nextScanAt != long.MinValue && now < nextScanAt)
+				{
+					return false;
+				}
+				nextScanAt = now + (long)ScanInterval.TotalMilliseconds;
+				Scans++;
+				try
+				{
+					alive = find();
+				}
+				catch (Exception)
+				{
+					alive = null;
+				}
+				return alive != null;
+			}
+		}
+	}
 }
 
 public sealed class SystemSteamEnvironment : ISteamEnvironment
 {
+	private readonly ProcessPresence steam = new(FindSteam);
+
 	public string? SteamPath
 	{
 		get
@@ -51,20 +116,54 @@ public sealed class SystemSteamEnvironment : ISteamEnvironment
 		}
 	}
 
-	public bool IsSteamRunning
+	public bool IsSteamRunning => steam.IsRunning;
+
+	// The first steam.exe found, kept open; its "still running" check is one wait on the process handle.
+	private static Func<bool>? FindSteam()
 	{
-		get
+		Process[] processes = Process.GetProcessesByName("steam");
+		Process? kept = null;
+		foreach (Process p in processes)
 		{
-			Process[] processes = Process.GetProcessesByName("steam");
-			foreach (Process p in processes)
+			if (kept == null)
 			{
-				p.Dispose();
+				try
+				{
+					// Opens the handle now.
+					_ = p.HasExited;
+					kept = p;
+					continue;
+				}
+				catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
+				{
+					// Running, but its handle cannot be kept: the next check lists the processes again (as before).
+					p.Dispose();
+					foreach (Process rest in processes)
+					{
+						rest.Dispose();
+					}
+					return () => false;
+				}
 			}
-			return processes.Length > 0;
+			p.Dispose();
 		}
+		if (kept == null)
+		{
+			return null;
+		}
+		return () =>
+		{
+			if (!kept.HasExited)
+			{
+				return true;
+			}
+			kept.Dispose();
+			return false;
+		};
 	}
 
 	public bool FileExists(string path) => File.Exists(path);
+	public long GetFileLength(string path) => new FileInfo(path).Length;
 	public string ReadAllText(string path) => File.ReadAllText(path);
 	public IEnumerable<string> GetDirectories(string path) => Directory.Exists(path) ? Directory.GetDirectories(path) : [];
 	public DateTime GetLastWriteTimeUtc(string path) => File.GetLastWriteTimeUtc(path);
@@ -86,6 +185,17 @@ public sealed class SteamInputCheck(ISteamEnvironment environment)
 	public const string GlobalPsKey = "SteamController_PSSupport";
 	public const string PerAppKey = "UseSteamControllerConfig";
 
+	// The values this check needs from one config file, kept until the file's write time or size changes (the files are
+	// large; reading and parsing them on every check was the main cost).
+	private sealed record ConfigValues(string Path, DateTime WriteTime, long Length, string? Global, Dictionary<string, string> PerApp);
+
+	private readonly object gate = new();
+	private ConfigValues? localCache;
+	private ConfigValues? configCache;
+
+	// How many times a config file was read and parsed (tests).
+	public int Parses { get; private set; }
+
 	public static SteamInputCheck CreateDefault() => new(new SystemSteamEnvironment());
 
 	public SteamInputResult Check(string? steamAppId = null)
@@ -96,11 +206,15 @@ public sealed class SteamInputCheck(ISteamEnvironment environment)
 		{
 			return Result(SteamInputStatus.NotInstalled, running);
 		}
-		VdfNode? local = TryLoad(LatestLocalConfig(steamPath));
-		VdfNode? config = TryLoad(Path.Combine(steamPath, "config", "config.vdf"));
+		ConfigValues? local;
+		ConfigValues? config;
+		lock (gate)
+		{
+			local = localCache = Load(LatestLocalConfig(steamPath), localCache, ReadLocal);
+			config = configCache = Load(Path.Combine(steamPath, "config", "config.vdf"), configCache, ReadConfig);
+		}
 
-		if (!string.IsNullOrEmpty(steamAppId) &&
-			local?.GetValue("UserLocalConfigStore", "Apps", steamAppId, PerAppKey) is string perApp)
+		if (!string.IsNullOrEmpty(steamAppId) && local != null && local.PerApp.TryGetValue(steamAppId, out string? perApp))
 		{
 			switch (perApp.Trim())
 			{
@@ -109,8 +223,7 @@ public sealed class SteamInputCheck(ISteamEnvironment environment)
 			}
 		}
 
-		string? global = local?.GetValue("UserLocalConfigStore", GlobalPsKey) ??
-			config?.GetValue("InstallConfigStore", "Software", "Valve", "Steam", GlobalPsKey);
+		string? global = local?.Global ?? config?.Global;
 		return global?.Trim() switch
 		{
 			"0" => Result(SteamInputStatus.Off, running),
@@ -143,19 +256,65 @@ public sealed class SteamInputCheck(ISteamEnvironment environment)
 		return best;
 	}
 
-	private VdfNode? TryLoad(string? path)
+	// The cached values while the file's path, write time and size are unchanged; else the file is read again. Null when
+	// the file is missing or unreadable.
+	private ConfigValues? Load(string? path, ConfigValues? cached, Func<VdfNode, (string? Global, Dictionary<string, string> PerApp)> read)
 	{
 		if (path is null || !environment.FileExists(path))
 		{
 			return null;
 		}
+		DateTime writeTime;
+		long length;
 		try
 		{
-			return Vdf.Parse(environment.ReadAllText(path));
+			writeTime = environment.GetLastWriteTimeUtc(path);
+			length = environment.GetFileLength(path);
 		}
-		catch (Exception e) when (e is VdfFormatException or IOException or UnauthorizedAccessException)
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException)
 		{
 			return null;
 		}
+		if (cached != null && string.Equals(cached.Path, path, StringComparison.OrdinalIgnoreCase) && cached.WriteTime == writeTime &&
+			cached.Length == length)
+		{
+			return cached;
+		}
+		Parses++;
+		Diagnostics.BackgroundWork.SteamConfigParse();
+		try
+		{
+			(string? global, Dictionary<string, string> perApp) = read(Vdf.Parse(environment.ReadAllText(path)));
+			return new ConfigValues(path, writeTime, length, global, perApp);
+		}
+		catch (VdfFormatException)
+		{
+			// Kept as "no values" until the file changes.
+			return new ConfigValues(path, writeTime, length, null, []);
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+		{
+			// Read again next time (Steam may be writing it).
+			return null;
+		}
 	}
+
+	private static (string?, Dictionary<string, string>) ReadLocal(VdfNode root)
+	{
+		Dictionary<string, string> perApp = new(StringComparer.OrdinalIgnoreCase);
+		if (root.Get("UserLocalConfigStore", "Apps") is { } apps)
+		{
+			foreach ((string id, VdfNode app) in apps.Children)
+			{
+				if (app.GetValue(PerAppKey) is string value)
+				{
+					perApp[id] = value;
+				}
+			}
+		}
+		return (root.GetValue("UserLocalConfigStore", GlobalPsKey), perApp);
+	}
+
+	private static (string?, Dictionary<string, string>) ReadConfig(VdfNode root) =>
+		(root.GetValue("InstallConfigStore", "Software", "Valve", "Steam", GlobalPsKey), []);
 }

@@ -20,6 +20,19 @@ public static partial class Text
 		$"Kullanılmadığında Kumandayı Kapat",
 		$"Turn Off the Controller When Idle");
 
+	// "Pause Haptics In Silence" (Settings, General, Power).
+	public static string PauseHapticsInSilence(Language? l = null) => Pick(l,
+		$"Sessizlikte Haptiği Durdur",
+		$"Pause Haptics In Silence");
+
+	public static string PauseHapticsInSilenceShort(Language? l = null) => Pick(l,
+		$"Oyun sessizken haptik gönderilmez.",
+		$"No haptics are sent while the game is silent.");
+
+	public static string PauseHapticsInSilenceHint(Language? l = null) => Pick(l,
+		$"Oyun sessizken kumandaya haptik gönderilmez; pil ve işlemciden tasarruf eder, ilk vuruş birkaç ms gecikebilir.",
+		$"Sends no haptics to the controller while the game is silent; saves battery and CPU, the first hit after silence may come a few ms later.");
+
 	public static string LatencyValue(double p50, double p99, double relay, Language? l = null) => Pick(l,
 		$"Bağlantı gecikmesi {p50:F1} ms (en kötü {p99:F1} ms), aktarım {relay:F2} ms",
 		$"Link delay {p50:F1} ms (worst {p99:F1} ms), relay {relay:F2} ms");

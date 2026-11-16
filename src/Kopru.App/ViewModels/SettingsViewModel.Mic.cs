@@ -45,6 +45,7 @@ public sealed partial class SettingsViewModel
 	{
 		Settings.PropertyChanged += (_, e) =>
 		{
+			OnSpeakerStateChanged(e.PropertyName);
 			if (e.PropertyName == nameof(SettingsState.MicEnabled))
 			{
 				RunOnUi(UpdateMicTimer);
@@ -58,9 +59,23 @@ public sealed partial class SettingsViewModel
 		UpdateMicTimer();
 	}
 
+	// Whether the meter is in view (the Settings page shown in a shown window; set by the main window view model).
+	private bool _micShown = true;
+
+	public bool IsMicMeterRunning => _micTimer != null;
+
+	public void SetMicMeterShown(bool shown)
+	{
+		if (shown != _micShown)
+		{
+			_micShown = shown;
+			UpdateMicTimer();
+		}
+	}
+
 	private void UpdateMicTimer()
 	{
-		bool run = MicActive && _service is IMicLevelSource;
+		bool run = MicActive && _micShown && _service is IMicLevelSource;
 		if (run && _micTimer == null)
 		{
 			_micTimer = new DispatcherTimer { Interval = MicMeterInterval };

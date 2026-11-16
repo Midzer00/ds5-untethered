@@ -178,7 +178,8 @@ public sealed class WindowsRestartProbe : IRestartProbe
 
 public sealed class HidControllerFinder : IControllerFinder
 {
-	public IReadOnlyList<HidDevice> Find() => WindowsHid.FindDualSenses();
+	// Shares one listing per tick with the other periodic lookers (WindowsHid.SharedListingAge).
+	public IReadOnlyList<HidDevice> Find() => WindowsHid.FindDualSenses(WindowsHid.SharedListingAge);
 }
 
 // Classic Bluetooth radio via BluetoothApis. "On" = radio accepts connections (off in Windows settings = not connectable).

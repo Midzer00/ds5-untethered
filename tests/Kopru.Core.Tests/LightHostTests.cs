@@ -50,4 +50,56 @@ public class LightHostTests
 		await host.StopAsync();
 		Assert.Equal(0, host.LightReportsSent);
 	}
+
+	[Fact]
+	public async Task GameSetsBlack_ThenFallsSilent_TheUsersColourComesBack()
+	{
+		await using BridgeHost host = Host();
+		host.GameLightIdle = TimeSpan.FromMilliseconds(300);
+		FakeLink link = new();
+		controllers.Links.Enqueue(link);
+		await host.StartAsync();
+		Assert.True(SpinWait.SpinUntil(() => host.State == BridgeState.Running && host.VirtualDualSense != null, 5000));
+		host.ApplyLight(LightSettings.FromRgb(0xFF0000));
+		Assert.True(SpinWait.SpinUntil(() => host.LightReportsSent >= 1, 3000));
+
+		long sent = host.LightReportsSent;
+		int before = link.Writes.Count;
+		GameLightTests.SendOutput(host.VirtualDualSense!, b => OutputBlock.SetLightbar(b, 0, 0, 0));
+		System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+		byte[] game = link.Writes.Skip(before).Where(w => w[0] == BluetoothReports.OutputId).Select(Block).First();
+		Assert.Equal(OutputBlock.LightbarControl, game[OutputBlock.Flag1] & OutputBlock.LightbarControl);
+		Assert.Equal(0, game[OutputBlock.Red] | game[OutputBlock.Red + 1] | game[OutputBlock.Red + 2]);
+
+		// No more game output: the user's colour follows once the hold ran out (idle time plus a sender tick).
+		Assert.True(SpinWait.SpinUntil(() => host.LightReportsSent > sent, 3000));
+		Assert.True(watch.Elapsed >= TimeSpan.FromMilliseconds(250), $"too early: {watch.Elapsed}");
+		byte[] last = link.Writes.Where(w => w[0] == BluetoothReports.OutputId).Select(Block).Last();
+		Assert.Equal((0xFF, 0, 0), (last[OutputBlock.Red], last[OutputBlock.Red + 1], last[OutputBlock.Red + 2]));
+		await host.StopAsync();
+	}
+
+	[Fact]
+	public async Task Reconnect_KeepsTheGamesLight_OverTheUsersLight()
+	{
+		await using BridgeHost host = Host();
+		RemovableLink first = new(log, "a");
+		controllers.Links.Enqueue(first);
+		await host.StartAsync();
+		Assert.True(SpinWait.SpinUntil(() => host.State == BridgeState.Running && host.VirtualDualSense != null, 5000));
+		host.ApplyLight(LightSettings.FromRgb(0xFF0000));
+		GameLightTests.SendOutput(host.VirtualDualSense!, b => OutputBlock.SetLightbar(b, 0, 0x40, 0x80));
+
+		first.Remove();
+		Assert.True(SpinWait.SpinUntil(() => host.State == BridgeState.WaitingForController, 5000));
+		FakeLink second = new();
+		controllers.Links.Enqueue(second);
+		Assert.True(SpinWait.SpinUntil(() => host.State == BridgeState.Running, 5000));
+		Assert.True(SpinWait.SpinUntil(() => second.Writes.Where(w => w[0] == BluetoothReports.OutputId).Select(Block)
+			.Any(b => (b[OutputBlock.Flag1] & OutputBlock.LightbarControl) != 0 && b[OutputBlock.Red + 1] == 0x40 && b[OutputBlock.Red + 2] == 0x80), 3000));
+		await Task.Delay(300);
+		byte[] last = second.Writes.Where(w => w[0] == BluetoothReports.OutputId).Select(Block).Last();
+		Assert.Equal((0, 0x40, 0x80), (last[OutputBlock.Red], last[OutputBlock.Red + 1], last[OutputBlock.Red + 2]));
+		await host.StopAsync();
+	}
 }

@@ -3,7 +3,7 @@ using Kopru.Core.Games;
 
 namespace Kopru.Core.Tests;
 
-// Unreal Engine exe pairs and the name fallback for list games without exe names (folder, version info, window title).
+// Unreal Engine exe pairs and the name fallback for list games (folder, Steam install folder, version info, window title).
 public class GameNameMatchTests
 {
 	private const string GameFolder = @"C:\Games\LEGO Batman - Legacy of the Dark Knight";
@@ -40,9 +40,92 @@ public class GameNameMatchTests
 	[InlineData("LEGO Batman: Legacy of the Dark Knight 2", false)]
 	[InlineData("LEGO Batman: Legacy of the Dark Knight - YouTube", false)]
 	[InlineData("Luto", false)]
-	[InlineData("Returnal", false)]
-	public void FindByName_NeedsTheWholeName_AndAGameWithoutExe(string text, bool found) =>
+	[InlineData("Returnal", true)]
+	[InlineData("Returnal 2", false)]
+	public void FindByName_NeedsTheWholeName_WithOrWithoutExeNames(string text, bool found) =>
 		Assert.Equal(found, Catalog.FindByName(text) != null);
+
+	// Steam starts a launcher stub ("Launcher.exe") instead of the listed exe: the folder still names the game.
+	[Fact]
+	public void Fallback_ByFolderName_ForAGameWithExeNames()
+	{
+		var processes = new GameModeTests.FakeProcesses();
+		var log = new List<string>();
+		var watcher = new GameWatcher(Catalog, processes, details: new FakeDetails(), log: log.Add);
+		processes.Show("Launcher.exe", @"D:\Games\Returnal\Returnal\Binaries\Win64\Launcher.exe");
+		Assert.Equal("Returnal", watcher.Poll()?.Name);
+		Assert.Equal(["game: Returnal recognised by folder name (Launcher.exe)"], log);
+	}
+
+	// An exe name still wins over a folder name: a listed exe in another game's folder is that exe's game.
+	[Fact]
+	public void ExeName_WinsOverFolderName()
+	{
+		var processes = new GameModeTests.FakeProcesses();
+		var watcher = new GameWatcher(Catalog, processes, details: new FakeDetails(), log: _ => { });
+		processes.Show("SB-Win64-Shipping.exe", @"D:\Games\Returnal\SB-Win64-Shipping.exe");
+		Assert.Equal("Stellar Blade", watcher.Poll()?.Name);
+	}
+
+	private static readonly GameCatalog DirCatalog = new(
+	[
+		new CatalogGame("World War Z", [], 699130, true, true, SteamInstallDir: "WWZ"),
+		new CatalogGame("Tony Hawk's Pro Skater 3 + 4", ["THPS34.exe"], 2545710, true, true, SteamInstallDir: "THPS34"),
+		new CatalogGame("Alpha Game", [], 1, SteamInstallDir: "Shared Dir"),
+		new CatalogGame("Beta Game", [], 2, SteamInstallDir: "Shared Dir"),
+		new CatalogGame("Gamma Quest", [], 3, SteamInstallDir: "Alpha Game"),
+		new CatalogGame("Delta Run", [], 4, SteamInstallDir: "DR"),
+	]);
+
+	[Theory]
+	[InlineData("WWZ", "World War Z")]
+	[InlineData("wwz", "World War Z")]
+	[InlineData("W.W.Z", "World War Z")]
+	[InlineData("WWZ Aftermath", null)]
+	[InlineData("WW", null)]
+	[InlineData("THPS34", "Tony Hawk's Pro Skater 3 + 4")]
+	[InlineData("Shared Dir", null)]
+	[InlineData("DR", null)]
+	[InlineData(null, null)]
+	public void FindByInstallDir_WholeFolderName_UniqueAndLongEnough(string? folder, string? name) =>
+		Assert.Equal(name, DirCatalog.FindByInstallDir(folder)?.Name);
+
+	// An install folder name equal to another game's name is not indexed: the folder finds that game by its name.
+	[Fact]
+	public void InstallDir_EqualToAnotherGamesName_FindsThatGame()
+	{
+		Assert.Null(DirCatalog.FindByInstallDir("Alpha Game"));
+		Assert.Equal("Alpha Game", DirCatalog.FindByName("Alpha Game")?.Name);
+	}
+
+	[Fact]
+	public void Fallback_ByInstallFolderName()
+	{
+		var processes = new GameModeTests.FakeProcesses();
+		var log = new List<string>();
+		var watcher = new GameWatcher(DirCatalog, processes, details: new FakeDetails(), log: log.Add);
+		processes.Show("wwzRetail.exe", @"D:\Games\WWZ\en_us\client\bin\pc\wwzRetail.exe");
+		Assert.Equal("World War Z", watcher.Poll()?.Name);
+		Assert.Equal(["game: World War Z recognised by install folder name (wwzRetail.exe)"], log);
+
+		processes.Show("wwzRetail.exe", @"D:\Games\WWZ Aftermath\wwzRetail.exe");
+		Assert.Null(watcher.Poll());
+	}
+
+	[Fact]
+	public void SteamInstallDir_IsReadFromTheCatalogFile_AndOptional()
+	{
+		GameCatalog parsed = GameCatalog.Parse("""
+			{ "version": 1, "updated": "2026-11-15", "games": [
+			  { "name": "World War Z", "exe": [], "steamAppId": 699130, "steamInstallDir": "WWZ" },
+			  { "name": "Luto", "exe": [] } ] }
+			""");
+		Assert.Equal("WWZ", parsed.Games.Single(g => g.Name == "World War Z").SteamInstallDir);
+		Assert.Null(parsed.Games.Single(g => g.Name == "Luto").SteamInstallDir);
+		Assert.Equal("World War Z", parsed.FindByInstallDir("WWZ")?.Name);
+		Assert.DoesNotContain("steamInstallDir", System.Text.Json.JsonSerializer.Serialize(parsed.Games.Single(g => g.Name == "Luto")),
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	[Fact]
 	public void Folders_InnermostFirst_WithoutTheDrive() =>

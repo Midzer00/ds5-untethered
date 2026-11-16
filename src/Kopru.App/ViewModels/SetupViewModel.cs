@@ -322,6 +322,8 @@ public sealed partial class SetupViewModel : PageViewModel
 		{
 			IsBusy = false;
 		}
+		// An install step or a restart may have changed the drivers: the Overview's health reads them again.
+		_service.RefreshHealth();
 		Steps = Build();
 		if (AutoFinish && !wasComplete && IsComplete)
 		{

@@ -33,8 +33,9 @@
     <ItemsPanelTemplate x:Key="Wrap"><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
   </UserControl.Resources>
 
-  <!-- Header in the page column; below it the live preview beside the settings card. Both share one height: the card
-       sets it (the stage follows), and when the window is too short the card scrolls while the preview stays in view -->
+  <!-- Header in the page column; below it the live preview beside the settings column. Both share one height: the column
+       sets it (the stage follows), and when the window is too short the "Your Light" card scrolls while the preview and
+       the game light switch stay in view -->
   <Grid RowDefinitions="Auto,16,*" Classes="page">
     <StackPanel Spacing="4">
       <TextBlock Classes="h1" Text="{Binding Title}" />
@@ -43,125 +44,142 @@
     </StackPanel>
 
     <Grid Grid.Row="2" ColumnDefinitions="*,16,*" VerticalAlignment="Top">
-      <!-- Live preview: the light strips follow the effect, brightness and player LEDs -->
+      <!-- Live preview of the user's own light: the light strips follow the effect, brightness and player LEDs -->
       <Border Classes="stage" Padding="24,20" MinHeight="300">
         <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding PreviewColor}" LightIntensity="{Binding Settings.LightIntensity}"
                          PlayerLedMask="{Binding PreviewPlayerMask}" MaxHeight="420" VerticalAlignment="Center" />
       </Border>
 
-      <Border Grid.Column="2" Classes="panel" Padding="0">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <!-- Each section: title (and hint) on top, its control below; sections split by a divider -->
-          <StackPanel Margin="20,4">
-            <!-- Mode -->
-            <StackPanel Spacing="10" Margin="0,14">
-              <TextBlock Classes="h2" Text="{Binding ModeLabel}" />
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"
-                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <TextBlock Classes="body" Text="{Binding ModeHint}" />
+      <Grid Grid.Column="2" RowDefinitions="Auto,16,Auto,8,*">
+        <!-- Use The Game's Light: the one switch for a game's colour; the reason shows when it can do nothing now -->
+        <Border Classes="panel" Padding="20,14" Name="GameLightCard">
+          <Grid ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding GameLightHint}">
+            <StackPanel Spacing="2" Margin="0,0,12,0">
+              <TextBlock Classes="h2" Text="{Binding GameLightLabel}" TextWrapping="Wrap" />
+              <TextBlock Classes="body" Text="{Binding GameLightHint}" TextWrapping="Wrap" />
+              <TextBlock Classes="caption" Text="{Binding GameLightOffReason}" IsVisible="{Binding HasGameLightOffReason}" TextWrapping="Wrap" Margin="0,2,0,0" />
             </StackPanel>
+            <ToggleSwitch Grid.Column="1" Name="GameLightSwitch" IsChecked="{Binding Settings.LightFromGame}" OnContent="{x:Null}" OffContent="{x:Null}"
+                          VerticalAlignment="Center" AutomationProperties.Name="{Binding GameLightLabel}" AutomationProperties.HelpText="{Binding GameLightHint}" />
+          </Grid>
+        </Border>
 
-            <!-- Colour (static, breathing, game controlled) -->
-            <StackPanel IsVisible="{Binding ShowsColour}">
-              <Border Classes="divider" />
+        <TextBlock Grid.Row="2" Classes="section" Text="{Binding OwnLightLabel}" />
+
+        <Border Grid.Row="4" Classes="panel" Padding="0" Name="OwnLightCard">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <!-- Each section: title (and hint) on top, its control below; sections split by a divider -->
+            <StackPanel Margin="20,4">
+              <!-- Mode -->
               <StackPanel Spacing="10" Margin="0,14">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="h2" Text="{Binding ColourLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding SelectedName}" />
-                </Grid>
-                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
-                         ItemContainerTheme="{StaticResource SwatchItem}" HorizontalAlignment="Left">
-                  <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                  </ListBox.ItemsPanel>
+                <TextBlock Classes="h2" Text="{Binding ModeLabel}" />
+                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"
+                         ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
                   <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ColourPreset">
-                      <Ellipse Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
-                    </DataTemplate>
+                    <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
+                <TextBlock Classes="body" Text="{Binding ModeHint}" />
               </StackPanel>
-            </StackPanel>
 
-            <!-- Breathing: one section, three sliders -->
-            <StackPanel IsVisible="{Binding ShowsBreathing}">
-              <Border Classes="divider" />
-              <StackPanel Spacing="14" Margin="0,14">
-                <StackPanel Spacing="4">
+              <!-- Colour (static, breathing) -->
+              <StackPanel IsVisible="{Binding ShowsColour}">
+                <Border Classes="divider" />
+                <StackPanel Spacing="10" Margin="0,14">
                   <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Classes="h2" Text="{Binding BreathingPeriodLabel}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingPeriodText}" />
+                    <TextBlock Classes="h2" Text="{Binding ColourLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding SelectedName}" />
                   </Grid>
-                  <Slider Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingPeriod}" />
-                </StackPanel>
-                <StackPanel Spacing="4">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Classes="h2" Text="{Binding BreathingMinLabel}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMinText}" />
-                  </Grid>
-                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMin}" />
-                </StackPanel>
-                <StackPanel Spacing="4">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Classes="h2" Text="{Binding BreathingMaxLabel}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMaxText}" />
-                  </Grid>
-                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMax}" />
+                  <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
+                           ItemContainerTheme="{StaticResource SwatchItem}" HorizontalAlignment="Left">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ColourPreset">
+                        <Ellipse Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
                 </StackPanel>
               </StackPanel>
-            </StackPanel>
 
-            <!-- Rainbow -->
-            <StackPanel IsVisible="{Binding ShowsRainbow}">
+              <!-- Breathing: one section, three sliders -->
+              <StackPanel IsVisible="{Binding ShowsBreathing}">
+                <Border Classes="divider" />
+                <StackPanel Spacing="14" Margin="0,14">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="h2" Text="{Binding BreathingPeriodLabel}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingPeriodText}" />
+                    </Grid>
+                    <Slider Minimum="1" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingPeriod}" />
+                  </StackPanel>
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="h2" Text="{Binding BreathingMinLabel}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMinText}" />
+                    </Grid>
+                    <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMin}" />
+                  </StackPanel>
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="h2" Text="{Binding BreathingMaxLabel}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Classes="value" Text="{Binding BreathingMaxText}" />
+                    </Grid>
+                    <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.BreathingMax}" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+
+              <!-- Rainbow -->
+              <StackPanel IsVisible="{Binding ShowsRainbow}">
+                <Border Classes="divider" />
+                <StackPanel Spacing="4" Margin="0,14">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h2" Text="{Binding RainbowSpeedLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding RainbowSpeedText}" />
+                  </Grid>
+                  <Slider Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Settings.RainbowSpeed}" />
+                </StackPanel>
+              </StackPanel>
+
+              <!-- Brightness -->
               <Border Classes="divider" />
               <StackPanel Spacing="4" Margin="0,14">
                 <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="h2" Text="{Binding RainbowSpeedLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding RainbowSpeedText}" />
+                  <TextBlock Classes="h2" Text="{Binding BrightnessLabel}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.BrightnessText}" />
                 </Grid>
-                <Slider Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Settings.RainbowSpeed}" />
+                <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.Brightness}" />
               </StackPanel>
-            </StackPanel>
 
-            <!-- Brightness -->
-            <Border Classes="divider" />
-            <StackPanel Spacing="4" Margin="0,14">
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Classes="h2" Text="{Binding BrightnessLabel}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.BrightnessText}" />
-              </Grid>
-              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.Brightness}" />
-            </StackPanel>
-
-            <!-- Player LEDs, with their brightness as a sub-setting -->
-            <Border Classes="divider" />
-            <StackPanel Spacing="10" Margin="0,14">
-              <StackPanel Spacing="2">
-                <TextBlock Classes="h2" Text="{Binding PlayerLedsLabel}" />
-                <TextBlock Classes="body" Text="{Binding PatternHint}" />
+              <!-- Player LEDs, with their brightness as a sub-setting -->
+              <Border Classes="divider" />
+              <StackPanel Spacing="10" Margin="0,14">
+                <StackPanel Spacing="2">
+                  <TextBlock Classes="h2" Text="{Binding PlayerLedsLabel}" />
+                  <TextBlock Classes="body" Text="{Binding PatternHint}" />
+                </StackPanel>
+                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Patterns}" SelectedItem="{Binding SelectedPattern}"
+                         ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Classes="label" Text="{Binding LedBrightnessLabel}" Margin="0,4,0,0" />
+                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding LedLevels}" SelectedItem="{Binding SelectedLedLevel}"
+                         ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
               </StackPanel>
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Patterns}" SelectedItem="{Binding SelectedPattern}"
-                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <TextBlock Classes="label" Text="{Binding LedBrightnessLabel}" Margin="0,4,0,0" />
-              <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding LedLevels}" SelectedItem="{Binding SelectedLedLevel}"
-                       ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
+              <!-- The mute LED is not a light setting: it always shows the microphone (BridgeHost.SyncMuteLed). -->
             </StackPanel>
-            <!-- The mute LED is not a light setting: it always shows the microphone (BridgeHost.SyncMuteLed). -->
-          </StackPanel>
-        </ScrollViewer>
-      </Border>
+          </ScrollViewer>
+        </Border>
+      </Grid>
     </Grid>
   </Grid>
 </UserControl>

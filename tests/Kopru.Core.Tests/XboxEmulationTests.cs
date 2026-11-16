@@ -226,8 +226,10 @@ public class XboxEmulationTests
 		Assert.Equal(VirtualPadType.DualSense, games.PadTypeFor(key));
 		int saves = 0;
 		games.MemoryChanged += () => saves++;
+		// Chosen while the game runs: saved at once, put in at the next start.
 		games.SetPadType(key, VirtualPadType.Xbox360);
-		Assert.Equal(VirtualPadType.Xbox360, bridge.Pads[^1]);
+		Assert.Equal(VirtualPadType.DualSense, bridge.Pads[^1]);
+		Assert.Equal(VirtualPadType.Xbox360, games.PendingPadType);
 		Assert.Equal(1, saves);
 
 		processes.Exit("acc.exe");
@@ -243,7 +245,8 @@ public class XboxEmulationTests
 		again.LoadMemory(memory);
 		Assert.Equal(VirtualPadType.Xbox360, again.PadTypeFor(key));
 
-		games.SetPadType(key, VirtualPadType.DualSense);
+		// Back to Automatic: nothing stored for the game.
+		games.SetPadType(key, null);
 		Assert.Empty(games.SnapshotMemory().PadTypes!);
 	}
 

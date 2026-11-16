@@ -43,6 +43,9 @@ public sealed partial class BridgeHost
 	// The controller the bridge is running with, or null.
 	public HidDevice? Device => current?.Session.Device;
 
+	// The light last written to this host's controller; null while no controller is open.
+	public Lighting.LightOutput? SentLight => current?.Session.SentLight;
+
 	public LightSettings Light => light;
 
 	// Loudest haptics sent per side (0..1) since the last call; zero while the bridge is not running.
@@ -53,12 +56,17 @@ public sealed partial class BridgeHost
 	public void ApplyLight(LightSettings settings)
 	{
 		light = settings;
+		ApplyModLightAllowed(settings);
 		Connection? c = current;
 		if (c != null && !InvalidateLightSender())
 		{
 			ApplyLightTo(c.Session);
 		}
 	}
+
+	// Frames the test tone and test rumble keep buffered (~53 ms): they top up every Task.Delay(10), which lasts up to
+	// ~16 ms (or longer) now that the app no longer holds the 1 ms timer resolution, so 96 frames (32 ms) could run dry.
+	public const int TestAheadFrames = 160;
 
 	// Plays the test tones on the chosen sides for the duration. False when no controller can be used.
 	public Task<bool> TestHapticsAsync(bool left, bool right, TimeSpan duration, CancellationToken cancel = default) =>
@@ -68,7 +76,7 @@ public sealed partial class BridgeHost
 			var clock = System.Diagnostics.Stopwatch.StartNew();
 			while (clock.Elapsed < duration && !cancel.IsCancellationRequested)
 			{
-				while (session.Haptics.Buffered < 96)
+				while (session.Haptics.Buffered < TestAheadFrames)
 				{
 					sbyte l = left ? (sbyte)Math.Round(TestAmplitude * Math.Sin(phaseL)) : (sbyte)0;
 					sbyte r = right ? (sbyte)Math.Round(TestAmplitude * Math.Sin(phaseR)) : (sbyte)0;
@@ -90,7 +98,7 @@ public sealed partial class BridgeHost
 			var clock = System.Diagnostics.Stopwatch.StartNew();
 			while (clock.Elapsed < duration && !cancel.IsCancellationRequested)
 			{
-				while (session.Haptics.Buffered < 96)
+				while (session.Haptics.Buffered < TestAheadFrames)
 				{
 					(sbyte l, sbyte r) = synth.Next(motor, motor, level, feel);
 					session.Haptics.Push(l, r);
@@ -133,7 +141,12 @@ public sealed partial class BridgeHost
 		LightSettings l = light;
 		try
 		{
-			session.UpdateOutput(l.WriteTo);
+			session.UpdateOutput(b =>
+			{
+				l.WriteTo(b);
+				// A mod's light (DSX mod support) stays over the user's.
+				current?.Bridge.OverlayModLight(b);
+			});
 		}
 		catch (Exception)
 		{

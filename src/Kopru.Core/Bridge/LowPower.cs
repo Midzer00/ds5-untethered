@@ -60,7 +60,9 @@ public static class LowPower
 			Mic = s.Mic with { Enabled = false },
 			// The controller turns itself off sooner when it is left alone.
 			IdlePowerOffMinutes = idle,
-			PowerOffWhenIdle = true
+			PowerOffWhenIdle = true,
+			// No haptics reports while the game is silent.
+			PauseHapticsForLowPower = true
 		};
 	}
 }

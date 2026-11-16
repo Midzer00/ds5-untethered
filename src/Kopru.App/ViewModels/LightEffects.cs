@@ -20,7 +20,8 @@ public sealed class LightChoice<T>(T value, Func<string> name) : LabelledChoice(
 	public T Value { get; } = value;
 }
 
-// Light page: effect mode and its settings, player LEDs, mute LED and the live preview (the light bar animates on the
+// Light page: the Use The Game's Light switch on top, then the user's own light (effect mode and its settings, player
+// LEDs) and the live preview of it (the light bar animates on the
 // controller drawing; the view ticks AdvancePreview about 30 times a second while it is shown and the mode moves).
 public sealed partial class LightViewModel
 {
@@ -36,7 +37,6 @@ public sealed partial class LightViewModel
 		LightMode.Breathing => Text.LightModeBreathingHint(),
 		LightMode.Rainbow => Text.LightModeRainbowHint(),
 		LightMode.Battery => Text.LightModeBatteryHint(),
-		LightMode.Game => Text.LightModeGameHint(),
 		_ => Text.LightModeStaticHint()
 	};
 	public string BreathingPeriodLabel => Text.BreathingPeriodLabel();
@@ -50,8 +50,20 @@ public sealed partial class LightViewModel
 	public string PatternHint => Text.PlayerLedsPatternHint();
 	public string LedBrightnessLabel => Text.LedBrightnessLabel();
 
-	// Which settings show: the colour for static, breathing and game controlled; battery and rainbow pick their own.
-	public bool ShowsColour => Settings.LightMode is LightMode.Static or LightMode.Breathing or LightMode.Game;
+	// The page's top switch: the game's light over the user's own (the one place for it).
+	public string GameLightLabel => Text.LightFromGame();
+	public string GameLightHint => Text.LightFromGameHint();
+	public string OwnLightLabel => Text.LightOwnGroup();
+
+	// Why the switch does nothing now (empty while it works): Low Power darkens the light, an Xbox 360 pad takes no
+	// colour from games.
+	public string GameLightOffReason => Settings.GameLightWorks ? string.Empty
+		: Settings.LowPowerOn ? Text.LightOffLowPower() : Text.GameLightOffXbox();
+	public bool HasGameLightOffReason => GameLightOffReason.Length > 0;
+
+	// Which settings show: the colour for static and breathing; battery and rainbow pick their own (the "Game" mode is gone:
+	// the game's light is the Use The Game's Light switch).
+	public bool ShowsColour => Settings.LightMode is LightMode.Static or LightMode.Breathing;
 	public bool ShowsBreathing => Settings.LightMode == LightMode.Breathing;
 	public bool ShowsRainbow => Settings.LightMode == LightMode.Rainbow;
 
@@ -134,7 +146,6 @@ public sealed partial class LightViewModel
 			new(LightMode.Breathing, () => Text.LightModeBreathing()),
 			new(LightMode.Rainbow, () => Text.LightModeRainbow()),
 			new(LightMode.Battery, () => Text.LightModeBattery()),
-			new(LightMode.Game, () => Text.LightModeGame()),
 		];
 		Patterns =
 		[
@@ -182,6 +193,11 @@ public sealed partial class LightViewModel
 				break;
 			case nameof(SettingsState.RainbowSpeed):
 				OnPropertyChanged(nameof(RainbowSpeedText));
+				break;
+			case nameof(SettingsState.GameLightWorks):
+			case nameof(SettingsState.LowPowerOn):
+				OnPropertyChanged(nameof(GameLightOffReason));
+				OnPropertyChanged(nameof(HasGameLightOffReason));
 				break;
 		}
 		OnPropertyChanged(nameof(IsPreviewAnimated));

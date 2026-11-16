@@ -56,6 +56,35 @@
     <Style Selector="TextBlock.virtualState.problem">
       <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
     </Style>
+    <!-- In-app tip line at the bottom of the content column: a quiet rounded bar with a small close button -->
+    <Style Selector="Border.tip">
+      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="Padding" Value="12,0,3,0" />
+    </Style>
+    <Style Selector="Button.tipClose">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.tipClose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" />
+    </Style>
+    <Style Selector="Button.tipClose Path">
+      <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="Button.tipClose:pointerover Path">
+      <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
+    </Style>
   </Window.Styles>
   <!-- No system title bar band: the sidebar and the content run up to the top edge, Windows draws only its caption buttons
        (top right) over the content. The chrome hint is SystemChrome alone: Avalonia's default (PreferSystemChrome) hides
@@ -100,8 +129,8 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !Picker.IsMulti}">
-              <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.LightColor}" LightIntensity="{Binding Settings.LightIntensity}"
-                               PlayerLeds="{Binding Settings.PlayerLeds}" Width="62" Height="42" VerticalAlignment="Center" />
+              <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+                               PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" Width="62" Height="42" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <!-- The controller's name (the user's or the model's) with a pencil to rename it -->
                 <views:ControllerNameEditor DataContext="{Binding Picker.NameEditor}" />
@@ -125,13 +154,17 @@
                            VerticalAlignment="Center" />
               </Grid>
             </StackPanel>
-            <!-- DualSense mode, compact (what it does in the tooltip) -->
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding Overview.SupportedModeTip}">
-              <TextBlock Text="{Binding SupportedModeShort}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
-                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Overview.IsSupportedModeOn}" OnContent="{x:Null}" OffContent="{x:Null}" VerticalAlignment="Center"
-                            Margin="0,0,-16,0" AutomationProperties.Name="{Binding SupportedModeShort}" />
-            </Grid>
+            <!-- The controller type games see (what it lacks in the tooltip); a type held back for the running game, with "apply now" -->
+            <StackPanel Spacing="6" Margin="0,-2,0,0">
+              <TextBlock x:Name="PadStatus" Text="{Binding Overview.GameSeesText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"
+                         Background="Transparent" ToolTip.Tip="{Binding Overview.PadTypeTip}" />
+              <StackPanel Spacing="6" IsVisible="{Binding Overview.HasPendingPadType}">
+                <TextBlock Text="{Binding Overview.PendingPadLine}" Classes="caption" TextWrapping="Wrap" Background="Transparent"
+                           ToolTip.Tip="{Binding Overview.PendingPadTip}" />
+                <Button Theme="{StaticResource QuietButton}" Height="28" MinHeight="28" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left"
+                        Content="{Binding Overview.ApplyPadTypeNowText}" Command="{Binding Overview.ApplyPadTypeNowCommand}" ToolTip.Tip="{Binding Overview.PendingPadTip}" />
+              </StackPanel>
+            </StackPanel>
             <!-- Active profile, compact -->
             <TextBlock Text="{Binding Settings.ActiveProfileLine}" Classes="caption" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,-4,0,0" />
           </StackPanel>
@@ -167,6 +200,20 @@
       <!-- Content: each page fills the area and scrolls itself when it needs to; the sidebar pages' views are kept when left.
            Its top inset keeps the page headers (and scrolled content) clear of the caption buttons; the backdrop shows through above. -->
       <views:PageHost Grid.Column="2" x:Name="Pages" CachedPages="{Binding Pages}" Page="{Binding CurrentPage}" Margin="0,32,0,0" />
+      <!-- In-app tip (TipBar): a slim quiet bar centred at the bottom of the content column, inside the page's bottom padding
+           (the pages never reach into it), so it never covers a control and is not part of the title area. It scales with
+           the content. -->
+      <Border Grid.Column="2" x:Name="TipHost" Classes="tip" DataContext="{Binding Tips}" IsVisible="{Binding IsVisible}"
+              HorizontalAlignment="Center" VerticalAlignment="Bottom" Height="22" Margin="32,0,32,3">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
+          <TextBlock x:Name="TipText" Text="{Binding Text}" FontSize="12.5" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
+                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="tipClose" x:Name="TipClose" Command="{Binding CloseCommand}" ToolTip.Tip="{Binding CloseLabel}"
+                  AutomationProperties.Name="{Binding CloseLabel}">
+            <Path Data="M1,1 L9,9 M9,1 L1,9" StrokeThickness="1.4" StrokeLineCap="Round" Width="9" Height="9" Stretch="Uniform" />
+          </Button>
+        </Grid>
+      </Border>
     </Grid>
     </LayoutTransformControl>
 

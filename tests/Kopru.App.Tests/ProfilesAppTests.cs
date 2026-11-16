@@ -133,8 +133,6 @@ public class ProfilesAppTests
 		fake.Games.Tick();
 		Assert.Equal(racing.Id, state.Profiles.ActiveId);
 		Assert.Equal(250, fake.Settings.GameHapticsLevel);
-		// The supported mode switch is left alone.
-		Assert.False(fake.Games.IsSupportedModeOn);
 
 		// Another known game without a profile: the default.
 		fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
@@ -198,11 +196,6 @@ public class ProfilesAppTests
 		vm.Settings.GameHapticsLevel = 295;
 		fake.RaiseShortcut(ShortcutAction.HapticsUp);
 		Assert.Equal(300, vm.Settings.GameHapticsLevel);
-
-		fake.RaiseShortcut(ShortcutAction.ToggleSupportedMode);
-		Assert.True(fake.Games.IsSupportedModeOn);
-		fake.RaiseShortcut(ShortcutAction.ToggleSupportedMode);
-		Assert.False(fake.Games.IsSupportedModeOn);
 
 		fake.RaiseShortcut(ShortcutAction.PowerOff);
 		Assert.Equal(1, fake.PowerOffs);

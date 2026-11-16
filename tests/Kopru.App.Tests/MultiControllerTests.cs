@@ -178,6 +178,31 @@ public class MultiControllerTests
 		Assert.Equal("restore", hiding.Calls[^1]);
 	}
 
+	// The drawings' light comes from the selected controller: each slot's own light as written to it (its player LEDs show
+	// its slot), and nothing while the bridge is stopped.
+	[Fact]
+	public async Task ControllerLight_IsTheSelectedControllersOwn()
+	{
+		TestHiding hiding = new();
+		(RealControllerService service, BridgeManager manager) = Service(hiding);
+		using RealControllerService _ = service;
+		controllers.Add("a");
+		controllers.Add("b");
+		await service.StartBridgeAsync();
+		WaitUntil(() => manager.Host(1).State == BridgeState.Running && manager.Host(2).State == BridgeState.Running);
+		service.ApplySettings(new ControllerSettings { LightbarColour = 0x00FF00 });
+		WaitUntil(() => manager.Host(1).SentLight is { R: 0, G: > 0, B: 0, PlayerLeds: not 0 } && manager.Host(2).SentLight is { R: 0, G: > 0, B: 0, PlayerLeds: not 0 }
+			&& manager.Host(1).SentLight!.PlayerLeds != manager.Host(2).SentLight!.PlayerLeds);
+
+		Assert.Equal(manager.Host(1).SentLight, service.ControllerLight);
+		service.SelectController("b");
+		Assert.Equal(manager.Host(2).SentLight, service.ControllerLight);
+		Assert.NotEqual(manager.Host(1).SentLight!.PlayerLeds, service.ControllerLight!.PlayerLeds);
+
+		await service.StopBridgeAsync();
+		Assert.Null(service.ControllerLight);
+	}
+
 	[AvaloniaFact]
 	public async Task PerControllerProfile_AppliesToThatControllerOnly_AndIsSaved()
 	{

@@ -77,6 +77,110 @@ public sealed class SettingsFitTests
 		Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
 	}
 
+	// The Audio tab with the speaker's reason line shown (Low Power, then a type without a speaker) still fits at every size
+	// in both languages. With KOPRU_FIT_RENDER_DIR set: settings-audio-{low-power|dualshock4}-{w}x{h}-{tr|en}.png.
+	[AvaloniaFact]
+	public void AudioTab_WithTheSpeakerReason_Fits()
+	{
+		List<string> problems = [];
+		Language? before = Localizer.Chosen;
+		string? fitDir = Environment.GetEnvironmentVariable("KOPRU_FIT_RENDER_DIR") is { Length: > 0 } d ? d : null;
+		try
+		{
+			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			{
+				Localizer.Chosen = language;
+				foreach (string state in new[] { "low-power", "dualshock4" })
+				{
+					(MainWindowViewModel vm, FakeControllerService fake) = FullCase(code);
+					if (state == "low-power")
+					{
+						vm.Settings.LowPowerOn = true;
+					}
+					else
+					{
+						fake.Watcher.Exit("Cyberpunk2077.exe");
+						fake.Games.Tick();
+						fake.Games.SetForcedPadType(Kopru.Core.Virtual.VirtualPadType.DualShock4);
+					}
+					Assert.True(vm.SettingsPage.HasSpeakerOffReason);
+					foreach ((double width, double height) in FitCheck.Matrix)
+					{
+						var window = new MainWindow { DataContext = vm, Width = width, Height = height };
+						window.Show();
+						vm.OpenSettingsAt(SettingsViewModel.AudioTab);
+						FitCheck.Settle(window);
+						problems.AddRange(Check(window).Select(p => $"{code} {width}x{height} audio {state}: {p}"));
+						Border panel = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "SpeakerPanel");
+						if (!panel.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text == KeepLastWords.Apply(vm.SettingsPage.SpeakerOffReason)))
+						{
+							problems.Add($"{code} {width}x{height} audio {state}: no reason line");
+						}
+						if (fitDir != null)
+						{
+							Thread.Sleep(320);
+							FitCheck.Settle(window);
+							using var frame = window.CaptureRenderedFrame();
+							Directory.CreateDirectory(fitDir);
+							frame!.Save(Path.Combine(fitDir, $"settings-audio-{state}-{width}x{height}-{code}.png"));
+						}
+						window.Close();
+					}
+				}
+			}
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
+		Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+	}
+
+	// The Controllers tab with DSX Mod Support on and its longest state lines (the port in use, the last message from a mod)
+	// still fits at every size in both languages, the state line in view.
+	[AvaloniaFact]
+	public void ControllersTab_WithTheDsxState_Fits()
+	{
+		List<string> problems = [];
+		Language? before = Localizer.Chosen;
+		try
+		{
+			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			{
+				Localizer.Chosen = language;
+				foreach (Kopru.Core.Mods.DsxStatus status in new Kopru.Core.Mods.DsxStatus[]
+				{
+					new(Kopru.Core.Mods.DsxListenerState.PortInUse, 6969, false, null),
+					new(Kopru.Core.Mods.DsxListenerState.Listening, 6969, true, DateTimeOffset.UtcNow.AddMinutes(-12).AddSeconds(-20))
+				})
+				{
+					(MainWindowViewModel vm, FakeControllerService fake) = FullCase(code);
+					fake.DsxStatus = status;
+					vm.Settings.DsxModSupport = true;
+					foreach ((double width, double height) in FitCheck.Matrix)
+					{
+						var window = new MainWindow { DataContext = vm, Width = width, Height = height };
+						window.Show();
+						vm.OpenSettingsAt(SettingsViewModel.ControllersTab);
+						FitCheck.Settle(window);
+						problems.AddRange(Check(window).Select(p => $"{code} {width}x{height} controllers dsx {status.State}: {p}"));
+						Border panel = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ModsPanel");
+						if (!panel.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text == KeepLastWords.Apply(vm.SettingsPage.DsxStatusText)))
+						{
+							problems.Add($"{code} {width}x{height} controllers dsx {status.State}: no state line");
+						}
+						window.Close();
+					}
+				}
+			}
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
+		Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+	}
+
 	// The tab switch: one tab per group, Title Case names in both languages, the selected tab kept while the app runs.
 	[AvaloniaFact]
 	public void Tabs_AreNamed_AndTheSelectionIsKept()

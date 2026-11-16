@@ -53,7 +53,7 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 	private readonly BridgeHost[] hosts = new BridgeHost[MaxControllers];
 	private readonly string?[] bound = new string?[MaxControllers];
 	private readonly ControllerPresence?[] present = new ControllerPresence?[MaxControllers];
-	private readonly (SupportedProfile Supported, UnsupportedProfile Unsupported)?[] overrides = new (SupportedProfile, UnsupportedProfile)?[MaxControllers];
+	private readonly GameProfile?[] overrides = new GameProfile?[MaxControllers];
 	private readonly Dictionary<string, int> remembered = new(StringComparer.OrdinalIgnoreCase);
 	private readonly SemaphoreSlim refreshGate = new(1, 1);
 	private readonly object sync = new();
@@ -90,9 +90,6 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 	public BridgeHost Host(int slotNumber) => hosts[Math.Clamp(slotNumber, 1, MaxControllers) - 1];
 
 	public IReadOnlyList<BridgeHost> Hosts => hosts;
-
-	// The game mode's current mode, for the slots with their own profile (null: other games).
-	public Func<GameMode>? Mode { get; set; }
 
 	// True between StartAsync and StopAsync: present controllers are bridged.
 	public bool IsActive
@@ -315,11 +312,19 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		}
 	}
 
-	public void SetProfileOverride(int slotNumber, SupportedProfile? supported, UnsupportedProfile? unsupported)
+	public void GameEnded()
+	{
+		foreach (BridgeHost host in hosts)
+		{
+			host.GameEnded();
+		}
+	}
+
+	public void SetProfileOverride(int slotNumber, GameProfile? own)
 	{
 		lock (sync)
 		{
-			overrides[slotNumber - 1] = supported != null && unsupported != null ? (supported, unsupported) : null;
+			overrides[slotNumber - 1] = own;
 		}
 		ApplyProfiles();
 	}
@@ -328,7 +333,8 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 	{
 		lock (sync)
 		{
-			return overrides[slotNumber - 1] is { } o ? GameProfiles.For(Mode?.Invoke() ?? GameMode.Unsupported, o.Supported, o.Unsupported) : global;
+			// The game session is the same for every slot (the fallback trigger rule follows the game, not the profile).
+			return overrides[slotNumber - 1] is { } o ? GameProfiles.For(o, global.GameSession) : global;
 		}
 	}
 

@@ -31,6 +31,14 @@
     <Style Selector="Grid.settingRow > StackPanel.text">
       <Setter Property="Margin" Value="0,8" />
     </Style>
+    <!-- A compact switch row (label only; "Show Tips" on the full General tab): the switch no taller than the label line -->
+    <Style Selector="Grid.settingRow.compact > StackPanel.text">
+      <Setter Property="Margin" Value="0,3" />
+    </Style>
+    <Style Selector="Grid.settingRow.compact > ToggleSwitch">
+      <Setter Property="Margin" Value="0,-4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <!-- Row action buttons: one width so a column of them reads as one -->
     <Style Selector="Grid.settingRow > Button">
       <Setter Property="MinWidth" Value="104" />
@@ -240,6 +248,15 @@
                   <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Content="{Binding ExportActionText}" Command="{Binding ExportCommand}"
                           AutomationProperties.Name="{Binding ExportText}" />
                 </Grid>
+                <!-- In-app tips (TipBar) on or off: a compact row, label only (the General tab has no room for a full one) -->
+                <Border Classes="divider" />
+                <Grid Classes="settingRow compact" MinHeight="30" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding ShowTipsHint}">
+                  <StackPanel Classes="text">
+                    <TextBlock Classes="label" Text="{Binding ShowTipsLabel}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Name="ShowTipsSwitch" IsChecked="{Binding Settings.ShowTips}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                AutomationProperties.Name="{Binding ShowTipsLabel}" AutomationProperties.HelpText="{Binding ShowTipsHint}" />
+                </Grid>
                 <StackPanel IsVisible="{Binding HasToolResult}">
                   <Border Classes="divider" />
                   <TextBlock Classes="body" Text="{Binding ToolResult, Converter={x:Static v:KeepLastWords.Instance}}" Margin="0,10" />
@@ -288,6 +305,43 @@
         <c:SettingsLayout IsVisible="{Binding IsControllersTab}">
           <v:ControllersPanel DataContext="{Binding Settings.ControllersPanel}" c:SettingsLayout.Fill="True" />
           <v:ControllerInfoCard DataContext="{Binding Info}" c:SettingsLayout.Column="1" />
+          <!-- Game mods: DSX mod support, the hint while off, the listener's state while on (a taken port in the danger colour) -->
+          <DockPanel Classes="card" c:SettingsLayout.Column="1">
+            <TextBlock Classes="section" Text="{Binding DsxGroupLabel}" />
+            <Border Classes="panel" Padding="20,0" Name="ModsPanel">
+              <StackPanel>
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="DsxRow" ToolTip.Tip="{Binding DsxModSupportHint}">
+                  <StackPanel Classes="text">
+                    <TextBlock Classes="label" Text="{Binding DsxModSupportLabel}" />
+                    <TextBlock Classes="body" Name="DsxHint" Text="{Binding DsxModSupportShort, Converter={x:Static v:KeepLastWords.Instance}}"
+                               IsVisible="{Binding ShowsDsxHint}" />
+                    <TextBlock Classes="body" Name="DsxStatus" Text="{Binding DsxStatusText, Converter={x:Static v:KeepLastWords.Instance}}"
+                               IsVisible="{Binding DsxStatusIsFine}" />
+                    <TextBlock Classes="body" Name="DsxStatusProblem" Foreground="{StaticResource DangerBrush}"
+                               Text="{Binding DsxStatusText, Converter={x:Static v:KeepLastWords.Instance}}" IsVisible="{Binding DsxStatusIsProblem}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Name="DsxSwitch" IsChecked="{Binding Settings.DsxModSupport}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                AutomationProperties.Name="{Binding DsxModSupportLabel}" AutomationProperties.HelpText="{Binding DsxModSupportHint}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+          </DockPanel>
+          <!-- Haptics: pause the haptics stream while the game is silent (opt-in; Low Power turns it on too) -->
+          <DockPanel Classes="card" c:SettingsLayout.Column="1">
+            <TextBlock Classes="section" Text="{Binding HapticsGroupLabel}" />
+            <Border Classes="panel" Padding="20,0" Name="HapticsPanel">
+              <StackPanel>
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="PauseHapticsRow" ToolTip.Tip="{Binding PauseHapticsHint}">
+                  <StackPanel Classes="text">
+                    <TextBlock Classes="label" Text="{Binding PauseHapticsLabel}" />
+                    <TextBlock Classes="body" Text="{Binding PauseHapticsShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.PauseHapticsInSilence}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                AutomationProperties.Name="{Binding PauseHapticsLabel}" AutomationProperties.HelpText="{Binding PauseHapticsHint}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+          </DockPanel>
           <v:ProfilesPanel DataContext="{Binding Settings.ProfilesPanel}" c:SettingsLayout.Fill="True" />
         </c:SettingsLayout>
 
@@ -324,16 +378,17 @@
                                 AutomationProperties.Name="{Binding ProtectDefaultAudioLabel}" AutomationProperties.HelpText="{Binding ProtectDefaultAudioHint}" />
                 </Grid>
                 <Border Classes="divider" />
-                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding SpeakerSendHint}">
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding SpeakerSwitchTip}">
                   <StackPanel Classes="text">
-                    <TextBlock Classes="label" Text="{Binding SpeakerSendLabel}" />
-                    <TextBlock Classes="body" Text="{Binding SpeakerSendShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+                    <TextBlock Classes="label" Text="{Binding SpeakerSwitchLabel}" />
+                    <TextBlock Classes="body" Text="{Binding SpeakerSwitchHint, Converter={x:Static v:KeepLastWords.Instance}}" />
+                    <TextBlock Classes="caption" Text="{Binding SpeakerOffReason, Converter={x:Static v:KeepLastWords.Instance}}" IsVisible="{Binding HasSpeakerOffReason}" />
                   </StackPanel>
-                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.SpeakerActive}" OnContent="{x:Null}" OffContent="{x:Null}"
-                                AutomationProperties.Name="{Binding SpeakerSendLabel}" AutomationProperties.HelpText="{Binding SpeakerSendHint}" />
+                  <ToggleSwitch Grid.Column="1" Name="SpeakerSwitch" IsChecked="{Binding Settings.SpeakerEnabled}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                AutomationProperties.Name="{Binding SpeakerSwitchLabel}" AutomationProperties.HelpText="{Binding SpeakerSwitchTip}" />
                 </Grid>
                 <Border Classes="divider" />
-                <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsEnabled="{Binding Settings.SpeakerActive}">
+                <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsEnabled="{Binding Settings.SpeakerEnabled}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding SpeakerVolumeLabel}" />
                   </StackPanel>
@@ -344,7 +399,7 @@
                   </Grid>
                 </Grid>
                 <Border Classes="divider" />
-                <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsEnabled="{Binding Settings.SpeakerActive}">
+                <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" IsEnabled="{Binding Settings.SpeakerEnabled}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding HeadphoneVolumeLabel}" />
                     <TextBlock Classes="caption" Text="{Binding HeadphonesPluggedText, Converter={x:Static v:KeepLastWords.Instance}}" IsVisible="{Binding HeadphonesPlugged}" />

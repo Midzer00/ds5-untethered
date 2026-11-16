@@ -14,9 +14,9 @@ using Kopru.Core.Virtual;
 
 namespace Kopru.App.Tests;
 
-// The global controller type ("Kumanda Türü") in Quick Settings and on the Supported Games page: one shared choice,
-// saved with the settings, the per-game pickers off while a type is forced, what games get shown on the Overview and in
-// the sidebar, and the existing pad type toast.
+// The default controller type ("Varsayılan Kumanda Türü") in Quick Settings and on the Games page: one shared choice,
+// saved with the settings, the per-game pickers always on (a game's own choice wins), what games get shown on the Overview
+// and in the sidebar, and the existing pad type toast.
 public sealed class PadTypeChoiceAppTests : IDisposable
 {
 	private readonly string folder = Path.Combine(Path.GetTempPath(), "kopru-padchoice-" + Guid.NewGuid().ToString("N"));
@@ -44,21 +44,29 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		Dispatcher.UIThread.RunJobs();
 	}
 
+	// With no game running a change of the default type swaps at once (with one it waits; see UnifiedProfileAppTests).
+	private static void NoGame(FakeControllerService fake)
+	{
+		fake.Watcher.Exit("Cyberpunk2077.exe");
+		fake.Games.Tick();
+	}
+
 	[AvaloniaFact]
 	public void OneSharedChoice_AutomaticByDefault_FourOptionsInOrder()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		NoGame(fake);
 		PadTypeChoiceViewModel choice = vm.Overview.Quick.PadType;
 		Assert.Same(vm.Settings.PadType, choice);
 		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.Xbox360], choice.Options.Select(o => o.Type));
-		Assert.Equal(["Otomatik", "DualSense", "DualShock 4", "Xbox 360"], new[] { Text.PadChoiceAuto(Language.Turkish) }.Concat(choice.Options.Skip(1).Select(o => o.Name)));
+		Assert.Equal(["Otomatik (Oyuna Göre)", "DualSense", "DualShock 4", "Xbox 360"], new[] { Text.PadChoiceAutoPerGame(Language.Turkish) }.Concat(choice.Options.Skip(1).Select(o => o.Name)));
+		// Every option says what it means (its tooltip).
+		Assert.Equal([Text.PadChoiceAutoLine(), Text.PadTypeDualSenseLine(), Text.PadTypeDualShock4Line(), Text.PadTypeXboxLine()], choice.Options.Select(o => o.Line));
 		Assert.Null(choice.Selected!.Type);
-		Assert.False(choice.IsForced);
 
 		choice.Selected = choice.Options[2];
 		Assert.Equal(VirtualPadType.DualShock4, fake.Games.ForcedPadType);
 		Assert.Equal(VirtualPadType.DualShock4, fake.Games.CurrentPadType);
-		Assert.True(vm.Settings.PadType.IsForced);
 		// A cleared selection (null while the list is rebuilt) leaves the value alone.
 		choice.Selected = null;
 		Assert.Equal(VirtualPadType.DualShock4, fake.Games.ForcedPadType);
@@ -90,62 +98,113 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		Assert.Null(new AppSettings().WithGames(GameMemory.Default).ForcedPadType);
 	}
 
+	// A game's own choice wins over the default type; Automatic on a game follows the default type.
 	[AvaloniaFact]
-	public void Forced_TurnsThePerGamePickersOff_AndKeepsTheirChoices()
+	public void Default_LeavesTheGamesOwnChoice_AutomaticFollowsIt()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
-		GameItemViewModel item = vm.SupportedGames.Games.First(g => g.PadType != null);
-		item.PadType!.Selected = item.PadType.Options.Single(o => o.Type == VirtualPadType.Xbox360);
-		Assert.True(item.PadType.IsEnabled);
-		int raised = 0;
-		item.PadType.PropertyChanged += (_, e) => raised += e.PropertyName == nameof(GamePadTypePicker.IsEnabled) ? 1 : 0;
+		NoGame(fake);
+		List<GameItemViewModel> items = vm.SupportedGames.Games.Where(g => g.PadType != null).Take(2).ToList();
+		GameItemViewModel chosen = items[0], auto = items[1];
+		Assert.Null(chosen.PadType!.Selected!.Type);
+		Assert.Equal(Text.PadChoiceAuto(), chosen.PadType.Selected.Name);
+		chosen.PadType.Selected = chosen.PadType.Options.Single(o => o.Type == VirtualPadType.Xbox360);
+		Assert.Equal(VirtualPadType.Xbox360, fake.Games.PadChoiceFor(chosen.Key));
+		Assert.EndsWith(Text.PadTypeXboxLine(), chosen.PadType.Tip);
 
-		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[1];
+		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[2];
 		Settle();
-		Assert.False(item.PadType.IsEnabled);
-		Assert.True(raised > 0);
-		Assert.Equal(VirtualPadType.Xbox360, item.PadType.Selected!.Type);
-		Assert.Equal(VirtualPadType.Xbox360, fake.Games.PadTypeFor(item.Key));
+		Assert.Equal(VirtualPadType.Xbox360, chosen.PadType.Selected!.Type);
+		Assert.Equal(VirtualPadType.Xbox360, fake.Games.PadTypeFor(chosen.Key));
+		Assert.Null(auto.PadType!.Selected!.Type);
+		Assert.Equal(VirtualPadType.DualShock4, fake.Games.PadTypeFor(auto.Key));
 
-		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[0];
-		Settle();
-		Assert.True(item.PadType.IsEnabled);
+		// Back to Automatic: the game follows the default type again.
+		chosen.PadType.Selected = chosen.PadType.Options[0];
+		Assert.Null(fake.Games.PadChoiceFor(chosen.Key));
+		Assert.Equal(VirtualPadType.DualShock4, fake.Games.PadTypeFor(chosen.Key));
+		Assert.EndsWith(Text.PadTypeAutoLine(), chosen.PadType.Tip);
 	}
 
 	[AvaloniaFact]
 	public void Forced_ShowsWhatGamesGet_OnTheOverviewAndInTheSidebar()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		NoGame(fake);
 		vm.Overview.ToggleBridgeCommand.Execute(null);
 		Settle();
 		Assert.Equal(Text.HealthOn(), vm.Overview.VirtualStateText);
-		Assert.Equal(Text.SupportedModeHelper(), vm.Overview.SupportedModeHelper);
+		Assert.Equal(Text.GameSees("DualSense"), vm.Overview.GameSeesText);
+		Assert.False(vm.Overview.HasPadLoss);
+		Assert.True(vm.Overview.ShowsPadStatus);
 
+		var changed = new List<string?>();
+		vm.Overview.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[2];
-		fake.RaiseStateChanged();
 		Settle();
-		Assert.Equal(Text.HealthOn() + " · DS4", vm.Overview.VirtualStateText);
-		Assert.Contains(Text.PadShownAsDualShock4(), vm.Overview.VirtualStatusTip);
-		Assert.Equal(Text.PadShownAsDualShock4(), vm.Overview.SupportedModeHelper);
-		Assert.Contains(Text.PadShownAsDualShock4(), vm.Overview.SupportedModeTip);
+		Assert.Contains(nameof(OverviewViewModel.GameSeesText), changed);
+		Assert.Equal(Text.HealthOn(), vm.Overview.VirtualStateText);
+		Assert.Equal(Text.GameSees("DualShock 4"), vm.Overview.GameSeesText);
+		Assert.True(vm.Overview.HasPadLoss);
+		Assert.Equal(Text.PadTypeDualShock4Line(), vm.Overview.PadTypeTip);
+		WithLanguage(Language.Turkish, () =>
+			Assert.Equal("Titreşim ve ışık var; adaptif tetik, oyun haptiği ve hoparlör yok.", vm.Overview.PadLossLine));
+		WithLanguage(Language.English, () =>
+			Assert.Equal("Rumble and light work; no adaptive triggers, game haptics or speaker.", vm.Overview.PadLossLine));
 
 		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[3];
 		Settle();
-		Assert.Equal(Text.HealthOn() + " · Xbox", vm.Overview.VirtualStateText);
-		Assert.Equal(Text.PadShownAsXbox(), vm.Overview.SupportedModeHelper);
-		Assert.EndsWith(" · Xbox", vm.Overview.ModeValue);
+		Assert.Equal(Text.GameSees("Xbox 360"), vm.Overview.GameSeesText);
+		WithLanguage(Language.Turkish, () =>
+			Assert.Equal("Sadece titreşim var; dokunmatik yüzey ve hareket sensörü de yok.", vm.Overview.PadLossLine));
 
-		// Forced DualSense looks like today's DualSense.
+		// Forced DualSense: nothing is missing.
 		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[1];
 		Settle();
-		Assert.Equal(Text.HealthOn(), vm.Overview.VirtualStateText);
-		Assert.Equal(Text.SupportedModeHelper(), vm.Overview.SupportedModeHelper);
+		Assert.Equal(Text.GameSees("DualSense"), vm.Overview.GameSeesText);
+		Assert.False(vm.Overview.HasPadLoss);
+	}
+
+	// A type chosen while the game runs waits: the Overview and the sidebar show it with "Şimdi Uygula", which puts it in.
+	[AvaloniaFact]
+	public void Pending_ShowsOnTheOverview_ApplyNowPutsItIn()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		vm.Overview.ToggleBridgeCommand.Execute(null);
+		Settle();
+		string key = fake.Games.ActiveGame!.Key;
+		Assert.False(vm.Overview.HasPendingPadType);
+		fake.Games.SetPadType(key, VirtualPadType.Xbox360);
+		Settle();
+		Assert.True(vm.Overview.HasPendingPadType);
+		Assert.Equal(Text.GameSees("DualSense"), vm.Overview.GameSeesText);
+		WithLanguage(Language.Turkish, () => Assert.Equal("Xbox 360 · Oyunu Yeniden Başlatınca Geçerli Olur", vm.Overview.PendingPadLine));
+		Assert.Equal(Text.PadTypeDeferredHint(), vm.Overview.PendingPadTip);
+		vm.Overview.ApplyPadTypeNowCommand.Execute(null);
+		Settle();
+		Assert.False(vm.Overview.HasPendingPadType);
+		Assert.Equal(Text.GameSees("Xbox 360"), vm.Overview.GameSeesText);
+	}
+
+	private static void WithLanguage(Language language, Action action)
+	{
+		Language? before = Localizer.Chosen;
+		try
+		{
+			Localizer.Chosen = language;
+			action();
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
 	}
 
 	[AvaloniaFact]
 	public void LowPower_LeavesTheForcedTypeAlone()
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		NoGame(fake);
 		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[2];
 		vm.Overview.Quick.LowPowerOn = true;
 		Settle();
@@ -155,33 +214,27 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		Assert.Equal(VirtualPadType.DualShock4, fake.Games.CurrentPadType);
 	}
 
+	// The default type changed while the virtual controller runs and no game does: one toast (not one per controller).
 	[AvaloniaFact]
-	public void Toast_ReusesThePadTypeNotice_SaysByHand_OncePerChangeForEverySlot()
+	public void Toast_DefaultType_OncePerChange()
 	{
 		long now = 1_000_000;
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake, new AppEnvironment(null, FullScreen: () => false, Clock: () => now));
+		NoGame(fake);
+		vm.Overview.ToggleBridgeCommand.Execute(null);
 		Settle();
 		List<AppNotification> raised = [];
 		vm.Notifications.Raised += raised.Add;
 
-		// The game's own choice: the old "for this game" text.
-		fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.Xbox360)));
-		Assert.Equal(Text.PadModeXboxBody(), raised[^1].Body);
-
-		// Forced: the same toast, saying it was chosen by hand; two controllers swapping give one toast.
-		raised.Clear();
 		now += (long)NotificationCenter.RepeatCooldown.TotalMilliseconds + 1000;
 		fake.Games.SetForcedPadType(VirtualPadType.DualShock4);
 		fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.DualShock4)));
 		fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.DualShock4)));
 		AppNotification toast = Assert.Single(raised);
 		Assert.Equal(Text.PadModeDualShock4Title(), toast.Title);
-		Assert.Equal(Text.PadForcedDualShock4Body(), toast.Body);
+		Assert.Equal(Text.PadTypeDefaultHint(), toast.Body);
 		Assert.Equal(AppPage.SupportedGames, toast.Page);
-
-		Assert.Equal(Text.PadForcedXboxBody(), NotificationCenter.PadTypeNotice(nameof(VirtualPadType.Xbox360), forced: true).Body);
-		Assert.Equal(Text.PadForcedDualSenseBody(), NotificationCenter.PadTypeNotice(nameof(VirtualPadType.DualSense), forced: true).Body);
 	}
 
 	[Fact]
@@ -190,14 +243,16 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		Assert.Equal("Kumanda Türü", Text.PadTypeLabel(Language.Turkish));
 		Assert.Equal("Otomatik", Text.PadChoiceAuto(Language.Turkish));
 		Assert.Equal("Automatic", Text.PadChoiceAuto(Language.English));
-		Assert.Equal("Kumanda türü elle seçili; oyun başına seçimler Otomatik'te geçerli.", Text.PadForcedNote(Language.Turkish));
+		Assert.Equal("Varsayılan Kumanda Türü", Text.PadTypeDefaultLabel(Language.Turkish));
+		Assert.Equal("Automatic (Per Game)", Text.PadChoiceAutoPerGame(Language.English));
 		foreach (Language l in new[] { Language.Turkish, Language.English })
 		{
-			string tip = Text.PadChoiceTip(l);
-			Assert.Contains("DualShock 4", tip);
-			Assert.Contains("Xbox 360", tip);
+			foreach (string line in new[] { Text.PadTypeAutoLine(l), Text.PadChoiceAutoLine(l), Text.PadTypeDefaultHint(l), Text.PadTypeGameHint(l) })
+			{
+				Assert.False(string.IsNullOrWhiteSpace(line));
+				Assert.DoesNotContain("tepsi", line, StringComparison.OrdinalIgnoreCase);
+			}
 		}
-		Assert.DoesNotContain("tepsi", Text.PadChoiceTip(Language.Turkish), StringComparison.OrdinalIgnoreCase);
 	}
 
 	// Overview and Supported Games with DualShock 4 forced and the virtual controller running, both languages, default and
@@ -243,7 +298,9 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 					SupportedGamesView games = window.GetLogicalDescendants().OfType<SupportedGamesView>().Single();
 					ComboBox choice = games.GetLogicalDescendants().OfType<ComboBox>().Single(c => c.Name == "PadTypeChoicePicker");
 					Assert.True(choice.IsVisible && choice.Bounds.Width > 0);
-					Assert.Contains(games.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == Text.PadForcedNote() && t.IsVisible);
+					Assert.Contains(games.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == Text.PadTypeDefaultLabel() && t.IsVisible);
+					// The rows' pickers stay on with a default type set.
+					Assert.All(games.GetLogicalDescendants().OfType<ComboBox>().Where(c => c.DataContext is GameItemViewModel), c => Assert.True(c.IsEffectivelyEnabled));
 					Save(window, writeFiles, outDir, $"pad-type-games-{size}-{code}.png");
 				}
 				window.Close();

@@ -66,23 +66,50 @@ public sealed partial class RealControllerService
 		}
 	}
 
-	// Starts a refresh on the thread pool (skipped when one is already running).
-	public void RequestHealthRefresh()
+	// Starts a refresh on the thread pool (skipped when one is already running). full: the slow system facts (installed
+	// drivers, pending restart, adapter test file) are read again too; the periodic refresh reads only the radio and the
+	// paired list (HealthProbe reads the rest at most every HealthProbe.StaticInterval).
+	public void RequestHealthRefresh(bool full = true)
 	{
+		if (full)
+		{
+			// Kept until a refresh does it (also when this request is skipped because one is running).
+			Volatile.Write(ref healthFullPending, 1);
+		}
 		// Skipped while a refresh runs; a direct RefreshHealthAsync call waits for it instead (it must see the latest state).
 		if (Volatile.Read(ref disposed) == 0 && healthGate.CurrentCount > 0)
 		{
-			_ = Task.Run(() => RefreshHealthAsync());
+			_ = Task.Run(() => RefreshHealthAsync(full: false));
 		}
 	}
 
-	// Rebuilds the report; reads the system (registry, radio, paired list) unless reuseEnvironment. Returns the report.
-	public async Task<HealthReport> RefreshHealthAsync(bool reuseEnvironment = false)
+	// The setup page opened or ran a step: everything is read again.
+	public void RefreshHealth() => RequestHealthRefresh(full: true);
+
+	private int healthFullPending = 1;
+
+	// Rebuilds the report; reads the system (registry, radio, paired list) unless reuseEnvironment; full (or a full
+	// request pending): the slow facts too. Returns the report.
+	public async Task<HealthReport> RefreshHealthAsync(bool reuseEnvironment = false, bool full = true)
 	{
 		await healthGate.WaitAsync().ConfigureAwait(false);
 		try
 		{
-			HealthEnvironment env = reuseEnvironment && lastEnvironment != null ? lastEnvironment : healthProbe?.Read() ?? AssumedEnvironment;
+			HealthEnvironment env;
+			if (reuseEnvironment && lastEnvironment != null)
+			{
+				env = lastEnvironment;
+			}
+			else if (healthProbe != null)
+			{
+				full |= Interlocked.Exchange(ref healthFullPending, 0) != 0;
+				env = healthProbe.Read(full, out bool readStatic);
+				Kopru.Core.Diagnostics.BackgroundWork.HealthRefresh(readStatic);
+			}
+			else
+			{
+				env = AssumedEnvironment;
+			}
 			lastEnvironment = env;
 			List<HidDevice> controllers;
 			try
@@ -124,5 +151,5 @@ public sealed partial class RealControllerService
 		}
 	}
 
-	private void OnLanguageChanged(Language language) => _ = Task.Run(() => RefreshHealthAsync(reuseEnvironment: true));
+	private void OnLanguageChanged(Language language) => _ = Task.Run(() => RefreshHealthAsync(reuseEnvironment: true, full: false));
 }

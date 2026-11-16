@@ -41,13 +41,29 @@ public sealed class SteamLibrary(ISteamEnvironment environment, Func<long>? cloc
 	}
 
 	// The app id and install folder name of one appmanifest_<appid>.acf, or null when it has neither.
-	public static (long AppId, string InstallDir)? ParseManifest(string text)
+	public static (long AppId, string InstallDir)? ParseManifest(string text) =>
+		ParseApp(text, string.Empty) is { } app ? (app.AppId, app.InstallDir) : null;
+
+	// One appmanifest_<appid>.acf in full ("name", and "StateFlags" bit 4: fully installed), with its install folder under
+	// the library's steamapps folder; null when it has no app id or install folder name.
+	public static SteamApp? ParseApp(string text, string steamApps)
 	{
 		VdfNode? state = Vdf.Parse(text)["AppState"];
 		string? dir = state?.GetValue("installdir");
-		return long.TryParse(state?.GetValue("appid"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long id)
-			&& !string.IsNullOrWhiteSpace(dir) ? (id, dir.Trim()) : null;
+		if (!long.TryParse(state?.GetValue("appid"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long id)
+			|| string.IsNullOrWhiteSpace(dir))
+		{
+			return null;
+		}
+		// No flags (an old or hand-made file) counts as installed.
+		bool installed = !long.TryParse(state?.GetValue("StateFlags"), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long flags)
+			|| (flags & FullyInstalled) != 0;
+		string name = state?.GetValue("name") is { Length: > 0 } n && !string.IsNullOrWhiteSpace(n) ? n.Trim() : dir.Trim();
+		return new SteamApp(id, name, dir.Trim(), Trim(Path.Combine(steamApps, "common", dir.Trim())), installed);
 	}
+
+	// "StateFlags" bit: the app is fully installed (updates pending keep it).
+	public const long FullyInstalled = 4;
 
 	// The full install folders ("<library>\steamapps\common\<installdir>") with their app ids.
 	public IReadOnlyList<(string Folder, long AppId)> Installs()
@@ -67,11 +83,22 @@ public sealed class SteamLibrary(ISteamEnvironment environment, Func<long>? cloc
 	// Reads Steam's files again now (not waiting for RefreshInterval), e.g. for a scan the user asked for.
 	public IReadOnlyList<(string Folder, long AppId)> ReadNow()
 	{
+		ReadAppsNow();
+		lock (gate)
+		{
+			return installs;
+		}
+	}
+
+	// Every app manifest in every library, read now (installs follow it too).
+	public IReadOnlyList<SteamApp> ReadAppsNow()
+	{
 		lock (gate)
 		{
 			readAt = clock();
-			installs = Read();
-			return installs;
+			List<SteamApp> apps = ReadApps();
+			installs = ToInstalls(apps);
+			return apps;
 		}
 	}
 
@@ -93,9 +120,19 @@ public sealed class SteamLibrary(ISteamEnvironment environment, Func<long>? cloc
 		return null;
 	}
 
-	private List<(string, long)> Read()
+	private List<(string, long)> Read() => ToInstalls(ReadApps());
+
+	private static List<(string, long)> ToInstalls(List<SteamApp> apps)
 	{
-		var found = new List<(string, long)>();
+		var found = apps.Select(a => (a.Folder, a.AppId)).ToList();
+		// Longest first, so a folder nested in another one wins.
+		found.Sort((a, b) => b.Item1.Length.CompareTo(a.Item1.Length));
+		return found;
+	}
+
+	private List<SteamApp> ReadApps()
+	{
+		var found = new List<SteamApp>();
 		try
 		{
 			string? steamPath = environment.SteamPath;
@@ -123,9 +160,9 @@ public sealed class SteamLibrary(ISteamEnvironment environment, Func<long>? cloc
 				{
 					try
 					{
-						if (ParseManifest(environment.ReadAllText(manifest)) is (long id, string dir))
+						if (ParseApp(environment.ReadAllText(manifest), apps) is { } app)
 						{
-							found.Add((Trim(Path.Combine(apps, "common", dir)), id));
+							found.Add(app);
 						}
 					}
 					catch (Exception e) when (e is VdfFormatException or IOException or UnauthorizedAccessException)
@@ -139,10 +176,31 @@ public sealed class SteamLibrary(ISteamEnvironment environment, Func<long>? cloc
 		{
 			// Unreadable library: nothing maps.
 		}
-		// Longest first, so a folder nested in another one wins.
-		found.Sort((a, b) => b.Item1.Length.CompareTo(a.Item1.Length));
 		return found;
 	}
 
 	private static string Trim(string path) => path.Replace('/', '\\').TrimEnd('\\');
+}
+
+// One Steam app manifest: id, name, install folder name, full install folder and whether it is fully installed.
+public sealed record SteamApp(long AppId, string Name, string InstallDir, string Folder, bool Installed);
+
+// Steam's own entries that are not games: the shared redistributables, the Linux/Proton runtimes, SteamVR, SDKs, dedicated
+// servers and soundtracks. Steam marks the type only in its binary appinfo cache (not read), so this is a short list of
+// known app ids and name patterns; anything else Steam installed counts as a game (the user can hide it).
+public static class SteamNonGames
+{
+	// Steamworks Common Redistributables, SteamVR, Steam Linux Runtime 1.0/2.0/3.0, Proton Experimental/Hotfix/EasyAntiCheat
+	// Runtime/BattlEye Runtime.
+	public static readonly IReadOnlySet<long> AppIds = new HashSet<long>
+	{
+		228980, 250820, 1070560, 1391110, 1628350, 1493710, 2180100, 1826330, 1161040
+	};
+
+	private static readonly System.Text.RegularExpressions.Regex Names = new(
+		@"^(Steamworks\b|SteamVR\b|Steam Linux Runtime\b|Proton (\d|Experimental|Hotfix|Next|EasyAntiCheat|BattlEye))" +
+		@"|\b(Redistributables?|Dedicated Server|SDK|Soundtrack|OST)\b",
+		System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+	public static bool IsNonGame(long appId, string? name) => AppIds.Contains(appId) || (name != null && Names.IsMatch(name));
 }

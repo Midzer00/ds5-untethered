@@ -17,6 +17,16 @@ public partial class MainWindow : Window
 		// A transparent surface for the system acrylic where Windows can draw it; opaque graphite elsewhere.
 		TransparencyLevelHint = SystemBackdrop.IsSupported ? [WindowTransparencyLevel.Transparent] : [WindowTransparencyLevel.None];
 		DragBand.PointerPressed += OnDragBandPressed;
+		// Tips have their moment when the window becomes active (also when PS brings it up).
+		Activated += (_, _) =>
+		{
+			if (DataContext is ViewModels.MainWindowViewModel vm)
+			{
+				vm.BackToGame.SetWindowActive(true);
+				vm.Tips.OnWindowActivated();
+			}
+		};
+		Deactivated += (_, _) => (DataContext as ViewModels.MainWindowViewModel)?.BackToGame.SetWindowActive(false);
 		// On Windows the base constructor already sets ClientSize (and may set other window properties) before
 		// InitializeComponent has created the named parts, so the property handlers skip until now; apply what they
 		// skipped once here, and again when the window opens with its real size.
@@ -27,7 +37,7 @@ public partial class MainWindow : Window
 	public double ContentScale { get; private set; } = 1;
 
 	// True once the named parts exist (InitializeComponent has run).
-	private bool PartsReady => ScaleHost != null && Pages != null && Root != null;
+	private bool PartsReady => ScaleHost != null && Pages != null && Root != null && TipHost != null;
 
 	// Scale for the current client size, and the maximized off-screen margin. Safe to call at any time.
 	private void ApplyLayoutState(bool force = false)
@@ -49,6 +59,12 @@ public partial class MainWindow : Window
 	}
 
 	private const double CaptionHeight = 32;
+
+	// The sidebar's width and its hairline (MainWindow.axaml, before scaling).
+	public const double SidebarWidth = 273;
+
+	// Room kept free on the right of the top band for Windows' caption buttons (minimize, maximize, close).
+	public const double CaptionButtonsWidth = 150;
 
 	// The top band stands in for the title bar: a drag moves the window (Windows snaps it as usual), a double click
 	// maximizes or restores it. The caption buttons above it are Windows' own and take their clicks first.
@@ -93,6 +109,10 @@ public partial class MainWindow : Window
 		{
 			ApplyLayoutState();
 		}
+		if (change.Property == IsVisibleProperty || change.Property == WindowStateProperty)
+		{
+			ReportShown();
+		}
 		if (change.Property == ActualTransparencyLevelProperty)
 		{
 			UpdateGlass();
@@ -113,6 +133,17 @@ public partial class MainWindow : Window
 				}
 			}, DispatcherPriority.Background);
 		}
+	}
+
+	// Tells the view model whether the window is on screen (shown and not minimised): page timers run only then. A window
+	// that was never shown (started with --minimized) counts as hidden.
+	private void ReportShown() =>
+		(DataContext as ViewModels.MainWindowViewModel)?.SetWindowShown(IsVisible && WindowState != WindowState.Minimized);
+
+	protected override void OnDataContextChanged(EventArgs e)
+	{
+		base.OnDataContextChanged(e);
+		ReportShown();
 	}
 
 	private void UpdateGlass() => Classes.Set("glass", _systemBackdrop && ActualTransparencyLevel == WindowTransparencyLevel.Transparent);

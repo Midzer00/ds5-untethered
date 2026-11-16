@@ -282,19 +282,39 @@ public partial class BridgeTests
 	}
 
 	[Fact]
-	public void GameControlsLight_OnceTheGameSetsIt_UntilTheProfileChanges()
+	public void GameControlsLight_OnceTheGameSetsIt_WhileItsOutputGoesOn_AcrossProfileChanges()
 	{
 		FakeLink link = new();
 		using BluetoothSession session = new(link);
 		using VirtualDualSense pad = Pad();
-		using ControllerBridge bridge = new(session, pad);
+		GameClock clock = new();
+		using ControllerBridge bridge = new(session, pad) { Time = clock, LightLog = _ => { } };
 		Assert.False(bridge.GameControlsLight);
 		SendOutput(pad, b => OutputBlock.SetTriggers(b, TriggerEffects.Off(), TriggerEffects.Off()));
 		Assert.False(bridge.GameControlsLight);
 		SendOutput(pad, b => OutputBlock.SetLightbar(b, 1, 2, 3));
 		Assert.True(bridge.GameControlsLight);
-		bridge.ApplyProfile(new BridgeProfile(LightFromGame: true));
+
+		// The hold lasts while the game's output goes on (repeats too), and ends GameLightIdle after its last report.
+		for (int i = 0; i < 5; i++)
+		{
+			clock.Advance(TimeSpan.FromSeconds(1));
+			SendOutput(pad, b => OutputBlock.SetLightbar(b, 1, 2, 3));
+			Assert.True(bridge.GameControlsLight);
+		}
+		clock.Advance(ControllerBridge.DefaultGameLightIdle - TimeSpan.FromMilliseconds(1));
+		Assert.True(bridge.GameControlsLight);
+		clock.Advance(TimeSpan.FromMilliseconds(1));
 		Assert.False(bridge.GameControlsLight);
+
+		// The game writes its light again: it takes it back at once, and its (repeated) report goes out again.
+		int before = link.Writes.Count;
+		SendOutput(pad, b => OutputBlock.SetLightbar(b, 1, 2, 3));
+		Assert.True(bridge.GameControlsLight);
+		Assert.Equal(before + 1, link.Writes.Count);
+
+		bridge.ApplyProfile(new BridgeProfile(LightFromGame: true));
+		Assert.True(bridge.GameControlsLight);
 
 		// Light not let through: never the game's, and its LED controls are dropped.
 		bridge.ApplyProfile(new BridgeProfile(LightFromGame: false));

@@ -20,6 +20,11 @@ public sealed class GameEntry
 	[JsonPropertyName("adaptiveTriggers")] public bool AdaptiveTriggers { get; set; }
 	[JsonPropertyName("exeConfidence")] public string? ExeConfidence { get; set; }
 	[JsonPropertyName("notes")] public string? Notes { get; set; }
+
+	// Steam's install folder name when it differs from the name (kept as is; written only when set).
+	[JsonPropertyName("steamInstallDir")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public string? SteamInstallDir { get; set; }
 }
 
 public sealed class GameListFile

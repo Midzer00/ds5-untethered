@@ -41,8 +41,8 @@ public static partial class Text
 	public static string MicButtonModeLabel(Language? l = null) => Pick(l, $"Mikrofon Tuşu", $"Mic Button");
 
 	public static string MicButtonModeHint(Language? l = null) => Pick(l,
-		$"Kumandanın mikrofon tuşu ve Hızlı Ayarlar'daki Mikrofon kutucuğu ne yapsın. Sessize Al: kumanda mikrofonu açık kalır, yalnızca sesin kesilir (hemen geri gelir). Tamamen Kapat: kumanda mikrofonu kapanır (pil tasarrufu). Seçili mikrofon bilgisayarınki ise tuş onu sessize alır.",
-		$"What the controller's mic button and the Microphone tile in Quick Settings do. Mute: the controller microphone stays on and only your voice is cut (back at once). Turn Off: the controller microphone turns off (saves battery). If a PC microphone is selected, the button mutes it.");
+		$"Kumandanın mikrofon tuşu ve Hızlı Ayarlar'daki Mikrofon kutucuğu ne yapsın. İkisinde de tuşun ışığı söner, oyunlar ve sohbet uygulamaları sessizlik duyar, Windows'taki Kumanda Mikrofonu yerinde kalır. Sessize Al: kumanda ses göndermeye devam eder, tekrar basınca anında açılır; uygulama yeniden açılınca sessizde kalmaz. Tamamen Kapat: kumanda ses göndermeyi bırakır ve Mikrofonu Oyuna Aktar kapanır (öyle kalır); tekrar basınca yeniden açılır. Windows'ta bilgisayar mikrofonu seçiliyse tuş iki modda da onu sessize alır.",
+		$"What the controller's mic button and the Microphone tile in Quick Settings do. Either way the button's light goes out, games and chat apps hear silence, and the Controller Microphone stays in Windows. Mute: the controller keeps sending sound; press again and it's back at once; it is not muted any more after the app restarts. Turn Off: the controller stops sending sound and Pass Microphone to Games turns off (and stays off); press again to turn it back on. If a PC microphone is the Windows default, the button mutes it in both modes.");
 
 	public static string MicButtonMute(Language? l = null) => Pick(l, $"Sessize Al", $"Mute");
 
@@ -83,8 +83,8 @@ public static partial class Text
 		$"The microphone games and chat apps hear. The mic button and the Microphone tile switch this microphone.");
 
 	public static string QuickMicButtonTip(Language? l = null) => Pick(l,
-		$"Sessize Al: kumanda mikrofonu açık kalır, sesin hemen kesilip geri gelir. Tamamen Kapat: kumanda mikrofonu kapanır.",
-		$"Mute: the controller microphone stays on, your voice is cut and back at once. Turn Off: the controller microphone turns off.");
+		$"İkisinde de ışık söner, oyun sessizlik duyar. Sessize Al: kumanda ses göndermeye devam eder, anında geri açılır. Tamamen Kapat: kumanda ses göndermeyi bırakır, Mikrofonu Oyuna Aktar kapanır.",
+		$"Either way the light goes out and games hear silence. Mute: the controller keeps sending sound, back at once. Turn Off: the controller stops sending sound and Pass Microphone to Games turns off.");
 
 	public static string QuickMicTileTip(Language? l = null) => Pick(l,
 		$"Kumandanın mikrofon tuşuyla aynı işi yapar: seçili mikrofonu açar, sessize alır ya da kapatır.",

@@ -54,8 +54,9 @@ public sealed class ControllerRegion(PadButtons button, RegionKind kind, IReadOn
 public readonly record struct StickWell(PadButtons Button, Point Centre, double CapRadius, double WellRadius, double Travel);
 
 // Where every control sits on the controller art (Assets/controller.png and controller-edge.png share the geometry),
-// in the asset's own pixels (2290 x 1520). Measured from the drawing; tune here. The art is mirror-symmetric around
-// x = 1145, so right-hand shapes are the left ones mirrored where the drawing agrees.
+// in the asset's own pixels (2290 x 1520). The art is rendered from a model built on these same shapes
+// (tools/art/controller/layout.py ports them): change one, change the other and render again. Right-hand shapes are the
+// left ones mirrored around x = 1145.
 public static class ControllerLayout
 {
 	public const double ArtWidth = 2290;
@@ -65,16 +66,18 @@ public static class ControllerLayout
 	// The touch sensor (1920 x 1080 reported) mapped onto the drawn touchpad.
 	public static readonly Rect TouchSurface = new(712, 40, 864, 472);
 
-	// Stick cap at rest: grey disc r 84 inside a dark well (inner edge of the black ring r ~130). The cap may move
-	// Travel px in any direction so it stays inside the well.
-	public static readonly StickWell LeftStick = new(PadButtons.L3, new Point(778, 743), 84, 129, 40);
-	public static readonly StickWell RightStick = new(PadButtons.R3, new Point(1511, 743), 84, 129, 40);
+	// Stick cap at rest: r 140 over an opening of r 182 in the body. The cap may move Travel px in any direction and
+	// stays inside the well (cap + travel).
+	public static readonly StickWell LeftStick = new(PadButtons.L3, new Point(778, 743), 140, 176, 36);
+	public static readonly StickWell RightStick = new(PadButtons.R3, new Point(1511, 743), 140, 176, 36);
 
-	// The art's stick colours (well floor and cap) for the standard and the Edge drawing, sampled from the assets.
-	public static readonly Color WellColor = Color.Parse("#252B31");
-	public static readonly Color CapColor = Color.Parse("#454A51");
-	public static readonly Color EdgeWellColor = Color.Parse("#121316");
-	public static readonly Color EdgeCapColor = Color.Parse("#191A1E");
+	// A moved stick is drawn from sprites rendered with the art: the stick's surroundings with no cap (a square of
+	// 2 x StickSpriteHalf around the stick, covering the cap at rest and its shadow), then the cap alone with its shadow,
+	// same size, centred on the moved cap.
+	public const double StickSpriteHalf = 270;
+
+	// Where the light-strip masks sit (the strip and the reach of its glow), in asset pixels.
+	public static readonly Rect LightRect = new(560, 0, 1170, 640);
 
 	private static readonly Point DpadCentre = new(436, 438);
 
@@ -89,19 +92,19 @@ public static class ControllerLayout
 	{
 		List<ControllerRegion> list =
 		[
-			// Face buttons: outer edge of the black rings.
-			new(PadButtons.Triangle, RegionKind.Button, Circle(1846, 265, 74)),
-			new(PadButtons.Square, RegionKind.Button, Circle(1702.5, 416, 74)),
-			new(PadButtons.Circle, RegionKind.Button, Circle(1992, 416, 74)),
-			new(PadButtons.Cross, RegionKind.Button, Circle(1846.5, 569, 74)),
+			// Face buttons: the hole in the shell each sits in.
+			new(PadButtons.Triangle, RegionKind.Button, Circle(1846, 265, 78)),
+			new(PadButtons.Square, RegionKind.Button, Circle(1702.5, 416, 78)),
+			new(PadButtons.Circle, RegionKind.Button, Circle(1992, 416, 78)),
+			new(PadButtons.Cross, RegionKind.Button, Circle(1846.5, 569, 78)),
 			// D-pad: one arm shape, turned to each direction.
 			new(PadButtons.DpadUp, RegionKind.Button, DpadArm(0, 197)),
 			new(PadButtons.DpadRight, RegionKind.Button, DpadArm(90, 199)),
 			new(PadButtons.DpadDown, RegionKind.Button, DpadArm(180, 202)),
 			new(PadButtons.DpadLeft, RegionKind.Button, DpadArm(270, 198)),
 			// Create / Options: slanted pills (tops lean towards the touchpad).
-			new(PadButtons.Create, RegionKind.Button, Pill(615.5, 189, 30, 57, -10)),
-			new(PadButtons.Options, RegionKind.Button, Pill(1671.5, 189, 30, 57, 10)),
+			new(PadButtons.Create, RegionKind.Button, Pill(615.5, 189, 27, 54, -10)),
+			new(PadButtons.Options, RegionKind.Button, Pill(1671.5, 189, 27, 54, 10)),
 			// Bumpers: the dark front face of the shoulder; the trigger is the lighter top face above it.
 			new(PadButtons.L1, RegionKind.Bumper, BumperFace),
 			new(PadButtons.R1, RegionKind.Bumper, Mirror(BumperFace)),
@@ -111,10 +114,11 @@ public static class ControllerLayout
 			new(PadButtons.L3, RegionKind.Stick, Circle(LeftStick.Centre.X, LeftStick.Centre.Y, LeftStick.CapRadius + LeftStick.Travel)),
 			new(PadButtons.R3, RegionKind.Stick, Circle(RightStick.Centre.X, RightStick.Centre.Y, RightStick.CapRadius + RightStick.Travel)),
 			// The art has no PS logo: a round button between the sticks, where it sits on the controller.
-			new(PadButtons.PS, RegionKind.Button, Circle(1144, 770, 34)),
+			new(PadButtons.PS, RegionKind.Button, Circle(1144, 770, 55)),
 			new(PadButtons.Mute, RegionKind.Button, Pill(1143.5, 871, 15, 56, 90)),
 			new(PadButtons.Touchpad, RegionKind.Touchpad, RoundedRect(TouchSurface.Inflate(new Thickness(14, 8, 14, 10)), 40)),
-			// Edge only, approximate: Fn buttons under the sticks; back paddles are not visible from the front.
+			// Edge only: Fn buttons under the sticks (in the Edge render); back paddles are not visible from the front, so
+			// approximate spots on the grips.
 			new(PadButtons.LeftFunction, RegionKind.Button, Pill(905, 940, 18, 40, 90), true),
 			new(PadButtons.RightFunction, RegionKind.Button, Pill(1385, 940, 18, 40, 90), true),
 			new(PadButtons.LeftPaddle, RegionKind.Button, Pill(380, 1230, 26, 70, 90), true),

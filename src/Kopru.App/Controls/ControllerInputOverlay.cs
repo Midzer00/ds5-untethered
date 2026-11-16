@@ -2,15 +2,17 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Kopru.Core.Input;
 
 namespace Kopru.App.Controls;
 
-// Drawn over a ControllerArt of the same size (same uniform fit): live input on the controller's own shapes. A pressed
-// control fills in the accent with a crisp edge at once and fades out quickly on release; triggers fill with their
-// pressure; stick caps move in their wells and point where they are pushed; touchpad fingers show as dots. Shapes and
-// positions come from ControllerLayout (the art's pixels). Frames are requested from the render loop only while a fade
-// runs; an idle or hidden overlay costs nothing.
+// Drawn over a ControllerArt of the same size (same uniform fit): live input on the controller's own parts. A pressed
+// control looks pressed in at once (the art's own pixels of it sunk a little, darker, tinted in the accent with its
+// shading kept, a soft accent glow round its edge) and fades back quickly on release; triggers press in from the low end
+// with their pressure; stick caps (rendered sprites) move in their wells and point where they are pushed, and sink on
+// L3/R3; touchpad fingers show as soft glowing spots. Shapes and positions come from ControllerLayout (the art's pixels).
+// Frames are requested from the render loop only while a fade runs; an idle or hidden overlay costs nothing.
 public sealed class ControllerInputOverlay : Control
 {
 	public static readonly StyledProperty<PadButtons> PressedProperty = AvaloniaProperty.Register<ControllerInputOverlay, PadButtons>(nameof(Pressed));
@@ -28,16 +30,19 @@ public sealed class ControllerInputOverlay : Control
 	public static readonly StyledProperty<double> R2LevelProperty = AvaloniaProperty.Register<ControllerInputOverlay, double>(nameof(R2Level));
 
 	// Screen sizes (device-independent pixels), independent of how large the controller is drawn.
-	private const double EdgeWidth = 1.5;
-	private const double TouchpadEdgeWidth = 2.5;
-	private const double TouchDotRadius = 7;
+	private const double RimWidth = 1.25;
+	private const double TouchGlowMin = 9;
+	private const double TouchCoreMin = 2.5;
 	private const double PointerWidth = 2.5;
 	private const double PointerDotRadius = 3.5;
+	// Art pixels.
+	private const double TouchGlowRadius = 56;
+	private const double TouchCoreRadius = 6;
+	// How much smaller a clicked stick cap is drawn (pushed in, away from the viewer).
+	private const double StickSink = 0.045;
 
-	private static readonly IBrush Well = new SolidColorBrush(ControllerLayout.WellColor);
-	private static readonly IBrush Cap = new SolidColorBrush(ControllerLayout.CapColor);
-	private static readonly IBrush EdgeWell = new SolidColorBrush(ControllerLayout.EdgeWellColor);
-	private static readonly IBrush EdgeCap = new SolidColorBrush(ControllerLayout.EdgeCapColor);
+	private static readonly IBrush Shade = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0));
+
 	private static readonly Color DefaultAccent = Color.Parse("#3B82F6");
 
 	private readonly InputAnimator _animator = new();
@@ -48,9 +53,12 @@ public sealed class ControllerInputOverlay : Control
 	private double _penScale = double.NaN;
 	private IBrush _fill = Brushes.Transparent;
 	private IBrush _tint = Brushes.Transparent;
-	private IPen _edge = new Pen();
-	private IPen _padEdge = new Pen();
-	private IPen _fullEdge = new Pen();
+	private IBrush _triggerTint = Brushes.Transparent;
+	private IBrush _padTint = Brushes.Transparent;
+	private IBrush _touchGlow = Brushes.Transparent;
+	private IPen _rim = new Pen();
+	private IPen _glowNear = new Pen();
+	private IPen _glowWide = new Pen();
 	private IPen _travelEdge = new Pen();
 	private IPen _pointer = new Pen();
 	private IPen _touchRing = new Pen();
@@ -64,6 +72,8 @@ public sealed class ControllerInputOverlay : Control
 	public ControllerInputOverlay()
 	{
 		_frames = new FrameRequester(this);
+		// The art's pixels and the stick sprites are scaled down like the art itself.
+		RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.HighQuality);
 	}
 
 	public PadButtons Pressed { get => GetValue(PressedProperty); set => SetValue(PressedProperty, value); }
@@ -116,6 +126,8 @@ public sealed class ControllerInputOverlay : Control
 		EnsureResources(scale);
 		TimeSpan now = Clock();
 		PadButtons pressed = Pressed;
+		bool edge = IsEdge;
+		Bitmap art = ControllerArt.ArtBitmap(edge);
 
 		using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(ox, oy)))
 		{
@@ -127,11 +139,15 @@ public sealed class ControllerInputOverlay : Control
 			{
 				using (context.PushOpacity(pad))
 				{
-					context.DrawGeometry(_tint, _padEdge, ControllerArt.PadGeometry);
+					Geometry padShape = ControllerArt.PadGeometry;
+					using (context.PushGeometryClip(padShape))
+					{
+						context.FillRectangle(_padTint, padShape.Bounds);
+					}
+					Glow(context, padShape);
 				}
 			}
 
-			bool edge = IsEdge;
 			foreach (ControllerRegion region in ControllerLayout.Regions)
 			{
 				if (region.IsEdgeOnly && !edge)
@@ -147,13 +163,14 @@ public sealed class ControllerInputOverlay : Control
 						{
 							using (context.PushOpacity(level))
 							{
-								context.DrawGeometry(_fill, _edge, region.Geometry);
+								DrawPressed(context, art, region.Geometry, region.Bounds, region.Kind == RegionKind.Bumper ? 2 : 3, _tint);
+								Glow(context, region.Geometry);
 							}
 						}
 						break;
 					case RegionKind.Trigger:
 						double percent = region.Button == PadButtons.L2 ? L2Level : R2Level;
-						DrawTrigger(context, region, InputAnimator.TriggerFill(percent, (pressed & region.Button) != 0));
+						DrawTrigger(context, art, region, InputAnimator.TriggerFill(percent, (pressed & region.Button) != 0));
 						break;
 				}
 			}
@@ -167,9 +184,12 @@ public sealed class ControllerInputOverlay : Control
 				}
 				Rect surface = ControllerLayout.TouchSurface;
 				var at = new Point(surface.X + x * surface.Width, surface.Y + y * surface.Height);
+				double glow = Math.Max(TouchGlowRadius, TouchGlowMin / scale);
+				double core = Math.Max(TouchCoreRadius, TouchCoreMin / scale);
 				using (context.PushOpacity(level))
 				{
-					context.DrawEllipse(_fill, _touchRing, at, TouchDotRadius / scale, TouchDotRadius / scale);
+					context.DrawEllipse(_touchGlow, null, at, glow, glow);
+					context.DrawEllipse(Brushes.White, null, at, core, core);
 				}
 			}
 		}
@@ -180,32 +200,54 @@ public sealed class ControllerInputOverlay : Control
 		}
 	}
 
-	// The trigger's face fills from its low end up as it is pulled; fully pulled adds a light edge.
-	private void DrawTrigger(DrawingContext context, ControllerRegion region, double fill)
+	// A part pressed in: the art's own pixels of it, sunk a few pixels and a little darker, tinted in the accent (its shading
+	// still shows through).
+	private void DrawPressed(DrawingContext context, Bitmap art, Geometry shape, Rect bounds, double sink, IBrush tint)
+	{
+		Rect source = bounds.Inflate(sink + 2).Intersect(new Rect(0, 0, ControllerLayout.ArtWidth, ControllerLayout.ArtHeight));
+		using (context.PushGeometryClip(shape))
+		{
+			context.DrawImage(art, source, source.Translate(new Vector(0, sink)));
+			context.FillRectangle(Shade, source);
+			context.FillRectangle(tint, source);
+		}
+	}
+
+	// A soft accent glow round a pressed part's edge: two wide faint strokes under a fine one.
+	private void Glow(DrawingContext context, Geometry shape)
+	{
+		context.DrawGeometry(null, _glowWide, shape);
+		context.DrawGeometry(null, _glowNear, shape);
+		context.DrawGeometry(null, _rim, shape);
+	}
+
+	// The trigger pressed in from its low end up as it is pulled (tinted and sunk, its shading kept); fully pulled it glows
+	// all round.
+	private void DrawTrigger(DrawingContext context, Bitmap art, ControllerRegion region, double fill)
 	{
 		if (fill <= 0)
 		{
 			return;
 		}
 		Rect b = region.Bounds;
-		bool full = fill >= 0.995;
-		if (!full)
+		double cut = b.Bottom - fill * b.Height;
+		using (context.PushClip(new Rect(b.X - 4, cut, b.Width + 8, b.Bottom - cut + 4)))
 		{
-			double cut = b.Bottom - fill * b.Height;
-			using (context.PushClip(new Rect(b.X - 4, cut, b.Width + 8, b.Bottom - cut + 4)))
-			{
-				context.DrawGeometry(_fill, null, region.Geometry);
-			}
-			context.DrawGeometry(null, _travelEdge, region.Geometry);
+			DrawPressed(context, art, region.Geometry, b, 2 * fill, _triggerTint);
+		}
+		if (fill >= 0.995)
+		{
+			Glow(context, region.Geometry);
 		}
 		else
 		{
-			context.DrawGeometry(_fill, _fullEdge, region.Geometry);
+			context.DrawGeometry(null, _travelEdge, region.Geometry);
 		}
 	}
 
-	// At rest the art's own cap shows untouched. Pushed: the cap is redrawn moved in its well, with a pointer from its
-	// centre towards where it is pushed (longer the further). L3/R3: the cap fills in the accent.
+	// At rest the art's own cap shows untouched. Pushed or clicked: the stick's surroundings without the cap are drawn over
+	// it, then the rendered cap (with its shadow) where it is pushed, with a pointer from its centre towards there (longer
+	// the further). L3/R3 sinks the cap a little (drawn slightly smaller), darkens and tints it, and rings it in a glow.
 	private void DrawStick(DrawingContext context, StickWell stick, double x, double y, TimeSpan now, double scale)
 	{
 		Vector offset = InputAnimator.StickOffset(x, y, stick.Travel);
@@ -217,16 +259,24 @@ public sealed class ControllerInputOverlay : Control
 			return;
 		}
 		Point cap = stick.Centre + offset;
-		if (moved)
-		{
-			context.DrawEllipse(IsEdge ? EdgeWell : Well, null, stick.Centre, stick.WellRadius, stick.WellRadius);
-			context.DrawEllipse(IsEdge ? EdgeCap : Cap, null, cap, stick.CapRadius, stick.CapRadius);
-		}
+		double half = ControllerLayout.StickSpriteHalf;
+		double sunk = 1 - StickSink * click;
+		bool edge = IsEdge;
+		context.DrawImage(ControllerArt.StickWellSprite(edge, stick.Button == PadButtons.L3),
+			new Rect(stick.Centre.X - half, stick.Centre.Y - half, 2 * half, 2 * half));
+		context.DrawImage(ControllerArt.StickCapSprite(edge), new Rect(cap.X - half * sunk, cap.Y - half * sunk, 2 * half * sunk, 2 * half * sunk));
+		double radius = stick.CapRadius * sunk;
 		if (click > 0)
 		{
 			using (context.PushOpacity(click))
 			{
-				context.DrawEllipse(_fill, _edge, cap, stick.CapRadius, stick.CapRadius);
+				var disc = new EllipseGeometry(new Rect(cap.X - radius, cap.Y - radius, 2 * radius, 2 * radius));
+				using (context.PushGeometryClip(disc))
+				{
+					context.FillRectangle(Shade, disc.Bounds);
+					context.FillRectangle(_tint, disc.Bounds);
+				}
+				Glow(context, disc);
 			}
 		}
 		if (moved)
@@ -250,16 +300,23 @@ public sealed class ControllerInputOverlay : Control
 		}
 		_accent = accent;
 		_penScale = scale;
-		// Pens are used inside the art-pixel transform: widths are divided by the scale to stay fixed on screen.
-		var darker = new SolidColorBrush(Color.FromRgb((byte)(accent.R * 0.72), (byte)(accent.G * 0.72), (byte)(accent.B * 0.72)));
+		// Inside the art-pixel transform: glow widths are in art pixels (they scale with the picture); fine lines are divided
+		// by the scale to stay crisp on screen, but never thinner than a few art pixels.
+		Color Alpha(double a) => Color.FromArgb((byte)Math.Round(255 * a), accent.R, accent.G, accent.B);
 		var solid = new SolidColorBrush(accent);
 		_fill = solid;
-		_tint = new SolidColorBrush(Color.FromArgb(56, accent.R, accent.G, accent.B));
-		_edge = new Pen(darker, EdgeWidth / scale, lineJoin: PenLineJoin.Round);
-		_padEdge = new Pen(solid, TouchpadEdgeWidth / scale, lineJoin: PenLineJoin.Round);
-		_fullEdge = new Pen(Brushes.White, EdgeWidth / scale, lineJoin: PenLineJoin.Round);
-		_travelEdge = new Pen(solid, 1 / scale, lineJoin: PenLineJoin.Round);
+		_tint = new SolidColorBrush(Alpha(0.38));
+		_triggerTint = new SolidColorBrush(Alpha(0.45));
+		_padTint = new SolidColorBrush(Alpha(0.16));
+		_rim = new Pen(new SolidColorBrush(Alpha(0.95)), Math.Max(3, RimWidth / scale), lineJoin: PenLineJoin.Round);
+		_glowNear = new Pen(new SolidColorBrush(Alpha(0.30)), 12, lineJoin: PenLineJoin.Round);
+		_glowWide = new Pen(new SolidColorBrush(Alpha(0.12)), 28, lineJoin: PenLineJoin.Round);
+		_travelEdge = new Pen(new SolidColorBrush(Alpha(0.7)), Math.Max(2, 1 / scale), lineJoin: PenLineJoin.Round);
 		_pointer = new Pen(solid, PointerWidth / scale, lineCap: PenLineCap.Round);
-		_touchRing = new Pen(Brushes.White, EdgeWidth / scale, lineCap: PenLineCap.Round);
+		_touchRing = new Pen(Brushes.White, RimWidth / scale, lineCap: PenLineCap.Round);
+		_touchGlow = new RadialGradientBrush
+		{
+			GradientStops = { new GradientStop(Alpha(0.9), 0), new GradientStop(Alpha(0.45), 0.35), new GradientStop(Alpha(0), 1) },
+		};
 	}
 }

@@ -31,8 +31,9 @@ public sealed class AppSettings
 	public double IdlePowerOffMinutes { get; set; } = 15;
 	public bool StartWithWindows { get; set; }
 
-	// Experimental controller speaker (missing in older files: off); volumes in percent.
-	public bool SpeakerEnabled { get; set; }
+	// The controller speaker, the one switch (on by default; a file from before the speaker reads it as on too, and the
+	// migration from DualSense Mode sets it); volumes in percent.
+	public bool SpeakerEnabled { get; set; } = true;
 	public double SpeakerVolume { get; set; } = 80;
 	public double HeadphoneVolume { get; set; } = 60;
 
@@ -52,6 +53,12 @@ public sealed class AppSettings
 	public bool LowPowerOn { get; set; }
 	public bool AutoLowPower { get; set; }
 
+	// DSX mod support (missing in older files: off).
+	public bool DsxModSupport { get; set; }
+
+	// "Pause Haptics In Silence" (missing in older files: off; an app setting, not per profile).
+	public bool PauseHapticsInSilence { get; set; }
+
 	// Stick and trigger tuning (missing in older files: no change to the input).
 	public Kopru.Core.Input.InputTuning? Tuning { get; set; }
 
@@ -59,10 +66,10 @@ public sealed class AppSettings
 	public Kopru.Core.Input.RemapSettings? Remap { get; set; }
 	public Kopru.Core.Input.GyroSettings? Gyro { get; set; }
 
-	// Supported games profile (with GameHapticsLevel and TriggerStrength, the game's trigger effects, 0-100 %).
+	// The one game profile (with GameHapticsLevel, TriggerStrength and RumbleLevel above): the game's light switch, and the
+	// classic rumble feel and fallback trigger effect for games that send no effects of their own.
 	public bool LightFromGame { get; set; } = true;
 
-	// Other games profile (with RumbleLevel).
 	public RumbleFeel RumbleFeel { get; set; } = RumbleFeel.Soft;
 	public FallbackTrigger FallbackTrigger { get; set; } = FallbackTrigger.Off;
 	public double FallbackStrength { get; set; } = 50;
@@ -79,6 +86,10 @@ public sealed class AppSettings
 	public bool NotifyLinkQuality { get; set; } = true;
 	public bool QuietWhilePlaying { get; set; }
 	public bool KeepInTray { get; set; } = true;
+
+	// In-app tips (missing in older files: on, nothing learned yet) and, per tip id, how far each one got (TipBar).
+	public bool ShowTips { get; set; } = true;
+	public Dictionary<string, TipProgress>? Tips { get; set; }
 
 	// Start the bridge by itself when the app starts and the controller connects (missing in older files: on).
 	public bool AutoStartBridge { get; set; } = true;
@@ -110,20 +121,33 @@ public sealed class AppSettings
 	public bool InstalledGamesOnly { get; set; }
 	public List<string>? GameFolders { get; set; }
 	public List<SeenGame>? SeenGames { get; set; }
+	// Games found installed that the user hid from the list (not recognised either; missing in older files: none).
+	public List<HiddenGame>? HiddenGames { get; set; }
+	// The file "Oyna" starts for a game, chosen by the user (game key -> exe or shortcut path; missing in older files: none).
+	public Dictionary<string, string>? StartFiles { get; set; }
 
-	// DualSense supported mode: the switch when the user turned it on without a game, whether to ask when a known game
-	// starts, the games that turn it on without asking ("always", by game key), the games never asked about and the games
-	// the user added. The mode is on by default (missing in older files: on; a saved "off" is kept).
-	public bool SupportedModeOn { get; set; } = true;
-	public bool AskOnKnownGame { get; set; } = true;
-	public List<string> AlwaysGames { get; set; } = [];
-	public List<string> NeverAskGames { get; set; } = [];
+	// The games the user added. Older files also hold AskOnKnownGame, AlwaysGames and NeverAskGames from the question when
+	// a known game started: ignored on load.
 	public List<UserGame> UserGames { get; set; } = [];
 
-	// The controller type per game key, only games not on DualSense (missing in older files: DualSense everywhere).
+	// The removed DualSense Mode: its switch, the marker of the step that turned it on once, and its own speaker switch.
+	// Read once by MigrateUnifiedProfile, never written again (missing: on, not migrated, on).
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public bool? SupportedModeOn { get; set; }
+
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public bool? DualSenseModeMigrated { get; set; }
+
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public bool? DualSenseModeSpeaker { get; set; }
+
+	// The settings were moved to the one-profile model (missing in older files: false; MigrateUnifiedProfile).
+	public bool UnifiedProfile { get; set; }
+
+	// The controller type per game key (missing: Automatic, the default type).
 	public Dictionary<string, Kopru.Core.Virtual.VirtualPadType>? GamePadTypes { get; set; }
 
-	// The controller type forced for every game ("Kumanda Türü"; missing in older files: null = Automatic).
+	// The default controller type for the games without their own ("Varsayılan Kumanda Türü"; missing: null = Automatic).
 	public Kopru.Core.Virtual.VirtualPadType? ForcedPadType { get; set; }
 
 	// Profiles (missing in older files: the settings above become the default profile), the active one, the profile per
@@ -151,45 +175,61 @@ public sealed class AppSettings
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public Dictionary<string, bool>? LearnedGames { get; set; }
 
-	// The game memory, with old per-exe choices migrated: Supported -> always (a game not in the list is added as the
-	// user's game), Unsupported -> never ask (games in the list only). Learned results are dropped.
+	// Once per settings file (true then): the DualSense Mode switch is dropped so that the controller keeps doing what it did
+	// (see ProfileValues.FromDualSenseMode, applied to the settings and to every saved profile), and the "Game" light mode
+	// becomes Static with the game's light on. A file that never had the mode's one-time step counts as mode on (that step
+	// turned it on).
+	public bool MigrateUnifiedProfile()
+	{
+		if (UnifiedProfile)
+		{
+			return false;
+		}
+		bool modeOn = DualSenseModeMigrated == true ? SupportedModeOn ?? true : true;
+		bool modeSpeaker = DualSenseModeSpeaker ?? true;
+		Kopru.Core.Profiles.ProfileValues top = new Kopru.Core.Profiles.ProfileValues
+		{
+			LightFromGame = LightFromGame,
+			LightMode = LightMode,
+			SpeakerEnabled = SpeakerEnabled
+		}.FromDualSenseMode(modeOn, modeSpeaker);
+		LightFromGame = top.LightFromGame;
+		LightMode = top.LightMode;
+		SpeakerEnabled = top.SpeakerEnabled;
+		Profiles = Profiles?.Select(p => p?.Values == null ? p! : p with { Values = p.Values.FromDualSenseMode(modeOn, modeSpeaker) }).ToList();
+		SupportedModeOn = null;
+		DualSenseModeMigrated = null;
+		DualSenseModeSpeaker = null;
+		UnifiedProfile = true;
+		return true;
+	}
+
+	// The game memory, with old per-exe choices migrated: a game marked Supported that the list does not know is added as
+	// the user's game (so it is still recognised). Learned results are dropped.
 	public GameMemory ToGameMemory(GameCatalog catalog)
 	{
-		var always = new List<string>(AlwaysGames ?? []);
-		var never = new List<string>(NeverAskGames ?? []);
 		var users = new List<UserGame>(UserGames ?? []);
 		foreach ((string exe, GameOverride choice) in GameOverrides ?? [])
 		{
 			string file = GameCatalog.Normalize(exe);
-			if (file.Length == 0)
+			if (file.Length == 0 || choice != GameOverride.Supported || catalog.Find(file) != null)
 			{
 				continue;
 			}
-			CatalogGame? match = catalog.Find(file);
-			string key = ForegroundGame.KeyOf(match, file);
-			if (choice == GameOverride.Supported)
+			if (!users.Any(u => string.Equals(u.Exe, file, StringComparison.OrdinalIgnoreCase)))
 			{
-				if (match == null && !users.Any(u => string.Equals(u.Exe, file, StringComparison.OrdinalIgnoreCase)))
-				{
-					users.Add(new UserGame(ForegroundGame.DisplayName(file), file));
-				}
-				AddOnce(always, key);
-			}
-			else if (choice == GameOverride.Unsupported && match != null)
-			{
-				AddOnce(never, key);
+				users.Add(new UserGame(ForegroundGame.DisplayName(file), file));
 			}
 		}
-		return new GameMemory(SupportedModeOn, AskOnKnownGame, always, never, users, GamePadTypes, ForcedPadType);
+		return new GameMemory(users, GamePadTypes, ForcedPadType);
 	}
 
-	// Takes the game memory to save (the old per-exe fields are left out from now on).
+	// Takes the game memory to save (the old per-exe and DualSense Mode fields are left out from now on).
 	public AppSettings WithGames(GameMemory memory)
 	{
-		SupportedModeOn = memory.SupportedModeOn;
-		AskOnKnownGame = memory.AskOnKnownGame;
-		AlwaysGames = memory.Always.ToList();
-		NeverAskGames = memory.NeverAsk.ToList();
+		SupportedModeOn = null;
+		DualSenseModeMigrated = null;
+		DualSenseModeSpeaker = null;
 		UserGames = memory.UserGames.ToList();
 		GamePadTypes = memory.PadTypes is { Count: > 0 } pads ? new(pads, StringComparer.OrdinalIgnoreCase) : null;
 		ForcedPadType = memory.ForcedPad;
@@ -197,14 +237,17 @@ public sealed class AppSettings
 		LearnedGames = null;
 		return this;
 	}
+}
 
-	private static void AddOnce(List<string> list, string key)
-	{
-		if (!list.Contains(key, StringComparer.OrdinalIgnoreCase))
-		{
-			list.Add(key);
-		}
-	}
+// One in-app tip's progress: how often the user did what it teaches, how often they closed it, and whether it counts as
+// learned (then it never shows again).
+public sealed class TipProgress
+{
+	public int Used { get; set; }
+	public int Closed { get; set; }
+	// Runs of the app the tip was shown in (missing in older files: none).
+	public int Shown { get; set; }
+	public bool Learned { get; set; }
 }
 
 public interface ISettingsStore

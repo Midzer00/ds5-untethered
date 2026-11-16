@@ -49,6 +49,9 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 	}
 
 	public ControllerKind Kind { get; }
+
+	// The light last written to the controller (LiveLight shows it): a blue light bar and the middle player LED.
+	public Kopru.Core.Lighting.LightOutput? ControllerLight { get; set; } = new(0x2F, 0x6B, 0xFF, 0x04, 0, 1);
 	public string DeviceName => Kind == ControllerKind.DualSenseEdge ? "DualSense Edge" : "DualSense";
 	public bool IsConnected { get; set; }
 	public bool HasBattery => true;
@@ -151,12 +154,39 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 	// Raises StateChanged after a test changed properties.
 	public void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 
+	public Kopru.Core.Mods.DsxStatus DsxStatus { get; set; } = Kopru.Core.Mods.DsxStatus.Off;
+
+	public event EventHandler? DsxStatusChanged;
+
+	public void RaiseDsxStatusChanged() => DsxStatusChanged?.Invoke(this, EventArgs.Empty);
+
 	public void RaiseNotice(ServiceNotice notice) => Notice?.Invoke(this, notice);
 
 	public event EventHandler<Kopru.Core.Input.ShortcutAction>? Shortcut;
 
 	// Simulates a controller shortcut (raised on the calling thread).
 	public void RaiseShortcut(Kopru.Core.Input.ShortcutAction action) => Shortcut?.Invoke(this, action);
+
+	public event EventHandler<Kopru.Core.Bridge.GameUse>? GameUsingController;
+
+	// Simulates a game starting to use the controller (raised on the calling thread).
+	public void RaiseGameUse(Kopru.Core.Bridge.GameUse use) => GameUsingController?.Invoke(this, use);
+
+	// What a game holds on the controller now (tests set it).
+	public Kopru.Core.Bridge.GameUse? GameUsingControllerNow { get; set; }
+
+	public string? PossibleGameInFront { get; private set; }
+
+	public event EventHandler? ForegroundChanged;
+
+	// Simulates the game tick seeing another foreground program (null: this app, the desktop or a desktop app).
+	public void SetForeground(string? possibleGame)
+	{
+		PossibleGameInFront = possibleGame;
+		ForegroundChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	public bool ButtonPageShown { get; set; }
 
 	// Profile numbers shown on the player LEDs.
 	public List<int> ProfileIndicators { get; } = [];
@@ -209,6 +239,13 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 			}
 			StateChanged?.Invoke(this, EventArgs.Empty);
 		}
+	}
+
+	// Sets the haptics levels the live card reads (0-1); the next Tick or MeterTick moves them again.
+	public void SetHapticsLevels(double left, double right)
+	{
+		HapticsLeftLevel = left;
+		HapticsRightLevel = right;
 	}
 
 	private void UpdateMeter()
@@ -347,6 +384,8 @@ public sealed class FakeGameWatcher : IGameWatcher
 	public IReadOnlyList<ProcessInfo> RunningApps() => _inner.RunningApps();
 
 	public IReadOnlyList<UserGame> UserGames { get => _inner.UserGames; set => _inner.UserGames = value; }
+
+	public IReadOnlyList<FoundGame> FoundGames { get => _inner.FoundGames; set => _inner.FoundGames = value; }
 }
 
 // Processes by exe name: Show starts one (or brings it to the front), Exit ends it.

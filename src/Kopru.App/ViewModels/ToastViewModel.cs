@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia.Media;
-using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
 using Kopru.Core.Localization;
 
@@ -15,17 +14,9 @@ public sealed class ToastViewModel : ViewModelBase
 	{
 		Notification = notification;
 		IsCompact = compact;
-		Actions = notification.Actions.Select(a => new ToastActionViewModel(a, () => ActionInvoked?.Invoke())).ToList();
 	}
 
 	public AppNotification Notification { get; }
-
-	// Buttons under the text (e.g. Not Now / Always / Turn On); a click runs the action, then the toast closes.
-	public IReadOnlyList<ToastActionViewModel> Actions { get; }
-	public bool HasActions => Actions.Count > 0;
-
-	// One of the buttons was clicked (its action already ran).
-	public event Action? ActionInvoked;
 
 	// Shown while a full-screen app is in front; the card itself looks the same.
 	public bool IsCompact { get; }
@@ -33,7 +24,7 @@ public sealed class ToastViewModel : ViewModelBase
 	public string Title => Notification.Title;
 	public string Body => Notification.Body;
 	public string CloseText => Text.NotifyClose();
-	// Every toast has the same size; the question's buttons fit in it too.
+	// Every toast has the same size.
 	public double CardWidth => 380;
 	public double CardHeight => 132;
 
@@ -61,18 +52,6 @@ public sealed class ToastViewModel : ViewModelBase
 		_ => null
 	};
 	public IBrush StatusBrush => new SolidColorBrush(Notification.Kind == NotificationKind.Error ? Color.Parse("#E5534B") : Color.Parse("#C9A24A"));
-}
-
-// One toast button.
-public sealed class ToastActionViewModel(NotificationAction action, Action done)
-{
-	public string Label => action.Label;
-	public bool IsPrimary => action.IsPrimary;
-	public IRelayCommand Command { get; } = new RelayCommand(() =>
-	{
-		action.Run();
-		done();
-	});
 }
 
 // 12x12 filled status marks (own drawings): a triangle and a circle, each with a cut-out exclamation mark.

@@ -3,53 +3,41 @@ using Kopru.Core.Bridge;
 
 namespace Kopru.Core.Games;
 
-// The known game running in front (null when none) and the mode the bridge runs in. Mode follows the supported mode switch.
-public sealed record GameModeState(string? Exe, string? Name, GameMode Mode, ModeReason Reason, CatalogGame? Match = null)
+// The known game running (null when none). Mode is always Supported: the DualSense Mode switch is gone and every game gets
+// what it sends (it stays only for the readers that still look at it).
+public sealed record GameModeState(string? Exe, string? Name, GameMode Mode, CatalogGame? Match = null)
 {
-	public static GameModeState Initial { get; } = new(null, null, GameMode.Unsupported, ModeReason.Default);
+	public static GameModeState Initial { get; } = new(null, null, GameMode.Supported);
 }
 
 // One row of the supported games list: a catalog game or a game the user added. Key matches ForegroundGame.Key.
 public sealed record KnownGame(string Name, string Exe, bool Haptics, bool AdaptiveTriggers, bool IsUserAdded, CatalogGame? Catalog, string Key,
 	string? Path = null);
 
-// What is saved: the switch when the user turned it on without a game, the question setting, the "always" and "never
-// ask" games (by key), the games the user added, the controller type per game and the controller type forced for every
-// game (null: Automatic, the per-game choice).
-public sealed record GameMemory(bool SupportedModeOn, bool AskOnKnownGame, IReadOnlyList<string> Always, IReadOnlyList<string> NeverAsk,
-	IReadOnlyList<UserGame> UserGames, IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null,
-	Kopru.Core.Virtual.VirtualPadType? ForcedPad = null)
+// What is saved: the games the user added, the controller type per game and the default controller type for the games
+// without one (null: Automatic).
+public sealed record GameMemory(IReadOnlyList<UserGame> UserGames,
+	IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null, Kopru.Core.Virtual.VirtualPadType? ForcedPad = null)
 {
-	public static GameMemory Default { get; } = new(false, true, [], [], []);
+	public static GameMemory Default { get; } = new([]);
 }
 
-// The supported mode switch and the known game in front. Off (default): the other games profile. On: the supported
-// games profile. Only known games are looked at (GameWatcher). When one starts with the switch off, AskRequested is raised
-// once per launch (unless it is on the "always" list: then the switch turns on by itself, or "never ask"). A switch turned
-// on for a game turns off again when that game exits or another known game takes over; one the user turned on without a
-// game stays on. The user's own flip always wins until the game exits. Tick is called about once a second (tests call it
-// directly). Thread-safe; events are raised on the calling thread, outside the lock.
+// The known game that runs and the one profile the bridge runs with. Only known games are looked at (GameWatcher): the game
+// in front, and (while no game runs and some game has its own controller type) a known game whose process appears. The
+// active game drives the active game line, the controller type (GameModePadTypes) and the profile per game. Tick is
+// called about once a second (tests call it directly). Thread-safe; events are raised on the calling thread, outside the
+// lock.
 public sealed partial class GameModeController
 {
-	private const int LaunchMemoryLimit = 512;
-
 	private readonly object gate = new();
 	private readonly IGameWatcher watcher;
 	private readonly IGameBridge? bridge;
-	private readonly HashSet<string> always = new(StringComparer.OrdinalIgnoreCase);
-	private readonly HashSet<string> neverAsk = new(StringComparer.OrdinalIgnoreCase);
-	private readonly HashSet<string> launches = new(StringComparer.OrdinalIgnoreCase);
 	private List<UserGame> userGames = [];
 
-	private SupportedProfile supported = new();
-	private UnsupportedProfile unsupported = new();
+	private GameProfile profile = new();
 	private GameCatalog catalog;
 	private ForegroundGame? active;
-	private bool on;
-	private ModeReason reason = ModeReason.Default;
-	// The key of the game the switch was turned on for (it turns off when that game ends); null: on without a game.
-	private string? onFor;
-	private bool askOnKnownGame = true;
+	private long gameSession;
 	private volatile string? gameInFront;
 	private GameModeState state = GameModeState.Initial;
 	private BridgeProfile? applied;
@@ -106,29 +94,19 @@ public sealed partial class GameModeController
 		}
 	}
 
-	public SupportedProfile Supported
+	// The profile every game runs with.
+	public GameProfile Profile
 	{
 		get
 		{
 			lock (gate)
 			{
-				return supported;
+				return profile;
 			}
 		}
 	}
 
-	public UnsupportedProfile Unsupported
-	{
-		get
-		{
-			lock (gate)
-			{
-				return unsupported;
-			}
-		}
-	}
-
-	// The known game in front right now (its process still runs), or null.
+	// The known game running right now (in front when it was found that way, or found by its process starting), or null.
 	public ForegroundGame? ActiveGame
 	{
 		get
@@ -147,51 +125,17 @@ public sealed partial class GameModeController
 	// The exe of the game in front at the last Tick (for the PS tap log), or null.
 	public string? GameInFront => gameInFront;
 
-	public bool IsSupportedModeOn
-	{
-		get
-		{
-			lock (gate)
-			{
-				return on;
-			}
-		}
-	}
-
-	// Ask when a known game starts with the switch off (a setting; on by default).
-	public bool AskOnKnownGame
-	{
-		get
-		{
-			lock (gate)
-			{
-				return askOnKnownGame;
-			}
-		}
-		set
-		{
-			lock (gate)
-			{
-				askOnKnownGame = value;
-			}
-		}
-	}
-
-	// The current game or mode changed.
+	// The current game changed.
 	public event Action<GameModeState>? StateChanged;
 
-	// The "always" / "never ask" lists, the user's games or the saved switch changed (to be saved).
+	// The user's games or the controller types changed (to be saved).
 	public event Action? MemoryChanged;
 
-	// A known game started with the switch off: ask whether to turn it on (answer with Answer).
-	public event Action<ForegroundGame>? AskRequested;
-
-	public void SetProfiles(SupportedProfile supportedProfile, UnsupportedProfile unsupportedProfile)
+	public void SetProfile(GameProfile value)
 	{
 		lock (gate)
 		{
-			supported = supportedProfile;
-			unsupported = unsupportedProfile;
+			profile = value;
 		}
 		Apply();
 	}
@@ -203,54 +147,41 @@ public sealed partial class GameModeController
 	{
 		ForegroundGame? seen = watcher.Poll();
 		gameInFront = seen?.Exe;
-		ForegroundGame? ask = null;
 		List<string> lines = [];
+		bool ended;
+		bool started = false;
+		IReadOnlySet<string>? lookFor = null;
 		lock (gate)
 		{
+			ForegroundGame? before = active;
 			if (active != null && !watcher.IsRunning(active))
 			{
 				EndSession("it exited", lines);
 			}
 			if (seen != null && (active == null || !SameLaunch(seen, active)))
 			{
-				// Another known game took over.
+				// Another known game took over (the first one still runs: its controller type is kept, see ApplyPad).
+				started = active == null;
 				if (active != null)
 				{
 					EndSession($"{seen.Name} took over", lines);
 				}
-				active = seen;
-				lines.Add($"game: {seen.Name} is the active game ({seen.Exe})");
-				if (launches.Count >= LaunchMemoryLimit)
+				StartSession(seen, "is the active game", lines);
+			}
+			if (active == null)
+			{
+				lookFor = GamesWithOtherPad();
+			}
+			ended = before != null && !ReferenceEquals(before, active);
+		}
+		if (lookFor is { Count: > 0 } && watcher.FindRunning(lookFor) is { } launched)
+		{
+			lock (gate)
+			{
+				if (active == null)
 				{
-					launches.Clear();
-				}
-				if (launches.Add(LaunchId(seen)))
-				{
-					if (always.Contains(seen.Key))
-					{
-						SetOn(true, ModeReason.Always, seen.Key);
-						lines.Add($"game: {seen.Name} is on the always list, DualSense mode on");
-					}
-					else if (!on && askOnKnownGame && !neverAsk.Contains(seen.Key))
-					{
-						ask = seen;
-						lines.Add($"game: asking whether to turn on DualSense mode for {seen.Name}");
-					}
-					else
-					{
-						string why = on ? "DualSense mode is already on" : !askOnKnownGame ? "asking is off" : "on the never ask list";
-						lines.Add($"game: not asking about {seen.Name} ({why})");
-					}
-				}
-				else if (always.Contains(seen.Key) && !on)
-				{
-					// Back to a launch seen before: an "always" game turns on again.
-					SetOn(true, ModeReason.Always, seen.Key);
-					lines.Add($"game: {seen.Name} is on the always list, DualSense mode on again");
-				}
-				else
-				{
-					lines.Add($"game: not asking about {seen.Name} (already seen in this launch)");
+					started = true;
+					StartSession(launched, "started", lines);
 				}
 			}
 		}
@@ -258,91 +189,12 @@ public sealed partial class GameModeController
 		{
 			Log(line);
 		}
-		Apply();
-		if (ask != null)
+		if (ended)
 		{
-			AskRequested?.Invoke(ask);
+			// The game's hold on the light ends with it (a game still writing its light takes it back at once).
+			bridge?.GameEnded();
 		}
-	}
-
-	// The user flips the switch. On with a game in front: it turns off again when that game exits.
-	public void SetSupportedMode(bool value)
-	{
-		lock (gate)
-		{
-			if (value == on)
-			{
-				return;
-			}
-			SetOn(value, value ? ModeReason.User : ModeReason.Default, value ? active?.Key : null);
-		}
-		MemoryChanged?.Invoke();
-		Apply();
-	}
-
-	// The answer to the question for a game. Turn on / always only act while that game is still the one in front.
-	public void Answer(ForegroundGame game, AskAnswer answer)
-	{
-		bool memory = false;
-		lock (gate)
-		{
-			if (answer == AskAnswer.Always)
-			{
-				memory = always.Add(game.Key);
-			}
-			if (answer != AskAnswer.NotNow && active != null && string.Equals(active.Key, game.Key, StringComparison.OrdinalIgnoreCase))
-			{
-				SetOn(true, answer == AskAnswer.Always ? ModeReason.Always : ModeReason.Game, active.Key);
-			}
-		}
-		if (memory)
-		{
-			MemoryChanged?.Invoke();
-		}
-		Apply();
-	}
-
-	public bool IsAlways(string key)
-	{
-		lock (gate)
-		{
-			return always.Contains(key);
-		}
-	}
-
-	public bool IsNeverAsk(string key)
-	{
-		lock (gate)
-		{
-			return neverAsk.Contains(key);
-		}
-	}
-
-	// Adds or removes a game from the "always" list.
-	public void SetAlways(string key, bool value)
-	{
-		bool changed;
-		lock (gate)
-		{
-			changed = key.Length > 0 && (value ? always.Add(key) : always.Remove(key));
-		}
-		if (changed)
-		{
-			MemoryChanged?.Invoke();
-		}
-	}
-
-	public void SetNeverAsk(string key, bool value)
-	{
-		bool changed;
-		lock (gate)
-		{
-			changed = key.Length > 0 && (value ? neverAsk.Add(key) : neverAsk.Remove(key));
-		}
-		if (changed)
-		{
-			MemoryChanged?.Invoke();
-		}
+		Apply(started);
 	}
 
 	public IReadOnlyList<UserGame> UserGames
@@ -395,24 +247,22 @@ public sealed partial class GameModeController
 	// Running apps that could be added as games.
 	public IReadOnlyList<ProcessInfo> RunningApps() => watcher.RunningApps();
 
+	// The other games found installed (hidden ones left out), recognised by their install folder after every catalog match.
+	public IReadOnlyList<FoundGame> FoundGames
+	{
+		get => watcher.FoundGames;
+		set => watcher.FoundGames = value;
+	}
+
 	// Saved memory (settings load).
 	public void LoadMemory(GameMemory memory)
 	{
 		lock (gate)
 		{
-			always.Clear();
-			always.UnionWith(memory.Always.Where(k => !string.IsNullOrWhiteSpace(k)));
-			neverAsk.Clear();
-			neverAsk.UnionWith(memory.NeverAsk.Where(k => !string.IsNullOrWhiteSpace(k)));
 			userGames = memory.UserGames.Where(g => GameCatalog.Normalize(g.Path).Length > 0)
 				.DistinctBy(g => g.Path, StringComparer.OrdinalIgnoreCase).ToList();
 			watcher.UserGames = userGames.ToList();
-			askOnKnownGame = memory.AskOnKnownGame;
 			LoadPadTypes(memory.PadTypes, memory.ForcedPad);
-			if (memory.SupportedModeOn && !on)
-			{
-				SetOn(true, ModeReason.User, null);
-			}
 		}
 		CatalogChanged?.Invoke();
 		Apply();
@@ -422,8 +272,7 @@ public sealed partial class GameModeController
 	{
 		lock (gate)
 		{
-			return new GameMemory(on && onFor == null, askOnKnownGame, always.Order(StringComparer.OrdinalIgnoreCase).ToList(),
-				neverAsk.Order(StringComparer.OrdinalIgnoreCase).ToList(), userGames.ToList(), SnapshotPadTypes(), forcedPad);
+			return new GameMemory(userGames.ToList(), SnapshotPadTypes(), forcedPad);
 		}
 	}
 
@@ -450,55 +299,50 @@ public sealed partial class GameModeController
 	private static bool SameLaunch(ForegroundGame a, ForegroundGame b) =>
 		a.ProcessId == b.ProcessId && string.Equals(a.Key, b.Key, StringComparison.OrdinalIgnoreCase);
 
-	private static string LaunchId(ForegroundGame game) => game.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + game.Key;
+	// Caller holds the lock. A known game became the active game: a new game session (the fallback trigger rule).
+	private void StartSession(ForegroundGame game, string how, List<string> lines)
+	{
+		active = game;
+		gameSession++;
+		lines.Add($"game: {game.Name} {how} ({game.Exe})");
+	}
 
-	// Caller holds the lock. The game in front ended (exited or another took over): a switch turned on for it goes off.
+	// Caller holds the lock. The active game ended (exited or another took over).
 	private void EndSession(string why, List<string> lines)
 	{
 		ForegroundGame? ended = active;
 		active = null;
-		bool off = on && ended != null && onFor != null && string.Equals(onFor, ended.Key, StringComparison.OrdinalIgnoreCase);
-		if (off)
-		{
-			SetOn(false, ModeReason.Default, null);
-		}
+		gameSession++;
 		if (ended != null)
 		{
-			lines.Add($"game: {ended.Name} is no longer the active game ({why}){(off ? ", DualSense mode off again" : string.Empty)}");
+			lines.Add($"game: {ended.Name} is no longer the active game ({why})");
 		}
 	}
 
-	// Caller holds the lock.
-	private void SetOn(bool value, ModeReason why, string? forGame)
-	{
-		on = value;
-		reason = value ? why : ModeReason.Default;
-		onFor = value ? forGame : null;
-	}
-
-	private void Apply()
+	// started: a game began running at this tick (its controller type may be put in at once; see ApplyPad).
+	private void Apply(bool started = false)
 	{
 		GameModeState? changed = null;
 		BridgeProfile? toApply = null;
 		lock (gate)
 		{
-			GameModeState next = new(active?.Exe, active?.Name, on ? GameMode.Supported : GameMode.Unsupported, reason, active?.Match);
+			GameModeState next = new(active?.Exe, active?.Name, GameMode.Supported, active?.Match);
 			if (next != state)
 			{
 				state = next;
 				changed = next;
 			}
-			BridgeProfile profile = GameProfiles.For(state.Mode, supported, unsupported);
-			if (applied == null || !applied.SameAs(profile))
+			BridgeProfile bridgeProfile = GameProfiles.For(profile, gameSession);
+			if (applied == null || !applied.SameAs(bridgeProfile))
 			{
-				applied = toApply = profile;
+				applied = toApply = bridgeProfile;
 			}
 		}
 		if (toApply != null)
 		{
 			bridge?.ApplyProfile(toApply);
 		}
-		ApplyPad();
+		ApplyPad(started);
 		if (changed != null)
 		{
 			StateChanged?.Invoke(changed);

@@ -16,13 +16,15 @@ public sealed record UserGame(string Name, string Path)
 	public string Exe => GameCatalog.Normalize(Path);
 }
 
-// A known game in the foreground: a catalog game (by exe or by Steam library folder) or a game the user added. Key
-// identifies the game for the "always" list: the catalog name, else the exe file name.
-public sealed record ForegroundGame(string Exe, CatalogGame? Match, int ProcessId = 0, string? Path = null, string? UserName = null)
+// A known game in the foreground: a catalog game (by exe or by Steam library folder), a game the user added or a game found
+// installed (Found). Key identifies the game for the per-game settings: the catalog name, else the found game's key, else
+// the exe file name.
+public sealed record ForegroundGame(string Exe, CatalogGame? Match, int ProcessId = 0, string? Path = null, string? UserName = null,
+	FoundGame? Found = null)
 {
-	public string Name => UserName ?? Match?.Name ?? DisplayName(Exe);
+	public string Name => UserName ?? Match?.Name ?? Found?.Name ?? DisplayName(Exe);
 
-	public string Key => KeyOf(Match, Exe);
+	public string Key => Match == null && UserName == null && Found != null ? Found.Key : KeyOf(Match, Exe);
 
 	public static string KeyOf(CatalogGame? match, string exe) => match?.Name ?? GameCatalog.Normalize(exe);
 
@@ -41,6 +43,13 @@ public interface IProcessSource
 
 	// Running apps with a window (to pick a game to add).
 	IReadOnlyList<ProcessInfo> WindowedApps();
+
+	// Every running process by id and exe file name (paths left out: reading one opens the process). Used only while a
+	// game with its own controller type is looked for (GameWatcher.FindRunning).
+	IReadOnlyList<ProcessInfo> AllProcesses() => [];
+
+	// The process with its full exe path when it can be read.
+	ProcessInfo WithPath(ProcessInfo process) => process;
 }
 
 // What the watcher reads about a process beyond its exe name, to recognise a list game whose exe name is unknown (faked
@@ -68,12 +77,24 @@ public interface IGameWatcher
 
 	// The games the user added (matched like catalog games).
 	IReadOnlyList<UserGame> UserGames { get => []; set { } }
+
+	// The other games found installed (matched by install folder, after every catalog match).
+	IReadOnlyList<FoundGame> FoundGames { get => []; set { } }
+
+	// A running process of one of these games (by game key; it need not be in front), or null. GameModeController asks only
+	// while no game runs and some game has a controller type other than the current one, so that game gets its type when
+	// its process appears, before it looks for controllers.
+	ForegroundGame? FindRunning(IReadOnlySet<string> keys) => null;
 }
 
 // Watches the foreground window's process and recognises known games only: (a) the exe matches a catalog exe (an Unreal
 // Engine "-Win64-Shipping" pair included), (b) the exe runs from a Steam library folder whose app id is in the catalog,
-// (c) it is a game the user added, or (d) for a catalog game without exe names, the whole normalised game name equals a
-// folder name of the exe's path, the exe's product name or file description, or the window title. Lookups are cached
+// (c) it is a game the user added, or (d) for any catalog game (one with exe names too: Steam may start a launcher or
+// anti-cheat stub, a copy may run another exe), the whole normalised game name (or the game's Steam install folder name,
+// for folders only) equals a folder name of the exe's path, the exe's product name or file description, or the window title,
+// (e) a game found installed (FoundGames): Steam ones by an exe anywhere under their install folder, Epic ones by their launch
+// exe or an exe under their install folder. (e) comes after every catalog signal: a found game never shadows a catalog game
+// (the window title is checked once before a found game is reported). Lookups are cached
 // per process (id and path): version info is read once per process; only the window title of an unknown process is read
 // again (games often set it after the window opens). Ignores this app and common desktop apps. details defaults to
 // processes when that implements IProcessDetails (SystemProcessSource does). Each recognition is logged once per process
@@ -103,6 +124,27 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 	private readonly Dictionary<(int, string), Entry> cache = [];
 	private GameCatalog current = catalog;
 	private IReadOnlyList<UserGame> userGames = [];
+	private IReadOnlyList<FoundGame> foundGames = [];
+
+	// Found games, deepest install folder first (a folder nested in another one wins).
+	public IReadOnlyList<FoundGame> FoundGames
+	{
+		get
+		{
+			lock (gate)
+			{
+				return foundGames;
+			}
+		}
+		set
+		{
+			lock (gate)
+			{
+				foundGames = value.Where(g => !string.IsNullOrWhiteSpace(g.Folder)).OrderByDescending(g => g.Folder.TrimEnd('\\').Length).ToList();
+				cache.Clear();
+			}
+		}
+	}
 
 	// Replaced when the supported games list is updated (GameModeController.SetCatalog).
 	public GameCatalog Catalog
@@ -198,6 +240,119 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		}
 	}
 
+	// Cheap by name first: only a process whose exe file name could be one of these games (a catalog exe, a game the user
+	// added, a found game's launch exe or an exe in its install folder) has its path read and goes through Recognize.
+	public ForegroundGame? FindRunning(IReadOnlySet<string> keys)
+	{
+		if (keys.Count == 0)
+		{
+			return null;
+		}
+		IReadOnlyList<ProcessInfo> all;
+		try
+		{
+			all = processes.AllProcesses();
+		}
+		catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+		{
+			return null;
+		}
+		HashSet<string> foundNames = FoundExeNames(keys);
+		foreach (ProcessInfo process in all)
+		{
+			string exe = GameCatalog.Normalize(process.Exe);
+			if (exe.Length == 0 || !CouldBe(exe, keys, foundNames))
+			{
+				continue;
+			}
+			ForegroundGame? game;
+			try
+			{
+				game = Recognize(process.Path == null ? processes.WithPath(process) : process);
+			}
+			catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
+			{
+				continue;
+			}
+			if (game != null && keys.Contains(game.Key))
+			{
+				return game;
+			}
+		}
+		return null;
+	}
+
+	private bool CouldBe(string exe, IReadOnlySet<string> keys, HashSet<string> foundNames)
+	{
+		if (foundNames.Contains(exe))
+		{
+			return true;
+		}
+		lock (gate)
+		{
+			CatalogGame? match = current.Find(exe);
+			if (match != null && keys.Contains(match.Name))
+			{
+				return true;
+			}
+			return userGames.Any(g => string.Equals(g.Exe, exe, StringComparison.OrdinalIgnoreCase) && keys.Contains(ForegroundGame.KeyOf(match, exe)));
+		}
+	}
+
+	private readonly Dictionary<string, string[]> folderExes = new(StringComparer.OrdinalIgnoreCase);
+
+	// The exe file names the found games with these keys can run as: the launch exe, else the exes in the install folder
+	// (read once per folder, three levels deep, at most 200).
+	private HashSet<string> FoundExeNames(IReadOnlySet<string> keys)
+	{
+		var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		List<FoundGame> wanted;
+		lock (gate)
+		{
+			wanted = foundGames.Where(g => keys.Contains(g.Key)).ToList();
+		}
+		foreach (FoundGame game in wanted)
+		{
+			if (game.LaunchExe != null)
+			{
+				names.Add(GameCatalog.Normalize(game.LaunchExe));
+			}
+			foreach (string exe in ExesIn(game.Folder))
+			{
+				names.Add(exe);
+			}
+		}
+		return names;
+	}
+
+	private string[] ExesIn(string folder)
+	{
+		lock (gate)
+		{
+			if (folderExes.TryGetValue(folder, out string[]? known))
+			{
+				return known;
+			}
+		}
+		string[] exes;
+		try
+		{
+			exes = Directory.Exists(folder)
+				? Directory.EnumerateFiles(folder, "*.exe", new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 3, IgnoreInaccessible = true })
+					.Take(200).Select(GameCatalog.Normalize).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+				: [];
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+		{
+			exes = [];
+		}
+		lock (gate)
+		{
+			folderExes[folder] = exes;
+		}
+		return exes;
+	}
+
 	public IReadOnlyList<ProcessInfo> RunningApps()
 	{
 		try
@@ -243,12 +398,14 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 
 	private IProcessDetails? Details => details ?? processes as IProcessDetails;
 
-	// Caller holds the lock. A catalog game without exe names: by folder name, version info, then window title.
+	// Caller holds the lock. A catalog game by its name: folder name, version info, then window title; a found game by its
+	// install folder before the window title (the title is still checked once, so a catalog game wins).
 	private Entry ByName(ProcessInfo process, string exe)
 	{
+		(FoundGame Game, string Signal)? found = FoundByFolder(process.Path);
 		if (!current.HasNamedGames)
 		{
-			return new Entry(null);
+			return new Entry(found is { } only ? FoundOne(only.Game, only.Signal, process, exe) : null);
 		}
 		foreach (string folder in Folders(process.Path))
 		{
@@ -256,13 +413,13 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 			{
 				return new Entry(Found(byFolder, "folder name", process, exe));
 			}
+			if (current.FindByInstallDir(folder) is { } byInstallDir)
+			{
+				return new Entry(Found(byInstallDir, "install folder name", process, exe));
+			}
 		}
 		IProcessDetails? source = Details;
-		if (source == null)
-		{
-			return new Entry(null);
-		}
-		if (!string.IsNullOrEmpty(process.Path))
+		if (source != null && !string.IsNullOrEmpty(process.Path))
 		{
 			(string? product, string? description) = source.VersionInfo(process.Path);
 			if (current.FindByName(product) is { } byProduct)
@@ -274,9 +431,53 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 				return new Entry(Found(byDescription, "file description", process, exe));
 			}
 		}
+		if (found is { } other)
+		{
+			if (current.FindByName(source?.WindowTitle(process)) is { } byTitleFirst)
+			{
+				return new Entry(Found(byTitleFirst, "window title", process, exe));
+			}
+			return new Entry(FoundOne(other.Game, other.Signal, process, exe));
+		}
+		if (source == null)
+		{
+			return new Entry(null);
+		}
 		var entry = new Entry(null) { ReadTitle = true };
 		entry.Game = ByTitle(process, exe, entry);
 		return entry;
+	}
+
+	// Caller holds the lock. The found game whose install folder holds the exe (deepest folder first): an Epic launch exe
+	// exactly, else any exe under the folder. Needs the full path.
+	private (FoundGame, string)? FoundByFolder(string? path)
+	{
+		if (string.IsNullOrWhiteSpace(path) || foundGames.Count == 0 || !System.IO.Path.IsPathRooted(path))
+		{
+			return null;
+		}
+		string full = path.Replace('/', '\\');
+		foreach (FoundGame game in foundGames)
+		{
+			if (game.LaunchExe != null && string.Equals(full, game.LaunchExe.Replace('/', '\\'), StringComparison.OrdinalIgnoreCase))
+			{
+				return (game, "Epic launch exe");
+			}
+		}
+		foreach (FoundGame game in foundGames)
+		{
+			if (full.StartsWith(game.Folder.Replace('/', '\\').TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase))
+			{
+				return (game, game.Source == InstalledSource.Epic ? "Epic install folder" : "Steam install folder");
+			}
+		}
+		return null;
+	}
+
+	private ForegroundGame FoundOne(FoundGame game, string signal, ProcessInfo process, string exe)
+	{
+		log($"game: {game.Name} recognised by {signal} ({exe})");
+		return new ForegroundGame(exe, null, process.Id, process.Path, Found: game);
 	}
 
 	// Caller holds the lock. Reads the window title again and checks it only when it changed.
@@ -420,6 +621,31 @@ public sealed class SystemProcessSource : IProcessSource, IProcessDetails
 		}
 		return list;
 	}
+
+	public IReadOnlyList<ProcessInfo> AllProcesses()
+	{
+		var list = new List<ProcessInfo>();
+		foreach (Process p in Process.GetProcesses())
+		{
+			using (p)
+			{
+				try
+				{
+					if (p.Id != Environment.ProcessId && p.Id > 4)
+					{
+						list.Add(new ProcessInfo(p.Id, p.ProcessName + ".exe"));
+					}
+				}
+				catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+				{
+					// Exited meanwhile.
+				}
+			}
+		}
+		return list;
+	}
+
+	public ProcessInfo WithPath(ProcessInfo process) => process with { Path = PathOf(process.Id) };
 
 	public string? WindowTitle(ProcessInfo process)
 	{

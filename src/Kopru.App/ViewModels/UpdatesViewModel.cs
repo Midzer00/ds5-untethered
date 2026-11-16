@@ -307,6 +307,11 @@ public sealed partial class UpdatesViewModel : ViewModelBase
 			return;
 		}
 		string version = m.Version.ToString();
+		// The cheap reasons first: the full-screen check (IsPlaying) runs only when a toast is actually due.
+		if (UpdatePolicy.Toast(m.Version, Settings.UpdateToastedVersion, Settings.NotificationsEnabled, false) != UpdateToastDecision.Show)
+		{
+			return;
+		}
 		UpdateToastDecision decision = UpdatePolicy.Toast(m.Version, Settings.UpdateToastedVersion, Settings.NotificationsEnabled, IsPlaying);
 		if (decision == UpdateToastDecision.Show && _notifications.Post(NotificationCenter.UpdateAvailable(version)))
 		{

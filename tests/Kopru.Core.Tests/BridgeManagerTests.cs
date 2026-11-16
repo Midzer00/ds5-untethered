@@ -221,20 +221,18 @@ public class BridgeManagerTests
 	public void GameModeProfile_GoesToEverySlot_UnlessTheSlotHasItsOwn()
 	{
 		BridgeManager manager = Manager();
-		manager.Mode = () => GameMode.Supported;
 		BridgeProfile global = new(GameHapticsLevel: 2.0);
 		manager.ApplyProfile(global);
 		Assert.All(manager.Hosts, h => Assert.Same(global, h.Profile));
 
-		SupportedProfile own = new(0.5, 0.25, false);
-		UnsupportedProfile other = new(0.7, RumbleFeel.Punchy, FallbackTrigger.Off, 0.5);
-		manager.SetProfileOverride(2, own, other);
+		GameProfile own = new(0.5, 0.25, false, 0.7, RumbleFeel.Punchy, FallbackTrigger.Off, 0.5);
+		manager.SetProfileOverride(2, own);
 
 		Assert.Equal(0.5, manager.Host(2).Profile.GameHapticsLevel);
 		Assert.Same(global, manager.Host(1).Profile);
 		Assert.Same(global, manager.Host(3).Profile);
 
-		manager.SetProfileOverride(2, null, null);
+		manager.SetProfileOverride(2, null);
 		Assert.Same(global, manager.Host(2).Profile);
 	}
 

@@ -9,8 +9,10 @@ using Avalonia.VisualTree;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
 using Kopru.App.Views;
+using Kopru.Core.Games;
 using Kopru.Core.Localization;
 using Kopru.Core.Steam;
+using Kopru.Core.Virtual;
 
 namespace Kopru.App.Tests;
 
@@ -153,21 +155,21 @@ public class NotificationTests
 		h.Fake.RaiseStateChanged();
 	}
 
+	// A known game starting is a plain information toast (no question, no buttons), once per launch; it never changes the mode.
 	[AvaloniaFact]
-	public void Game_KnownGameWithModeOff_AsksOncePerLaunch_WithButtons()
+	public void Game_KnownGame_IsAnnouncedOncePerLaunch_WithoutButtons()
 	{
 		var h = new Harness();
 		// Cyberpunk was already in front when the app started.
 		h.Fake.RaiseStateChanged();
 		Assert.Empty(h.Raised);
 		WithLanguage(Language.Turkish, () => Focus(h, "Spider-Man.exe"));
-		AppNotification ask = Assert.Single(h.Raised);
-		Assert.Equal(NotificationType.GameAsk, ask.Type);
-		Assert.Equal("Marvel's Spider-Man Remastered", ask.Title);
-		Assert.Equal("DualSense modu açılsın mı?", ask.Body);
-		Assert.Equal(["Şimdi Değil", "Her Zaman", "Aç"], ask.Actions.Select(a => a.Label));
-		Assert.True(ask.Actions[2].IsPrimary);
-		Assert.Equal(AppNotification.ActionDuration, ask.Duration);
+		AppNotification shown = Assert.Single(h.Raised);
+		Assert.Equal(NotificationType.GameDetected, shown.Type);
+		Assert.Equal(NotificationKind.Info, shown.Kind);
+		Assert.Equal("Marvel's Spider-Man Remastered", shown.Title);
+		Assert.Equal("Oyun Şunu Görüyor: DualSense", shown.Body);
+		Assert.Equal(AppNotification.NormalDuration, shown.Duration);
 
 		// Away (to nothing, to unknown apps) and back: the same launch, no repeat.
 		Focus(h, null);
@@ -177,61 +179,27 @@ public class NotificationTests
 		Focus(h, "Spider-Man.exe");
 		Assert.Single(h.Raised);
 
-		// The game was closed and started again: asked again.
+		// The game was closed and started again: announced again.
 		h.Fake.Watcher.Exit("Spider-Man.exe");
 		Focus(h, null);
 		Focus(h, "Spider-Man.exe");
-		Assert.Equal(2, h.Raised.Count(n => n.Type == NotificationType.GameAsk));
+		Assert.Equal(2, h.Raised.Count(n => n.Type == NotificationType.GameDetected));
 	}
 
+	// The game toast honours the notification settings like every other toast.
 	[AvaloniaFact]
-	public void Game_AskShowsEvenWhileQuiet_ButNotWhenAskIsOff()
+	public void Game_Announcement_HonoursTheGameSwitchAndQuiet()
 	{
 		var h = new Harness();
-		h.Settings.QuietWhilePlaying = true;
-		h.FullScreen = true;
+		h.Settings.NotifyGame = false;
 		Focus(h, "Returnal-Win64-Shipping.exe");
-		Assert.Equal([NotificationType.GameAsk], h.Types);
+		Assert.Empty(h.Raised);
 
-		h.Settings.AskOnKnownGame = false;
-		Assert.False(h.Fake.Games.AskOnKnownGame);
-		Focus(h, "Spider-Man.exe");
-		Assert.Single(h.Raised);
-	}
-
-	[AvaloniaFact]
-	public void Game_AskButtons_TurnOn_NotNow_Always()
-	{
-		var h = new Harness();
-		Focus(h, "Spider-Man.exe");
-		h.Raised[^1].Actions.Single(a => a.Label == Text.AskTurnOn()).Run();
-		Assert.True(h.Fake.Games.IsSupportedModeOn);
-		Assert.True(h.Vm.Overview.IsSupportedModeOn);
-		Assert.Equal(Text.ModeShortSupported(), h.Vm.Overview.ModeValue);
-		// The game exits: back off.
-		h.Fake.Watcher.Exit("Spider-Man.exe");
-		Focus(h, null);
-		Assert.False(h.Fake.Games.IsSupportedModeOn);
-
-		Focus(h, "Returnal-Win64-Shipping.exe");
-		h.Raised[^1].Actions.Single(a => a.Label == Text.AskNotNow()).Run();
-		Assert.False(h.Fake.Games.IsSupportedModeOn);
-
-		Focus(h, "AC2-Win64-Shipping.exe");
-		h.Raised[^1].Actions.Single(a => a.Label == Text.AskAlways()).Run();
-		Assert.True(h.Fake.Games.IsSupportedModeOn);
-		Assert.True(h.Fake.Games.IsAlways("Assetto Corsa Competizione"));
-		Assert.Contains(h.Vm.SupportedGames.Games, g => g.Name == "Assetto Corsa Competizione" && g.IsAlways);
-		int asks = h.Raised.Count(n => n.Type == NotificationType.GameAsk);
-
-		// Next launch: on by itself, announced once, no question.
-		h.Fake.Watcher.Exit("AC2-Win64-Shipping.exe");
-		Focus(h, null);
-		Assert.False(h.Fake.Games.IsSupportedModeOn);
-		Focus(h, "AC2-Win64-Shipping.exe");
-		Assert.True(h.Fake.Games.IsSupportedModeOn);
-		Assert.Equal(asks, h.Raised.Count(n => n.Type == NotificationType.GameAsk));
-		Assert.Equal(NotificationType.GameDetected, h.Raised[^1].Type);
+		var quiet = new Harness();
+		quiet.Settings.QuietWhilePlaying = true;
+		quiet.FullScreen = true;
+		Focus(quiet, "Returnal-Win64-Shipping.exe");
+		Assert.Empty(quiet.Raised);
 	}
 
 	// Collects this test's "toast: ..." log lines (other tests log in parallel: only lines naming game are kept).
@@ -263,19 +231,17 @@ public class NotificationTests
 		}
 	}
 
-	// The real session: DualSense mode already on (switched on without a game), a supported game started. Before, neither
-	// the question (only asked with the mode off) nor the announcement (only for "always" games) came: no toast at all.
+	// A supported game started: announced once per launch with the controller type it sees, and logged.
 	[AvaloniaFact]
-	public void Game_StartingWithTheModeAlreadyOn_IsAnnouncedOncePerLaunch_AndLogged()
+	public void Game_Starting_IsAnnouncedOncePerLaunch_WithTheTypeItSees_AndLogged()
 	{
 		var h = new Harness();
-		h.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true }); // on without a game
 		h.Fake.RaiseStateChanged();
 		List<string> log = WatchToastLog("Returnal", () => Focus(h, "Returnal-Win64-Shipping.exe"));
 		AppNotification shown = Assert.Single(h.Raised);
 		Assert.Equal(NotificationType.GameDetected, shown.Type);
 		Assert.Equal("Returnal", shown.Title);
-		Assert.Equal(Text.NotifyGameSupported(), shown.Body);
+		Assert.Equal(Text.GameSees("DualSense"), shown.Body);
 		Assert.Contains("toast: game detected for Returnal shown", log);
 
 		// Away and back in the same launch: no repeat (and no new log line on every state change).
@@ -296,49 +262,128 @@ public class NotificationTests
 		Assert.Equal(2, h.Raised.Count(n => n.Type == NotificationType.GameDetected));
 	}
 
+	// The bridge running with no game: the virtual controller type swaps at once.
+	private static Harness Running()
+	{
+		var h = new Harness();
+		h.Vm.Overview.ToggleBridgeCommand.Execute(null);
+		Dispatcher.UIThread.RunJobs();
+		h.Fake.Watcher.Exit("Cyberpunk2077.exe");
+		h.Fake.Watcher.Exe = null;
+		h.Fake.Games.Tick();
+		h.Fake.RaiseStateChanged();
+		h.Raised.Clear();
+		h.Later();
+		return h;
+	}
+
 	// The controller type toast shares the GameDetected type; its 20 s type cooldown used to swallow the game toast.
 	[AvaloniaFact]
 	public void Game_Announcement_IsNotSwallowedByTheControllerTypeToast()
 	{
-		var h = new Harness();
-		h.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true }); // on without a game
-		h.Later();
-		h.Fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, "DualShock4"));
+		Harness h = Running();
+		h.Fake.Games.SetForcedPadType(VirtualPadType.DualShock4);
 		h.Fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
 		h.Fake.Games.Tick();
 		h.Fake.RaiseStateChanged();
 		Assert.Contains(h.Raised, n => n.Type == NotificationType.GameDetected && n.Title == Text.PadModeDualShock4Title());
-		Assert.Contains(h.Raised, n => n.Type == NotificationType.GameDetected && n.Title == "Returnal");
+		AppNotification game = Assert.Single(h.Raised, n => n.Title == "Returnal");
+		Assert.Equal(Text.GameSees("DualShock 4"), game.Body);
+	}
+
+	// One toast per swap (not one per controller): the type as the title; with no game the default type's line, DualSense
+	// back when no default is set; the bridge's own swap notices show nothing.
+	[AvaloniaFact]
+	public void PadType_Swap_NoGame_OneToastWithTheTypeTitle()
+	{
+		Harness h = Running();
+		WithLanguage(Language.Turkish, () => h.Fake.Games.SetForcedPadType(VirtualPadType.Xbox360));
+		h.Fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.Xbox360)));
+		h.Fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.Xbox360)));
+		AppNotification toast = Assert.Single(h.Raised);
+		Assert.Equal(("Xbox 360 Modu", "Ayrı seçim yapmadığın oyunlar bu kumandayı görür."), (toast.Title, toast.Body));
+		Assert.Equal((NotificationType.GameDetected, AppPage.SupportedGames), (toast.Type, toast.Page));
+
+		h.Later();
+		h.Fake.Games.SetForcedPadType(null);
+		Assert.Equal((Text.PadModeDualSenseTitle(), Text.PadModeDualSenseBody()), (h.Raised[^1].Title, h.Raised[^1].Body));
+		Assert.Equal(2, h.Raised.Count);
+	}
+
+	// A swap while a game runs (Apply Now): "restart the game if it doesn't see the controller". A change held back for the
+	// running game: "applies when you restart the game", once.
+	[AvaloniaFact]
+	public void PadType_WhileAGameRuns_PendingThenApplyNow()
+	{
+		var h = new Harness();
+		h.Vm.Overview.ToggleBridgeCommand.Execute(null);
+		Dispatcher.UIThread.RunJobs();
+		h.Fake.RaiseStateChanged();
+		h.Raised.Clear();
+		h.Later();
+		string key = h.Fake.Games.ActiveGame!.Key;
+		WithLanguage(Language.Turkish, () => h.Fake.Games.SetPadType(key, VirtualPadType.DualShock4));
+		AppNotification pending = Assert.Single(h.Raised);
+		Assert.Equal(("DualShock 4 Modu", "Oyunu yeniden başlatınca geçerli olur."), (pending.Title, pending.Body));
+		h.Fake.RaiseStateChanged();
+		Assert.Single(h.Raised);
+
+		h.Later();
+		WithLanguage(Language.Turkish, () => h.Settings.ApplyPadTypeNowCommand.Execute(null));
+		Assert.Equal(2, h.Raised.Count);
+		Assert.Equal(("DualShock 4 Modu", "Oyun kumandayı görmüyorsa oyunu yeniden başlat."), (h.Raised[^1].Title, h.Raised[^1].Body));
+	}
+
+	// The virtual controller off (or no controller): no game sees a change, so no toast.
+	[AvaloniaFact]
+	public void PadType_BridgeOff_NoToast()
+	{
+		var h = new Harness();
+		h.Fake.Watcher.Exit("Cyberpunk2077.exe");
+		h.Fake.Games.Tick();
+		h.Later();
+		h.Fake.Games.SetForcedPadType(VirtualPadType.Xbox360);
+		Assert.Empty(h.Raised);
+	}
+
+	// A game coming up with its own type: the type toast and the game toast of that moment are one (the game toast, which
+	// says the type, takes the type toast's place).
+	[AvaloniaFact]
+	public void PadType_GameStartsWithItsOwnType_OneToastWithTheGame()
+	{
+		Harness h = Running();
+		h.Fake.Games.SetPadType("Returnal", VirtualPadType.Xbox360);
+		h.Raised.Clear();
+		h.Fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
+		h.Fake.Games.Tick();
+		h.Fake.RaiseStateChanged();
+		AppNotification game = h.Raised[^1];
+		Assert.Equal(("Returnal", Text.GameSees("Xbox 360")), (game.Title, game.Body));
+		if (h.Raised.Count > 1)
+		{
+			Assert.Equal(NotificationType.GameDetected, game.Replaces);
+		}
 	}
 
 	[AvaloniaFact]
 	public void Game_Announcement_Suppressed_LogsWhy()
 	{
 		var h = new Harness();
-		h.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true }); // on without a game
 		h.Settings.NotificationsEnabled = false;
 		List<string> log = WatchToastLog("Returnal", () => Focus(h, "Returnal-Win64-Shipping.exe"));
 		Assert.Empty(h.Raised);
 		Assert.Contains("toast: game detected for Returnal not shown (notifications off)", log);
 
 		var quiet = new Harness();
-		quiet.Fake.Games.LoadMemory(Kopru.Core.Games.GameMemory.Default with { SupportedModeOn = true });
 		quiet.Settings.QuietWhilePlaying = true;
 		quiet.FullScreen = true;
 		log = WatchToastLog("Assetto", () => Focus(quiet, "AC2-Win64-Shipping.exe"));
 		Assert.Empty(quiet.Raised);
 		Assert.Contains("toast: game detected for Assetto Corsa Competizione not shown (quiet while playing)", log);
-
-		// With the mode off the question comes instead; both are logged.
-		var off = new Harness();
-		log = WatchToastLog("Spider-Man", () => Focus(off, "Spider-Man.exe"));
-		Assert.Equal([NotificationType.GameAsk], off.Types);
-		Assert.Contains("toast: asking whether to turn on DualSense mode for Marvel's Spider-Man Remastered (shown)", log);
-		Assert.Contains("toast: game detected for Marvel's Spider-Man Remastered not shown (DualSense mode is off)", log);
 	}
 
 	[AvaloniaFact]
-	public void Game_UnknownApps_AreNeverAskedAbout()
+	public void Game_UnknownApps_AreNeverAnnounced()
 	{
 		var h = new Harness();
 		Focus(h, "claude.exe");
@@ -349,33 +394,14 @@ public class NotificationTests
 	}
 
 	[AvaloniaFact]
-	public void Game_ModeTexts_InBothLanguages()
+	public void Game_PadTexts_InBothLanguages()
 	{
-		Assert.Equal("DualSense modu açık", Text.NotifyGameSupported(Language.Turkish));
-		Assert.Equal("DualSense mode is on", Text.NotifyGameSupported(Language.English));
-		Assert.Equal("Turn on DualSense mode?", Text.AskGameBody(Language.English));
-		Assert.Equal(("Aç", "Şimdi Değil", "Her Zaman"), (Text.AskTurnOn(Language.Turkish), Text.AskNotNow(Language.Turkish), Text.AskAlways(Language.Turkish)));
-		Assert.Equal(("Turn On", "Not Now", "Always"), (Text.AskTurnOn(Language.English), Text.AskNotNow(Language.English), Text.AskAlways(Language.English)));
-		Assert.Equal("DualSense Modu", Text.SupportedMode(Language.Turkish));
-		Assert.Equal("DualSense Mode", Text.SupportedMode(Language.English));
-	}
-
-	[AvaloniaFact]
-	public void ToastActions_RunTheActionAndAskToClose()
-	{
-		int ran = 0;
-		var n = new AppNotification(NotificationType.GameAsk, NotificationKind.Info, "t", "b", AppPage.SupportedGames)
-		{
-			Actions = [new("A", () => ran++), new("B", () => ran += 10, IsPrimary: true)]
-		};
-		var vm = new ToastViewModel(n);
-		int closed = 0;
-		vm.ActionInvoked += () => closed++;
-		Assert.True(vm.HasActions);
-		Assert.Equal(["A", "B"], vm.Actions.Select(a => a.Label));
-		vm.Actions[1].Command.Execute(null);
-		Assert.Equal((10, 1), (ran, closed));
-		Assert.False(new ToastViewModel(Samples(Language.English).First().Notification).HasActions);
+		Assert.Equal("Oyunu yeniden başlatınca geçerli olur.", Text.PadToastPendingBody(Language.Turkish));
+		Assert.Equal("Applies when you restart the game.", Text.PadToastPendingBody(Language.English));
+		Assert.Equal("Tanınan bir oyun başlayınca ve kumanda türü değişince.", Text.NotifyGameHint(Language.Turkish));
+		Assert.Equal("When a known game starts and when the controller type changes.", Text.NotifyGameHint(Language.English));
+		WithLanguage(Language.Turkish, () => Assert.Equal("DualShock 4 Modu", NotificationCenter.PadTypeTitle(VirtualPadType.DualShock4)));
+		WithLanguage(Language.English, () => Assert.Equal("Xbox 360 Mode", NotificationCenter.PadTypeTitle(VirtualPadType.Xbox360)));
 	}
 
 	[AvaloniaFact]
@@ -395,7 +421,8 @@ public class NotificationTests
 		h.Fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
 		h.Fake.Games.Tick();
 		h.Fake.RaiseStateChanged();
-		Assert.Equal([NotificationType.SteamInput, NotificationType.SteamInput, NotificationType.GameAsk], h.Types);
+		// (the game toast comes first, then the warning for the new game)
+		Assert.Equal([NotificationType.SteamInput, NotificationType.GameDetected, NotificationType.SteamInput], h.Types);
 	}
 
 	[AvaloniaFact]
@@ -731,14 +758,14 @@ public class NotificationTests
 			Text.NotifyBatteryCriticalBody(10, l), AppPage.Overview, 10));
 		yield return ("charged", new(NotificationType.Charged, NotificationKind.Success, Text.NotifyChargedTitle(l),
 			Text.NotifyChargedBody(l), AppPage.Overview, 100, IsCharging: true));
-		yield return ("game", new(NotificationType.GameDetected, NotificationKind.Info, "Cyberpunk 2077",
-			Text.NotifyGameSupported(l), AppPage.SupportedGames));
-		// A long name: cut in the title, the question below stays whole.
-		yield return ("ask", new(NotificationType.GameAsk, NotificationKind.Info, "Marvel's Spider-Man 2: Digital Deluxe Edition", Text.AskGameBody(l),
-			AppPage.SupportedGames)
-		{
-			Actions = [new(Text.AskNotNow(l), () => { }), new(Text.AskAlways(l), () => { }), new(Text.AskTurnOn(l), () => { }, IsPrimary: true)]
-		});
+		yield return ("game", NotificationCenter.GameDetected("Cyberpunk 2077", VirtualPadType.DualSense));
+		// A long name: cut in the title, the line below stays whole.
+		yield return ("game-long", NotificationCenter.GameDetected("Marvel's Spider-Man 2: Digital Deluxe Edition", VirtualPadType.DualShock4));
+		// The controller type toasts: swapped while a game runs, the default type with no game, DualSense back, held back.
+		yield return ("pad-swap-game", NotificationCenter.PadTypeNotice(VirtualPadType.Xbox360, PadTypeSource.Game, gameRunning: true));
+		yield return ("pad-default", NotificationCenter.PadTypeNotice(VirtualPadType.DualShock4, PadTypeSource.DefaultSetting, gameRunning: false));
+		yield return ("pad-dualsense", NotificationCenter.PadTypeNotice(VirtualPadType.DualSense, PadTypeSource.Default, gameRunning: false));
+		yield return ("pad-pending", NotificationCenter.PadTypePending(VirtualPadType.DualShock4));
 		yield return ("steam-input", new(NotificationType.SteamInput, NotificationKind.Warning, Text.NotifySteamInputTitle(l),
 			Text.NotifySteamInputBody(l), AppPage.SupportedGames));
 		yield return ("powered-off", new(NotificationType.PoweredOffIdle, NotificationKind.Info, Text.NotifyPoweredOffTitle(l),
@@ -748,6 +775,14 @@ public class NotificationTests
 		yield return ("hidhide", new(NotificationType.HidHideMissing, NotificationKind.Warning, Text.NotifyHidHideTitle(l),
 			Text.NotifyHidHideBody(l), AppPage.Overview));
 		yield return ("tray", new(NotificationType.TrayHint, NotificationKind.Info, Text.NotifyTrayTitle(l), Text.NotifyTrayBody(l), AppPage.SettingsGeneral));
+		// Mouse Mode switched from the controller (touchpad double press, PS + Options).
+		yield return ("mouse-on-controller", new(NotificationType.Shortcut, NotificationKind.Info, Text.DesktopOnTitle(l), Text.DesktopOnBody(l), AppPage.SettingsShortcuts));
+		yield return ("mouse-off-controller", new(NotificationType.Shortcut, NotificationKind.Info, Text.DesktopOffTitle(l), Text.DesktopOffBody(l), AppPage.SettingsShortcuts));
+		yield return ("mouse-off", NotificationCenter.MouseModeOff(null));
+		yield return ("mouse-off-game", NotificationCenter.MouseModeOff("Uncharted: Legacy of Thieves Collection"));
+		// "Game detected" and Mouse Mode off in the same moment: one toast.
+		yield return ("mouse-off-merged", NotificationCenter.InGame(NotificationCenter.GameDetected("Uncharted: Legacy of Thieves Collection", VirtualPadType.DualSense, 78),
+			NotificationType.GameDetected));
 	}
 
 	// A dark desktop-like backdrop behind the cards, so the PNGs show them as they appear over a wallpaper.
@@ -798,10 +833,12 @@ public class NotificationTests
 					Assert.Equal((380.0, 132.0), (card.Bounds.Width, card.Bounds.Height));
 					foreach (TextBlock text in card.GetVisualDescendants().OfType<TextBlock>().Where(t => !string.IsNullOrEmpty(t.Text) && t.IsEffectivelyVisible))
 					{
-						bool gameTitle = text.Text == n.Title && n.Type is NotificationType.GameAsk or NotificationType.GameDetected;
+						bool gameTitle = text.Text == n.Title && (n.Type is NotificationType.GameDetected
+							|| n.Type is NotificationType.MouseModeOff && n.Title != Text.DesktopAutoOffTitle(language));
 						if (!gameTitle)
 						{
 							Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5, $"{name}/{language}: '{text.Text}' does not fit");
+							Assert.False(text.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{name}/{language}: '{text.Text}' is cut");
 						}
 					}
 					window.Close();
@@ -816,7 +853,7 @@ public class NotificationTests
 	public void RenderToasts()
 	{
 		bool writeFiles = Environment.GetEnvironmentVariable("KOPRU_RENDER_SCREENS") == "1";
-		string outDir = Path.Combine(RepoRoot(), "docs", "screens");
+		string outDir = Environment.GetEnvironmentVariable("KOPRU_RENDER_DIR") is { Length: > 0 } dir ? dir : Path.Combine(RepoRoot(), "docs", "screens");
 		void Save(string name, byte[] png)
 		{
 			Assert.True(png.Length > 0);

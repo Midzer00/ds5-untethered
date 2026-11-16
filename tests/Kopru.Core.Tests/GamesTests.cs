@@ -109,8 +109,8 @@ public class GamesTests
 	[Fact]
 	public void FallbackEffect_MapsStrength()
 	{
-		Assert.Null(new UnsupportedProfile().TriggerEffect);
-		Assert.Equal(TriggerEffects.Feedback(2, 4), new UnsupportedProfile(Trigger: FallbackTrigger.Feedback, FallbackStrength: 0.5).TriggerEffect);
+		Assert.Null(new GameProfile().TriggerEffect);
+		Assert.Equal(TriggerEffects.Feedback(2, 4), new GameProfile(Trigger: FallbackTrigger.Feedback, FallbackStrength: 0.5).TriggerEffect);
 		Assert.Equal(TriggerEffects.Vibration(2, 8, 30), GameProfiles.Effect(FallbackTrigger.Vibration, 1));
 		Assert.Equal(TriggerEffects.Weapon(2, 6, 1), GameProfiles.Effect(FallbackTrigger.Weapon, 0));
 	}

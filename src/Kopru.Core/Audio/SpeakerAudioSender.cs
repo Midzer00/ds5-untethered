@@ -202,7 +202,15 @@ public sealed class SpeakerAudioSender : IDisposable
 
 	private long underruns, droppedSamples;
 
-	public SpeakerAudioSender(IOpusEncoder encoder) => this.encoder = encoder;
+	// Store as a delegate made once: a method group passed per input sample would allocate a new delegate each time
+	// (48 000 a second while the game's speaker channels carry sound).
+	private readonly Action<short, short> store;
+
+	public SpeakerAudioSender(IOpusEncoder encoder)
+	{
+		this.encoder = encoder;
+		store = Store;
+	}
 
 	// Speaker volume 0..1 (sent in report 0x31 by the session while nothing is in the headphone jack).
 	public double Volume { get; set; } = 0.8;
@@ -402,7 +410,7 @@ public sealed class SpeakerAudioSender : IDisposable
 		{
 			left = right = (short)((left + right) / 2);
 		}
-		resampler.Process(left, right, Store);
+		resampler.Process(left, right, store);
 	}
 
 	private void Store(short left, short right)

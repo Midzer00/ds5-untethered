@@ -134,19 +134,20 @@ public class LinkQualityAppTests
 		try
 		{
 			Localizer.Chosen = Language.Turkish;
-			Assert.Equal("Bağlantı", o.LinkLabel);
 			fake.LinkQuality = null;
 			Assert.Equal("Ölçülüyor", o.LinkStateText);
 			Assert.True(o.IsLinkMeasuring);
-			Assert.Equal(Text.LinkAdviceMeasuring(), o.LinkAdvice);
+			Assert.False(o.HasLinkAdvice);
+			// Good: the word says it all, no sentence.
 			fake.LinkQuality = Good;
 			Assert.Equal("İyi", o.LinkStateText);
 			Assert.True(o.IsLinkGood && !o.IsLinkBorderline && !o.IsLinkPoor);
-			Assert.Equal("Bağlantı sağlam, bir şey yapmanız gerekmiyor.", o.LinkAdvice);
+			Assert.False(o.HasLinkAdvice);
 			fake.LinkQuality = Borderline;
-			Assert.Equal("Sınırda", o.LinkStateText);
+			Assert.Equal("Orta", o.LinkStateText);
 			Assert.True(o.IsLinkBorderline);
-			Assert.Contains("yaklaştırın", o.LinkAdvice);
+			Assert.True(o.HasLinkAdvice);
+			Assert.Equal("Ara sıra gecikme var: kumandayı adaptöre yaklaştır.", o.LinkAdvice);
 			fake.LinkQuality = Poor;
 			Assert.Equal("Zayıf", o.LinkStateText);
 			Assert.True(o.IsLinkPoor);
@@ -161,15 +162,23 @@ public class LinkQualityAppTests
 		}
 	}
 
+	// The chart's top: about 1.5 times the highest sample, rounded up to a round value, never under 10 ms.
 	[Fact]
-	public void Chart_FixedScale_AndSpikesAboveTheLimit()
+	public void Chart_ScalesToTheData_WithARoundTop()
 	{
-		Assert.Equal([2, 4], Sparkline.SpikesAbove([4, 20, 31, 30, 75], 30));
-		Assert.Empty(Sparkline.SpikesAbove([4, 50], 0));
+		Assert.Equal(10, LivePanelViewModel.ChartTopFor([]));
+		Assert.Equal(10, LivePanelViewModel.ChartTopFor([1.0, 4.5, 6.6]));
+		Assert.Equal(15, LivePanelViewModel.ChartTopFor([8.0]));
+		Assert.Equal(30, LivePanelViewModel.ChartTopFor([19.5]));
+		Assert.Equal(80, LivePanelViewModel.ChartTopFor([12, 48]));
+		Assert.Equal(150, LivePanelViewModel.ChartTopFor([75]));
+		Assert.Equal(1500, LivePanelViewModel.ChartTopFor([900]));
 	}
 
+	// The chart scales to the data: a good link (a few ms) fills it on a 0-10 ms axis with the "you can feel it" line left
+	// out and a note at the top instead; a weak link's spikes bring the scale up and the line in.
 	[AvaloniaFact]
-	public void Chart_HasALabelledFixedScale_WithTheLimitInTheMiddle()
+	public void Chart_ScalesToTheData_TheLimitOnlyInRange()
 	{
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake);
@@ -182,18 +191,27 @@ public class LinkQualityAppTests
 		Feed(vm, fake, LinkQuality.Good);
 		Settle();
 		Sparkline graph = window.GetVisualDescendants().OfType<Sparkline>().Single(g => g.IsEffectivelyVisible);
-		Assert.Equal(LinkLimits.PoorDelayMs, graph.Limit);
-		Assert.Equal(2 * LinkLimits.PoorDelayMs, graph.Maximum);
-		Assert.Equal(Text.LinkLimitLabel(), graph.LimitLabel);
+		TextBlock note = window.GetVisualDescendants().OfType<TextBlock>().Single(b => b.Name == "ChartNote");
+		Assert.Equal(10, graph.Maximum);
+		Assert.Equal(0, graph.Limit);
+		Assert.True(note.IsEffectivelyVisible);
+		Assert.Equal(Text.LiveUnderLimit(LinkLimits.PoorDelayMs), note.Text);
 		Assert.Equal("ms", graph.Unit);
 		// The thick line is the worst delay of each second (what the limit is about), the thin one the typical delay.
 		Assert.Same(vm.Overview.Live.WorstHistory, graph.Values);
 		Assert.Same(vm.Overview.Live.TypicalHistory, graph.Secondary);
-		// Fixed: the limit sits half-way up whatever the data, 0 on the baseline, off-scale values at the top.
+		// The worst sample reaches at least half the height: the line uses the chart.
 		double top = graph.YOf(graph.Maximum), bottom = graph.YOf(0);
-		Assert.Equal((top + bottom) / 2, graph.YOf(graph.Limit), 3);
-		Assert.Equal(top, graph.YOf(500), 3);
+		Assert.True(graph.YOf(vm.Overview.Live.WorstHistory.Max()) < (top + bottom) / 2, "the line sits low in an empty chart");
 		Assert.True(graph.PlotWidth < graph.Bounds.Width, "a gutter for the scale labels");
+
+		fake.LinkQuality = Poor;
+		Feed(vm, fake, LinkQuality.Poor);
+		Settle();
+		Assert.Equal(LinkLimits.PoorDelayMs, graph.Limit);
+		Assert.True(graph.Maximum >= 1.5 * 75 - 0.5, $"top {graph.Maximum}");
+		Assert.Equal(Text.LiveOverLimit(LinkLimits.PoorDelayMs), note.Text);
+		Assert.Equal(top, graph.YOf(graph.Maximum * 3), 3);
 		window.Close();
 	}
 
@@ -229,11 +247,12 @@ public class LinkQualityAppTests
 						fake.RaiseStateChanged();
 						Settle();
 						OverviewView overview = window.GetLogicalDescendants().OfType<OverviewView>().Single();
-						TextBlock word = overview.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Text == vm.Overview.LinkStateText && t.Classes.Contains("rowValue"));
+						TextBlock word = overview.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Name == "LinkWord");
+						Assert.Equal(vm.Overview.LinkStateText, word.Text);
 						Assert.True(word.IsEffectivelyVisible);
-						TextBlock sentence = overview.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Text == vm.Overview.LinkAdvice);
-						Assert.True(sentence.IsEffectivelyVisible);
-						// The live card still ends inside the window, and the sentence inside its card.
+						// The sentence only when something must be done (Borderline, Weak), inside its card.
+						TextBlock sentence = overview.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Name == "LinkAdvice");
+						Assert.Equal(reading.State is LinkQuality.Borderline or LinkQuality.Poor, sentence.IsEffectivelyVisible);
 						Border card = overview.GetLogicalDescendants().OfType<Border>().First(b => b.Classes.Contains("panel") && b.GetLogicalDescendants().Contains(sentence));
 						Point? end = sentence.TranslatePoint(new Point(0, sentence.Bounds.Height), card);
 						Assert.True(end!.Value.Y <= card.Bounds.Height, $"{code} {size} {name}: the sentence ends below its card");

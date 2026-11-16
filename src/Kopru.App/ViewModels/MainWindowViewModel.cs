@@ -29,17 +29,32 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 {
 	private readonly IControllerService _service;
 	private readonly AppEnvironment _environment;
+	private readonly ShownProperties _shown;
 
 	public MainWindowViewModel(IControllerService service, AppEnvironment? environment = null)
 	{
 		_service = service;
 		_environment = environment ?? new AppEnvironment();
 		Settings = new SettingsState(service, _environment.Store, _environment.Startup);
+		if (_environment.Clock is { } clock)
+		{
+			Settings.Clock = clock;
+		}
+		Tips = new TipBar(service, Settings);
+		BackToGame = new GameReturn(service, Settings, _environment.FullScreen);
 		Overview = new OverviewViewModel(service, Settings);
+		Overview.BackToGame = BackToGame;
 		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now, _environment.GameImages,
 			_environment.InstalledGames);
 		OtherGames = new OtherGamesViewModel(service, Settings);
 		Controller = new ControllerPageViewModel(service, Settings);
+		Controller.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(ControllerPageViewModel.SelectedTab))
+			{
+				UpdateButtonPage();
+			}
+		};
 		Light = new LightViewModel(service, Settings);
 		SettingsPage = new SettingsViewModel(service, Settings, _environment.Wizard != null ? ShowSetup : null) { Bridge = Overview };
 		NavItems =
@@ -56,13 +71,32 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		Overview.Quick.OpenAdvanced = () => OpenSettingsAt(SettingsViewModel.GeneralTab);
 		Overview.Quick.OpenShortcuts = () => OpenSettingsAt(SettingsViewModel.ShortcutsTab);
 		_service.FixRequested += (_, fix) => RunOnUi(() => HandleFix(fix));
-		Overview.SetVisible(true);
+		UpdateLiveViews();
 		Notifications = new NotificationCenter(service, Settings, _environment.FullScreen, _environment.Clock);
 		SupportedGames.ListUpdatedAutomatically += added => Notifications.Post(NotificationCenter.GameListUpdated(added));
+		// A game that could not be started from the games list: a short toast.
+		SupportedGames.LaunchFailed += name => Notifications.Post(new AppNotification(NotificationType.GameDetected, NotificationKind.Error,
+			Text.GameLaunchFailedTitle(), Text.GameLaunchFailedBody(name), AppPage.SupportedGames), force: true);
+		// Haptics And Triggers' "Desteklenmeyen Oyunlar": the Games page on that view.
+		OtherGames.OpenUnsupportedGames = () =>
+		{
+			SupportedGames.ShowUnsupported = true;
+			Navigate(SupportedGames);
+		};
 		AutoUpdateTask = SupportedGames.AutoUpdateAsync();
 		Updates = new UpdatesViewModel(service, Settings, Notifications, _environment.Updates, _environment.Now, _environment.FullScreen);
 		SettingsPage.Updates = Updates;
-		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(string.Empty));
+		_shown = new ShownProperties(name => OnPropertyChanged(name),
+			(nameof(IsEdge), () => IsEdge), (nameof(DeviceName), () => DeviceName), (nameof(DeviceConnection), () => DeviceConnection),
+			(nameof(DeviceBattery), () => DeviceBattery), (nameof(IsConnected), () => IsConnected), (nameof(BatteryPercent), () => BatteryPercent),
+			(nameof(HasBattery), () => HasBattery), (nameof(IsCharging), () => IsCharging), (nameof(BatteryShort), () => BatteryShort),
+			(nameof(BatteryRowText), () => BatteryRowText), (nameof(BatteryRowTip), () => BatteryRowTip));
+		// Only the sidebar values the service drives, and only the ones that changed.
+		_service.StateChanged += (_, _) => RunOnUi(() =>
+		{
+			_shown.Refresh();
+			Settings.Live.Refresh();
+		});
 		// The virtual controller connected to games: setup works, whatever the wizard last saw.
 		_service.StateChanged += (_, _) => RunOnUi(() =>
 		{
@@ -127,6 +161,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 				}
 			};
 			Setup = setup;
+			_service.RefreshHealth();
 		}
 	}
 
@@ -164,6 +199,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	}
 
 	public SettingsState Settings { get; }
+	// The in-app tips bar at the bottom of the content column.
+	public TipBar Tips { get; }
+	// The "Back To Game" button (Overview header), and the other ways back to a running game.
+	public GameReturn BackToGame { get; }
 	public OverviewViewModel Overview { get; }
 	public SupportedGamesViewModel SupportedGames { get; }
 	public OtherGamesViewModel OtherGames { get; }
@@ -196,9 +235,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	// tooltip, DeviceBattery), so the virtual controller's state beside it keeps its room.
 	public string BatteryRowText => HasBattery ? Text.BatteryValue(Math.Round(_service.BatteryPercent)) : "—";
 	public string BatteryRowTip => HasBattery ? DeviceBattery : Text.BatteryUnknown();
-	// The supported mode switch, compact in the sidebar's controller card.
-	public string SupportedModeShort => Text.SupportedModeShort();
-	public string SupportedModeHelper => Text.SupportedModeHelper();
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(CurrentPage))]
@@ -207,14 +243,51 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	partial void OnSelectedNavChanged(NavItem value)
 	{
 		Setup = null;
-		// The controller page holds the controller (Test tab) or polls its input only while it is shown.
-		Controller.SetVisible(value.Page == Controller);
-		Overview.SetVisible(value.Page == Overview);
+		UpdateLiveViews();
 	}
 
 	// The setup page covers the selected page while it is open: the controller page's live input stops meanwhile.
-	partial void OnSetupChanged(SetupViewModel? oldValue, SetupViewModel? newValue) =>
-		Controller.SetVisible(newValue == null && SelectedNav.Page == Controller);
+	partial void OnSetupChanged(SetupViewModel? oldValue, SetupViewModel? newValue) => UpdateLiveViews();
+
+	// Whether the main window is on screen (shown and not minimised); set by the window. True until the window says
+	// otherwise (view models without a window keep their live readouts as before).
+	public bool IsWindowShown { get; private set; } = true;
+
+	// The one place the live readouts follow the window: hidden to the icon next to the clock or minimised, every page
+	// timer (Overview drawing and graph, controller tester and remap preview, mic meter, light preview) stops; shown
+	// again, they start again on the page in view.
+	public void SetWindowShown(bool shown)
+	{
+		if (shown == IsWindowShown)
+		{
+			return;
+		}
+		IsWindowShown = shown;
+		UpdateLiveViews();
+		OnPropertyChanged(nameof(IsWindowShown));
+		if (shown)
+		{
+			// The user may have installed a driver meanwhile: the health picture is read in full again.
+			_service.RefreshHealth();
+		}
+	}
+
+	// The controller page holds the controller (Test tab) or polls its input only while it is shown; the Overview follows
+	// the controller only while it is in view; the mic meter runs only on the Settings page.
+	private void UpdateLiveViews()
+	{
+		Controller.SetVisible(IsWindowShown && Setup == null && SelectedNav.Page == Controller);
+		Overview.SetVisible(IsWindowShown && SelectedNav.Page == Overview);
+		SettingsPage.SetMicMeterShown(IsWindowShown && Setup == null && SelectedNav.Page == SettingsPage);
+		SettingsPage.Info.SetShown(IsWindowShown);
+		Settings.Live.SetShown(IsWindowShown);
+		UpdateButtonPage();
+	}
+
+	// The controller page's Test or Remap tab in view: the user is trying the buttons there, so the touchpad double press
+	// does not turn Mouse Mode on (IControllerService.ButtonPageShown).
+	private void UpdateButtonPage() =>
+		_service.ButtonPageShown = Setup == null && SelectedNav.Page == Controller && (Controller.IsTestTab || Controller.IsRemapTab);
 
 	public PageViewModel CurrentPage => (PageViewModel?)Setup ?? SelectedNav.Page;
 

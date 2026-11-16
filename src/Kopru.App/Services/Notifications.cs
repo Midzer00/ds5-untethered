@@ -30,8 +30,6 @@ public enum NotificationType
 	HidHideMissing,
 	TrayHint,
 	GameListUpdated,
-	// A known game started with the supported mode off: turn it on? (with buttons)
-	GameAsk,
 	// Feedback after a controller shortcut (profile, haptics level, mode)
 	Shortcut,
 	// The bridged controller was plugged in by cable
@@ -39,7 +37,9 @@ public enum NotificationType
 	// The Bluetooth link stayed weak long enough to feel (LinkQualityMonitor)
 	LinkWeak,
 	// A newer version of the app is out (once per version, see UpdatesViewModel)
-	UpdateAvailable
+	UpdateAvailable,
+	// Mouse mode switched itself off because a game came to the front (SettingsState.DesktopAutoOff)
+	MouseModeOff
 }
 
 // The page a click on a toast opens.
@@ -53,21 +53,16 @@ public enum AppPage
 	SettingsShortcuts
 }
 
-// A button on a toast; Run is called on the UI thread, then the toast closes. The primary one is drawn in the accent.
-public sealed record NotificationAction(string Label, Action Run, bool IsPrimary = false);
-
 // One toast. Value (0-100) is the controller's battery level, shown as a battery glyph; IsEdge picks the controller drawing
-// and IsCharging shows the battery as charging. A toast with actions stays up longer (ActionDuration).
+// and IsCharging shows the battery as charging. Replaces: a toast of that type still on screen gives its place to this one
+// (two notices about the same moment become one).
 public sealed record AppNotification(NotificationType Type, NotificationKind Kind, string Title, string Body, AppPage Page, double? Value = null,
-	bool IsEdge = false, bool IsCharging = false)
+	bool IsEdge = false, bool IsCharging = false, NotificationType? Replaces = null)
 {
 	public static readonly TimeSpan NormalDuration = TimeSpan.FromSeconds(5);
 	public static readonly TimeSpan ErrorDuration = TimeSpan.FromSeconds(8);
-	public static readonly TimeSpan ActionDuration = TimeSpan.FromSeconds(20);
 
-	public IReadOnlyList<NotificationAction> Actions { get; init; } = [];
-
-	public TimeSpan Duration => Actions.Count > 0 ? ActionDuration : Kind == NotificationKind.Error ? ErrorDuration : NormalDuration;
+	public TimeSpan Duration => Kind == NotificationKind.Error ? ErrorDuration : NormalDuration;
 }
 
 // Turns service state changes and notices into notifications: tracks transitions (connected, battery thresholds once per
@@ -93,8 +88,6 @@ public sealed partial class NotificationCenter
 	private readonly Dictionary<(NotificationType, string), long> _lastByText = [];
 	private readonly Queue<long> _recent = new();
 	private readonly HashSet<string> _announced = new(StringComparer.OrdinalIgnoreCase);
-	// Games asked about in their current launch (answering "always" there is no news).
-	private readonly HashSet<string> _asked = new(StringComparer.OrdinalIgnoreCase);
 
 	private bool _connected;
 	private string? _gameExe;
@@ -118,7 +111,7 @@ public sealed partial class NotificationCenter
 		_connected = service.IsConnected;
 		InitControllers();
 		_gameExe = _lastSeenExe = service.Games.State.Exe;
-		if (_gameExe != null && service.Games.State.Mode == GameMode.Supported)
+		if (_gameExe != null)
 		{
 			_announced.Add(_gameExe);
 			LogGame(_gameExe, $"toast: game detected for {service.Games.State.Name ?? _gameExe} not shown (already in front when the app started)");
@@ -133,15 +126,8 @@ public sealed partial class NotificationCenter
 				Post(new AppNotification(NotificationType.Shortcut, NotificationKind.Info, title, body, AppPage.SettingsShortcuts, IsEdge: IsEdge), force: true);
 			}
 		};
-		service.Games.AskRequested += game =>
-		{
-			lock (_gate)
-			{
-				_asked.Add(game.Exe);
-			}
-			Post(Ask(service.Games, game, IsEdge), force: true);
-			Log($"toast: asking whether to turn on DualSense mode for {game.Name} (shown)");
-		};
+		settings.DesktopAutoOff += OnMouseModeAutoOff;
+		InitPadToasts();
 	}
 
 	// Raised for every notification that passed the filters; may be raised on any thread.
@@ -162,10 +148,7 @@ public sealed partial class NotificationCenter
 		}
 		if (announce != null)
 		{
-			// Not held back by the type cooldown: the controller type toast (same type) comes with the game.
-			Log(Post(announce, false, false, out string? blocked)
-				? $"toast: game detected for {announce.Title} shown"
-				: $"toast: game detected for {announce.Title} not shown ({blocked})");
+			PostGameDetected(announce);
 		}
 		foreach (AppNotification n in pending)
 		{
@@ -191,6 +174,111 @@ public sealed partial class NotificationCenter
 		}
 	}
 
+	// A game coming to the front often brings both "game detected" and Mouse Mode switching off in the same moment: within
+	// MergeWindow of each other they become one toast under the game's name ("Mouse Mode off, controller in game"), which
+	// takes the place of the first one if it is still on screen.
+	public static readonly TimeSpan MergeWindow = TimeSpan.FromSeconds(3);
+
+	// The last "game detected" toast shown and when; when the last Mouse Mode off toast was shown on its own.
+	private AppNotification? _gameToast;
+	private long _gameToastAt;
+	private long? _mouseOffAt;
+
+	// Not held back by the type cooldown: the controller type toast (same type) comes with the game. A controller type toast
+	// for this game still on screen gives its place to this one (it says the type too).
+	private void PostGameDetected(AppNotification announce)
+	{
+		bool merge;
+		lock (_gate)
+		{
+			merge = _mouseOffAt is { } at && _clockMs() - at < MergeWindow.TotalMilliseconds && IsEnabled(NotificationType.GameDetected);
+			if (RecentPadToastFor(announce.Title))
+			{
+				announce = announce with { Replaces = NotificationType.GameDetected };
+				_padToastAt = null;
+			}
+		}
+		if (merge)
+		{
+			AppNotification one = InGame(announce, NotificationType.MouseModeOff);
+			bool shown = Post(one, false, false, out string? why);
+			if (shown)
+			{
+				lock (_gate)
+				{
+					_mouseOffAt = null;
+				}
+			}
+			Log(shown
+				? $"toast: game detected for {announce.Title} shown with mouse mode off (one toast)"
+				: $"toast: game detected for {announce.Title} with mouse mode off not shown ({why})");
+			return;
+		}
+		bool posted = Post(announce, false, false, out string? blocked);
+		if (posted)
+		{
+			lock (_gate)
+			{
+				_gameToast = announce;
+				_gameToastAt = _clockMs();
+			}
+		}
+		Log(posted
+			? $"toast: game detected for {announce.Title} shown"
+			: $"toast: game detected for {announce.Title} not shown ({blocked})");
+	}
+
+	// "Mouse Mode Off · Controller is back in the game" (a game that started using the controller; opens the Supported Games
+	// page where it can be added), or under the name of a known game that came to the front. Joined with a "game detected"
+	// toast of the same moment (MergeWindow). Goes through the usual switches and limits; logged either way.
+	private void OnMouseModeAutoOff(string? game, string exe)
+	{
+		AppNotification? recent;
+		lock (_gate)
+		{
+			recent = _gameToast != null && _clockMs() - _gameToastAt < MergeWindow.TotalMilliseconds ? _gameToast : null;
+		}
+		string what = game != null ? exe : "a game using the controller (" + exe + ")";
+		if (recent != null)
+		{
+			bool merged = Post(InGame(recent, NotificationType.GameDetected), false, true, out string? why);
+			if (merged)
+			{
+				lock (_gate)
+				{
+					_gameToast = null;
+				}
+			}
+			Log(merged
+				? $"toast: mouse mode off for {what} shown with game detected for {recent.Title} (one toast)"
+				: $"toast: mouse mode off for {what} not shown ({why})");
+			return;
+		}
+		bool shown = Post(MouseModeOff(game, IsEdge), false, true, out string? blocked);
+		if (shown)
+		{
+			lock (_gate)
+			{
+				_mouseOffAt = _clockMs();
+			}
+		}
+		Log(shown
+			? $"toast: mouse mode off for {what} shown"
+			: $"toast: mouse mode off for {what} not shown ({blocked})");
+	}
+
+	// Mouse Mode switched off for a game: under the game's name when it is known, else "Mouse Mode Off".
+	public static AppNotification MouseModeOff(string? game, bool isEdge = false) => game != null
+		? new(NotificationType.MouseModeOff, NotificationKind.Info, game, Text.DesktopOffGameBody(), AppPage.SettingsShortcuts, IsEdge: isEdge)
+		: new(NotificationType.MouseModeOff, NotificationKind.Info, Text.DesktopAutoOffTitle(), Text.DesktopOffGameStartedBody(), AppPage.SupportedGames,
+			IsEdge: isEdge);
+
+	// "Game detected" and Mouse Mode off as one toast: the game's name (and the battery the game toast shows) over "Mouse
+	// Mode off, controller in game"; it replaces the toast of `replaces` still on screen.
+	public static AppNotification InGame(AppNotification game, NotificationType replaces) =>
+		new(NotificationType.MouseModeOff, NotificationKind.Info, game.Title, Text.DesktopOffGameBody(), AppPage.SupportedGames, game.Value,
+			game.IsEdge, game.IsCharging, replaces);
+
 	public static AppNotification LinkWeak(bool isEdge = false) =>
 		new(NotificationType.LinkWeak, NotificationKind.Warning, Text.NotifyLinkTitle(), Text.NotifyLinkBody(), AppPage.Overview, IsEdge: isEdge);
 
@@ -205,7 +293,8 @@ public sealed partial class NotificationCenter
 			ServiceNoticeKind.HidHideMissing => HidHideOnce(),
 			ServiceNoticeKind.CableConnected => new AppNotification(NotificationType.CableConnected, NotificationKind.Info,
 				Text.NotifyCableTitle(), Text.NotifyCableBody(), AppPage.Overview, IsEdge: IsEdge),
-			ServiceNoticeKind.PadTypeChanged => PadTypeNotice(notice.Detail, IsEdge, _service.Games.ForcedPadType != null),
+			// The bridge's own swap notice (one per controller) shows nothing: the controller type toast comes once per change
+			// from SettingsState.PadSwapped (see PadTypeNotice.cs).
 			_ => null
 		};
 		if (n != null)
@@ -278,19 +367,6 @@ public sealed partial class NotificationCenter
 
 	public static AppNotification GameListUpdated(int added) =>
 		new(NotificationType.GameListUpdated, NotificationKind.Success, Text.NotifyGameListTitle(), Text.NotifyGameListBody(added), AppPage.SupportedGames);
-
-	// "Cyberpunk 2077 Started · Turn on DualSense supported mode?" with Turn On / Not Now / Always. Shown whatever the
-	// filters say: the controller only raises it once per launch, and only when "ask" is on.
-	public static AppNotification Ask(GameModeController games, ForegroundGame game, bool isEdge = false) =>
-		new(NotificationType.GameAsk, NotificationKind.Info, game.Name, Text.AskGameBody(), AppPage.SupportedGames, IsEdge: isEdge)
-		{
-			Actions =
-			[
-				new(Text.AskNotNow(), () => games.Answer(game, AskAnswer.NotNow)),
-				new(Text.AskAlways(), () => games.Answer(game, AskAnswer.Always)),
-				new(Text.AskTurnOn(), () => games.Answer(game, AskAnswer.TurnOn), IsPrimary: true),
-			]
-		};
 
 	// The short reason a bridge error toast shows; the full text is on the Overview page.
 	public static string BridgeReason(BridgeError error) => error switch
@@ -399,7 +475,6 @@ public sealed partial class NotificationCenter
 		if (state.Exe == null)
 		{
 			// The game ended: its next launch is news again.
-			_asked.Clear();
 			_announced.Clear();
 			_gameLogged = null;
 		}
@@ -409,21 +484,12 @@ public sealed partial class NotificationCenter
 			_steamWarnedFor = null;
 		}
 		AppNotification? announce = null;
-		// A known game that becomes the active game with the supported mode on (the switch was already on, or the game turned it
-		// on by itself: "always") is announced once per launch (switching away and back is not news); one the user was asked
-		// about is not. Before, only "always" games were announced, so with the switch already on a game got no toast at all.
-		if (state.Exe != null && (arrived || state.Reason == ModeReason.Always))
+		// A known game that becomes the active game is announced once per launch (switching away and back is not news), with
+		// the controller type it sees ("Oyun Şunu Görüyor: DualSense").
+		if (state.Exe != null && arrived)
 		{
 			string name = state.Name ?? Path.GetFileNameWithoutExtension(state.Exe);
-			if (state.Mode != GameMode.Supported)
-			{
-				LogGame(state.Exe, $"toast: game detected for {name} not shown (DualSense mode is off)");
-			}
-			else if (_asked.Contains(state.Exe))
-			{
-				LogGame(state.Exe, $"toast: game detected for {name} not shown (asked about it in this launch)");
-			}
-			else if (!_announced.Add(state.Exe))
+			if (!_announced.Add(state.Exe))
 			{
 				LogGame(state.Exe, $"toast: game detected for {name} not shown (shown already in this launch)");
 			}
@@ -431,8 +497,7 @@ public sealed partial class NotificationCenter
 			{
 				// (later state changes would only find it shown already: nothing more to log)
 				_gameLogged = state.Exe + "\n" + $"toast: game detected for {name} not shown (shown already in this launch)";
-				announce = new AppNotification(NotificationType.GameDetected, NotificationKind.Info, name,
-					Text.NotifyGameSupported(), AppPage.SupportedGames, Battery, IsEdge, Charging);
+				announce = GameDetected(name, _service.Games.CurrentPadType, Battery, IsEdge, Charging);
 			}
 		}
 		if (_gameExe != null && _steamWarnedFor == null && _service.SteamInput is { Status: SteamInputStatus.OnGlobally or SteamInputStatus.OnForApp })

@@ -122,6 +122,12 @@ public interface IControllerService
 	// Localized reason when CanTest is false, else empty.
 	string CanTestReason { get; }
 
+	// Reads the whole health picture again soon, the slow facts (installed drivers, pending restart) included: the setup
+	// page opened or ran a step. The periodic refresh reads those only about once a minute.
+	void RefreshHealth()
+	{
+	}
+
 	// Carries out a chip's fix: RestartBridge and OpenBluetoothSettings here, the rest raise FixRequested for the UI.
 	Task ExecuteFix(FixAction fix);
 
@@ -131,11 +137,39 @@ public interface IControllerService
 	// Raised after any state property changed; may be raised on any thread.
 	event EventHandler? StateChanged;
 
+	// DSX mod support's listener state (Kopru.Core.Mods.DsxListener; Off while the setting is off), and its changes (raised on the UI
+	// thread: a state change, a mod's first message or end, and once a second while a mod's effects are active).
+	Kopru.Core.Mods.DsxStatus DsxStatus { get; }
+
+	event EventHandler? DsxStatusChanged;
+
 	// Raised for one-off happenings; may be raised on any thread.
 	event EventHandler<ServiceNotice>? Notice;
 
 	// A controller shortcut was used; raised on the input thread.
 	event EventHandler<Kopru.Core.Input.ShortcutAction>? Shortcut;
+
+	// A program with the virtual pad open started using the controller as a game does (a trigger effect, haptics sound,
+	// rumble; Kopru.Core.Bridge.ControllerBridge.GameUseStarted). Never raised by the app's own tests. Raised on the
+	// bridge's report or audio thread.
+	event EventHandler<Kopru.Core.Bridge.GameUse>? GameUsingController;
+
+	// What a game is doing with any controller right now (a trigger effect held, motors running, haptics sound in the last
+	// 2 s), or null. The level behind GameUsingController.
+	Kopru.Core.Bridge.GameUse? GameUsingControllerNow { get; }
+
+	// While Mouse Mode is on (read at the game tick, about once a second): the exe of the foreground program when it could
+	// be a game (not this app, not a shell process or common desktop app: GameWatcher.Ignored, not one of Windows' own apps
+	// and tools, not a program whose path can't be read: RealControllerService.PossibleGame), else null. Always null
+	// while Mouse Mode is off.
+	string? PossibleGameInFront { get; }
+
+	// PossibleGameInFront changed; raised on a timer thread.
+	event EventHandler? ForegroundChanged;
+
+	// The main window shows a page where the controller's buttons are being tried (the controller page's Test or Remap
+	// tab): the touchpad double press does nothing there. Set by the UI.
+	bool ButtonPageShown { get; set; }
 
 	// Shows a profile number (1-5) on the player LEDs for a moment.
 	void ShowProfileIndicator(int index);
@@ -195,6 +229,19 @@ public interface IControllerService
 	// The Windows playback and recording devices (device pickers, the mic button on a PC microphone); null: none.
 	Kopru.Core.Audio.AudioDevices? AudioDevices => null;
 
+	// "Turn sound into haptics": what it is doing right now (AudioHapticsRunner), and when that changes (any thread).
+	Kopru.Core.Audio.AudioHapticsStatus AudioHapticsStatus => Kopru.Core.Audio.AudioHapticsStatus.Off;
+
+	event Action? AudioHapticsStatusChanged
+	{
+		add { }
+		remove { }
+	}
+
 	// The player slot whose virtual pad sits on that virtual hub port (names several pads' audio devices), or null.
 	int? SlotOfAudioPort(int port) => null;
+
+	// The light last written to the selected controller (light bar, player LEDs, whoever set them); null while none is
+	// open. A cheap read: the controller drawings show it (LiveLight).
+	Kopru.Core.Lighting.LightOutput? ControllerLight => null;
 }

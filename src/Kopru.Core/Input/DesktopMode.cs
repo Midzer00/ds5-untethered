@@ -2,7 +2,8 @@
 namespace Kopru.Core.Input;
 
 // Desktop mode tuning. Speeds are multipliers (1.0 = default); PointerAcceleration 0-100 % bends the right stick's
-// response (0 = linear, 100 = cubic); AutoOffInGame turns desktop mode off when a known game comes to the front.
+// response (0 = linear, 100 = cubic); AutoOffInGame turns desktop mode off when a known game comes to the front or a game
+// starts using the controller (a trigger effect, haptics, rumble).
 public sealed record DesktopModeSettings
 {
 	public static DesktopModeSettings Default { get; } = new();

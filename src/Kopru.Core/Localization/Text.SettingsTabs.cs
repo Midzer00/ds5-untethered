@@ -59,17 +59,13 @@ public static partial class Text
 		$"Windows'un varsayılan mikrofonu.",
 		$"The Windows default microphone.");
 
-	public static string SpeakerSendShort(Language? l = null) => Pick(l,
-		$"DualSense Modu'nda kendiliğinden açılır.",
-		$"Turns on by itself in DualSense Mode.");
-
 	public static string MicSendShort(Language? l = null) => Pick(l,
 		$"Tuş turuncu yanarken mikrofon açıktır.",
 		$"The mic is on while its button glows orange.");
 
 	public static string MicButtonModeShort(Language? l = null) => Pick(l,
-		$"Sessize Al: mikrofon açık kalır, sesin kesilir. Tamamen Kapat: mikrofon kapanır.",
-		$"Mute: the mic stays on, only your voice is cut. Turn Off: the mic turns off.");
+		$"İkisinde de oyun ses duymaz. Sessize Al anında geri açar; Tamamen Kapat kumanda mikrofonunu kapatır.",
+		$"Either way games hear nothing. Mute comes back at once; Turn Off shuts the controller mic down.");
 
 	public static string ProtectDefaultAudioShort(Language? l = null) => Pick(l,
 		$"Windows kumandaya geçerse geri alır.",
@@ -88,8 +84,8 @@ public static partial class Text
 		$"Acts as mouse and keyboard; games get no input.");
 
 	public static string DesktopAutoOffShort(Language? l = null) => Pick(l,
-		$"Desteklenen bir oyun öne gelince kapanır.",
-		$"Turns off when a supported game is in front.");
+		$"Oyun öne gelince ya da kumandayı kullanınca kapanır.",
+		$"Turns off when a game comes to the front or uses the controller.");
 
 	public static string NotifyLinkShort(Language? l = null) => Pick(l,
 		$"Bağlantı uzun süre zayıf kalırsa.",

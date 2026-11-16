@@ -18,6 +18,9 @@ public interface IForegroundWindows
 
 	// Whether the window still exists.
 	bool Exists(IntPtr window);
+
+	// The main window of a process (0: none or unknown).
+	IntPtr MainWindowOf(int processId) => IntPtr.Zero;
 }
 
 // The main window as the presenter needs it (Avalonia's Window in the app, a fake in tests). UI thread only.
@@ -87,7 +90,23 @@ public sealed class MainWindowPresenter
 		log($"app window: shown ({reason}), {(how != null ? "in front (" + how + ")" : "not in front: Windows kept another window in front")}");
 	}
 
-	public void Hide(string reason)
+	public void Hide(string reason) => Hide(reason, "previous window");
+
+	// Back to a running game ("Back To Game", Mouse Mode off with PS + Options): hides the window like the PS tap and puts
+	// the game's main window in front, or the window that was in front when the app was shown when the game's is unknown.
+	public void ReturnTo(string reason, int gameProcess)
+	{
+		IntPtr game = gameProcess > 0 ? foreground.MainWindowOf(gameProcess) : IntPtr.Zero;
+		if (game != IntPtr.Zero && game != window.Handle && foreground.Exists(game))
+		{
+			returnTo = game;
+			Hide(reason, "game window");
+			return;
+		}
+		Hide(reason, "previous window");
+	}
+
+	private void Hide(string reason, string what)
 	{
 		window.Hide();
 		IntPtr back = returnTo;
@@ -98,7 +117,7 @@ public sealed class MainWindowPresenter
 			return;
 		}
 		string? how = foreground.BringToFront(back);
-		log($"app window: hidden ({reason}), previous window {(how != null ? "back in front (" + how + ")" : "not in front: Windows kept another window in front")}");
+		log($"app window: hidden ({reason}), {what} {(how != null ? "back in front (" + how + ")" : "not in front: Windows kept another window in front")}");
 	}
 }
 

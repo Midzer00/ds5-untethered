@@ -12,7 +12,7 @@
             <TextBlock Classes="label" Text="{Binding SwitchLabel}" />
             <TextBlock Classes="body" Text="{Binding Short, Converter={x:Static v:KeepLastWords.Instance}}" />
           </StackPanel>
-          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.DesktopModeOn}" OnContent="{x:Null}" OffContent="{x:Null}"
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding DesktopModeOn}" OnContent="{x:Null}" OffContent="{x:Null}"
                         AutomationProperties.Name="{Binding SwitchLabel}" AutomationProperties.HelpText="{Binding Hint}" />
         </Grid>
         <Border Classes="divider" />

@@ -6,12 +6,12 @@ using Avalonia.Media;
 
 namespace Kopru.App.Controls;
 
-// A small line graph of recent values, oldest on the left: Values as the accent line over a faint flat fill, Secondary
-// (optional) as a thin muted line, with a baseline.
-// Scale: with Maximum set, a fixed 0..Maximum axis labelled on the right ("0", the limit, "Maximum Unit"), so the height of
-// the line means the same thing at every moment; without it, the larger of the series' maxima (never below MinScale).
-// Limit (optional): a dashed line with LimitLabel above it; every sample of Values above it gets a bar in LimitBrush from
-// the line up to the value (to the top edge when the value is off the scale), so spikes stand out without reading numbers.
+// A small line graph of recent values, oldest on the left: Values as the accent line over a faint flat fill with its last
+// point marked, Secondary (optional) as a thin muted line.
+// Scale: with Maximum set, a 0..Maximum axis with faint grid lines at the top and half-way, labelled on the right ("Maximum
+// Unit", the half, "0"); without it, the larger of the series' maxima (never below MinScale).
+// Limit (optional): a thin dashed line in LimitBrush with LimitLabel small above its left end, and its value on the axis
+// (instead of the half-way label); nothing is drawn for a limit above Maximum.
 public sealed class Sparkline : Control
 {
 	public static readonly StyledProperty<IReadOnlyList<double>?> ValuesProperty =
@@ -34,7 +34,8 @@ public sealed class Sparkline : Control
 
 	private static readonly IBrush Baseline = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255));
 	private static readonly IBrush SecondaryStroke = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
-	private static readonly IBrush LabelPlate = new SolidColorBrush(Color.FromArgb(200, 0x1F, 0x21, 0x25));
+	private static readonly IBrush Grid = new SolidColorBrush(Color.FromArgb(18, 255, 255, 255));
+	public const double LastPointRadius = 3;
 
 	static Sparkline()
 	{
@@ -70,10 +71,6 @@ public sealed class Sparkline : Control
 		return bottom - Math.Clamp(value / max, 0, 1) * (bottom - top);
 	}
 
-	// The samples drawn above the limit (spike bars): their indices in Values.
-	public static IReadOnlyList<int> SpikesAbove(IReadOnlyList<double> values, double limit) =>
-		limit <= 0 ? [] : Enumerable.Range(0, values.Count).Where(i => values[i] > limit).ToList();
-
 	public override void Render(DrawingContext context)
 	{
 		double w = PlotWidth, h = Bounds.Height;
@@ -82,67 +79,74 @@ public sealed class Sparkline : Control
 			return;
 		}
 		(double top, double bottom) = PlotRows();
-		context.DrawLine(new Pen(Baseline, 1), new Point(0, bottom + 0.5), new Point(w, bottom + 0.5));
 		IReadOnlyList<double> main = Values ?? [];
 		IReadOnlyList<double> second = Secondary ?? [];
 		int capacity = Math.Max(2, Capacity);
 		double step = w / (capacity - 1);
 		Point At(IReadOnlyList<double> values, int i) => new(w - (values.Count - 1 - i) * step, YOf(values[i]));
-		IBrush limitBrush = LimitBrush ?? Brushes.IndianRed;
+		bool limitShown = Limit > 0 && (!HasAxis || Limit <= Maximum);
 
-		if (Limit > 0)
+		// Faint grid: the baseline, and with an axis the top and half-way lines.
+		context.DrawLine(new Pen(Baseline, 1), new Point(0, bottom + 0.5), new Point(w, bottom + 0.5));
+		if (HasAxis)
+		{
+			var grid = new Pen(Grid, 1);
+			context.DrawLine(grid, new Point(0, Math.Round(top) + 0.5), new Point(w, Math.Round(top) + 0.5));
+			double half = Math.Round(YOf(Maximum / 2)) + 0.5;
+			context.DrawLine(grid, new Point(0, half), new Point(w, half));
+		}
+
+		IBrush limitBrush = LimitBrush ?? SecondaryStroke;
+		if (limitShown)
 		{
 			double y = Math.Round(YOf(Limit)) + 0.5;
-			var dashed = new Pen(limitBrush, 1, new DashStyle([3, 3], 0));
-			context.DrawLine(dashed, new Point(0, y), new Point(w, y));
-			// Spikes: a bar from the line up to the value (or the top edge).
-			Color lc = limitBrush is ISolidColorBrush ls ? ls.Color : Colors.IndianRed;
-			IBrush bar = new SolidColorBrush(Color.FromArgb(150, lc.R, lc.G, lc.B));
-			double width = Math.Clamp(step * 0.5, 2, 6);
-			foreach (int i in SpikesAbove(main, Limit))
-			{
-				double x = At(main, i).X;
-				double yTop = YOf(main[i]);
-				context.FillRectangle(bar, new Rect(Math.Clamp(x - width / 2, 0, w - width), yTop, width, Math.Max(1, y - yTop)));
-			}
+			context.DrawLine(new Pen(limitBrush, 1, new DashStyle([3, 3], 0)), new Point(0, y), new Point(w, y));
 		}
 
 		if (second.Count >= 2)
 		{
 			context.DrawGeometry(null, new Pen(SecondaryStroke, 1), Line(second.Count, i => At(second, i), false, bottom));
 		}
-		if (main.Count >= 2)
+		if (main.Count >= 1)
 		{
 			IBrush stroke = Stroke ?? Brushes.White;
-			Color c = stroke is ISolidColorBrush s ? s.Color : Colors.White;
-			var fill = new SolidColorBrush(Color.FromArgb(36, c.R, c.G, c.B));
-			context.DrawGeometry(fill, null, Line(main.Count, i => At(main, i), true, bottom));
-			context.DrawGeometry(null, new Pen(stroke, 1.6, lineJoin: PenLineJoin.Round, lineCap: PenLineCap.Round), Line(main.Count, i => At(main, i), false, bottom));
+			if (main.Count >= 2)
+			{
+				Color c = stroke is ISolidColorBrush s ? s.Color : Colors.White;
+				var fill = new SolidColorBrush(Color.FromArgb(36, c.R, c.G, c.B));
+				context.DrawGeometry(fill, null, Line(main.Count, i => At(main, i), true, bottom));
+				context.DrawGeometry(null, new Pen(stroke, 1.6, lineJoin: PenLineJoin.Round, lineCap: PenLineCap.Round), Line(main.Count, i => At(main, i), false, bottom));
+			}
+			// The latest second, marked.
+			Point last = At(main, main.Count - 1);
+			context.DrawEllipse(stroke, null, new Point(Math.Min(last.X, w - LastPointRadius), last.Y), LastPointRadius, LastPointRadius);
 		}
 
-		// The limit's name last, on a small dark plate, so the line, its fill and the spike bars never cover it.
-		if (Limit > 0 && !string.IsNullOrEmpty(LimitLabel))
+		// The limit's name, small, above the left end of its line (no plate).
+		if (limitShown && !string.IsNullOrEmpty(LimitLabel))
 		{
 			FormattedText text = Label(LimitLabel!, limitBrush);
-			var at = new Point(Math.Max(0, w - text.Width - 4), Math.Max(0, Math.Round(YOf(Limit)) - text.Height - 2));
-			context.FillRectangle(LabelPlate, new Rect(at.X - 3, at.Y, text.Width + 6, text.Height + 1), 3);
-			context.DrawText(text, at);
+			context.DrawText(text, new Point(0, Math.Max(0, Math.Round(YOf(Limit)) - text.Height - 1)));
 		}
 
 		if (HasAxis)
 		{
 			IBrush labels = LabelBrush ?? SecondaryStroke;
-			void AxisLabel(string s, double y)
+			void AxisLabel(string s, double y, IBrush brush)
 			{
-				FormattedText t = Label(s, labels);
+				FormattedText t = Label(s, brush);
 				context.DrawText(t, new Point(w + 6, Math.Clamp(y - t.Height / 2, 0, h - t.Height)));
 			}
-			AxisLabel(Format(Maximum) + (string.IsNullOrEmpty(Unit) ? string.Empty : " " + Unit), top);
-			if (Limit > 0 && Limit < Maximum)
+			AxisLabel(Format(Maximum) + (string.IsNullOrEmpty(Unit) ? string.Empty : " " + Unit), top, labels);
+			if (limitShown && Limit < Maximum)
 			{
-				AxisLabel(Format(Limit), YOf(Limit));
+				AxisLabel(Format(Limit), YOf(Limit), limitBrush);
 			}
-			AxisLabel("0", bottom);
+			else
+			{
+				AxisLabel(Format(Maximum / 2), YOf(Maximum / 2), labels);
+			}
+			AxisLabel("0", bottom, labels);
 		}
 	}
 

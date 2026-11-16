@@ -162,16 +162,16 @@ public class WiringTests
 		WithLanguage(Language.English, () =>
 		{
 			(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
-			Assert.Equal("1.2 ms · worst 3.4", vm.Overview.LatencyValue);
+			Assert.Equal(("1.2 ms", "Delay · worst 3.4 ms"), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayDetail));
 			Assert.StartsWith(Text.LatencyValue(1.2, 3.4, 0.05), vm.Overview.LatencyTip);
 			fake.Latency = null;
-			Assert.Equal(Text.HealthUnknown(), vm.Overview.LatencyValue);
+			Assert.Equal(("\u2014", Text.StatLatency()), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayDetail));
 			Assert.Equal(Text.LatencyHint(), vm.Overview.LatencyTip);
 		});
 		WithLanguage(Language.Turkish, () =>
 		{
 			(MainWindowViewModel vm, _) = NewViewModel();
-			Assert.Equal("1,2 ms · en kötü 3,4", vm.Overview.LatencyValue);
+			Assert.Equal(("1,2 ms", "Gecikme · en kötü 3,4 ms"), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayDetail));
 		});
 	}
 

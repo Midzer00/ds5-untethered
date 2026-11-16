@@ -14,52 +14,37 @@ namespace Kopru.App.Tests;
 public class GameModeAppTests
 {
 	[AvaloniaFact]
-	public void Overview_ShowsTheKnownGame_AndTheSwitchPicksTheMode()
+	public void Overview_ShowsTheKnownGame_TheModeSwitchIsGone()
 	{
 		// English strings are checked in GameModeText_ReadsWell; here the current language is used.
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake);
 		Assert.Equal("Cyberpunk 2077", vm.Overview.GameValue);
-		Assert.False(vm.Overview.IsSupportedModeOn);
-		Assert.Equal(Text.ModeShortClassic(), vm.Overview.ModeValue);
-		Assert.True(vm.OtherGames.IsActive);
-		Assert.Equal("Cyberpunk 2077 · " + Text.ModeUnsupported(), vm.SupportedGames.CurrentGameText);
-
-		vm.Overview.IsSupportedModeOn = true;
-		Assert.True(fake.Games.IsSupportedModeOn);
-		Assert.Equal(Text.ModeShortSupported(), vm.Overview.ModeValue);
-		Assert.True(vm.Overview.IsSupportedMode);
-		Assert.Equal("Cyberpunk 2077 · " + Text.ModeSupported() + " · " + Text.ReasonUser(), vm.SupportedGames.CurrentGameDetail);
+		// No mode switch is left on the Overview: it says which controller the game sees.
+		Assert.DoesNotContain(typeof(OverviewViewModel).GetProperties(), p => p.Name.Contains("SupportedMode", StringComparison.Ordinal));
+		Assert.Equal(Text.GameSees("DualSense"), vm.Overview.GameSeesText);
 		Assert.True(vm.SupportedGames.IsActive);
-		Assert.False(vm.OtherGames.IsActive);
+		Assert.Equal(GameMode.Supported, fake.Games.State.Mode);
 
 		// An unknown app in front is not a game: the known game stays.
 		fake.Watcher.Exe = "Tetris.exe";
 		fake.Games.Tick();
 		Assert.Equal("Cyberpunk 2077", vm.Overview.GameValue);
 
-		// The game exits: the switch it was turned on for goes off, no game.
+		// The game exits: no game.
 		fake.Watcher.Exit("Cyberpunk2077.exe");
 		fake.Games.Tick();
 		Assert.Equal(Text.ValueNoGame(), vm.Overview.GameValue);
-		Assert.False(vm.Overview.IsSupportedModeOn);
-		Assert.Equal(Text.ModeUnsupported() + " · " + Text.ReasonDefault(), vm.Overview.GameDetail);
 	}
 
 	[AvaloniaFact]
-	public void Tray_SwitchItem_FlipsTheMode()
+	public void Tray_HasNoModeItem()
 	{
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake);
 		var tray = new TrayViewModel(fake, vm.Settings, new NoShell());
-		Assert.False(tray.IsSupportedModeOn);
-		Assert.Equal(Text.TraySupportedMode(), tray.SupportedModeText);
-		tray.ToggleSupportedModeCommand.Execute(null);
-		Assert.True(fake.Games.IsSupportedModeOn);
-		Assert.True(tray.IsSupportedModeOn);
-		Assert.True(vm.Overview.IsSupportedModeOn);
-		tray.ToggleSupportedModeCommand.Execute(null);
-		Assert.False(fake.Games.IsSupportedModeOn);
+		Assert.DoesNotContain(typeof(TrayViewModel).GetProperties(), p => p.Name.Contains("SupportedMode", StringComparison.Ordinal));
+		Assert.NotNull(tray.ToggleDesktopModeCommand);
 	}
 
 	private sealed class NoShell : IAppShell
@@ -94,8 +79,27 @@ public class GameModeAppTests
 		Assert.Equal("DualSense Modu", Text.ModeSupported(Language.Turkish));
 		Assert.Equal("Klasik Titreşim", Text.ModeUnsupported(Language.Turkish));
 		Assert.Equal("a · b", GameModeText.Join("a", "b"));
-		Assert.Equal("x · DualSense Mode · always on for this game",
-			WithEnglish(() => GameModeText.Line(new GameModeState("x.exe", "x", GameMode.Supported, ModeReason.Always))));
+		Assert.Equal("x · DualSense Mode", WithEnglish(() => GameModeText.Line(new GameModeState("x.exe", "x", GameMode.Supported))));
+		Assert.Equal("Classic Rumble", WithEnglish(() => GameModeText.Line(new GameModeState(null, null, GameMode.Unsupported))));
+	}
+
+	// No hint speaks of a question or of a game turning something on or off by itself.
+	[Fact]
+	public void ModeTexts_DescribeAPlainSwitch()
+	{
+		foreach (Language l in new[] { Language.Turkish, Language.English })
+		{
+			string[] texts = [Text.GameListHint(l), Text.QuickSpeakerTip(l), Text.SpeakerSwitchHint(l), Text.SpeakerSendGameAudioHint(l)];
+			foreach (string t in texts)
+			{
+				Assert.DoesNotContain("sorulur", t);
+				Assert.DoesNotContain("Otomatik Aç", t);
+				Assert.DoesNotContain("asked", t);
+				Assert.DoesNotContain("kendiliğinden", t);
+				Assert.DoesNotContain("by itself", t);
+				Assert.DoesNotContain("tepsi", t, StringComparison.OrdinalIgnoreCase);
+			}
+		}
 	}
 
 	private static string WithEnglish(Func<string> make)
@@ -113,31 +117,18 @@ public class GameModeAppTests
 	}
 
 	[AvaloniaFact]
-	public void SupportedPage_SearchMarksAndAddRemoveGames()
+	public void SupportedPage_SearchAndAddRemoveGames()
 	{
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake);
 		Assert.Equal(4, vm.SupportedGames.Games.Count);
 		vm.SupportedGames.SearchText = "spider";
-		GameItemViewModel spider = Assert.Single(vm.SupportedGames.Games);
+		Assert.Single(vm.SupportedGames.Games);
 		vm.SupportedGames.SearchText = "returnal-win64";
 		Assert.Single(vm.SupportedGames.Games);
 		vm.SupportedGames.SearchText = "zzz";
 		Assert.True(vm.SupportedGames.HasNoMatch);
 		vm.SupportedGames.SearchText = string.Empty;
-
-		// The "Auto" mark and its remove button.
-		Assert.False(spider.IsAlways);
-		fake.Games.SetAlways(spider.Key, true);
-		spider = vm.SupportedGames.Games.Single(g => g.Name == spider.Name);
-		Assert.True(spider.IsAlways);
-		spider.RemoveAlwaysCommand.Execute(null);
-		Assert.False(spider.IsAlways);
-		Assert.False(fake.Games.IsAlways(spider.Key));
-		fake.Games.SetNeverAsk(spider.Key, true);
-		Assert.True(spider.IsNeverAsk);
-		spider.RemoveNeverAskCommand.Execute(null);
-		Assert.False(fake.Games.IsNeverAsk(spider.Key));
 
 		// Add a running app; it is then recognised and can be removed again.
 		fake.Watcher.Source.Show("Indie.exe", @"C:\Games\Indie\Indie.exe");
@@ -147,14 +138,16 @@ public class GameModeAppTests
 		Assert.DoesNotContain(vm.SupportedGames.RunningApps, a => a.Name == "chrome");
 		RunningAppItem indie = vm.SupportedGames.RunningApps.Single(a => a.Name == "Indie");
 		vm.SupportedGames.AddRunningCommand.Execute(indie);
-		GameItemViewModel added = vm.SupportedGames.Games.Single(g => g.IsUserAdded);
+		// An added game the list does not know is on "Unsupported".
+		GameItemViewModel added = Assert.Single(vm.SupportedGames.UnsupportedGames);
+		Assert.True(added.IsUserAdded);
 		Assert.Equal(("Indie", @"C:\Games\Indie\Indie.exe"), (added.Name, added.PathTip));
-		Assert.Equal(5, vm.SupportedGames.Games.Count);
+		Assert.Equal(4, vm.SupportedGames.Games.Count);
 		fake.Watcher.Exe = "Indie.exe";
 		fake.Games.Tick();
 		Assert.Equal("Indie", fake.Games.State.Name);
 		added.RemoveGameCommand.Execute(null);
-		Assert.Equal(4, vm.SupportedGames.Games.Count);
+		Assert.Empty(vm.SupportedGames.UnsupportedGames);
 		Assert.Empty(fake.Games.UserGames);
 	}
 
@@ -184,8 +177,7 @@ public class GameModeAppTests
 				RumbleFeel = RumbleFeel.Punchy,
 				FallbackTrigger = FallbackTrigger.Weapon,
 				FallbackStrength = 75,
-				AskOnKnownGame = false,
-				AlwaysGames = ["Returnal"],
+				UnifiedProfile = true,
 				UserGames = [new UserGame("Indie", @"C:\Games\Indie.exe")]
 			};
 			var store = new MemorySettingsStore(saved);
@@ -196,19 +188,16 @@ public class GameModeAppTests
 			Assert.False(fake.Settings.LightFromGame);
 			Assert.Equal(RumbleFeel.Punchy, fake.Settings.RumbleFeel);
 			Assert.Equal(FallbackTrigger.Weapon, fake.Settings.FallbackTrigger);
-			Assert.False(vm.Settings.AskOnKnownGame);
-			Assert.False(fake.Games.AskOnKnownGame);
-			Assert.True(fake.Games.IsAlways("Returnal"));
-			Assert.Contains(vm.SupportedGames.Games, g => g.Name == "Returnal" && g.IsAlways);
-			Assert.Contains(vm.SupportedGames.Games, g => g.Name == "Indie" && g.IsUserAdded);
+			Assert.Contains(vm.SupportedGames.UnsupportedGames, g => g.Name == "Indie" && g.IsUserAdded);
+			// One profile: the trigger strength always applies.
+			Assert.Equal(1.0, fake.Settings.Game.TriggerIntensity);
+			Assert.Equal(FallbackTrigger.Weapon, fake.Settings.Game.Trigger);
 
-			vm.OtherGames.IsSoft = true;
-			vm.Settings.AskOnKnownGame = true;
-			fake.Games.SetAlways("Cyberpunk 2077", true);
+			vm.OtherGames.Feel.IsSoft = true;
 			vm.Settings.SaveNow();
-			Assert.True(SpinWait.SpinUntil(() => store.Saved!.RumbleFeel == RumbleFeel.Soft
-				&& store.Saved.AlwaysGames.Contains("Cyberpunk 2077"), 3000));
-			Assert.True(store.Saved!.AskOnKnownGame);
+			Assert.True(SpinWait.SpinUntil(() => store.Saved!.RumbleFeel == RumbleFeel.Soft, 3000));
+			Assert.True(store.Saved!.UnifiedProfile);
+			Assert.Null(store.Saved.SupportedModeOn);
 			Assert.Null(store.Saved.GameOverrides);
 			Assert.Single(store.Saved.UserGames);
 		}
@@ -219,7 +208,7 @@ public class GameModeAppTests
 	}
 
 	[AvaloniaFact]
-	public void OldSettings_Migrate_SupportedToAlways_UnsupportedToNeverAsk_LearnedDropped()
+	public void OldSettings_Migrate_UnknownSupportedGamesBecomeUserGames_RestDropped()
 	{
 		var saved = new AppSettings
 		{
@@ -234,24 +223,16 @@ public class GameModeAppTests
 			LearnedGames = new() { ["Native.exe"] = true, ["claude.exe"] = false }
 		};
 		GameMemory memory = saved.ToGameMemory(FakeControllerService.SampleCatalog);
-		Assert.Equal(["Returnal", "Indie.exe"], memory.Always);
-		Assert.Equal(["Marvel's Spider-Man Remastered"], memory.NeverAsk);
 		Assert.Equal([new UserGame("Indie", "Indie.exe")], memory.UserGames);
-		// An old file has no SupportedModeOn: DualSense Mode takes its new default (on).
-		Assert.True(memory.SupportedModeOn);
-		Assert.True(memory.AskOnKnownGame);
 
 		var store = new MemorySettingsStore(saved);
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake, new AppEnvironment(store));
-		Assert.True(fake.Games.IsAlways("Returnal"));
-		Assert.True(fake.Games.IsNeverAsk("Marvel's Spider-Man Remastered"));
 		Assert.DoesNotContain(vm.SupportedGames.Games, g => g.Name is "Native" or "claude");
-		vm.Settings.AskOnKnownGame = false;
+		Assert.Contains(vm.SupportedGames.UnsupportedGames, g => g.Name == "Indie" && g.IsUserAdded);
 		vm.Settings.SaveNow();
-		Assert.True(SpinWait.SpinUntil(() => store.Saved!.AlwaysGames.Count == 2, 3000));
-		Assert.Null(store.Saved!.GameOverrides);
-		Assert.Null(store.Saved.LearnedGames);
+		Assert.True(SpinWait.SpinUntil(() => store.Saved!.GameOverrides == null, 3000));
+		Assert.Null(store.Saved!.LearnedGames);
 	}
 
 	[Fact]
@@ -260,36 +241,51 @@ public class GameModeAppTests
 		string dir = Path.Combine(Path.GetTempPath(), "untethered-" + Guid.NewGuid().ToString("N"));
 		string path = Path.Combine(dir, "settings.json");
 		Directory.CreateDirectory(dir);
-		File.WriteAllText(path, """{ "Language": "en", "RumbleLevel": 70, "GameOverrides": { "Foo.exe": "Supported" }, "LearnedGames": { "Bar.exe": false } }""");
+		// A file from the version with the question and the DualSense Mode switch: the old keys still read.
+		File.WriteAllText(path, """
+			{ "Language": "en", "RumbleLevel": 70, "SupportedModeOn": false, "DualSenseModeMigrated": true, "DualSenseModeSpeaker": false,
+			  "AskOnKnownGame": false, "AlwaysGames": ["Returnal"],
+			  "NeverAskGames": ["acc.exe"], "GameOverrides": { "Foo.exe": "Supported" }, "LearnedGames": { "Bar.exe": false } }
+			""");
 		var store = new JsonSettingsStore(path);
 		AppSettings old = store.Load()!;
 		Assert.Equal(70, old.RumbleLevel);
 		Assert.True(old.LightFromGame);
 		Assert.Equal(RumbleFeel.Soft, old.RumbleFeel);
-		Assert.True(old.AskOnKnownGame);
-		Assert.Empty(old.AlwaysGames);
+		Assert.False(old.SupportedModeOn);
+		Assert.True(old.DualSenseModeMigrated);
+		Assert.False(old.DualSenseModeSpeaker);
+		Assert.False(old.UnifiedProfile);
 		Assert.Equal(GameOverride.Supported, old.GameOverrides!["Foo.exe"]);
 
 		old.RumbleFeel = RumbleFeel.Punchy;
+		Assert.True(old.MigrateUnifiedProfile());
+		// Mode off: the game's light was blocked, so it stays off.
+		Assert.False(old.LightFromGame);
 		old.WithGames(old.ToGameMemory(GameCatalog.Empty));
 		store.Save(old);
 		string json = File.ReadAllText(path);
 		Assert.Contains("\"Punchy\"", json);
 		Assert.DoesNotContain("GameOverrides", json);
 		Assert.DoesNotContain("LearnedGames", json);
+		Assert.DoesNotContain("AskOnKnownGame", json);
+		Assert.DoesNotContain("AlwaysGames", json);
+		Assert.DoesNotContain("NeverAskGames", json);
+		Assert.DoesNotContain("SupportedModeOn", json);
+		Assert.DoesNotContain("DualSenseMode", json);
 		AppSettings back = store.Load()!;
-		Assert.Equal(["Foo.exe"], back.AlwaysGames);
+		Assert.True(back.UnifiedProfile);
+		Assert.False(back.MigrateUnifiedProfile());
 		Assert.Equal([new UserGame("Foo", "Foo.exe")], back.UserGames);
 		Assert.Null(back.GameOverrides);
 		Directory.Delete(dir, true);
 	}
 
 	[Fact]
-	public void ControllerSettings_MapToProfiles()
+	public void ControllerSettings_MapToOneProfile()
 	{
 		var s = new ControllerSettings(GameHapticsLevel: 200, RumbleLevel: 50, TriggerStrength: 40, LightFromGame: false,
 			RumbleFeel: RumbleFeel.Punchy, FallbackTrigger: FallbackTrigger.Feedback, FallbackStrength: 100);
-		Assert.Equal(new SupportedProfile(2.0, 0.4, false), s.Supported);
-		Assert.Equal(new UnsupportedProfile(0.5, RumbleFeel.Punchy, FallbackTrigger.Feedback, 1.0), s.Unsupported);
+		Assert.Equal(new GameProfile(2.0, 0.4, false, 0.5, RumbleFeel.Punchy, FallbackTrigger.Feedback, 1.0), s.Game);
 	}
 }

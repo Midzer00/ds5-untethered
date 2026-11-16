@@ -32,7 +32,7 @@ public class LowPowerTests
 		Assert.Equal(0, s.Brightness);
 		Assert.False(s.PlayerLeds);
 		Assert.False(s.LightFromGame);
-		Assert.False(s.Supported.LightFromGame);
+		Assert.False(s.Game.LightFromGame);
 		Assert.Equal(0, s.Light.PlayerMask);
 		Assert.Equal(new Rgb(0, 0, 0), LightAnimator.ColourAt(s.Light, TimeSpan.FromSeconds(2)));
 		Assert.False(s.Speaker.Enabled);
@@ -140,8 +140,8 @@ public class LowPowerTests
 	[Fact]
 	public void LowPowerSteps_UseTheProfileTypes()
 	{
-		// The supported games profile the bridge gets follows the override.
-		SupportedProfile p = LowPower.Apply(User, true).Supported;
+		// The game profile the bridge gets follows the override.
+		GameProfile p = LowPower.Apply(User, true).Game;
 		Assert.Equal(0.75, p.GameHapticsLevel, 3);
 		Assert.Equal(0.5, p.TriggerIntensity, 3);
 	}
