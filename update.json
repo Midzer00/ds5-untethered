@@ -1,8 +1,8 @@
 {
-  "version": "0.1.7",
+  "version": "0.1.8",
   "published": "2026-11-16",
-  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.7/DS5-Untethered-0.1.7-Setup.exe", "sha256": "DD7DAF7FF3E76D1B422BD89A57CBAF452D9BA3931EB0E5FB0D9F9A1A3B87BA2F", "size": 40901874 },
-  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.7/DS5-Untethered-0.1.7-win-x64.zip", "sha256": "821D453E09C4C4E33A56AC0623A3327DB7064EAD83C69E8BD7B62E9160454625", "size": 51401759 },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.7",
-  "notes": { "tr": "Oyun paneli, Sesi Titreşime Çevir, DSX mod desteği ve daha sade ayarlar.", "en": "Game panel, Turn Sound Into Haptics, DSX mod support and simpler settings." }
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.8/DS5-Untethered-0.1.8-Setup.exe", "sha256": "3FA865FED54670BC56ECA06C476FB3CD8AFE5F52EE63B9AE9ADF489C1CC03F92", "size": 40901267 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.8/DS5-Untethered-0.1.8-win-x64.zip", "sha256": "04D9288D70ACE80714D923B7C8BA2E2C2CD385FEC1A361A4D06BCB0822B04484", "size": 51402339 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.8",
+  "notes": { "tr": "Oyun ayarları artık açılır pencerede açılıyor.", "en": "Game settings now open in a pop-up." }
 }
