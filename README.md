@@ -19,9 +19,9 @@
   <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/badge/Download-for%20Windows-2ea44f?style=for-the-badge" alt="Download for Windows"></a>
 </p>
 
-<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a></p>
+<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="CHANGELOG.md">Changelog</a></p>
 
-<p align="center"><img src="docs/screens/overview-en.png" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="820"></p>
+<p align="center"><img src="docs/screens/v0.1.8/overview-en.jpg" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="600"></p>
 
 ## Disclaimer
 
@@ -71,7 +71,8 @@ to be installed for the app itself.
   then guides Bluetooth pairing of the controller. Both drivers are required: the virtual controller does not start
   without them.
 - Settings, profiles and logs are stored in `%LOCALAPPDATA%\Untethered`.
-- Network: with "Download Pictures" on (Supported Games page, on by default), the app fetches game header pictures
+- What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
+- Network: with "Download Pictures" on (Games page, on by default), the app fetches game header pictures
   from Steam's public CDN (and, for newer games, Steam's public app details) and keeps them only in
   `%LOCALAPPDATA%\Untethered\cache\game-images`. A request names only the game's Steam app id; nothing about you is sent.
   The app also checks GitHub for a new version at start and once a week ("Check For Updates Automatically" in
@@ -100,7 +101,8 @@ no loss. The Overview page shows the delay live, so you can check your own setup
 #### Which games does it work with?
 
 Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's
-Supported Games page.
+Games page, under Supported. Games without DualSense support can use the classic rumble settings or Turn Sound Into
+Haptics.
 
 #### Is it free?
 
@@ -121,18 +123,25 @@ Done and verified on hardware:
 - Controller speaker: sound played to the controller's speaker is heard by its own microphone.
 
 Done and tested in code, not yet verified on hardware:
-- The app: setup page, Overview, one Controller page (Test, Output Tests, Remap and Gyro), Light, Supported Games,
-  Settings, tray icon and notifications; the bridge is shown as the "Virtual Controller" and starts by itself
-  (stop it in Settings > General or from the menu of its icon next to the clock).
-- Hiding the real controller with HidHide; rumble to haptics for games without native haptics; reconnection,
-  battery warning, idle power-off.
-- Profiles per game, trigger strength, remapping, gyro aim, light effects, mouse mode.
+- The app: setup page, Overview, Games, Haptics And Triggers, one Controller page (Test, Output Tests, Remap and
+  Gyro), Light, Settings, the icon next to the clock and notifications; the bridge is shown as the "Virtual
+  Controller" and starts by itself (stop it in Settings > General or from the menu of its icon next to the clock).
+  The controller pictures show the real colour of the controller's light.
+- Controller Type per game (DualSense, DualShock 4 or Xbox 360): games with DualSense support get their own haptics
+  and triggers straight through; the classic rumble settings only apply where the game sends nothing.
+- Games page: Supported and Unsupported games found from Steam and Epic, a Play button, a Start File you choose, and
+  each game's settings in a pop-up. Games are recognised by exe names from Steam's data, also when installed outside
+  Steam folders.
+- Hiding the real controller with HidHide; rumble to haptics and Turn Sound Into Haptics for games without native
+  haptics; Pause Haptics In Silence; reconnection, battery warning, idle power-off.
+- DSX Mod Support (off by default): game mods made for DSX can send trigger and light effects.
+- Trigger strength, remapping, gyro aim, light effects, Mouse Mode (press the touchpad twice; Back To Game).
 - Microphone button light and notifications, controller speaker in games.
-- DualSense Edge, up to four controllers that are remembered and can be named, Xbox 360 or DualShock 4 emulation per
-  game.
+- DualSense Edge, up to four controllers that are remembered and can be named.
+- In-app updates from this repository's Releases.
 
 Not done yet:
-- Installing the two drivers from the installer, code signing, update check.
+- Installing the two drivers from the installer, code signing.
 - Long gaming sessions and most features above on real hardware.
 
 ### Requirements
@@ -155,9 +164,12 @@ dotnet test
 
 | | |
 |---|---|
-| ![Overview](docs/screens/overview-en.png) | ![Overview, DualSense Edge](docs/screens/overview-edge-en.png) |
-| ![Controller](docs/screens/controller-test-en.png) | ![Remap and gyro](docs/screens/controller-remap-en.png) |
-| ![Light](docs/screens/light-en.png) | ![Settings](docs/screens/settings-en.png) |
+| ![Overview](docs/screens/v0.1.8/overview-en.jpg) | ![Haptics And Triggers](docs/screens/v0.1.8/haptics-and-triggers-en.jpg) |
+| ![Controller, Test](docs/screens/v0.1.8/controller-test-en.jpg) | ![Controller, Output Tests](docs/screens/v0.1.8/controller-output-tests-en.jpg) |
+| ![Controller, Remap & Gyro](docs/screens/v0.1.8/controller-remap-gyro-en.jpg) | ![Light](docs/screens/v0.1.8/light-en.jpg) |
+| ![Settings, General](docs/screens/v0.1.8/settings-general-en.jpg) | ![Settings, Game Mods and Haptics](docs/screens/v0.1.8/settings-game-mods-and-haptics-en.jpg) |
+| ![Settings, Shortcuts](docs/screens/v0.1.8/settings-shortcuts-en.jpg) | ![Settings, Mouse Mode](docs/screens/v0.1.8/settings-mouse-mode-en.jpg) |
+| ![Settings, Notifications](docs/screens/v0.1.8/settings-notifications-en.jpg) | |
 
 ### License
 
@@ -216,7 +228,8 @@ istemez. Zip'i (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp
   programları yönetici izni ister), sonra kumandayı Bluetooth'la eşleştirirken size yol gösterir. İki sürücü de
   kurulmadan sanal kumanda başlamaz.
 - Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe durur.
-- Ağ erişimi: "Oyun Görsellerini İndir" açıkken (Desteklenen Oyunlar sayfasındadır, baştan açık gelir) uygulama oyun
+- Her sürümde neyin değiştiği [CHANGELOG.md](CHANGELOG.md) dosyasında.
+- Ağ erişimi: "Oyun Görsellerini İndir" açıkken (Oyunlar sayfasındadır, baştan açık gelir) uygulama oyun
   görsellerini Steam'in herkese açık CDN'inden (yeni oyunlarda Steam'in herkese açık uygulama bilgilerinden de) indirir
   ve yalnızca `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe tutar. İsteklerle yalnızca oyunun Steam uygulama
   kimliği gönderilir, size ait hiçbir bilgi gitmez.
@@ -246,7 +259,8 @@ aktarıldı. Genel Bakış sayfası gecikmeyi canlı gösteriyor, kendi kurulumu
 #### Hangi oyunlarda çalışır?
 
 DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki
-Desteklenen Oyunlar sayfasında listeleniyor.
+Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda klasik titreşim ayarları ya
+da Sesi Titreşime Çevir kullanılabilir.
 
 #### Ücretli mi?
 
@@ -267,17 +281,26 @@ Tamamlandı, donanımda doğrulandı:
 - Kumanda hoparlörü: kumandanın hoparlöründen çalınan sesi kumandanın kendi mikrofonu duyuyor.
 
 Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
-- Uygulama: kurulum sayfası, Genel Bakış, tek bir Kumanda sayfası (Test, Çıkış Testleri, Tuş Atama ve Gyro), Işık,
-  Desteklenen Oyunlar, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda" adıyla görünür ve
-  kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
-- Gerçek kumandanın HidHide ile gizlenmesi; kendi haptiği olmayan oyunlarda titreşimin haptiğe çevrilmesi; yeniden
-  bağlanma, pil uyarısı, boştayken kapanma.
-- Oyuna özel profiller, tetik gücü, tuş atama, gyro ile nişan alma, ışık efektleri, fare modu.
+- Uygulama: kurulum sayfası, Genel Bakış, Oyunlar, Titreşim ve Tetikler, tek bir Kumanda sayfası (Test, Çıkış
+  Testleri, Tuş Atama ve Gyro), Işık, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda"
+  adıyla görünür ve kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
+  Kumanda görselleri kumandanın ışığını gerçek rengiyle gösterir.
+- Oyun başına Kumanda Türü (DualSense, DualShock 4 ya da Xbox 360): DualSense destekleyen oyunların kendi haptiği ve
+  tetikleri olduğu gibi geçer; klasik titreşim ayarları yalnızca oyunun hiçbir şey göndermediği yerde devreye girer.
+- Oyunlar sayfası: Steam ve Epic'ten bulunan Desteklenen ve Desteklenmeyen oyunlar, Oyna düğmesi, seçilebilen
+  Başlatma Dosyası ve açılır pencerede her oyunun kendi ayarları. Oyunlar Steam verisindeki exe adlarından, Steam
+  klasörleri dışına kuruluysa da tanınır.
+- Gerçek kumandanın HidHide ile gizlenmesi; kendi haptiği olmayan oyunlarda titreşimin haptiğe çevrilmesi ve Sesi
+  Titreşime Çevir; Sessizlikte Haptiği Durdur; yeniden bağlanma, pil uyarısı, boştayken kapanma.
+- DSX Mod Desteği (varsayılan olarak kapalı): DSX için yapılmış oyun modları tetik ve ışık efektlerini gönderebilir.
+- Tetik gücü, tuş atama, gyro ile nişan alma, ışık efektleri, Fare Modu (dokunmatik yüzeye iki kez basınca açılır;
+  Oyuna Dön düğmesi).
 - Mikrofon tuşunun ışığı ve bildirimleri, oyunlarda kumanda hoparlörü.
-- DualSense Edge; hatırlanan ve adlandırılabilen en çok dört kumanda; oyuna göre Xbox 360 ya da DualShock 4 taklidi.
+- DualSense Edge; hatırlanan ve adlandırılabilen en çok dört kumanda.
+- Bu deponun Releases sayfasından uygulama içi güncelleme.
 
 Henüz yapılmadı:
-- İki sürücünün kurulum programından kurulması, kod imzalama, güncelleme denetimi.
+- İki sürücünün kurulum programından kurulması, kod imzalama.
 - Uzun oyun oturumları; yukarıdaki özelliklerin çoğunun gerçek donanımda denenmesi.
 
 ### Gereksinimler
@@ -300,9 +323,12 @@ dotnet test
 
 | | |
 |---|---|
-| ![Genel bakış](docs/screens/overview-tr.png) | ![Genel bakış, DualSense Edge](docs/screens/overview-edge-tr.png) |
-| ![Kumanda](docs/screens/controller-test-tr.png) | ![Tuş atama ve gyro](docs/screens/controller-remap-tr.png) |
-| ![Işık](docs/screens/light-tr.png) | ![Ayarlar](docs/screens/settings-tr.png) |
+| ![Genel Bakış](docs/screens/v0.1.8/overview-tr.jpg) | ![Titreşim ve Tetikler](docs/screens/v0.1.8/haptics-and-triggers-tr.jpg) |
+| ![Kumanda, Test](docs/screens/v0.1.8/controller-test-tr.jpg) | ![Kumanda, Çıkış Testleri](docs/screens/v0.1.8/controller-output-tests-tr.jpg) |
+| ![Kumanda, Tuş Atama ve Gyro](docs/screens/v0.1.8/controller-remap-gyro-tr.jpg) | ![Işık](docs/screens/v0.1.8/light-tr.jpg) |
+| ![Ayarlar, Genel](docs/screens/v0.1.8/settings-general-tr.jpg) | ![Ayarlar, Oyun Modları ve Haptik](docs/screens/v0.1.8/settings-game-mods-and-haptics-tr.jpg) |
+| ![Ayarlar, Kısayollar](docs/screens/v0.1.8/settings-shortcuts-tr.jpg) | ![Ayarlar, Fare Modu](docs/screens/v0.1.8/settings-mouse-mode-tr.jpg) |
+| ![Ayarlar, Bildirimler](docs/screens/v0.1.8/settings-notifications-tr.jpg) | |
 
 ### Lisans
 
