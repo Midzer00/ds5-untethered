@@ -4,7 +4,7 @@
 
 <p align="center">For DualSense — the game's own haptics and adaptive triggers over Bluetooth.</p>
 
-<p align="center">Play wirelessly on a Windows PC with the DualSense's haptic feedback and adaptive triggers.<br>Free and open source. No USB cable, no special dongle.</p>
+<p align="center">DS5 Untethered lets you play wirelessly on a Windows PC with the DualSense's haptic feedback and adaptive triggers.<br>Free and open source. No USB cable, no special dongle.</p>
 
 <p align="center">
   <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/github/v/release/Midzer00/ds5-untethered?label=release&color=2ea44f" alt="Latest release"></a>
@@ -12,14 +12,16 @@
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 and 11">
   <img src="https://img.shields.io/badge/.NET-8-512BD4" alt=".NET 8">
   <img src="https://img.shields.io/badge/price-free-2ea44f" alt="Free">
+  <a href="https://github.com/sponsors/Midzer00"><img src="https://img.shields.io/github/sponsors/Midzer00?label=sponsors&color=db61a2" alt="GitHub Sponsors"></a>
   <a href="https://github.com/Midzer00/ds5-untethered/stargazers"><img src="https://img.shields.io/github/stars/Midzer00/ds5-untethered?style=flat&color=e3b341" alt="GitHub stars"></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/badge/Download-for%20Windows-2ea44f?style=for-the-badge" alt="Download for Windows"></a>
+  <a href="https://github.com/sponsors/Midzer00"><img src="https://img.shields.io/badge/Sponsor-on%20GitHub-db61a2?style=for-the-badge" alt="Sponsor on GitHub"></a>
 </p>
 
-<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="CHANGELOG.md">Changelog</a></p>
+<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="#quick-start">Quick Start</a> · <a href="#troubleshooting">Troubleshooting</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="https://midzer00.github.io/ds5-untethered/">Website</a></p>
 
 <p align="center"><img src="docs/screens/v0.1.8/overview-en.jpg" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="600"></p>
 
@@ -32,6 +34,18 @@ are original. The protocol implementation is an independent interoperability imp
 documentation and our own measurements. Use at your own risk; the software comes with no warranty.
 
 ## English
+
+### Quick Start
+
+1. Download the installer (`DS5-Untethered-<version>-Setup.exe`) from
+   [Releases](https://github.com/Midzer00/ds5-untethered/releases/latest) and run it.
+2. Install the two drivers, [usbip-win2](https://github.com/vadimgrn/usbip-win2) and
+   [HidHide](https://github.com/nefarius/HidHide). Their installers need administrator rights.
+3. Pair the controller with Windows over Bluetooth.
+4. Open DS5 Untethered and follow its Setup page: it checks the drivers, guides pairing and tests the Bluetooth adapter.
+5. Start a game. It sees a wired DualSense, and its haptics and trigger effects reach the controller over Bluetooth.
+
+Questions? Ask in [Discussions](https://github.com/Midzer00/ds5-untethered/discussions). Website: [midzer00.github.io/ds5-untethered](https://midzer00.github.io/ds5-untethered/).
 
 ### The problem
 
@@ -108,6 +122,31 @@ Haptics.
 
 Yes. It is free and open source under GPL-3.0, and there is no paid version.
 
+DS5 Untethered is free and stays free. If it is useful to you, you can support its development on
+[GitHub Sponsors](https://github.com/sponsors/Midzer00).
+
+### Troubleshooting
+
+- **The Setup page says usbip-win2 or HidHide is not installed.** Click "Download usbip-win2" or "Download HidHide",
+  install it from its official page, then click "Check Again". If the page shows "Restart The Computer", restart so the
+  drivers can work.
+- **No Bluetooth adapter is found, or Bluetooth is off.** Turn Bluetooth on with "Open Bluetooth Settings". The virtual
+  controller can't start without an adapter; the Bluetooth in your PC or an ordinary USB adapter is enough.
+- **The Bluetooth Adapter Test says "Borderline" or "Not suitable".** Move the adapter to a front USB 2.0 port or onto a
+  short USB extension cable on the desk, away from USB 3.0 (blue) ports and 2.4 GHz receivers. Keep the controller
+  within a few metres; if nothing changes, try a Bluetooth 5 or newer adapter.
+- **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the PS button.
+  If the app shows "Not Paired", hold Create and PS until the light blinks, then pair it.
+- **The controller is plugged in with a USB cable.** Games already see it as wired, so the app stops the virtual
+  controller ("Cable Connected"). Unplug the cable to play wirelessly; the virtual controller starts again by itself
+  over Bluetooth.
+- **SmartScreen warns when you start the installer.** The build is not signed: choose "More info", then "Run anyway".
+- **A game doesn't see the controller after a Controller Type change.** A change made while the game is open applies
+  when you restart the game. "Apply Now" switches right away, but the game may lose the controller; then restart the
+  game.
+- **Reporting a bug.** Settings and profiles are in `%LOCALAPPDATA%\Untethered`, logs in its `logs` folder. Include the
+  log when you ask in [Discussions](https://github.com/Midzer00/ds5-untethered/discussions).
+
 ### Status
 
 Most features are tested in code only; what was measured on a real controller is listed below.
@@ -181,7 +220,7 @@ GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PART
 
 ## Türkçe
 
-Oyunun kendi haptiğini ve adaptif tetiklerini DualSense'te Bluetooth üzerinden çalıştırır.
+DS5 Untethered, oyunun kendi haptiğini ve adaptif tetiklerini DualSense'te Bluetooth üzerinden çalıştırır.
 
 ### Yasal uyarı
 
@@ -192,6 +231,19 @@ Sony Interactive Entertainment Inc.'in ticari markalarıdır ve burada yalnızca
 donanım yazılımı, yazılım, görsel ya da logo yoktur. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
 kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Yazılımın herhangi
 bir garantisi yoktur. Kullanımdan doğabilecek her türlü sorumluluk size aittir.
+
+### Hızlı Başlangıç
+
+1. [Releases](https://github.com/Midzer00/ds5-untethered/releases/latest) sayfasından kurulum dosyasını
+   (`DS5-Untethered-<sürüm>-Setup.exe`) indirip çalıştırın.
+2. İki sürücüyü, [usbip-win2](https://github.com/vadimgrn/usbip-win2) ile [HidHide](https://github.com/nefarius/HidHide)'ı
+   kurun. Kurulum programları yönetici izni ister.
+3. Kumandayı Windows'ta Bluetooth'la eşleştirin.
+4. DS5 Untethered'ı açıp kurulum sayfasındaki adımları izleyin: sayfa sürücülere bakar, eşleştirmede yol gösterir ve
+   Bluetooth adaptörünü test eder.
+5. Oyunu başlatın. Oyun kabloyla takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
+
+Sorunuz mu var? [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazın. Web sitesi: [midzer00.github.io/ds5-untethered/tr](https://midzer00.github.io/ds5-untethered/tr/).
 
 ### Sorun
 
@@ -269,6 +321,31 @@ da Sesi Titreşime Çevir kullanılabilir.
 #### Ücretli mi?
 
 Hayır. Ücretsiz ve açık kaynak (GPL-3.0), ücretli sürümü yok.
+
+DS5 Untethered ücretsiz ve ücretsiz kalacak. İşinize yaradıysa geliştirilmesine
+[GitHub Sponsors](https://github.com/sponsors/Midzer00) üzerinden destek olabilirsiniz.
+
+### Sorun Giderme
+
+- **Kurulum sayfası usbip-win2 ya da HidHide kurulu değil diyor.** "usbip-win2'yi İndir" ya da "HidHide'ı İndir"e
+  tıklayıp sürücüyü resmi sayfasından kurun, sonra "Yeniden Kontrol Et"e basın. Sayfada "Bilgisayarı Yeniden Başlat"
+  çıkarsa sürücülerin çalışması için bilgisayarı yeniden başlatın.
+- **Bluetooth adaptörü bulunamadı ya da Bluetooth kapalı.** "Bluetooth Ayarlarını Aç" ile Bluetooth'u açın. Sanal
+  kumanda adaptör olmadan başlamaz; bilgisayarın kendi Bluetooth'u ya da sıradan bir USB adaptör yeter.
+- **Bluetooth Adaptör Testi "Sınırda" ya da "Uygun değil" diyor.** Adaptörü öndeki bir USB 2.0 girişine ya da kısa bir
+  USB uzatma kablosuyla masanın üstüne alın; USB 3.0 (mavi) girişlerden ve 2,4 GHz alıcılardan uzak tutun. Kumandayı
+  birkaç metre içinde tutun; sonuç değişmezse Bluetooth 5 ya da daha yeni bir adaptör deneyin.
+- **Kumanda Windows'ta eşleşmiş ama uygulama "Bağlı Değil" gösteriyor.** Kumanda kapalı ya da uykuda: PS tuşuna basın.
+  Uygulama "Eşleşmemiş" gösteriyorsa Create ve PS tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
+- **Kumanda USB kablosuyla takılı.** Oyunlar onu zaten kablolu gördüğü için uygulama sanal kumandayı durdurur ("Kablo
+  Bağlandı"). Kablosuz oynamak için kabloyu çıkarın; sanal kumanda Bluetooth'ta kendiliğinden yeniden başlar.
+- **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Derleme imzalı değil: "Ek bilgi"ye, ardından "Yine de
+  çalıştır"a tıklayın.
+- **Kumanda Türü değişince oyun kumandayı görmüyor.** Oyun açıkken yapılan değişiklik, oyunu yeniden başlatınca geçerli
+  olur. "Şimdi Uygula" hemen geçirir ama oyun kumandayı kaybedebilir; o zaman oyunu yeniden başlatın.
+- **Hata bildirirken.** Ayarlar ve profiller `%LOCALAPPDATA%\Untethered` klasöründe, günlükler de içindeki `logs`
+  klasöründe durur. [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazarken günlüğü
+  ekleyin.
 
 ### Ne durumda
 
