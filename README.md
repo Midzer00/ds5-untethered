@@ -121,7 +121,9 @@ Done and verified on hardware:
 - Bluetooth microphone: Windows records from the controller's microphone, with no ghost input on the virtual
   controller; the controller's mute button turns the microphone on and off.
 - Controller speaker: sound played to the controller's speaker is heard by its own microphone.
-- Mouse Mode: touchpad pointer, clicks and Back To Game.
+- Mouse Mode: touchpad pointer, one click per press, Right Click setting (Off by default, Right Side or Two
+  Fingers), a short PS press that opens the app also turns it on, and Back To Game.
+- In-app updates from this repository's Releases (0.1.8 updated itself to 0.1.9).
 - DualShock 4 type: it presents itself like a real wired DualShock 4; verified in one game with native DualShock 4
   support so far.
 
@@ -139,11 +141,8 @@ Done and tested in code, not yet verified on hardware:
   haptics; Pause Haptics In Silence; reconnection, battery warning, idle power-off.
 - DSX Mod Support (off by default): game mods made for DSX can send trigger and light effects.
 - Trigger strength, remapping, gyro aim, light effects.
-- New in 0.1.9: a short PS press that opens the app also turns Mouse Mode on; every touchpad press is one click;
-  Right Click setting (Off by default, Right Side or Two Fingers).
 - Microphone button light and notifications, controller speaker in games.
 - DualSense Edge, up to four controllers that are remembered and can be named.
-- In-app updates from this repository's Releases.
 
 Not done yet:
 - Installing the two drivers from the installer, code signing.
@@ -284,7 +283,9 @@ Tamamlandı, donanımda doğrulandı:
 - Bluetooth'ta mikrofon: Windows kumandanın mikrofonundan kayıt alıyor, sanal kumandada hayalet girdi oluşmuyor.
   Kumandadaki mikrofon tuşu mikrofonu açıp kapatıyor.
 - Kumanda hoparlörü: kumandanın hoparlöründen çalınan sesi kumandanın kendi mikrofonu duyuyor.
-- Fare Modu: dokunmatik yüzeyle imleç, tıklama ve Oyuna Dön düğmesi.
+- Fare Modu: dokunmatik yüzeyle imleç, her basışa tek tık, Sağ Tık ayarı (varsayılan Kapalı, Sağ Taraf ya da İki
+  Parmak), uygulamayı açan kısa PS basışıyla açılması ve Oyuna Dön düğmesi.
+- Bu deponun Releases sayfasından uygulama içi güncelleme (0.1.8 kendini 0.1.9'a güncelledi).
 - DualShock 4 türü: kendini gerçek bir kablolu DualShock 4 gibi tanıtıyor; şimdilik DualShock 4'ü doğrudan destekleyen
   bir oyunda doğrulandı.
 
@@ -302,11 +303,8 @@ Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
   Titreşime Çevir; Sessizlikte Haptiği Durdur; yeniden bağlanma, pil uyarısı, boştayken kapanma.
 - DSX Mod Desteği (varsayılan olarak kapalı): DSX için yapılmış oyun modları tetik ve ışık efektlerini gönderebilir.
 - Tetik gücü, tuş atama, gyro ile nişan alma, ışık efektleri.
-- 0.1.9'da yeni: uygulamayı açan kısa PS basışı Fare Modu'nu da açar; dokunmatik yüzeye her basış tek tıklamadır;
-  Sağ Tık ayarı (varsayılan Kapalı, Sağ Taraf ya da İki Parmak).
 - Mikrofon tuşunun ışığı ve bildirimleri, oyunlarda kumanda hoparlörü.
 - DualSense Edge; hatırlanan ve adlandırılabilen en çok dört kumanda.
-- Bu deponun Releases sayfasından uygulama içi güncelleme.
 
 Henüz yapılmadı:
 - İki sürücünün kurulum programından kurulması, kod imzalama.
