@@ -71,6 +71,7 @@ li { margin: 4px 0; }
 .foot { border-top: 1px solid var(--border); padding-top: 28px; padding-bottom: 40px; color: var(--muted); font-size: 14px; }
 .foot p { margin: 0 0 10px; }
 .legal { max-width: 760px; }
+.support { max-width: 760px; }
 @media (max-width: 760px) {
   section { margin-bottom: 64px; }
   .cards, .cols, .grid { grid-template-columns: 1fr; }
