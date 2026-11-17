@@ -1,8 +1,8 @@
 {
-  "version": "0.1.8",
-  "published": "2026-11-16",
-  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.8/DS5-Untethered-0.1.8-Setup.exe", "sha256": "3FA865FED54670BC56ECA06C476FB3CD8AFE5F52EE63B9AE9ADF489C1CC03F92", "size": 40901267 },
-  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.8/DS5-Untethered-0.1.8-win-x64.zip", "sha256": "04D9288D70ACE80714D923B7C8BA2E2C2CD385FEC1A361A4D06BCB0822B04484", "size": 51402339 },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.8",
-  "notes": { "tr": "Oyun ayarları artık açılır pencerede açılıyor.", "en": "Game settings now open in a pop-up." }
+  "version": "0.1.9",
+  "published": "2026-11-17",
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.9/DS5-Untethered-0.1.9-Update.exe", "sha256": "00608B956D1EB3E8AE6601E48D17C500C6772E2F02106FC76FF99F6580E1350F", "size": 40894893 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.9/DS5-Untethered-0.1.9-win-x64.zip", "sha256": "BF74DA35ADC4A268CB63133F92C21709F1F57D4E8A786B12BF5221396A24A544", "size": 51379260 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.9",
+  "notes": { "tr": "PS tuşu artık Fare Modu'nu açıyor, Sağ Tık ayarı geldi ve DualShock 4 daha çok oyunda çalışıyor.", "en": "The PS button now opens Mouse Mode, there is a Right Click setting, and DualShock 4 works in more games." }
 }
