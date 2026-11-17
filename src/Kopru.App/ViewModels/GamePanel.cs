@@ -117,6 +117,7 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 	public string ProfileLabel => Text.ProfileLabel();
 	public string AudioTitle => Text.AudioHapticsLabel();
 	public string AudioHint => Text.AudioHapticsHint();
+	public string AudioRumbleNote => Text.AudioHapticsRumbleNote();
 	public string AudioStrengthLabel => Text.AudioHapticsStrengthLabel();
 	public string AudioBassText => Text.AudioHapticsBandBass();
 	public string AudioFullText => Text.AudioHapticsBandFull();

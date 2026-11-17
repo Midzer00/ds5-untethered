@@ -6,6 +6,16 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.1.10 — 2026-11-17
+
+- Automatic Controller Type now picks per game: DualSense for games with native DualSense support (the app's own list, Steam store data shipped with the app for about 21,000 games, or learned when the game in front sends real trigger effects or haptics for a few seconds), DualShock 4 for games that only support DualShock 4, otherwise the Default Controller Type, else Xbox 360. It reads Steam's local app info to tell games from tools; nothing about your games is sent anywhere.
+- Games page: Automatic shows what it picks for the game, e.g. "Automatic (Xbox 360)". The Default Controller Type is now for games we know nothing about.
+- A pink Support button in the sidebar and a GitHub Sponsors link in Settings > General > Updates open GitHub Sponsors. The app stays free.
+- The classic rumble card is now Xbox And DS4 Rumble and says it is the general profile for Xbox and DualShock 4 rumble.
+- The Mouse Mode tip bar and its Show Tips switch are gone; a short PS press turns Mouse Mode on.
+- Windows no longer slows the app down while it is hidden during a game (power throttling is turned off for the app).
+- Turn Sound Into Haptics now really works: earlier versions never captured the game's sound. Its switch, Strength and Bass/Full Sound now apply at once while the game runs.
+
 ### 0.1.9 — 2026-11-17
 
 - A short PS press that opens the app now turns Mouse Mode on, with a short notification; going back to the game turns it off.
@@ -67,6 +77,16 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.1.10 — 17.11.2026
+
+- Otomatik kumanda türü artık oyuna göre seçiyor: DualSense'i doğrudan destekleyen oyunlara DualSense (uygulamanın kendi listesi, uygulamayla gelen yaklaşık 21.000 oyunluk Steam mağaza bilgisi ya da öndeki oyun birkaç saniye gerçek tetik efekti veya haptik gönderince öğrenilir), yalnızca DualShock 4'ü destekleyen oyunlara DualShock 4, diğerlerine Varsayılan Kumanda Türü, o da yoksa Xbox 360. Oyunları araçlardan ayırmak için Steam'in bilgisayardaki uygulama bilgilerini okur; oyunlarınızla ilgili hiçbir bilgi bir yere gönderilmez.
+- Oyunlar sayfası: Otomatik, oyuna neyi seçtiğini gösteriyor, ör. "Otomatik (Xbox 360)". Varsayılan Kumanda Türü artık hakkında bilgi olmayan oyunlar için.
+- Sol menüdeki pembe Destek Ol düğmesi ve Ayarlar > Genel > Güncellemeler'deki GitHub Sponsors bağlantısı GitHub Sponsors'u açıyor. Uygulama ücretsiz kalıyor.
+- Klasik titreşim kartının adı artık Xbox ve DS4 Titreşimi; Xbox ve DualShock 4 titreşimi için genel profil olduğunu söylüyor.
+- Fare Modu ipucu çubuğu ve İpuçlarını Göster anahtarı kaldırıldı; kısa bir PS basışı Fare Modu'nu açıyor.
+- Windows, oyun sırasında gizli duran uygulamayı artık yavaşlatmıyor (uygulama için güç kısıtlaması kapatıldı).
+- Sesi Titreşime Çevir artık gerçekten çalışıyor; önceki sürümlerde oyunun sesini hiç yakalamıyordu. Anahtar, Güç ve Bas/Tüm Ses oyun açıkken hemen etki ediyor.
 
 ### 0.1.9 — 17.11.2026
 

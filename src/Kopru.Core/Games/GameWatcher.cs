@@ -45,7 +45,7 @@ public interface IProcessSource
 	IReadOnlyList<ProcessInfo> WindowedApps();
 
 	// Every running process by id and exe file name (paths left out: reading one opens the process). Used only while a
-	// game with its own controller type is looked for (GameWatcher.FindRunning).
+	// known game that would get another controller type is looked for (GameWatcher.FindRunning).
 	IReadOnlyList<ProcessInfo> AllProcesses() => [];
 
 	// The process with its full exe path when it can be read.
@@ -82,9 +82,13 @@ public interface IGameWatcher
 	IReadOnlyList<FoundGame> FoundGames { get => []; set { } }
 
 	// A running process of one of these games (by game key; it need not be in front), or null. GameModeController asks only
-	// while no game runs and some game has a controller type other than the current one, so that game gets its type when
-	// its process appears, before it looks for controllers.
+	// while no game runs and some known game would get a controller type other than the current one (its own choice or
+	// Automatic), so that game gets its type when its process appears, before it looks for controllers.
 	ForegroundGame? FindRunning(IReadOnlySet<string> keys) => null;
+
+	// The Steam app id of the library install folder the exe at path lies in ("<library>\steamapps\common\<installdir>"
+	// mapped by its appmanifest), or null.
+	long? SteamAppIdFor(string? path) => null;
 }
 
 // Watches the foreground window's process and recognises known games only: (a) the exe matches a catalog exe (an Unreal
@@ -397,6 +401,19 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 	}
 
 	private IProcessDetails? Details => details ?? processes as IProcessDetails;
+
+	// Steam's files are read again at most once a minute (SteamLibrary.RefreshInterval); null on any problem.
+	public long? SteamAppIdFor(string? path)
+	{
+		try
+		{
+			return steam?.AppIdFor(path);
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
+		{
+			return null;
+		}
+	}
 
 	// Caller holds the lock. A catalog game by its name: folder name, version info, then window title; a found game by its
 	// install folder before the window title (the title is still checked once, so a catalog game wins).

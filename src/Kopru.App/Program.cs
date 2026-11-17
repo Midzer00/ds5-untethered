@@ -1,6 +1,7 @@
 ﻿// SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia;
 using Kopru.App.Services;
+using Kopru.Core.Bluetooth;
 using Kopru.Core.Diagnostics;
 using Kopru.Core.Instance;
 
@@ -34,6 +35,8 @@ internal static class Program
 				return;
 		}
 		Instance = instance;
+		// Before any report pacing starts: never EcoQoS, timer resolution kept while the window is hidden during games.
+		PowerThrottling.OptOutAndLog();
 		BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 	}
 

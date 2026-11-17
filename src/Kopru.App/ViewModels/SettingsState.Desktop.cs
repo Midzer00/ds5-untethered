@@ -52,9 +52,6 @@ public sealed partial class SettingsState
 	// Raised on the UI thread.
 	public event Action<string?, string>? DesktopAutoOff;
 
-	// Mouse mode was turned on with the touchpad double press (the tips count it). Raised on the UI thread.
-	public event Action? DesktopGestureUsed;
-
 	// Every change by the user goes through here: source is what the log names ("shortcut", "settings switch",
 	// "quick settings", "tray menu", "touchpad double press").
 	public void SetDesktopMode(bool on, string source)
@@ -65,10 +62,6 @@ public sealed partial class SettingsState
 		}
 		_desktopSource = source;
 		DesktopModeOn = on;
-		if (on && source == TouchpadDoublePressSource)
-		{
-			DesktopGestureUsed?.Invoke();
-		}
 	}
 
 	partial void OnDesktopModeOnChanged(bool value)
@@ -115,10 +108,6 @@ public sealed partial class SettingsState
 	// Raised on the UI thread.
 	public event Action<bool, string>? DesktopModeSwitched;
 
-	// True while a PS tap is bringing the app's window up (OpenWithPs): Mouse Mode comes on right after, so the touchpad tip
-	// does not show for this activation (TipBar).
-	public bool PsOpeningApp { get; private set; }
-
 	// A PS tap opens the app ("PS: Open The App"): show runs the window up, inFront then tells whether it really is the
 	// foreground window. In front, Mouse Mode comes on (with the usual "Mouse Mode On" toast) so the controller drives the
 	// app at once; not when it is on already (no second toast), when Windows kept another window in front (a game in front
@@ -127,15 +116,7 @@ public sealed partial class SettingsState
 	// front, and every way back to a game (the PS tap, Back To Game) turns it off again. UI thread.
 	public void OpenWithPs(Action show, Func<bool> inFront)
 	{
-		PsOpeningApp = true;
-		try
-		{
-			show();
-		}
-		finally
-		{
-			PsOpeningApp = false;
-		}
+		show();
 		if (DesktopModeOn)
 		{
 			return;

@@ -34,6 +34,11 @@ public interface IAudioCaptureFactory
 public interface IAudioHapticsOutput
 {
 	AudioHapticsPush PushAudioHaptics(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right);
+
+	// The capture stopped (switched off, game gone): frames still waiting are dropped, so nothing is felt after it.
+	void StopAudioHaptics()
+	{
+	}
 }
 
 // What became of a block of audio haptics frames.

@@ -9,8 +9,11 @@
       <StackPanel Classes="section" Name="PanelAudio">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Background="Transparent" ToolTip.Tip="{Binding AudioHint}">
           <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding AudioTitle}" VerticalAlignment="Center" TextWrapping="Wrap" />
-          <ToggleSwitch Grid.Column="1" IsChecked="{Binding AudioHaptics.On}" IsEnabled="{Binding AudioHaptics.Available}" OnContent="{x:Null}" OffContent="{x:Null}" />
+          <ToggleSwitch Grid.Column="1" Name="PanelAudioSwitch" IsChecked="{Binding AudioHaptics.On}" OnContent="{x:Null}" OffContent="{x:Null}" />
         </Grid>
+        <!-- The switch above is never greyed out (it can always be turned off, and on again to try once more); this note
+             says the game's own rumble is a separate setting -->
+        <TextBlock Classes="caption" Text="{Binding AudioRumbleNote}" TextWrapping="Wrap" />
         <StackPanel Spacing="8" IsEnabled="{Binding AudioHaptics.Available}">
           <StackPanel Spacing="2">
             <TextBlock Classes="caption" Text="{Binding AudioStrengthLabel}" />

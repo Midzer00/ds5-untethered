@@ -4,7 +4,7 @@ A measurement harness for game detection. It drives the real `GameWatcher.Recogn
 `SteamLibrary` / `InstalledGameFinder` code with described processes; it never launches a game or the app.
 
 ```
-dotnet run --project tools/Kopru.DetectStudy -- <out-dir> [fetch|audit|recall|propose|local|fp|all] [--offline] [--cache=<dir>]
+dotnet run --project tools/Kopru.DetectStudy -- <out-dir> [fetch|audit|recall|propose|local|fp|all|playstation] [--offline] [--cache=<dir>] [--out=<file>]
 ```
 
 `--cache=<dir>` reads (and fills) the metadata cache in another folder than `<out-dir>\cache`, so several result
@@ -19,6 +19,7 @@ Keep `<out-dir>` outside the repository: the `local` and `fp` results name progr
 | `recall` | `recall.md`, `recall.csv` | Part B: each game's Steam launch exe simulated (v1) inside an in-memory Steam library, (v2) at `D:\Games\<installdir>\...` with folder and exe name only, (v2t) v2 plus the Steam name as window title; plus two what-if catalogs. Misses are grouped by cause. |
 | `propose` | `propose.md`, `supported-games.proposed.json` | Not part of `all`. Proposes catalog exe names from Steam's launch options (public branch only; no launcher or anti-cheat stubs, installers, extras, internal builds, engine-wide or generic names, names shorter than 3 characters, names launched by more than one Steam app or proposed for two entries, nothing in `GameWatcher.Ignored`, no exe named like the older game a "(year)" entry is told apart from) and Steam install folder names that differ from the game's name (not a plain single word, not a common folder, not a game's name, not a "(year)" entry's year-less name). Writes the embedded catalog with them added, same order and format; copy it over `src/Kopru.Core/Games/supported-games.json` after review. |
 | `local` | `local.md` | Part C: games installed on this PC (Steam libraries and `InstalledGameFinder`), their real exe files and version info read from disk, at their real path and as a non-Steam copy. |
+| `playstation` | `playstation-support.json` (or `--out=<file>`) | Not part of `all`. Lists every Steam game whose store page has "DualSense Controller Support" (categories 57/58) or only "DualShock Controller Support" (55/56) from the public store search (`store.steampowered.com/search/results/?category1=998&category2=<id>&infinite=1`, 100 per page, 1.2 s apart; cached per day in `cache\playstation\<date>\`). Writes nothing when a category comes back clearly short. See docs/RELEASING.md. |
 | `fp` | `fp.md` | Part D: exe files under Program Files, Program Files (x86) and `%LOCALAPPDATA%\Programs` (game folders left out), uninstall entries and running processes through the same lookup. |
 
 The harness redirects `AppLog` into `<out-dir>\applog` so library code does not write into the app's own log.

@@ -382,7 +382,7 @@ public sealed class GamePagesModelTests
 		Assert.Equal("Oyna", Text.PlayGame(Language.Turkish));
 		Assert.Equal("Play", Text.PlayGame(Language.English));
 		Assert.Equal("Oyununu bulamadık mı? Oyun Ekle ile ekle.", Text.InstalledAddHint(Language.Turkish));
-		Assert.Contains("Klasik Titreşim", Text.UnsupportedGamesHint(Language.Turkish));
+		Assert.Contains("Xbox ve DS4 Titreşimi", Text.UnsupportedGamesHint(Language.Turkish));
 	}
 
 	// Xbox 360 chosen for the running game (Cyberpunk 2077) on its row: it waits for the game to restart.

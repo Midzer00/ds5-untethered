@@ -19,6 +19,8 @@ public sealed partial class SettingsState
 	private ProfileBook _profiles = new();
 	private bool _applyingProfile;
 	private string? _profileGameKey;
+	// The profile the running game resolved to when it was last followed (null: no game).
+	private string? _profileGameTarget;
 	private ProfilesViewModel? _profilesPanel;
 	private ShortcutsViewModel? _shortcutsPanel;
 
@@ -163,11 +165,13 @@ public sealed partial class SettingsState
 		}
 		_profiles.Changed += () => RunOnUi(() =>
 		{
+			FollowRunningGameProfile();
 			NotifyProfileName();
 			ProfilesChanged?.Invoke();
 			ScheduleSave();
 		});
 		_profileGameKey = _service.Games.ActiveGame?.Key;
+		_profileGameTarget = _profileGameKey == null ? null : _profiles.ResolveForGame(_profileGameKey);
 		_service.Games.StateChanged += _ => RunOnUi(OnGameChanged);
 		_service.Shortcut += (_, action) => RunOnUi(() => HandleShortcut(action));
 		Localizer.LanguageChanged += _ => RunOnUi(() => NotifyProfileName());
@@ -183,6 +187,28 @@ public sealed partial class SettingsState
 		}
 		_profileGameKey = key;
 		string target = _profiles.ResolveForGame(key);
+		_profileGameTarget = key == null ? null : target;
+		if (target != _profiles.ActiveId)
+		{
+			ActivateProfile(target);
+		}
+	}
+
+	// The running game was given another profile (the game pop-up's profile picker, its own settings, back to default, or
+	// its profile removed): that one becomes active at once, so what is changed in the pop-up reaches the running game.
+	// A profile the user picks by hand while the game runs stays (the game's own assignment did not change).
+	private void FollowRunningGameProfile()
+	{
+		if (_profileGameKey == null)
+		{
+			return;
+		}
+		string target = _profiles.ResolveForGame(_profileGameKey);
+		if (target == _profileGameTarget)
+		{
+			return;
+		}
+		_profileGameTarget = target;
 		if (target != _profiles.ActiveId)
 		{
 			ActivateProfile(target);

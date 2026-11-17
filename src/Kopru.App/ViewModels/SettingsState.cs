@@ -92,7 +92,6 @@ public sealed partial class SettingsState : ViewModelBase
 			LoadAudioDefaults(saved);
 			LoadInstalledGames(saved);
 			LoadUpdates(saved);
-			LoadTips(saved);
 			_loading = false;
 			service.Games.LoadMemory(saved.ToGameMemory(service.Games.Catalog));
 		}
@@ -112,7 +111,8 @@ public sealed partial class SettingsState : ViewModelBase
 		{
 			_saveTimer = new Timer(_ => Save(includeBattery: false));
 			Localizer.LanguageChanged += _ => ScheduleSave();
-			service.Games.MemoryChanged += ScheduleSave;
+			// Raised on the game tick's thread too (a learned game): the snapshot is taken on the UI thread, in order.
+			service.Games.MemoryChanged += () => RunOnUi(ScheduleSave);
 		}
 		Push();
 		if (migrated)
@@ -333,7 +333,7 @@ public sealed partial class SettingsState : ViewModelBase
 		PauseHapticsInSilence = PauseHapticsInSilence
 	};
 
-	public AppSettings ToAppSettings() => WithTips(WithUpdates(WithInstalledGames(WithLight(new AppSettings
+	public AppSettings ToAppSettings() => WithUpdates(WithInstalledGames(WithLight(new AppSettings
 	{
 		Language = Localizer.Chosen switch { Language.Turkish => "tr", Language.English => "en", _ => null },
 		GameHapticsLevel = GameHapticsLevel,
@@ -388,7 +388,7 @@ public sealed partial class SettingsState : ViewModelBase
 		ControllerSpeakerChosen = AudioChoices.ControllerSpeakerChosen,
 		ControllerMicChosen = AudioChoices.ControllerMicChosen,
 		SetupCompleted = SetupCompleted,
-	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers)))));
+	}.WithGames(_service.Games.SnapshotMemory()).WithProfiles(Profiles).WithControllerProfiles(_controllerProfiles).WithKnownControllers(KnownControllers))));
 
 	// Writes a pending change at once (also called by the debounce timer and on exit).
 	public void SaveNow() => Save(includeBattery: true);

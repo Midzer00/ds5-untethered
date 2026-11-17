@@ -116,6 +116,8 @@ public sealed class OverviewFitTests
 				fake.Watcher.Exit("Cyberpunk2077.exe");
 				fake.Games.Tick();
 				fake.Games.SetForcedPadType(Kopru.Core.Virtual.VirtualPadType.DualShock4);
+				// A listed game: Automatic would give it DualSense; DualShock 4 as its choice when it starts.
+				fake.Games.SetPadType("Cyberpunk 2077", Kopru.Core.Virtual.VirtualPadType.DualShock4);
 				fake.Watcher.Exe = "Cyberpunk2077.exe";
 				fake.Games.Tick();
 				fake.Games.SetPadType(fake.Games.ActiveGame!.Key, Kopru.Core.Virtual.VirtualPadType.Xbox360);

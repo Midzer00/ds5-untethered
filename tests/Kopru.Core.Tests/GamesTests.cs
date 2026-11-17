@@ -60,19 +60,37 @@ public class GamesTests
 	}
 
 	[Fact]
-	public void Detector_LearnsNative_NeverDowngrades()
+	public void Detector_LearnsNative_FromSustainedSignals_NeverDowngrades()
 	{
 		var d = new NativeSupportDetector();
 		Assert.False(d.Observe("a.exe", default));
 		Assert.Null(d.Get("a.exe"));
 		Assert.True(d.Observe("a.exe", new GameSignals(false, false, true)));
 		Assert.False(d.Get("a.exe"));
-		Assert.True(d.Observe("a.exe", new GameSignals(false, true, false)));
+		// One look is not enough: NativeTicks looks within one session are.
+		for (int i = 1; i < NativeSupportDetector.NativeTicks; i++)
+		{
+			Assert.False(d.Observe("a.exe", new GameSignals(false, true, false), session: 1));
+		}
+		Assert.True(d.Observe("a.exe", new GameSignals(false, true, false), session: 1));
 		Assert.True(d.Get("A.EXE"));
 		Assert.False(d.Observe("a.exe", new GameSignals(false, false, true)));
 		Assert.True(d.Get("a.exe"));
-		Assert.True(d.Observe("b.exe", new GameSignals(true, false, true)));
-		Assert.True(d.Get("b.exe"));
+
+		// Evidence from another session or another game does not add up.
+		for (int i = 1; i < NativeSupportDetector.NativeTicks; i++)
+		{
+			d.Observe("b.exe", new GameSignals(true, false, true), session: 2);
+		}
+		d.Observe("c.exe", new GameSignals(true, false, false), session: 2);
+		Assert.False(d.Observe("b.exe", new GameSignals(true, false, true), session: 2));
+		Assert.False(d.Observe("b.exe", new GameSignals(true, false, false), session: 3));
+		Assert.Null(d.Get("c.exe"));
+
+		// Forget clears a result.
+		Assert.True(d.Forget("a.exe"));
+		Assert.Null(d.Get("a.exe"));
+		Assert.False(d.Forget("a.exe"));
 	}
 
 	[Fact]

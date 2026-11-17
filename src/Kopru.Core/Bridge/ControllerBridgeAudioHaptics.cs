@@ -46,7 +46,7 @@ public sealed partial class ControllerBridge : IAudioHapticsOutput
 			return AudioHapticsPush.NativeHaptics;
 		}
 		int count = left.Length;
-		long now = Stopwatch.GetTimestamp();
+		long now = Time.GetTimestamp();
 		lock (audioGate)
 		{
 			Interlocked.Exchange(ref lastAudioHaptics, now);
@@ -77,8 +77,30 @@ public sealed partial class ControllerBridge : IAudioHapticsOutput
 		return AudioHapticsPush.Played;
 	}
 
+	// Drops the frames still waiting to join the game's stream and hands the timing back to the rumble refill at once.
+	public void StopAudioHaptics()
+	{
+		lock (audioGate)
+		{
+			overlayHead = overlayCount = 0;
+			Interlocked.Exchange(ref lastAudioHaptics, long.MinValue / 2);
+		}
+	}
+
+	// Frames waiting to join the game's own audio stream (tests).
+	public int AudioHapticsWaiting
+	{
+		get
+		{
+			lock (audioGate)
+			{
+				return overlayCount;
+			}
+		}
+	}
+
 	// Audio haptics arrived within AudioIdleTicks: the rumble refill leaves the timing to it.
-	private bool AudioHapticsFlowing => Stopwatch.GetTimestamp() - Interlocked.Read(ref lastAudioHaptics) <= AudioIdleTicks;
+	private bool AudioHapticsFlowing => Time.GetTimestamp() - Interlocked.Read(ref lastAudioHaptics) <= AudioIdleTicks;
 
 	// Caller holds audioGate. Queues frames to add into the game's stream; the oldest go when it is full.
 	private void AddOverlay(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right)

@@ -56,35 +56,6 @@
     <Style Selector="TextBlock.virtualState.problem">
       <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
     </Style>
-    <!-- In-app tip line at the bottom of the content column: a quiet rounded bar with a small close button -->
-    <Style Selector="Border.tip">
-      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
-      <Setter Property="Padding" Value="12,0,3,0" />
-    </Style>
-    <Style Selector="Button.tipClose">
-      <Setter Property="Width" Value="20" />
-      <Setter Property="Height" Value="20" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="MinHeight" Value="0" />
-      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="Button.tipClose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" />
-    </Style>
-    <Style Selector="Button.tipClose Path">
-      <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
-    </Style>
-    <Style Selector="Button.tipClose:pointerover Path">
-      <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
-    </Style>
   </Window.Styles>
   <!-- No system title bar band: the sidebar and the content run up to the top edge, Windows draws only its caption buttons
        (top right) over the content. The chrome hint is SystemChrome alone: Avalonia's default (PreferSystemChrome) hides
@@ -101,7 +72,7 @@
     <Grid ColumnDefinitions="272,1,*">
       <!-- Sidebar: the logo at the top, the connected controller at the bottom, the pages spread over the height between -->
       <DockPanel Grid.Column="0" Background="{StaticResource SidebarBrush}">
-        <Image DockPanel.Dock="Top" Source="/Assets/logo.png" Height="104" Margin="24,20,24,10" HorizontalAlignment="Center"
+        <Image DockPanel.Dock="Top" Source="/Assets/logo.png" Height="96" Margin="24,16,24,8" HorizontalAlignment="Center"
                RenderOptions.BitmapInterpolationMode="HighQuality" ToolTip.Tip="{Binding AppName}" AutomationProperties.Name="{Binding AppName}" />
 
         <!-- Connected controller: drawing, name and link, battery and bridge state -->
@@ -170,6 +141,17 @@
           </StackPanel>
         </Border>
 
+        <!-- Support (GitHub Sponsors): a pink pill the card's width, right above it; always there (the sidebar has one width).
+             A click opens the sponsors page in the browser, nothing else. -->
+        <Button DockPanel.Dock="Bottom" x:Name="SupportPill" Theme="{StaticResource SupportPill}" Margin="14,8,14,0"
+                Command="{Binding Support.OpenCommand}" ToolTip.Tip="{Binding Support.Tip}"
+                AutomationProperties.Name="{Binding Support.Label}" AutomationProperties.HelpText="{Binding Support.Tip}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:IconSlot Data="{x:Static c:IconPaths.Heart}" Stroke="{StaticResource SupportTextBrush}" Size="18" Weight="1.8" VerticalAlignment="Center" />
+            <TextBlock x:Name="SupportPillText" Text="{Binding Support.Label}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+          </StackPanel>
+        </Button>
+
         <!-- One row per page; the rows share the height between the logo and the controller (40 px rows centred in cells of up to 59 px) -->
         <!-- The first row takes the height up to its cap; whatever is left stays empty above the controller card -->
         <Grid>
@@ -201,20 +183,6 @@
       <!-- Content: each page fills the area and scrolls itself when it needs to; the sidebar pages' views are kept when left.
            Its top inset keeps the page headers (and scrolled content) clear of the caption buttons; the backdrop shows through above. -->
       <views:PageHost Grid.Column="2" x:Name="Pages" CachedPages="{Binding Pages}" Page="{Binding CurrentPage}" Margin="0,32,0,0" />
-      <!-- In-app tip (TipBar): a slim quiet bar centred at the bottom of the content column, inside the page's bottom padding
-           (the pages never reach into it), so it never covers a control and is not part of the title area. It scales with
-           the content. -->
-      <Border Grid.Column="2" x:Name="TipHost" Classes="tip" DataContext="{Binding Tips}" IsVisible="{Binding IsVisible}"
-              HorizontalAlignment="Center" VerticalAlignment="Bottom" Height="22" Margin="32,0,32,3">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" VerticalAlignment="Center">
-          <TextBlock x:Name="TipText" Text="{Binding Text}" FontSize="12.5" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap"
-                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="tipClose" x:Name="TipClose" Command="{Binding CloseCommand}" ToolTip.Tip="{Binding CloseLabel}"
-                  AutomationProperties.Name="{Binding CloseLabel}">
-            <Path Data="M1,1 L9,9 M9,1 L1,9" StrokeThickness="1.4" StrokeLineCap="Round" Width="9" Height="9" Stretch="Uniform" />
-          </Button>
-        </Grid>
-      </Border>
     </Grid>
     </LayoutTransformControl>
 

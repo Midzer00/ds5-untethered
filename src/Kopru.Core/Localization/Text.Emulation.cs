@@ -18,25 +18,33 @@ public static partial class Text
 
 	// The controller type model (the one per-game choice; PadTypeLabel above is its label).
 	public static string PadTypeGameHint(Language? l = null) => Pick(l,
-		$"Bu oyunun gördüğü kumanda. Emin değilsen DualSense'te bırak.",
-		$"The controller this game sees. If unsure, leave it on DualSense.");
+		$"Bu oyunun gördüğü kumanda. Emin değilsen Otomatik'te bırak.",
+		$"The controller this game sees. If unsure, leave it on Automatic.");
 
 	public static string PadTypeDefaultLabel(Language? l = null) => Pick(l, $"Varsayılan Kumanda Türü", $"Default Controller Type");
 
 	public static string PadTypeDefaultHint(Language? l = null) => Pick(l,
-		$"Ayrı seçim yapmadığın oyunlar bu kumandayı görür.",
-		$"Games you have not set separately see this controller.");
+		$"Hakkında bilgi olmayan oyunlarda kullanılır.",
+		$"Used for games we know nothing about.");
 
 	public static string PadChoiceAutoPerGame(Language? l = null) => Pick(l, $"Otomatik (Oyuna Göre)", $"Automatic (Per Game)");
 
-	// What Automatic means: on a game's picker (it follows the default type) and on the default picker.
+	// A game's Automatic choice with what it gives the game now ("Otomatik (Xbox 360)"); type: the product name.
+	public static string PadChoiceAutoFor(string type, Language? l = null) => Pick(l, $"Otomatik ({type})", $"Automatic ({type})");
+
+	// What Automatic means on a game's picker: the best controller for the game; with a default type set, that type for a
+	// game we know nothing about.
 	public static string PadTypeAutoLine(Language? l = null) => Pick(l,
-		$"Varsayılan Kumanda Türü'nü kullanır.",
-		$"Uses the Default Controller Type.");
+		$"Oyuna En Uygun Kumandayı Seçer",
+		$"Picks The Best Controller For The Game");
+
+	public static string PadTypeAutoDefaultLine(Language? l = null) => Pick(l,
+		$"Oyuna en uygun kumandayı seçer; oyun hakkında bilgi yoksa Varsayılan Kumanda Türü'nü kullanır.",
+		$"Picks the best controller for the game; for a game we know nothing about, uses the Default Controller Type.");
 
 	public static string PadChoiceAutoLine(Language? l = null) => Pick(l,
-		$"Her oyun kendi seçimini kullanır; seçim yoksa DualSense.",
-		$"Each game uses its own choice; without one, DualSense.");
+		$"Her oyun kendi seçimini kullanır; seçim yoksa oyuna en uygun kumanda.",
+		$"Each game uses its own choice; without one, the best controller for the game.");
 
 	public static string PadTypeDualSenseLine(Language? l = null) => Pick(l,
 		$"Her şey çalışır: oyunun haptiği, tetikleri, ışığı, hoparlörü ve mikrofonu.",

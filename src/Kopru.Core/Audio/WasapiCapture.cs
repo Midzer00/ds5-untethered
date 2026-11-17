@@ -547,3 +547,25 @@ internal sealed class WasapiCapture : IAudioCapture
 		int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object instance);
 	}
 }
+
+// Whether Windows' default output is the virtual controller's own endpoint (then any program's sound reaches it). Throws on
+// an audio API failure; false off Windows or with no default output.
+public static class DefaultOutputCheck
+{
+	public static bool IsVirtualPad()
+	{
+		if (!OperatingSystem.IsWindows())
+		{
+			return false;
+		}
+		try
+		{
+			return WasapiCapture.DefaultRenderIsController() == "virtual pad";
+		}
+		catch (InvalidOperationException)
+		{
+			// No default output.
+			return false;
+		}
+	}
+}

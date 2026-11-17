@@ -37,7 +37,9 @@ public sealed class ProfileAudioHapticsViewModel : ObservableObject, IAudioHapti
 
 	private ProfileValues Values => _settings.Profiles.Find(ProfileId)?.Values ?? _settings.Profiles.Default.Values;
 
-	public bool Available => _settings.AudioHapticsAvailable;
+	// Strength and band are greyed out only while the running engine could not capture the game's sound; the switch never
+	// is (it must always turn off, and turning it on again tries once more).
+	public bool Available => !IsLive || _settings.AudioHapticsAvailable;
 
 	public bool On
 	{

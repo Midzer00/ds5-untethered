@@ -87,10 +87,6 @@ public sealed class AppSettings
 	public bool QuietWhilePlaying { get; set; }
 	public bool KeepInTray { get; set; } = true;
 
-	// In-app tips (missing in older files: on, nothing learned yet) and, per tip id, how far each one got (TipBar).
-	public bool ShowTips { get; set; } = true;
-	public Dictionary<string, TipProgress>? Tips { get; set; }
-
 	// Start the bridge by itself when the app starts and the controller connects (missing in older files: on).
 	public bool AutoStartBridge { get; set; } = true;
 
@@ -147,8 +143,12 @@ public sealed class AppSettings
 	// The controller type per game key (missing: Automatic, the default type).
 	public Dictionary<string, Kopru.Core.Virtual.VirtualPadType>? GamePadTypes { get; set; }
 
-	// The default controller type for the games without their own ("Varsayılan Kumanda Türü"; missing: null = Automatic).
+	// The default controller type for the Automatic games we know nothing about ("Varsayılan Kumanda Türü"; missing: null).
 	public Kopru.Core.Virtual.VirtualPadType? ForcedPadType { get; set; }
+
+	// The game keys learned to use the DualSense natively (Automatic gives them DualSense; missing: none yet).
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<string>? NativeGames { get; set; }
 
 	// Profiles (missing in older files: the settings above become the default profile), the active one, the profile per
 	// game key, and the controller shortcuts switch. The settings above always hold the active profile's values.
@@ -221,7 +221,7 @@ public sealed class AppSettings
 				users.Add(new UserGame(ForegroundGame.DisplayName(file), file));
 			}
 		}
-		return new GameMemory(users, GamePadTypes, ForcedPadType);
+		return new GameMemory(users, GamePadTypes, ForcedPadType, NativeGames);
 	}
 
 	// Takes the game memory to save (the old per-exe and DualSense Mode fields are left out from now on).
@@ -233,21 +233,11 @@ public sealed class AppSettings
 		UserGames = memory.UserGames.ToList();
 		GamePadTypes = memory.PadTypes is { Count: > 0 } pads ? new(pads, StringComparer.OrdinalIgnoreCase) : null;
 		ForcedPadType = memory.ForcedPad;
+		NativeGames = memory.NativeGames is { Count: > 0 } native ? native.ToList() : null;
 		GameOverrides = null;
 		LearnedGames = null;
 		return this;
 	}
-}
-
-// One in-app tip's progress: how often the user did what it teaches, how often they closed it, and whether it counts as
-// learned (then it never shows again).
-public sealed class TipProgress
-{
-	public int Used { get; set; }
-	public int Closed { get; set; }
-	// Runs of the app the tip was shown in (missing in older files: none).
-	public int Shown { get; set; }
-	public bool Learned { get; set; }
 }
 
 public interface ISettingsStore

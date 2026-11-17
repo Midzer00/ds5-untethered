@@ -83,11 +83,7 @@ public class PsMouseModeAppTests
 			Vm.Sticks.StopPreview();
 			_ = Fake.StartBridgeAsync();
 			Fake.Tick();
-			Window = new FakeWindow(() =>
-			{
-				Vm.BackToGame.SetWindowActive(true);
-				Vm.Tips.OnWindowActivated();
-			});
+			Window = new FakeWindow(() => Vm.BackToGame.SetWindowActive(true));
 			Presenter = new MainWindowPresenter(Window, Foreground, _ => { });
 			Shell = new PresenterShell(Presenter);
 			_ = new TrayViewModel(Fake, Vm.Settings, Shell);
@@ -107,7 +103,7 @@ public class PsMouseModeAppTests
 	}
 
 	[AvaloniaFact]
-	public void PsOpensTheApp_MouseModeOn_WithOneToast_AndNoTouchpadTip()
+	public void PsOpensTheApp_MouseModeOn_WithOneToast()
 	{
 		var run = new Run();
 		List<string> log = MouseModeAutoOffAppTests.WatchLog("mouse mode: on (ps opened the app)", () => run.Shortcut(ShortcutAction.OpenApp));
@@ -120,8 +116,6 @@ public class PsMouseModeAppTests
 		Assert.Equal((NotificationType.Shortcut, Text.DesktopOnTitle(), Text.DesktopOnBody()), (toast.Type, toast.Title, toast.Body));
 		Assert.Equal("Fare Modu Açık", Text.DesktopOnTitle(Language.Turkish));
 		Assert.Equal("Mouse Mode On", Text.DesktopOnTitle(Language.English));
-		// The touchpad tip does not show for the PS activation (Mouse Mode is coming on with it).
-		Assert.False(run.Vm.Tips.IsVisible);
 	}
 
 	[AvaloniaFact]
@@ -214,10 +208,8 @@ public class PsMouseModeAppTests
 		run.Shell.ShowMainWindow();
 		Assert.True(run.Presenter.IsInFront);
 		Assert.False(run.Settings.DesktopModeOn);
-		Assert.True(run.Vm.Tips.IsVisible);
 		run.Shortcut(ShortcutAction.TouchpadDoublePress);
 		Assert.True(run.Settings.DesktopModeOn);
-		Assert.False(run.Vm.Tips.IsVisible);
 		Assert.Single(run.MouseToasts());
 	}
 
@@ -228,6 +220,5 @@ public class PsMouseModeAppTests
 		Assert.Contains("opening the app with PS", Text.DesktopModeHint(Language.English));
 		Assert.Contains("Fare Modu açık", Text.PsOpenAppHint(Language.Turkish));
 		Assert.Contains("with Mouse Mode on", Text.PsOpenAppHint(Language.English));
-		Assert.Contains("touchpad", Text.TipMouseModeGesture(Language.Turkish));
 	}
 }

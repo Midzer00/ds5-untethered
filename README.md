@@ -109,8 +109,8 @@ no loss. The Overview page shows the delay live, so you can check your own setup
 #### Which games does it work with?
 
 Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's
-Games page, under Supported. Games without DualSense support can use the classic rumble settings or Turn Sound Into
-Haptics.
+Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound
+Into Haptics.
 
 #### Is it free?
 
@@ -166,7 +166,10 @@ Done and tested in code, not yet verified on hardware:
   Controller" and starts by itself (stop it in Settings > General or from the menu of its icon next to the clock).
   The controller pictures show the real colour of the controller's light.
 - Controller Type per game (DualSense, DualShock 4 or Xbox 360): games with DualSense support get their own haptics
-  and triggers straight through; the classic rumble settings only apply where the game sends nothing.
+  and triggers straight through; the Xbox And DS4 Rumble settings only apply where the game sends nothing.
+  Automatic picks per game: DualSense for games with native DualSense support (the app's list, Steam store data shipped
+  with the app, or learned while the game plays), DualShock 4 for games that only support it, otherwise the Default
+  Controller Type, else Xbox 360. It reads Steam's local app info on the PC; nothing about your games is sent.
 - Games page: Supported and Unsupported games found from Steam and Epic, a Play button, a Start File you choose, and
   each game's settings in a pop-up. Games are recognised by exe names from Steam's data, also when installed outside
   Steam folders.
@@ -307,8 +310,8 @@ aktarıldı. Genel Bakış sayfası gecikmeyi canlı gösteriyor, kendi kurulumu
 #### Hangi oyunlarda çalışır?
 
 DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki
-Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda klasik titreşim ayarları ya
-da Sesi Titreşime Çevir kullanılabilir.
+Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda Xbox ve DS4 Titreşimi
+ayarları ya da Sesi Titreşime Çevir kullanılabilir.
 
 #### Ücretli mi?
 
@@ -364,7 +367,11 @@ Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
   adıyla görünür ve kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
   Kumanda görselleri kumandanın ışığını gerçek rengiyle gösterir.
 - Oyun başına Kumanda Türü (DualSense, DualShock 4 ya da Xbox 360): DualSense destekleyen oyunların kendi haptiği ve
-  tetikleri olduğu gibi geçer; klasik titreşim ayarları yalnızca oyunun hiçbir şey göndermediği yerde devreye girer.
+  tetikleri olduğu gibi geçer; Xbox ve DS4 Titreşimi ayarları yalnızca oyunun hiçbir şey göndermediği yerde devreye
+  girer. Otomatik oyuna göre seçer: DualSense'i doğrudan destekleyen oyunlara DualSense (uygulamanın listesi,
+  uygulamayla gelen Steam mağaza bilgisi ya da oyun oynanırken öğrenilir), yalnızca DualShock 4'ü destekleyenlere
+  DualShock 4, diğerlerine Varsayılan Kumanda Türü, o da yoksa Xbox 360. Steam'in bilgisayardaki uygulama bilgilerini
+  okur; oyunlarınızla ilgili hiçbir bilgi gönderilmez.
 - Oyunlar sayfası: Steam ve Epic'ten bulunan Desteklenen ve Desteklenmeyen oyunlar, Oyna düğmesi, seçilebilen
   Başlatma Dosyası ve açılır pencerede her oyunun kendi ayarları. Oyunlar Steam verisindeki exe adlarından, Steam
   klasörleri dışına kuruluysa da tanınır.

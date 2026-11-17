@@ -30,9 +30,15 @@ public sealed record HiddenGame(string Key, string Name);
 // A game installed on this PC that the catalog does not list, as its launcher reports it (Steam or Epic only: their files
 // say plainly that it is a game and where it lives). Id: the Steam app id or the Epic AppName. LaunchExe: Epic's launch exe
 // as a full path (null for Steam). Key: what the per-game settings and the hidden list use ("steam:<appid>", "epic:<AppName>").
-public sealed record FoundGame(string Name, InstalledSource Source, string Folder, string Id, string? LaunchExe = null)
+// PlayStation: the PlayStation controller support Steam's own cache on this PC lists for a Steam game (null: not listed or
+// not read). SteamType: the kind of app Steam's cache lists for a Steam game ("Game", "Demo", ...; null: not read).
+public sealed record FoundGame(string Name, InstalledSource Source, string Folder, string Id, string? LaunchExe = null, PlayStationPad? PlayStation = null,
+	string? SteamType = null)
 {
 	public string Key => KeyFor(Source, Id);
+
+	// Steam's cache says this Steam app is a game (not software such as Wallpaper Engine); Epic lists only games.
+	public bool IsKnownGame => Source == InstalledSource.Epic || SteamAppDetails.IsGameType(SteamType);
 
 	public long? SteamAppId => Source == InstalledSource.Steam && long.TryParse(Id, System.Globalization.NumberStyles.None,
 		System.Globalization.CultureInfo.InvariantCulture, out long id) ? id : null;
@@ -89,17 +95,26 @@ public interface IUninstallEntries
 // are skipped quietly. Names match like the watcher's name fallback: GameCatalog.NormalizeName, the whole name, at least
 // GameCatalog.MinNameLength characters. Besides the catalog games, the other games Steam and Epic report installed are
 // returned as FoundGame (Steam's own tools and runtimes, SteamNonGames, and Epic add-ons and engines left out); a found game
-// that is a catalog game found any way is left to the catalog row. Logs one summary line per scan (no paths).
+// that is a catalog game found any way is left to the catalog row. Logs one summary line per scan (no paths). steamInfo:
+// reads what Steam's local cache says about the found Steam games (SteamAppInfo: PlayStation controller support and the kind
+// of app; null: not read); an app it calls something other than a game (an "Application" such as Wallpaper Engine, a
+// "Tool") is left out as not a game.
 public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntries? registry = null, SteamLibrary? steam = null,
-	string? epicManifests = null, Action<string>? log = null)
+	string? epicManifests = null, Action<string>? log = null,
+	Func<IReadOnlyCollection<long>, IReadOnlyDictionary<long, SteamAppDetails>>? steamInfo = null)
 {
 	// The folder names at a drive's root that hold games (compared ignoring case).
 	public static readonly IReadOnlyList<string> RootFolderNames = ["Games", "Oyunlar", "Game", "Oyun"];
 
 	private readonly Action<string> log = log ?? Diagnostics.AppLog.Write;
 
-	public static InstalledGameFinder CreateDefault() => new(new SystemInstallFileSystem(), new SystemUninstallEntries(), SteamLibrary.CreateDefault(),
-		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Epic", "EpicGamesLauncher", "Data", "Manifests"));
+	public static InstalledGameFinder CreateDefault()
+	{
+		var environment = new SystemSteamEnvironment();
+		return new(new SystemInstallFileSystem(), new SystemUninstallEntries(), new SteamLibrary(environment),
+			Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Epic", "EpicGamesLauncher", "Data", "Manifests"),
+			steamInfo: ids => SteamAppInfo.ReadLocalDetails(environment.SteamPath, ids));
+	}
 
 	public InstalledScan Scan(GameCatalog catalog, IReadOnlyList<string>? extraFolders = null, IReadOnlyList<SeenGame>? seen = null)
 	{
@@ -181,6 +196,7 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 			.Where(g => !catalogFolders.Contains(Trim(g.Folder)) && !catalogNames.Contains(GameCatalog.NormalizeName(g.Name)))
 			.GroupBy(g => g.Key, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
 			.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+		rest = WithSteamInfo(rest, ref notGames);
 
 		watch.Stop();
 		var scan = new InstalledScan(found.Values.OrderBy(g => g.Game.Name, StringComparer.CurrentCultureIgnoreCase).ToList(), watch.Elapsed)
@@ -195,6 +211,51 @@ public sealed class InstalledGameFinder(IInstallFileSystem files, IUninstallEntr
 	}
 
 	private static string Trim(string path) => path.Replace('/', '\\').TrimEnd('\\');
+
+	// The found Steam games get what Steam's local cache says (nothing on any problem): their PlayStation support and kind;
+	// the ones it calls something other than a game are left out (counted as not games).
+	private List<FoundGame> WithSteamInfo(List<FoundGame> games, ref int notGames)
+	{
+		if (steamInfo == null)
+		{
+			return games;
+		}
+		List<long> ids = games.Select(g => g.SteamAppId).OfType<long>().Distinct().ToList();
+		if (ids.Count == 0)
+		{
+			return games;
+		}
+		IReadOnlyDictionary<long, SteamAppDetails> local;
+		try
+		{
+			local = steamInfo(ids);
+		}
+		catch (Exception e) when (IsSkippable(e))
+		{
+			return games;
+		}
+		if (local.Count == 0)
+		{
+			return games;
+		}
+		var result = new List<FoundGame>(games.Count);
+		foreach (FoundGame game in games)
+		{
+			if (game.SteamAppId is not long id || !local.TryGetValue(id, out SteamAppDetails? details))
+			{
+				result.Add(game);
+			}
+			else if (details.Type != null && !details.IsGame)
+			{
+				notGames++;
+			}
+			else
+			{
+				result.Add(game with { PlayStation = details.PlayStation, SteamType = details.Type });
+			}
+		}
+		return result;
+	}
 
 	// The install folder of a game whose exe runs at exePath: the exe's folder, or for an Unreal Engine game binary
 	// ("<Game>\<Project>\Binaries\Win64\X-Win64-Shipping.exe") the game's folder. Null for a bare file name.

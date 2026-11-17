@@ -20,26 +20,26 @@ public static partial class Text
 		$"DualSense'i destekleyen oyunların gönderdiği haptik ve tetik efektlerinin gücü.",
 		$"How strong the haptics and trigger effects sent by DualSense games feel.");
 
-	public static string ClassicRumbleCard(Language? l = null) => Pick(l, $"Klasik Titreşim", $"Classic Rumble");
+	public static string ClassicRumbleCard(Language? l = null) => Pick(l, $"Xbox ve DS4 Titreşimi", $"Xbox And DS4 Rumble");
 
 	public static string ClassicRumbleCardHint(Language? l = null) => Pick(l,
-		$"Oyun sadece klasik titreşim gönderirse böyle hissedilir.",
-		$"How it feels when the game only sends classic rumble.");
+		$"Genel profil: Xbox ve DS4 türünde, ya da oyun yalnızca klasik titreşim gönderdiğinde bu ayarlar kullanılır.",
+		$"General profile: used with the Xbox and DS4 types, or when a game sends only classic rumble.");
 
 	public static string PageGames(Language? l = null) => Pick(l, $"Oyunlar", $"Games");
 
 	public static string PageHapticsTriggers(Language? l = null) => Pick(l, $"Titreşim ve Tetikler", $"Haptics And Triggers");
 
 	public static string PageHapticsTriggersIntro(Language? l = null) => Pick(l,
-		$"Oyunun gönderdiği efektler olduğu gibi geçer. Oyun bir şey göndermezse Klasik Titreşim ayarları kullanılır.",
-		$"What the game sends passes through. Where it sends nothing, the Classic Rumble settings are used.");
+		$"Oyunun gönderdiği efektler olduğu gibi geçer. Oyun bir şey göndermezse Xbox ve DS4 Titreşimi ayarları kullanılır.",
+		$"What the game sends passes through. Where it sends nothing, the Xbox And DS4 Rumble settings are used.");
 
 	// The games not in the supported list: the Games page's second view, and the link to it on Haptics And Triggers.
 	public static string UnsupportedGamesTitle(Language? l = null) => Pick(l, $"Desteklenmeyen Oyunlar", $"Unsupported Games");
 
 	public static string UnsupportedGamesHint(Language? l = null) => Pick(l,
-		$"Bu oyunlar seçtiğin profilin Klasik Titreşim ayarlarını kullanır.",
-		$"These games use the Classic Rumble settings of the profile you pick.");
+		$"Bu oyunlar seçtiğin profilin Xbox ve DS4 Titreşimi ayarlarını kullanır.",
+		$"These games use the Xbox And DS4 Rumble settings of the profile you pick.");
 
 	// The Games page's main switch.
 	public static string SupportedView(Language? l = null) => Pick(l, $"Desteklenen", $"Supported");

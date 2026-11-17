@@ -24,4 +24,16 @@ public sealed partial class BridgeHost : IAudioHapticsOutput
 			return AudioHapticsPush.NoController;
 		}
 	}
+
+	public void StopAudioHaptics()
+	{
+		try
+		{
+			current?.Bridge.StopAudioHaptics();
+		}
+		catch (ObjectDisposedException)
+		{
+			// The controller is going away.
+		}
+	}
 }

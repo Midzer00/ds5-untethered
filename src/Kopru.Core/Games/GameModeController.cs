@@ -14,16 +14,18 @@ public sealed record GameModeState(string? Exe, string? Name, GameMode Mode, Cat
 public sealed record KnownGame(string Name, string Exe, bool Haptics, bool AdaptiveTriggers, bool IsUserAdded, CatalogGame? Catalog, string Key,
 	string? Path = null);
 
-// What is saved: the games the user added, the controller type per game and the default controller type for the games
-// without one (null: Automatic).
+// What is saved: the games the user added, the controller type per game, the default controller type for the games
+// without one (null: Automatic) and the game keys learned to use the DualSense natively (NativeSupportDetector).
 public sealed record GameMemory(IReadOnlyList<UserGame> UserGames,
-	IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null, Kopru.Core.Virtual.VirtualPadType? ForcedPad = null)
+	IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null, Kopru.Core.Virtual.VirtualPadType? ForcedPad = null,
+	IReadOnlyList<string>? NativeGames = null)
 {
 	public static GameMemory Default { get; } = new([]);
 }
 
 // The known game that runs and the one profile the bridge runs with. Only known games are looked at (GameWatcher): the game
-// in front, and (while no game runs and some game has its own controller type) a known game whose process appears. The
+// in front, and (while no game runs and some known game would get another controller type) a known game whose process
+// appears. What the bridge saw while the active game was in front (GameSignals) teaches whether it uses the DualSense natively. The
 // active game drives the active game line, the controller type (GameModePadTypes) and the profile per game. Tick is
 // called about once a second (tests call it directly). Thread-safe; events are raised on the calling thread, outside the
 // lock.
@@ -37,7 +39,14 @@ public sealed partial class GameModeController
 	private GameProfile profile = new();
 	private GameCatalog catalog;
 	private ForegroundGame? active;
+	// The active game was found by its process starting (the launch-time scan), not in front: a game that comes to the front
+	// then takes over at once, controller type included (the game in front wins).
+	private bool activeByScan;
 	private long gameSession;
+	private HashSet<string>? scannedKeys;
+	private long scannedAt;
+	private bool? padIsDefaultOutput;
+	private long padIsDefaultOutputAt;
 	private volatile string? gameInFront;
 	private GameModeState state = GameModeState.Initial;
 	private BridgeProfile? applied;
@@ -143,16 +152,49 @@ public sealed partial class GameModeController
 	// Where the game lines go ("game: ..."; exe file names only, never paths). Tests replace it.
 	public Action<string> Log { get; set; } = Diagnostics.AppLog.Write;
 
+	// Milliseconds since some start (tests replace it).
+	public Func<long> ClockMs { get; set; } = () => Environment.TickCount64;
+
+	// While no game runs, running processes are listed (Process.GetProcesses) at most this often for the same games, so a
+	// game's process starting gets its controller type within a few seconds without listing them every second.
+	public static readonly TimeSpan LaunchScanInterval = TimeSpan.FromSeconds(3);
+
+	// Whether the virtual DualSense is Windows' default output (asked at most every 10 s while haptics sound arrives). Then
+	// any program's surround sound reaches the haptics channels, so haptics sound alone teaches nothing. Null: not known
+	// (haptics count); a throw counts as true.
+	public Func<bool>? PadIsDefaultOutput { get; set; }
+
 	public void Tick()
 	{
 		ForegroundGame? seen = watcher.Poll();
 		gameInFront = seen?.Exe;
+		// What the game sent since the last tick: the game in front sent it (the bridge's own fallbacks are not counted).
+		GameSignals signals = bridge?.TakeGameSignals() ?? default;
+		if (signals.Haptics && !signals.Triggers && HapticsFromAnyProgram())
+		{
+			signals = signals with { Haptics = false };
+		}
 		List<string> lines = [];
 		bool ended;
 		bool started = false;
+		bool learned = false;
 		IReadOnlySet<string>? lookFor = null;
 		lock (gate)
 		{
+			if (seen != null && active != null && SameLaunch(seen, active))
+			{
+				// It is in front now: no longer a game found only by its process.
+				activeByScan = false;
+			}
+			if (seen != null && active != null && SameLaunch(seen, active) && native.Get(active.Key) != true)
+			{
+				native.Observe(active.Key, signals, gameSession);
+				if (native.Get(active.Key) == true)
+				{
+					learned = true;
+					lines.Add($"game: {active.Name} uses the DualSense natively (learned)");
+				}
+			}
 			ForegroundGame? before = active;
 			if (active != null && !watcher.IsRunning(active))
 			{
@@ -160,8 +202,9 @@ public sealed partial class GameModeController
 			}
 			if (seen != null && (active == null || !SameLaunch(seen, active)))
 			{
-				// Another known game took over (the first one still runs: its controller type is kept, see ApplyPad).
-				started = active == null;
+				// Another known game took over (the first one still runs: its controller type is kept, see ApplyPad), unless the
+				// first one was only found by its process (Wallpaper Engine-like apps in the background): the game in front wins.
+				started = active == null || activeByScan;
 				if (active != null)
 				{
 					EndSession($"{seen.Name} took over", lines);
@@ -174,7 +217,7 @@ public sealed partial class GameModeController
 			}
 			ended = before != null && !ReferenceEquals(before, active);
 		}
-		if (lookFor is { Count: > 0 } && watcher.FindRunning(lookFor) is { } launched)
+		if (lookFor is { Count: > 0 } && LaunchScanDue(lookFor) && watcher.FindRunning(lookFor) is { } launched)
 		{
 			lock (gate)
 			{
@@ -182,6 +225,7 @@ public sealed partial class GameModeController
 				{
 					started = true;
 					StartSession(launched, "started", lines);
+					activeByScan = true;
 				}
 			}
 		}
@@ -193,6 +237,10 @@ public sealed partial class GameModeController
 		{
 			// The game's hold on the light ends with it (a game still writing its light takes it back at once).
 			bridge?.GameEnded();
+		}
+		if (learned)
+		{
+			MemoryChanged?.Invoke();
 		}
 		Apply(started);
 	}
@@ -262,7 +310,7 @@ public sealed partial class GameModeController
 			userGames = memory.UserGames.Where(g => GameCatalog.Normalize(g.Path).Length > 0)
 				.DistinctBy(g => g.Path, StringComparer.OrdinalIgnoreCase).ToList();
 			watcher.UserGames = userGames.ToList();
-			LoadPadTypes(memory.PadTypes, memory.ForcedPad);
+			LoadPadTypes(memory.PadTypes, memory.ForcedPad, memory.NativeGames);
 		}
 		CatalogChanged?.Invoke();
 		Apply();
@@ -272,7 +320,7 @@ public sealed partial class GameModeController
 	{
 		lock (gate)
 		{
-			return new GameMemory(userGames.ToList(), SnapshotPadTypes(), forcedPad);
+			return new GameMemory(userGames.ToList(), SnapshotPadTypes(), forcedPad, NativeKeys());
 		}
 	}
 
@@ -299,10 +347,50 @@ public sealed partial class GameModeController
 	private static bool SameLaunch(ForegroundGame a, ForegroundGame b) =>
 		a.ProcessId == b.ProcessId && string.Equals(a.Key, b.Key, StringComparison.OrdinalIgnoreCase);
 
+	// The launch-time scan runs when the games to look for changed, else at most every LaunchScanInterval. Tick's thread only.
+	private bool LaunchScanDue(IReadOnlySet<string> keys)
+	{
+		long now = ClockMs();
+		if (scannedKeys != null && scannedKeys.SetEquals(keys) && now - scannedAt < LaunchScanInterval.TotalMilliseconds)
+		{
+			return false;
+		}
+		scannedKeys = new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
+		scannedAt = now;
+		return true;
+	}
+
+	// Whether haptics sound may come from any program (the virtual DualSense is the default output). Tick's thread only.
+	private bool HapticsFromAnyProgram()
+	{
+		if (PadIsDefaultOutput is not { } ask)
+		{
+			return false;
+		}
+		long now = ClockMs();
+		if (padIsDefaultOutput is { } known && now - padIsDefaultOutputAt < 10_000)
+		{
+			return known;
+		}
+		bool result;
+		try
+		{
+			result = ask();
+		}
+		catch (Exception)
+		{
+			result = true;
+		}
+		padIsDefaultOutput = result;
+		padIsDefaultOutputAt = now;
+		return result;
+	}
+
 	// Caller holds the lock. A known game became the active game: a new game session (the fallback trigger rule).
 	private void StartSession(ForegroundGame game, string how, List<string> lines)
 	{
 		active = game;
+		activeByScan = false;
 		gameSession++;
 		lines.Add($"game: {game.Name} {how} ({game.Exe})");
 	}

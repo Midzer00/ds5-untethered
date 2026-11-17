@@ -139,6 +139,12 @@
       </LinearGradientBrush>
       <!-- Level meters: flat accent (no gradients) -->
       <SolidColorBrush x:Key="MeterBrush" Color="#4A8BF5" />
+      <!-- Support pill (sidebar): GitHub Sponsors pink, used nowhere else; near-black text on it (5.1:1, hover 6.3:1, pressed
+           4.8:1), the pill 5.1:1 against the sidebar -->
+      <SolidColorBrush x:Key="SupportBrush" Color="#DB61A2" />
+      <SolidColorBrush x:Key="SupportHoverBrush" Color="#E27AB2" />
+      <SolidColorBrush x:Key="SupportPressedBrush" Color="#D35D9D" />
+      <SolidColorBrush x:Key="SupportTextBrush" Color="#1B1B1F" />
 
       <!-- Semi palette overrides (dark only) -->
       <SolidColorBrush x:Key="SemiColorPrimary" Color="{StaticResource K.Accent}" />
@@ -272,6 +278,37 @@
         </Style>
         <Style Selector="^:selected /template/ Border#PART_Indicator"><Setter Property="IsVisible" Value="True" /></Style>
         <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
+      </ControlTheme>
+
+      <!-- Support pill (sidebar, above the controller card): a solid pink, fully round button; a little lighter on hover, a
+           little darker pressed. Keyboard focus draws a light ring just outside the pill (14:1 against the sidebar). -->
+      <ControlTheme x:Key="SupportPill" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource SupportBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource SupportTextBrush}" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Panel>
+              <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                                Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" Foreground="{TemplateBinding Foreground}" />
+              <Border Name="PART_FocusRing" Margin="-3" CornerRadius="21" BorderThickness="2" BorderBrush="{StaticResource TextBrush}"
+                      IsVisible="False" IsHitTestVisible="False" />
+            </Panel>
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{StaticResource SupportHoverBrush}" /></Style>
+        <Style Selector="^:pressed"><Setter Property="Background" Value="{StaticResource SupportPressedBrush}" /></Style>
+        <Style Selector="^:focus-visible /template/ Border#PART_FocusRing"><Setter Property="IsVisible" Value="True" /></Style>
       </ControlTheme>
 
       <!-- Chip: a small toggle for a setting; on = accent edge and a light accent tint -->

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Diagnostics;
 using System.Text.Json;
 using Kopru.Core.Audio;
 using Kopru.Core.Bluetooth;
@@ -258,6 +259,10 @@ public class AudioHapticsRunnerTests
 
 		public int Peak;
 
+		public int Stops;
+
+		public void StopAudioHaptics() => Stops++;
+
 		public AudioHapticsPush PushAudioHaptics(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right)
 		{
 			Frames += left.Length;
@@ -336,6 +341,67 @@ public class AudioHapticsRunnerTests
 		runner.Dispose();
 		runner.Update(Game(), On);
 		Assert.Equal(2, factory.Started.Count);
+	}
+
+	// Strength and band changed while the game runs reach the running capture at once (no restart, no new game start needed).
+	[Fact]
+	public void StrengthAndBand_ChangedWhileTheGameRuns_ApplyToTheRunningCapture()
+	{
+		(AudioHapticsRunner runner, FakeCaptureFactory factory, FakeOutput output, _) = Create();
+		float[] tone = AudioHapticsDspTests.Stereo(4800, AudioHapticsDspTests.Tone(300, 0.3), AudioHapticsDspTests.Tone(300, 0.3));
+		int Play()
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				factory.Sink!.OnAudio(tone, 2, 48000);
+			}
+			output.Peak = 0;
+			for (int i = 0; i < 4; i++)
+			{
+				factory.Sink!.OnAudio(tone, 2, 48000);
+			}
+			return output.Peak;
+		}
+
+		runner.Update(Game(), On);
+		FakeCapture capture = factory.Last!;
+		int bass = Play();
+
+		runner.Update(Game(), On with { Band = AudioHapticsBand.Full });
+		int full = Play();
+		Assert.True(full > 40 && full > 2 * bass, $"bass {bass}, full {full}");
+
+		runner.Update(Game(), On with { Band = AudioHapticsBand.Full, Strength = 0 });
+		Assert.Equal(0, Play());
+		runner.Update(Game(), On with { Band = AudioHapticsBand.Full, Strength = 2 });
+		Assert.True(Play() > full, "twice the strength");
+
+		Assert.Single(factory.Started);
+		Assert.Same(capture, factory.Last);
+		Assert.False(capture.Disposed);
+		Assert.Equal(AudioHapticsStatusKind.Listening, runner.Status.Kind);
+	}
+
+	// Turned off while the game runs: the capture ends at once and the frames still waiting in the controller are dropped
+	// (nothing is felt after it); turned on again, it listens again.
+	[Fact]
+	public void TurnedOffWhileTheGameRuns_StopsAtOnce_AndDropsWhatWasWaiting_OnAgainListens()
+	{
+		(AudioHapticsRunner runner, FakeCaptureFactory factory, FakeOutput output, _) = Create();
+		runner.Update(Game(), On);
+		FakeCapture first = factory.Last!;
+		Assert.Equal(0, output.Stops);
+
+		runner.Update(Game(), On with { On = false });
+		Assert.True(first.Disposed);
+		Assert.False(runner.IsCapturing);
+		Assert.Equal(1, output.Stops);
+		Assert.Equal(AudioHapticsStatus.Off, runner.Status);
+
+		runner.Update(Game(), On);
+		Assert.Equal([1234, 1234], factory.Started);
+		Assert.True(runner.IsCapturing);
+		Assert.Equal(AudioHapticsStatusKind.Listening, runner.Status.Kind);
 	}
 
 	[Fact]
@@ -524,25 +590,40 @@ public partial class BridgeTests
 	[Fact]
 	public void AudioHaptics_ClassicRumbleIsMixedIn_AndTheRefillStaysOutOfTheWay()
 	{
+		// The bridge's audio timing runs on a clock the test moves: whether the frames come often enough for the refill to stay
+		// out of the way no longer depends on how promptly a busy machine wakes the test thread.
+		SimulatedClock clock = new();
+		long ms = Stopwatch.Frequency / 1000;
 		FakeLink link = new();
 		using BluetoothSession session = new(link);
 		using VirtualDualSense pad = Pad();
-		using ControllerBridge bridge = new(session, pad);
+		using ControllerBridge bridge = new(session, pad) { Time = clock };
 		SendOutput(pad, b => OutputBlock.SetRumble(b, 200, 0));
+		Assert.True(bridge.RumbleRefills > 0);
 		sbyte[] silence = new sbyte[32];
 		bridge.PushAudioHaptics(silence, silence);
-		Thread.Sleep(60);
+		// A refill the haptics thread began before that push may still be finishing: once the stream has sent two more
+		// reports (or stopped), every later refill call saw the push.
+		long reports = session.HapticsReports;
+		Assert.True(SpinWait.SpinUntil(() => session.HapticsReports >= reports + 2 || !session.IsHapticsStreaming, 5000));
 		session.Haptics.TakePeaks();
 		long refills = bridge.RumbleRefills;
 
-		// Silent audio haptics arriving every ~10 ms (as a capture delivers them): the rumble rides on them.
+		// Silent audio haptics arriving every 10 ms (as a capture delivers them): the rumble rides on them, and the refill,
+		// called before every report the stream sends meanwhile, adds nothing.
 		for (int i = 0; i < 25; i++)
 		{
+			clock.Set(clock.GetTimestamp() + 10 * ms);
 			bridge.PushAudioHaptics(silence, silence);
 			Thread.Sleep(10);
 		}
 		Assert.True(session.Haptics.TakePeaks().Left > 0.2);
-		Assert.True(bridge.RumbleRefills - refills <= 3, $"{bridge.RumbleRefills - refills} refills");
+		Assert.Equal(0, bridge.RumbleRefills - refills);
+
+		// They stop: after 50 ms without them the refill takes the rumble over again.
+		clock.Set(clock.GetTimestamp() + 60 * ms);
+		bridge.RumbleLevel = bridge.RumbleLevel;
+		Assert.True(SpinWait.SpinUntil(() => bridge.RumbleRefills > refills, 5000), "the refill did not resume");
 	}
 
 	[Fact]
@@ -564,6 +645,23 @@ public partial class BridgeTests
 		// The game's next packet carries them (only audible frames start the stream).
 		SendAudio(pad, HapticsConverterTests.Audio(480), 8);
 		Assert.True(SpinWait.SpinUntil(() => session.HapticsStreams > 0, 5000));
+	}
+
+	// Audio haptics switched off: the frames still waiting to ride on the game's stream are dropped, none come after it.
+	[Fact]
+	public void AudioHaptics_Stopped_DropsTheFramesStillWaiting()
+	{
+		FakeLink link = new();
+		using BluetoothSession session = new(link) { PauseHapticsInSilence = true };
+		using VirtualDualSense pad = Pad();
+		using ControllerBridge bridge = new(session, pad);
+		SendAudio(pad, HapticsConverterTests.Audio(480));
+		sbyte[] wave = Wave(30, 80);
+		Assert.Equal(AudioHapticsPush.Played, bridge.PushAudioHaptics(wave, wave));
+		Assert.Equal(30, bridge.AudioHapticsWaiting);
+
+		bridge.StopAudioHaptics();
+		Assert.Equal(0, bridge.AudioHapticsWaiting);
 	}
 }
 

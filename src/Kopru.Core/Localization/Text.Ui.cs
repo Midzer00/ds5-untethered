@@ -56,8 +56,8 @@ public static partial class Text
 		$"Oyunun gönderdiği haptik sesin gücü. Önerilen: %150.",
 		$"Strength of the game's haptics. Recommended: 150%.");
 	public static string RumbleHint(Language? l = null) => Pick(l,
-		$"Klasik titreşim, Bluetooth'ta haptik olarak çalınır.",
-		$"Classic rumble is played as haptics over Bluetooth.");
+		$"Oyunun titreşimi kumandada haptik olarak çalınır.",
+		$"The game's rumble plays as haptics on the controller.");
 	public static string TestBoth(Language? l = null) => Pick(l, $"İki Taraf", $"Both Sides");
 	public static string TestRumble(Language? l = null) => Pick(l, $"Titreşimi Dene", $"Try Rumble");
 

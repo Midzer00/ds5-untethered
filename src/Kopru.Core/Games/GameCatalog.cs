@@ -29,6 +29,7 @@ public sealed class GameCatalog
 	private readonly Dictionary<long, CatalogGame> bySteamAppId = [];
 	private readonly Dictionary<string, CatalogGame> byName = new(StringComparer.Ordinal);
 	private readonly Dictionary<string, CatalogGame> byInstallDir = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, CatalogGame> byKey = new(StringComparer.OrdinalIgnoreCase);
 
 	// The shortest normalised name FindByName accepts: shorter names ("Luto", "F1 22") are too easy to hit by chance.
 	public const int MinNameLength = 6;
@@ -49,6 +50,7 @@ public sealed class GameCatalog
 			{
 				bySteamAppId.TryAdd(appId, game);
 			}
+			byKey.TryAdd(game.Name, game);
 			foreach (string exe in game.Exe ?? [])
 			{
 				string key = Normalize(exe);
@@ -154,6 +156,9 @@ public sealed class GameCatalog
 		}
 		return builder.ToString();
 	}
+
+	// The game whose per-game settings key (ForegroundGame.KeyOf: its exact name) this is, or null.
+	public CatalogGame? FindByKey(string? key) => key != null && byKey.TryGetValue(key, out CatalogGame? game) ? game : null;
 
 	public CatalogGame? FindBySteamAppId(long? appId) => appId is long id && bySteamAppId.TryGetValue(id, out CatalogGame? game) ? game : null;
 

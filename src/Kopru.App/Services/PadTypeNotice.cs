@@ -26,7 +26,7 @@ public sealed partial class NotificationCenter
 	};
 
 	// After a swap. A game running then may not see the new controller: "restart the game if it doesn't see it". With no game
-	// running: the default type ("games you have not set separately see this"), or DualSense back when no default is set.
+	// running: the default type ("used for games we know nothing about"), or DualSense back when no default is set.
 	public static AppNotification PadTypeNotice(VirtualPadType type, PadTypeSource source, bool gameRunning, bool isEdge = false)
 	{
 		string body = gameRunning ? Text.PadSwapRestartHint()

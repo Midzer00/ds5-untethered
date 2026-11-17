@@ -246,9 +246,9 @@ public class VirtualPadDiagnosticsTests
 		Assert.Null(games.PadChoiceFor(key));
 		Assert.Equal(VirtualPadType.DualSense, games.PadTypeFor(key));
 		Assert.Equal(VirtualPadType.DualSense, games.CurrentPadType);
-		// A game on Automatic follows the default type only when the user set one.
+		// The default type is for games we know nothing about: a listed game keeps DualSense.
 		games.SetForcedPadType(VirtualPadType.Xbox360);
-		Assert.Equal(VirtualPadType.Xbox360, games.PadTypeFor(key));
+		Assert.Equal(VirtualPadType.DualSense, games.PadTypeFor(key));
 		games.SetForcedPadType(null);
 		Assert.Equal(VirtualPadType.DualSense, games.PadTypeFor(key));
 	}

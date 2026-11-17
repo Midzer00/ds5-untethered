@@ -58,13 +58,19 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	public RealControllerService(BridgeHost host, IHidingService hiding, IControllerFinder finder, Action<Action>? post = null,
 		Func<HidDevice, string?>? instanceId = null, bool timers = true, GameModeController? games = null,
 		Func<string?, SteamInputResult>? steamCheck = null, string? adapterResultPath = null, TimeProvider? time = null,
-		Kopru.Core.Health.HealthProbe? healthProbe = null, Kopru.Core.Health.LastBatteryStore? batteryStore = null, IUrlLauncher? launcher = null)
+		Kopru.Core.Health.HealthProbe? healthProbe = null, Kopru.Core.Health.LastBatteryStore? batteryStore = null, IUrlLauncher? launcher = null,
+		Kopru.Core.Audio.IAudioCaptureFactory? audioCapture = null)
 	{
 		this.time = time ?? TimeProvider.System;
+		// Set here, never later: the runner is made from it on the first settings push (see AudioCapture).
+		AudioCapture = audioCapture ?? DefaultAudioCapture();
 		this.steamCheck = steamCheck;
 		this.adapterResultPath = adapterResultPath;
 		GameCatalog catalog = games?.Catalog ?? GameCatalog.Load(Kopru.Core.AppPaths.GameList);
-		Games = games ?? new GameModeController(catalog, new GameWatcher(catalog, steam: SteamLibrary.CreateDefault()), host);
+		Games = games ?? new GameModeController(catalog, new GameWatcher(catalog, steam: SteamLibrary.CreateDefault()), host)
+		{
+			PadIsDefaultOutput = Kopru.Core.Audio.DefaultOutputCheck.IsVirtualPad
+		};
 		Games.StateChanged += _ => Raise();
 		Games.MemoryChanged += Raise;
 		this.host = host;
@@ -122,10 +128,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		new(BridgeHost.CreateDefault(), HidHideHidingService.CreateDefault(), new HidControllerFinder(),
 			steamCheck: SteamInputCheck.CreateDefault().Check,
 			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, DiagnosticsExport.AdapterResultFileName),
-			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault())
-		{
-			AudioCapture = new Kopru.Core.Audio.WasapiCaptureFactory()
-		};
+			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault());
 
 	private BridgeStatus Status => Selected.Status;
 

@@ -7,7 +7,7 @@ using Kopru.Core.Virtual;
 
 namespace Kopru.Core.Tests;
 
-/// The controller type model: a game's own choice, else the default type (ForcedPadType; null = Automatic), else DualSense.
+/// The controller type model: a game's own choice, else the Automatic rules (AutoPadTypeTests), where the default type (ForcedPadType) is for games we know nothing about.
 // The type is put in when the game starts; a change while it runs waits (pending) until it exits or "apply now".
 public class ForcedPadTypeTests
 {
@@ -66,7 +66,7 @@ public class ForcedPadTypeTests
 		games.Tick();
 		Assert.Equal(VirtualPadType.DualShock4, bridge.Pads[^1]);
 
-		// An explicit DualSense for a game beats the default type too; Automatic (null) brings the default back.
+		// An explicit DualSense for a game beats the default type too; back on Automatic a listed game gets DualSense, not the default.
 		processes.Show("old.exe");
 		games.Tick();
 		Assert.Equal(VirtualPadType.DualSense, bridge.Pads[^1]);
@@ -74,7 +74,7 @@ public class ForcedPadTypeTests
 		games.Tick();
 		games.SetPadType("Old Game", null);
 		Assert.Null(games.PadChoiceFor("Old Game"));
-		Assert.Equal(VirtualPadType.DualShock4, games.PadTypeFor("Old Game"));
+		Assert.Equal(VirtualPadType.DualSense, games.PadTypeFor("Old Game"));
 	}
 
 	[Fact]
@@ -160,10 +160,14 @@ public class ForcedPadTypeTests
 	public void GameProcessAppearing_GetsItsTypeBeforeComingToTheFront()
 	{
 		(GameModeController games, GameModeTests.FakeProcesses processes, PadBridge bridge) = Make();
+		long now = 0;
+		games.ClockMs = () => now;
 		games.SetPadType("Racer", VirtualPadType.Xbox360);
 		processes.Show("explorer.exe");
 		games.Tick();
 		processes.Start("racer.exe");
+		// The processes are listed again after LaunchScanInterval.
+		now += (long)GameModeController.LaunchScanInterval.TotalMilliseconds;
 		games.Tick();
 		Assert.Equal(VirtualPadType.Xbox360, bridge.Pads[^1]);
 		Assert.Equal("Racer", games.State.Name);

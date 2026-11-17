@@ -8,6 +8,8 @@
     <x:Double x:Key="ThumbWidth">72</x:Double>
     <x:Double x:Key="ThumbHeight">34</x:Double>
     <x:Double x:Key="RowPickerWidth">132</x:Double>
+    <!-- The controller type picker names what Automatic gives the game ("Otomatik (DualShock 4)"): wider than the profile picker -->
+    <x:Double x:Key="RowPadPickerWidth">200</x:Double>
     <x:Double x:Key="RowControlHeight">28</x:Double>
     <x:Double x:Key="RowActionHeight">24</x:Double>
     <x:Double x:Key="PickerGap">6</x:Double>
@@ -81,8 +83,8 @@
         <TextBlock Classes="caption" Text="{Binding #Root.PadChoice.Hint}" TextWrapping="Wrap" VerticalAlignment="Center" />
       </WrapPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-        <!-- As wide as its choice needs ("Otomatik (Oyuna Göre)"), at least as wide as the rows' pickers, on their right edge -->
-        <ComboBox Name="PadTypeChoicePicker" Classes="rowPicker" Width="NaN" MinWidth="{StaticResource RowPickerWidth}" ItemsSource="{Binding #Root.PadChoice.Options}" ToolTip.Tip="{Binding #Root.PadChoice.Selected.Line}"
+        <!-- As wide as its choice needs ("Otomatik (Oyuna Göre)"), at least as wide as the rows' controller type pickers, on their right edge -->
+        <ComboBox Name="PadTypeChoicePicker" Classes="rowPicker" Width="NaN" MinWidth="{StaticResource RowPadPickerWidth}" ItemsSource="{Binding #Root.PadChoice.Options}" ToolTip.Tip="{Binding #Root.PadChoice.Selected.Line}"
                   SelectedItem="{Binding #Root.PadChoice.Selected}" AutomationProperties.Name="{Binding #Root.PadChoice.DefaultLabel}" VerticalAlignment="Center">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:PadChoiceOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
@@ -152,9 +154,10 @@
                             Content="{Binding HideText}" ToolTip.Tip="{Binding HideTip}" VerticalAlignment="Center" />
                   </WrapPanel>
                 </StackPanel>
-                <!-- Controller type (Automatic: the default type, unless chosen), then the profile for this game (Default unless chosen) -->
+                <!-- Controller type (Automatic: the default type, else the best one for the game, named in brackets; unless chosen),
+                     then the profile for this game (Default unless chosen) -->
                 <StackPanel Grid.Column="2" Classes="pickers" VerticalAlignment="Center">
-                  <ComboBox Classes="rowPicker" ItemsSource="{Binding PadType.Options}" SelectedItem="{Binding PadType.Selected}"
+                  <ComboBox Classes="rowPicker" Width="{StaticResource RowPadPickerWidth}" ItemsSource="{Binding PadType.Options}" SelectedItem="{Binding PadType.Selected}"
                             ToolTip.Tip="{Binding PadType.Tip}" AutomationProperties.Name="{Binding PadType.Label}">
                     <ComboBox.ItemTemplate>
                       <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>

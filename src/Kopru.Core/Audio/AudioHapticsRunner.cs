@@ -232,6 +232,14 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 		{
 			// Stopping never fails the caller.
 		}
+		try
+		{
+			output.StopAudioHaptics();
+		}
+		catch (Exception)
+		{
+			// Stopping never fails the caller.
+		}
 		TimeSpan active = Stopwatch.GetElapsedTime(startedAt);
 		log($"audio haptics: stopped ({reason})");
 		log(string.Create(CultureInfo.InvariantCulture,

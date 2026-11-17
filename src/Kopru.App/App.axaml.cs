@@ -66,7 +66,8 @@ public partial class App : Application
 		var service = new RealControllerService(host, hiding, new HidControllerFinder(), games: games,
 			steamCheck: Kopru.Core.Steam.SteamInputCheck.CreateDefault().Check,
 			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, Kopru.Core.Diagnostics.DiagnosticsExport.AdapterResultFileName),
-			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault());
+			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault(),
+			audioCapture: new Kopru.Core.Audio.WasapiCaptureFactory());
 		service.UseManager(manager);
 		service.AudioDevices = audioDevices;
 		var startup = new RunKeyStartupRegistration();

@@ -554,7 +554,7 @@ public sealed class BluetoothSession : IDisposable
 			if (totals.Streams > 0)
 			{
 				Diagnostics.AppLog.Write(string.Create(System.Globalization.CultureInfo.InvariantCulture,
-					$"bt: haptics stream: totals {totals.Streams} streams, {totals.ActiveMs / 1000.0:F1} s active, {totals.Reports} reports, {totals.Late} late, worst {totals.WorstMs:F2} ms, {totals.Resyncs} resyncs, timer {PreciseWait.Name(wait)}"));
+					$"bt: haptics stream: totals {totals.Streams} streams, {totals.ActiveMs / 1000.0:F1} s active, {totals.Reports} reports, {totals.Timing.Describe(Stopwatch.Frequency)}, {totals.Resyncs} resyncs, timer {PreciseWait.Name(wait)}"));
 			}
 		}
 	}
@@ -562,13 +562,17 @@ public sealed class BluetoothSession : IDisposable
 	// Reports more than this late (after the deadline) count as late in the stream log lines.
 	public static readonly TimeSpan LateReport = TimeSpan.FromMilliseconds(1);
 
+	// A link.Write taking longer than this counts as slow in the stream log lines.
+	public static readonly TimeSpan SlowWrite = TimeSpan.FromMilliseconds(2);
+
 	// Start/stop lines written per session at most (the totals line at the end is always written).
 	public const int StreamLogLimit = 100;
 
 	private struct StreamTotals
 	{
-		public long Streams, Reports, Late, Resyncs;
-		public double WorstMs, ActiveMs;
+		public long Streams, Reports, Resyncs;
+		public double ActiveMs;
+		public HapticsTiming Timing;
 	}
 
 	// One active stretch: a report every 10.67 ms until SilentReportsBeforeStop silent reports in a row (or
@@ -577,9 +581,11 @@ public sealed class BluetoothSession : IDisposable
 	{
 		long interval = (long)(BluetoothReports.HapticsInterval.TotalSeconds * Stopwatch.Frequency);
 		long lateTicks = (long)(LateReport.TotalSeconds * Stopwatch.Frequency);
+		long slowTicks = (long)(SlowWrite.TotalSeconds * Stopwatch.Frequency);
 		long started = Stopwatch.GetTimestamp();
 		long next = started;
-		long reports = 0, late = 0, worst = 0, resyncs = 0;
+		long reports = 0, resyncs = 0;
+		HapticsTiming timing = default;
 		int silent = 0;
 		bool hadSound = false;
 		byte counter = 0;
@@ -643,6 +649,7 @@ public sealed class BluetoothSession : IDisposable
 					System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(report.AsSpan(crcAt),
 						Crc.Compute(Crc.OutputSeed, report.AsSpan(0, crcAt)));
 				}
+				long writeStarted = Stopwatch.GetTimestamp();
 				try
 				{
 					link.Write(report);
@@ -652,20 +659,17 @@ public sealed class BluetoothSession : IDisposable
 				{
 					// A lost report is a few ms of haptics; keep the stream going.
 				}
+				timing.Wrote(writeStarted, Stopwatch.GetTimestamp(), slowTicks);
 				if (reports++ == 0 && stream <= StreamLogLimit)
 				{
 					// After the first report, so the log's file write never delays the first hit after silence.
 					Diagnostics.AppLog.Write($"bt: haptics stream: started ({reason})");
 				}
 				next += interval;
+				long waitStarted = Stopwatch.GetTimestamp();
 				wait.WaitUntil(next, true);
 				long now = Stopwatch.GetTimestamp();
-				long lateBy = now - next;
-				if (lateBy > lateTicks)
-				{
-					late++;
-				}
-				worst = Math.Max(worst, lateBy);
+				long lateBy = timing.Woke(waitStarted, next, now, lateTicks);
 				if (lateBy > ResyncAfterIntervals * interval)
 				{
 					next = now;
@@ -685,16 +689,14 @@ public sealed class BluetoothSession : IDisposable
 			}
 		}
 		double ms = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-		double worstMs = worst * 1000.0 / Stopwatch.Frequency;
 		totals.Reports += reports;
-		totals.Late += late;
+		totals.Timing.Add(timing);
 		totals.Resyncs += resyncs;
 		totals.ActiveMs += ms;
-		totals.WorstMs = Math.Max(totals.WorstMs, worstMs);
 		if (stream <= StreamLogLimit)
 		{
 			Diagnostics.AppLog.Write(string.Create(System.Globalization.CultureInfo.InvariantCulture,
-				$"bt: haptics stream: stopped after {ms:F0} ms ({reports} reports, {late} late, worst {worstMs:F2} ms, {resyncs} resyncs, timer {PreciseWait.Name(wait)})"));
+				$"bt: haptics stream: stopped after {ms:F0} ms ({reports} reports, {timing.Describe(Stopwatch.Frequency)}, {resyncs} resyncs, timer {PreciseWait.Name(wait)})"));
 		}
 		if (stream == StreamLogLimit)
 		{

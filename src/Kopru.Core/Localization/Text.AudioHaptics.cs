@@ -10,6 +10,11 @@ public static partial class Text
 		$"Oyunun sesinden titreşim üretir; DualSense'i desteklemeyen oyunlar için.",
 		$"Makes haptics from the game's sound; for games without DualSense support.");
 
+	// Under the switch: the game's own (Xbox) rumble is a separate setting this switch does not turn off.
+	public static string AudioHapticsRumbleNote(Language? l = null) => Pick(l,
+		$"Oyunun kendi titreşimi ayrıca gelir; onu Xbox ve DS4 Titreşimi'nden ayarla.",
+		$"The game's own rumble still comes through; set it in Xbox And DS4 Rumble.");
+
 	public static string AudioHapticsStrengthLabel(Language? l = null) => Pick(l, $"Güç", $"Strength");
 
 	public static string AudioHapticsBandBass(Language? l = null) => Pick(l, $"Bas", $"Bass");

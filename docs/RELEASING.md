@@ -16,6 +16,23 @@
    release: version, the `v<version>` download URLs of the Update.exe and the zip, their sizes and SHA-256, the release
    page, the notes). `tools\release\make-update-json.ps1` makes the manifest and can be run on its own.
 
+## Steam PlayStation support list
+
+`src/Kopru.Core/Games/playstation-support.json` (embedded) tells the controller type "Automatic" which Steam games list
+"DualSense Controller Support" (Steam categories 57/58: DualSense) or only "DualShock Controller Support" (55/56:
+DualShock 4); any other known game gets Xbox 360. The app never looks this up online. Refresh it now and then (a few
+times a year is enough), from the repository root:
+
+```
+dotnet run --project tools/Kopru.DetectStudy -- <out-dir outside the repo> playstation --out=src/Kopru.Core/Games/playstation-support.json
+```
+
+It pages through the public Steam store search (games only, one category at a time, 100 per page, 1.2 s apart, about
+20 minutes) and writes the file only when every category came back nearly whole; otherwise it stops with a message and
+leaves the file alone. Pages are cached per day under `<out-dir>\cache\playstation\<date>\`, so an interrupted run
+resumes. Commit the new file with its `generated` date. Installed Steam games the list does not know are also looked up
+in Steam's own cache on the PC (`appcache\appinfo.vdf`, read only).
+
 ## Publish (in this order)
 
 1. Create the GitHub release with the tag `v<version>` and upload all three files (Setup.exe, zip, Update.exe), under

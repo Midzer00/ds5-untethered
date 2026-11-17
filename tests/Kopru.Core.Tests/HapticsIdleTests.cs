@@ -227,6 +227,7 @@ public class HapticsIdleTests
 		Assert.Contains("bt: haptics stream: started (haptics)", mine);
 		Assert.Contains(mine, l => l.StartsWith("bt: haptics stream: stopped after ", StringComparison.Ordinal)
 			&& l.Contains($"({2 + BluetoothSession.SilentReportsBeforeStop} reports, 0 late", StringComparison.Ordinal)
+			&& l.Contains(", wake 0 late worst ", StringComparison.Ordinal) && l.Contains(" slow worst ", StringComparison.Ordinal)
 			&& l.EndsWith("timer high-resolution)", StringComparison.Ordinal));
 		Assert.Contains(mine, l => l.StartsWith("bt: haptics stream: totals 1 streams", StringComparison.Ordinal));
 		// Logged after the first report went out, so the file write never delays the first hit.
@@ -463,6 +464,8 @@ public class HapticsIdleTests
 			Assert.Equal(interval, deadlines[i] - deadlines[i - 1]);
 		}
 		Assert.Contains(lines, l => l.Contains(" 1 resyncs,", StringComparison.Ordinal));
+		// The stall happened inside the wait (it began before the deadline): counted as the timer waking late.
+		Assert.Contains(lines, l => l.Contains(", wake ", StringComparison.Ordinal) && !l.Contains(", wake 0 late", StringComparison.Ordinal));
 	}
 
 	[Fact]
@@ -618,16 +621,31 @@ public class HapticsIdleAllocationTests
 
 // Measures real timer pacing: runs one class at a time (collection "RealTime") and, in tools/test.ps1, in its own phase
 // with nothing else running (Category=RealTime).
+//
+// What is checked strictly: a wait never returns before its deadline, the high-resolution timer stays in use, and a
+// failed arming switches to the fallback for good. How late a wait may return depends on the machine at that moment:
+// the fallback sleeps in whole timer ticks, and Windows 11 may ignore a process's request for 1 ms ticks (a process
+// whose windows are hidden or minimized, or one it counts as background) and then sleeps in 15.6 ms ticks; a busy
+// machine also wakes threads late. So the lateness bound is set from the timer granularity measured right then, and
+// one noisy measurement is repeated.
 [Trait("Category", "RealTime")]
 [Collection("RealTime")]
 public class PreciseWaitTests
 {
+	// Waits measured per attempt (10.67 ms apart).
+	private const int Samples = 40;
+
+	// The median lateness allowed when the machine sleeps in ~1 ms ticks (measured: 0.00 ms high-resolution, ~0.0-0.5 ms
+	// fallback on an idle machine).
+	private const double PreciseBoundMs = 2;
+
 	[Fact]
 	public void HighResolutionTimer_IsAvailable_AndNeverWakesEarly()
 	{
 		using IPreciseWait wait = PreciseWait.Create();
 		Assert.True(wait.HighResolution);
 		AssertPaces(wait);
+		Assert.True(wait.HighResolution);
 	}
 
 	[Fact]
@@ -650,11 +668,11 @@ public class PreciseWaitTests
 		Assert.True(wait.HighResolution);
 
 		Stopwatch clock = Stopwatch.StartNew();
-		AssertPaces(wait);
+		int waited = AssertPaces(wait);
 
-		// 20 deadlines 10.67 ms apart were really waited for (falling through would take ~0 ms), and the timer was tried
-		// only once before switching for good.
-		Assert.True(clock.Elapsed.TotalMilliseconds >= 20 * BluetoothReports.HapticsInterval.TotalMilliseconds - 1);
+		// Every deadline (10.67 ms apart) was really waited for (falling through would take ~0 ms), and the timer was
+		// tried only once before switching for good.
+		Assert.True(clock.Elapsed.TotalMilliseconds >= waited * BluetoothReports.HapticsInterval.TotalMilliseconds - 1);
 		Assert.False(wait.HighResolution);
 		Assert.Equal(1, armed);
 		wait.Idle();
@@ -670,20 +688,92 @@ public class PreciseWaitTests
 		Assert.True(clock.ElapsedMilliseconds < 500);
 	}
 
-	private static void AssertPaces(IPreciseWait wait)
+	[Fact]
+	public void LatenessBound_FollowsTheMeasuredTimerGranularity()
+	{
+		Assert.Equal(PreciseBoundMs, LatenessBound(1.1));
+		Assert.Equal(PreciseBoundMs, LatenessBound(2));
+		Assert.Equal(PreciseBoundMs + 13.6, LatenessBound(15.6), 6);
+	}
+
+	// Paces Samples waits like the haptics stream; returns how many deadlines were waited for. Never early, on every
+	// attempt; the median lateness within LatenessBound, on one of two attempts.
+	private static int AssertPaces(IPreciseWait wait)
+	{
+		string failure = "";
+		int waited = 0;
+		for (int attempt = 0; attempt < 2; attempt++)
+		{
+			List<double> late = Pace(wait);
+			waited += late.Count;
+			Assert.All(late, l => Assert.True(l >= 0, $"woke {-l:F3} ms early"));
+			double granularity = SleepGranularityMs();
+			double median = Median(late);
+			double bound = LatenessBound(granularity);
+			if (median < bound)
+			{
+				return waited;
+			}
+			failure += $"attempt {attempt + 1}: median {median:F3} ms late (bound {bound:F2} ms, sleep granularity {granularity:F2} ms, p90 {late[late.Count * 9 / 10]:F3} ms); ";
+		}
+		Assert.Fail(failure);
+		return waited;
+	}
+
+	private static List<double> Pace(IPreciseWait wait)
 	{
 		long interval = (long)(BluetoothReports.HapticsInterval.TotalSeconds * Stopwatch.Frequency);
 		long next = Stopwatch.GetTimestamp();
 		List<double> late = [];
-		for (int i = 0; i < 20; i++)
+		for (int i = 0; i < Samples; i++)
 		{
 			next += interval;
 			Assert.True(wait.WaitUntil(next, true));
 			late.Add((Stopwatch.GetTimestamp() - next) * 1000.0 / Stopwatch.Frequency);
 		}
-		Assert.All(late, l => Assert.True(l >= 0, $"woke {-l:F3} ms early"));
 		late.Sort();
-		// Generous: a loaded test machine can delay any thread; the median shows the method works.
-		Assert.True(late[late.Count / 2] < 2, $"median {late[late.Count / 2]:F3} ms late");
+		return late;
 	}
+
+	private static double Median(List<double> sorted) => sorted[sorted.Count / 2];
+
+	// The median lateness allowed: PreciseBoundMs while a 1 ms sleep takes up to 2 ms (the 1 ms timer resolution the
+	// fallback asks for is granted and the machine wakes threads on time); otherwise as much more as the sleeps take
+	// longer (a coarse timer or a loaded machine delays any wait by about that much).
+	internal static double LatenessBound(double sleepGranularityMs) => PreciseBoundMs + Math.Max(0, sleepGranularityMs - 2);
+
+	// How long a 1 ms sleep takes right now (median of 15) in a process that asks for 1 ms timer resolution, as the
+	// fallback does: ~1-2 ms when it is granted, ~15.6 ms when Windows ignores the request, longer on a loaded machine.
+	private static double SleepGranularityMs()
+	{
+		if (OperatingSystem.IsWindows())
+		{
+			_ = timeBeginPeriod(1);
+		}
+		try
+		{
+			List<double> sleeps = [];
+			for (int i = 0; i < 15; i++)
+			{
+				long start = Stopwatch.GetTimestamp();
+				Thread.Sleep(1);
+				sleeps.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+			}
+			sleeps.Sort();
+			return Median(sleeps);
+		}
+		finally
+		{
+			if (OperatingSystem.IsWindows())
+			{
+				_ = timeEndPeriod(1);
+			}
+		}
+	}
+
+	[System.Runtime.InteropServices.DllImport("winmm.dll")]
+	private static extern uint timeBeginPeriod(uint period);
+
+	[System.Runtime.InteropServices.DllImport("winmm.dll")]
+	private static extern uint timeEndPeriod(uint period);
 }

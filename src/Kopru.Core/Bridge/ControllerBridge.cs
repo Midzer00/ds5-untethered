@@ -31,7 +31,9 @@ public sealed partial class ControllerBridge : IDisposable
 	public const int SpeakerSilenceThreshold = 32;
 	public const int SpeakerTailFrames = Audio.SpeakerAudioSender.InputRate * SpeakerTailMs / 1000;
 
-	private static readonly long AudioIdleTicks = Stopwatch.Frequency / 20;
+	// The game's audio or audio haptics arrived within this time (50 ms, in Time's timestamp units): the rumble refill
+	// leaves the timing to them.
+	private long AudioIdleTicks => Time.TimestampFrequency / 20;
 
 	private readonly BluetoothSession session;
 
@@ -121,7 +123,8 @@ public sealed partial class ControllerBridge : IDisposable
 
 	private long lastGameOutput = long.MinValue / 2;
 
-	// The clock of the game output timing (GameOutputStreaming, the game's hold on the light). Tests replace it.
+	// The clock of the game output timing (GameOutputStreaming, the game's hold on the light) and of the audio timing the
+	// rumble refill follows (AudioIdleTicks). Tests replace it.
 	public TimeProvider Time { get; init; } = TimeProvider.System;
 
 	private TimeSpan SinceGameOutput => Time.GetElapsedTime(Interlocked.Read(ref lastGameOutput));
@@ -837,7 +840,7 @@ public sealed partial class ControllerBridge : IDisposable
 		}
 		lock (audioGate)
 		{
-			Interlocked.Exchange(ref lastAudio, Stopwatch.GetTimestamp());
+			Interlocked.Exchange(ref lastAudio, Time.GetTimestamp());
 			int most = HapticsConverter.MaxFrames(span.Length);
 			if (frameLeft.Length < most)
 			{
@@ -956,7 +959,7 @@ public sealed partial class ControllerBridge : IDisposable
 	// RumbleAheadFrames of rumble buffered. Nothing to do (and nothing allocated) otherwise.
 	private void RefillRumble()
 	{
-		if (disposed || Stopwatch.GetTimestamp() - Interlocked.Read(ref lastAudio) <= AudioIdleTicks || AudioHapticsFlowing || Motors == (0, 0))
+		if (disposed || Time.GetTimestamp() - Interlocked.Read(ref lastAudio) <= AudioIdleTicks || AudioHapticsFlowing || Motors == (0, 0))
 		{
 			return;
 		}

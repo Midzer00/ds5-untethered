@@ -2,11 +2,11 @@
 using Kopru.Core.Games;
 using Kopru.DetectStudy;
 
-// Usage: Kopru.DetectStudy <out-dir> [fetch|audit|recall|propose|local|fp|all] [--offline] [--cache=<dir>]
+// Usage: Kopru.DetectStudy <out-dir> [fetch|audit|recall|propose|local|fp|all|playstation] [--offline] [--cache=<dir>] [--out=<file>]
 // Everything written (downloaded metadata in <out-dir>\cache, results as .md/.csv) goes to <out-dir>; keep it outside the repo.
 if (args.Length < 1)
 {
-	Console.Error.WriteLine("usage: Kopru.DetectStudy <out-dir> [fetch|audit|recall|propose|local|fp|all] [--offline] [--cache=<dir>]");
+	Console.Error.WriteLine("usage: Kopru.DetectStudy <out-dir> [fetch|audit|recall|propose|local|fp|all|playstation] [--offline] [--cache=<dir>] [--out=<file>]");
 	return 2;
 }
 string outDir = Path.GetFullPath(args[0]);
@@ -48,6 +48,20 @@ if (Run("local"))
 if (Run("fp"))
 {
 	File.WriteAllText(Path.Combine(outDir, "fp.md"), FalsePositives.Report(catalog, outDir));
+}
+if (command == "playstation")
+{
+	// --out=<file>: where playstation-support.json goes (default <out-dir>\playstation-support.json).
+	string outFile = args.FirstOrDefault(a => a.StartsWith("--out=", StringComparison.Ordinal)) is { } o ? Path.GetFullPath(o[6..]) : Path.Combine(outDir, "playstation-support.json");
+	try
+	{
+		Console.WriteLine(PlayStationSearch.Run(cacheDir, outFile, offline));
+	}
+	catch (InvalidOperationException e)
+	{
+		Console.Error.WriteLine("playstation: " + e.Message + " (nothing written)");
+		return 1;
+	}
 }
 Console.WriteLine("done: " + outDir);
 return 0;

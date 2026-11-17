@@ -19,11 +19,11 @@ public sealed class NavItem(PageViewModel page, string iconData) : ViewModelBase
 // games list (null: no update button); Now: the wall clock for its weekly automatic check. GameImages: the pictures of the
 // supported games list (null: placeholders only). InstalledGames: finds the supported games installed on this PC (null:
 // nothing counts as installed). Updates: the in-app update check, download and install (null: the Updates block only
-// shows the version).
+// shows the version). Links: opens web pages in the browser (the support link; null: the shell's default browser).
 public sealed record AppEnvironment(ISettingsStore? Store = null, IStartupRegistration? Startup = null, Func<SetupWizard>? Wizard = null,
 	Func<bool>? FullScreen = null, Func<long>? Clock = null, Kopru.Core.Games.GameCatalogUpdater? GameList = null,
 	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null, RestartServices? Restart = null,
-	Kopru.Core.Games.InstalledGames? InstalledGames = null, UpdateServices? Updates = null);
+	Kopru.Core.Games.InstalledGames? InstalledGames = null, UpdateServices? Updates = null, IUrlLauncher? Links = null);
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -40,7 +40,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		{
 			Settings.Clock = clock;
 		}
-		Tips = new TipBar(service, Settings);
 		BackToGame = new GameReturn(service, Settings, _environment.FullScreen);
 		Overview = new OverviewViewModel(service, Settings);
 		Overview.BackToGame = BackToGame;
@@ -57,6 +56,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		};
 		Light = new LightViewModel(service, Settings);
 		SettingsPage = new SettingsViewModel(service, Settings, _environment.Wizard != null ? ShowSetup : null) { Bridge = Overview };
+		// Support (GitHub Sponsors): the pill in the sidebar and the link in Settings > General > Updates.
+		Support = new SupportLinkViewModel(_environment.Links ?? new ShellUrlLauncher());
+		SettingsPage.Support = Support;
 		NavItems =
 		[
 			new(Overview, Icons.Overview),
@@ -199,8 +201,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	}
 
 	public SettingsState Settings { get; }
-	// The in-app tips bar at the bottom of the content column.
-	public TipBar Tips { get; }
 	// The "Back To Game" button (Overview header), and the other ways back to a running game.
 	public GameReturn BackToGame { get; }
 	public OverviewViewModel Overview { get; }
@@ -325,6 +325,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
 	// In-app updates (Settings > General).
 	public UpdatesViewModel Updates { get; }
+	public SupportLinkViewModel Support { get; }
 
 	// The automatic game list check started with the window (tests await it).
 	public Task AutoUpdateTask { get; }

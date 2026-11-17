@@ -238,8 +238,8 @@ public sealed class SupportedGamesLayoutTests
 	private static List<Rect> PickerEdges(IEnumerable<IGrouping<object?, ComboBox>> rows, int index, Visual root) =>
 		rows.Select(r => Bounds(r.ElementAt(index), root)).ToList();
 
-	// Each picker keeps one right edge and one width from row to row (side by side or one above the other), and both
-	// pickers are as wide.
+	// Each picker keeps one right edge and one width from row to row (side by side or one above the other); the controller
+	// type picker (it names what Automatic gives the game) is at least as wide as the profile picker.
 	private static void PickersShareTheirColumns(List<IGrouping<object?, ComboBox>> rows, Visual root)
 	{
 		foreach (int index in new[] { 0, 1 })
@@ -248,7 +248,7 @@ public sealed class SupportedGamesLayoutTests
 			Assert.Single(edges.Select(e => Math.Round(e.Right)).Distinct());
 			Assert.Single(edges.Select(e => Math.Round(e.Width)).Distinct());
 		}
-		Assert.Equal(Math.Round(PickerEdges(rows, 0, root)[0].Width), Math.Round(PickerEdges(rows, 1, root)[0].Width));
+		Assert.True(Math.Round(PickerEdges(rows, 0, root)[0].Width) >= Math.Round(PickerEdges(rows, 1, root)[0].Width));
 	}
 
 	private static void Settle()

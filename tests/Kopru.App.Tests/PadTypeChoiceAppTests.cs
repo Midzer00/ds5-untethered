@@ -107,7 +107,9 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		List<GameItemViewModel> items = vm.SupportedGames.Games.Where(g => g.PadType != null).Take(2).ToList();
 		GameItemViewModel chosen = items[0], auto = items[1];
 		Assert.Null(chosen.PadType!.Selected!.Type);
-		Assert.Equal(Text.PadChoiceAuto(), chosen.PadType.Selected.Name);
+		// Automatic names what it gives the game: a listed game, DualSense.
+		Assert.Equal(Text.PadChoiceAutoFor("DualSense"), chosen.PadType.Selected.Name);
+		Assert.EndsWith(Text.PadTypeAutoLine(), chosen.PadType.Tip);
 		chosen.PadType.Selected = chosen.PadType.Options.Single(o => o.Type == VirtualPadType.Xbox360);
 		Assert.Equal(VirtualPadType.Xbox360, fake.Games.PadChoiceFor(chosen.Key));
 		Assert.EndsWith(Text.PadTypeXboxLine(), chosen.PadType.Tip);
@@ -116,14 +118,16 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		Settle();
 		Assert.Equal(VirtualPadType.Xbox360, chosen.PadType.Selected!.Type);
 		Assert.Equal(VirtualPadType.Xbox360, fake.Games.PadTypeFor(chosen.Key));
+		// The default type is for games we know nothing about: a listed game on Automatic keeps DualSense.
 		Assert.Null(auto.PadType!.Selected!.Type);
-		Assert.Equal(VirtualPadType.DualShock4, fake.Games.PadTypeFor(auto.Key));
+		Assert.Equal(VirtualPadType.DualSense, fake.Games.PadTypeFor(auto.Key));
 
-		// Back to Automatic: the game follows the default type again.
+		// Back to Automatic: DualSense again, and the line names the default type's part.
 		chosen.PadType.Selected = chosen.PadType.Options[0];
 		Assert.Null(fake.Games.PadChoiceFor(chosen.Key));
-		Assert.Equal(VirtualPadType.DualShock4, fake.Games.PadTypeFor(chosen.Key));
-		Assert.EndsWith(Text.PadTypeAutoLine(), chosen.PadType.Tip);
+		Assert.Equal(VirtualPadType.DualSense, fake.Games.PadTypeFor(chosen.Key));
+		Assert.EndsWith(Text.PadTypeAutoDefaultLine(), chosen.PadType.Tip);
+		Assert.Equal(Text.PadChoiceAutoFor("DualSense"), chosen.PadType.Options[0].Name);
 	}
 
 	[AvaloniaFact]
@@ -245,9 +249,12 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		Assert.Equal("Automatic", Text.PadChoiceAuto(Language.English));
 		Assert.Equal("Varsayılan Kumanda Türü", Text.PadTypeDefaultLabel(Language.Turkish));
 		Assert.Equal("Automatic (Per Game)", Text.PadChoiceAutoPerGame(Language.English));
+		Assert.Equal("Hakkında bilgi olmayan oyunlarda kullanılır.", Text.PadTypeDefaultHint(Language.Turkish));
+		Assert.Equal("Used for games we know nothing about.", Text.PadTypeDefaultHint(Language.English));
 		foreach (Language l in new[] { Language.Turkish, Language.English })
 		{
-			foreach (string line in new[] { Text.PadTypeAutoLine(l), Text.PadChoiceAutoLine(l), Text.PadTypeDefaultHint(l), Text.PadTypeGameHint(l) })
+			foreach (string line in new[] { Text.PadTypeAutoLine(l), Text.PadTypeAutoDefaultLine(l), Text.PadChoiceAutoLine(l), Text.PadTypeDefaultHint(l), Text.PadTypeGameHint(l),
+				Text.PadChoiceAutoFor("Xbox 360", l) })
 			{
 				Assert.False(string.IsNullOrWhiteSpace(line));
 				Assert.DoesNotContain("tepsi", line, StringComparison.OrdinalIgnoreCase);

@@ -17,15 +17,7 @@ public partial class MainWindow : Window
 		// A transparent surface for the system acrylic where Windows can draw it; opaque graphite elsewhere.
 		TransparencyLevelHint = SystemBackdrop.IsSupported ? [WindowTransparencyLevel.Transparent] : [WindowTransparencyLevel.None];
 		DragBand.PointerPressed += OnDragBandPressed;
-		// Tips have their moment when the window becomes active (also when PS brings it up).
-		Activated += (_, _) =>
-		{
-			if (DataContext is ViewModels.MainWindowViewModel vm)
-			{
-				vm.BackToGame.SetWindowActive(true);
-				vm.Tips.OnWindowActivated();
-			}
-		};
+		Activated += (_, _) => (DataContext as ViewModels.MainWindowViewModel)?.BackToGame.SetWindowActive(true);
 		Deactivated += (_, _) => (DataContext as ViewModels.MainWindowViewModel)?.BackToGame.SetWindowActive(false);
 		// On Windows the base constructor already sets ClientSize (and may set other window properties) before
 		// InitializeComponent has created the named parts, so the property handlers skip until now; apply what they
@@ -37,7 +29,7 @@ public partial class MainWindow : Window
 	public double ContentScale { get; private set; } = 1;
 
 	// True once the named parts exist (InitializeComponent has run).
-	private bool PartsReady => ScaleHost != null && Pages != null && Root != null && TipHost != null;
+	private bool PartsReady => ScaleHost != null && Pages != null && Root != null;
 
 	// Scale for the current client size, and the maximized off-screen margin. Safe to call at any time.
 	private void ApplyLayoutState(bool force = false)

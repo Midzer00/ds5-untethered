@@ -13,8 +13,8 @@ public sealed class PadChoiceOption(VirtualPadType? type, Func<string> name, Fun
 }
 
 // The default controller type, "Varsayılan Kumanda Türü" (Quick Settings and the Games page share this one instance from
-// SettingsState): the type games without their own choice see; Automatic (Per Game) leaves those on DualSense. A game's
-// own choice always wins. The value lives in the game mode controller (ForcedPadType) and is saved with the game memory.
+// SettingsState): the type Automatic games we know nothing about see, and the type with no game running; Automatic (Per
+// Game) gives those Xbox 360 (Core GameModePadTypes). A game's own choice and what we know about a game win over it. The value lives in the game mode controller (ForcedPadType) and is saved with the game memory.
 public sealed class PadTypeChoiceViewModel : ViewModelBase
 {
 	private readonly GameModeController _games;

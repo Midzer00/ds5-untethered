@@ -31,5 +31,7 @@ public static class IconPaths
 	// An arrow pointing back: back to the game.
 	public static Geometry Back { get; } = Geometry.Parse("M10,5.5 L3.5,12 L10,18.5 M4,12 H20.5");
 	public static Geometry ChevronRight { get; } = Geometry.Parse("M9.5,6 L15.5,12 L9.5,18");
+	// A heart outline: support (GitHub Sponsors).
+	public static Geometry Heart { get; } = Geometry.Parse("M12,19.5 C12,19.5 3.5,14.6 3.5,9 C3.5,6.4 5.4,4.5 7.9,4.5 C9.7,4.5 11.2,5.5 12,7.1 C12.8,5.5 14.3,4.5 16.1,4.5 C18.6,4.5 20.5,6.4 20.5,9 C20.5,14.6 12,19.5 12,19.5 Z");
 	public static Geometry Battery { get; } = Geometry.Parse("M4,7.5 H17 C18.1,7.5 19,8.4 19,9.5 V14.5 C19,15.6 18.1,16.5 17,16.5 H4 C2.9,16.5 2,15.6 2,14.5 V9.5 C2,8.4 2.9,7.5 4,7.5 Z M22,10.5 V13.5 M5.5,10.5 V13.5 M9,10.5 V13.5");
 }

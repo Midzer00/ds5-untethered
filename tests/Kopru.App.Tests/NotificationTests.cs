@@ -283,6 +283,8 @@ public class NotificationTests
 	{
 		Harness h = Running();
 		h.Fake.Games.SetForcedPadType(VirtualPadType.DualShock4);
+		// A listed game: its own choice, else Automatic would give it DualSense.
+		h.Fake.Games.SetPadType("Returnal", VirtualPadType.DualShock4);
 		h.Fake.Watcher.Exe = "Returnal-Win64-Shipping.exe";
 		h.Fake.Games.Tick();
 		h.Fake.RaiseStateChanged();
@@ -301,7 +303,7 @@ public class NotificationTests
 		h.Fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.Xbox360)));
 		h.Fake.RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, nameof(VirtualPadType.Xbox360)));
 		AppNotification toast = Assert.Single(h.Raised);
-		Assert.Equal(("Xbox 360 Modu", "Ayrı seçim yapmadığın oyunlar bu kumandayı görür."), (toast.Title, toast.Body));
+		Assert.Equal(("Xbox 360 Modu", "Hakkında bilgi olmayan oyunlarda kullanılır."), (toast.Title, toast.Body));
 		Assert.Equal((NotificationType.GameDetected, AppPage.SupportedGames), (toast.Type, toast.Page));
 
 		h.Later();
