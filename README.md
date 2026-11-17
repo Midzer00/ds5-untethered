@@ -159,6 +159,8 @@ Done and verified on hardware:
 - In-app updates from this repository's Releases (0.1.8 updated itself to 0.1.9).
 - DualShock 4 type: it presents itself like a real wired DualShock 4; verified in one game with native DualShock 4
   support so far.
+- Xbox And DS4 Rumble (a game's rumble played as haptics) and Turn Sound Into Haptics: verified in one game without
+  native haptics so far (Turn Sound Into Haptics was fixed in 0.1.10).
 
 Done and tested in code, not yet verified on hardware:
 - The app: setup page, Overview, Games, Haptics And Triggers, one Controller page (Test, Output Tests, Remap and
@@ -173,8 +175,7 @@ Done and tested in code, not yet verified on hardware:
 - Games page: Supported and Unsupported games found from Steam and Epic, a Play button, a Start File you choose, and
   each game's settings in a pop-up. Games are recognised by exe names from Steam's data, also when installed outside
   Steam folders.
-- Hiding the real controller with HidHide; rumble to haptics and Turn Sound Into Haptics for games without native
-  haptics; Pause Haptics In Silence; reconnection, battery warning, idle power-off.
+- Hiding the real controller with HidHide; Pause Haptics In Silence; reconnection, battery warning, idle power-off.
 - DSX Mod Support (off by default): game mods made for DSX can send trigger and light effects.
 - Trigger strength, remapping, gyro aim, light effects.
 - Microphone button light and notifications, controller speaker in games.
@@ -360,6 +361,8 @@ Tamamlandı, donanımda doğrulandı:
 - Bu deponun Releases sayfasından uygulama içi güncelleme (0.1.8 kendini 0.1.9'a güncelledi).
 - DualShock 4 türü: kendini gerçek bir kablolu DualShock 4 gibi tanıtıyor; şimdilik DualShock 4'ü doğrudan destekleyen
   bir oyunda doğrulandı.
+- Xbox ve DS4 Titreşimi (oyunun titreşiminin haptik olarak çalınması) ve Sesi Titreşime Çevir: şimdilik kendi haptiği
+  olmayan bir oyunda doğrulandı (Sesi Titreşime Çevir 0.1.10'da düzeltildi).
 
 Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
 - Uygulama: kurulum sayfası, Genel Bakış, Oyunlar, Titreşim ve Tetikler, tek bir Kumanda sayfası (Test, Çıkış
@@ -375,8 +378,7 @@ Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
 - Oyunlar sayfası: Steam ve Epic'ten bulunan Desteklenen ve Desteklenmeyen oyunlar, Oyna düğmesi, seçilebilen
   Başlatma Dosyası ve açılır pencerede her oyunun kendi ayarları. Oyunlar Steam verisindeki exe adlarından, Steam
   klasörleri dışına kuruluysa da tanınır.
-- Gerçek kumandanın HidHide ile gizlenmesi; kendi haptiği olmayan oyunlarda titreşimin haptiğe çevrilmesi ve Sesi
-  Titreşime Çevir; Sessizlikte Haptiği Durdur; yeniden bağlanma, pil uyarısı, boştayken kapanma.
+- Gerçek kumandanın HidHide ile gizlenmesi; Sessizlikte Haptiği Durdur; yeniden bağlanma, pil uyarısı, boştayken kapanma.
 - DSX Mod Desteği (varsayılan olarak kapalı): DSX için yapılmış oyun modları tetik ve ışık efektlerini gönderebilir.
 - Tetik gücü, tuş atama, gyro ile nişan alma, ışık efektleri.
 - Mikrofon tuşunun ışığı ve bildirimleri, oyunlarda kumanda hoparlörü.
