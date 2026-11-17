@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/brand/logo.png" alt="DS5 Untethered logo" width="480"></p>
+<p align="center"><img src="docs/brand/logo.png" alt="DS5 Untethered logo" width="240"></p>
 
 <h1 align="center">DS5 Untethered</h1>
 
@@ -21,17 +21,11 @@
   <a href="https://github.com/sponsors/Midzer00"><img src="https://img.shields.io/badge/Sponsor-on%20GitHub-db61a2?style=for-the-badge" alt="Sponsor on GitHub"></a>
 </p>
 
+<p align="center"><img src="docs/screens/v0.1.8/overview-en.jpg" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="760"></p>
+
 <p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="#quick-start">Quick Start</a> · <a href="#troubleshooting">Troubleshooting</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="https://midzer00.github.io/ds5-untethered/">Website</a></p>
 
-<p align="center"><img src="docs/screens/v0.1.8/overview-en.jpg" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="600"></p>
-
-## Disclaimer
-
-DS5 Untethered is an unofficial project. It is not affiliated with, endorsed or sponsored by Sony Interactive Entertainment.
-"DualSense", "DualSense Edge", "PlayStation" and "PS5" are trademarks of Sony Interactive Entertainment Inc. and are
-used only to describe compatibility. "DS5" is used only as a common shorthand to describe compatibility. No Sony firmware, software, images or logos are included. The controller drawings
-are original. The protocol implementation is an independent interoperability implementation based on public
-documentation and our own measurements. Use at your own risk; the software comes with no warranty.
+<p align="center"><sub>Unofficial project, not affiliated with Sony. See the <a href="#disclaimer">Disclaimer</a> (<a href="#yasal-uyarı">Yasal uyarı</a>).</sub></p>
 
 ## English
 
@@ -214,6 +208,14 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 | ![Settings, Shortcuts](docs/screens/v0.1.8/settings-shortcuts-en.jpg) | ![Settings, Mouse Mode](docs/screens/v0.1.8/settings-mouse-mode-en.jpg) |
 | ![Settings, Notifications](docs/screens/v0.1.8/settings-notifications-en.jpg) | |
 
+### Disclaimer
+
+DS5 Untethered is an unofficial project. It is not affiliated with, endorsed or sponsored by Sony Interactive Entertainment.
+"DualSense", "DualSense Edge", "PlayStation" and "PS5" are trademarks of Sony Interactive Entertainment Inc. and are
+used only to describe compatibility. "DS5" is used only as a common shorthand to describe compatibility. No Sony firmware, software, images or logos are included. The controller drawings
+are original. The protocol implementation is an independent interoperability implementation based on public
+documentation and our own measurements. Use at your own risk; the software comes with no warranty.
+
 ### License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
@@ -221,16 +223,6 @@ GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PART
 ## Türkçe
 
 DS5 Untethered, oyunun kendi haptiğini ve adaptif tetiklerini DualSense'te Bluetooth üzerinden çalıştırır.
-
-### Yasal uyarı
-
-DS5 Untethered resmi bir proje değildir. Sony Interactive Entertainment ile bağlantısı yoktur, şirketin onayını
-ya da desteğini de almamıştır. "DualSense", "DualSense Edge", "PlayStation" ve "PS5",
-Sony Interactive Entertainment Inc.'in ticari markalarıdır ve burada yalnızca uyumluluğu belirtmek için kullanılmıştır.
-"DS5" de yalnızca uyumluluğu belirtmek için, yaygın bir kısaltma olarak kullanılmıştır. Projede Sony'ye ait hiçbir
-donanım yazılımı, yazılım, görsel ya da logo yoktur. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
-kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Yazılımın herhangi
-bir garantisi yoktur. Kullanımdan doğabilecek her türlü sorumluluk size aittir.
 
 ### Hızlı Başlangıç
 
@@ -413,6 +405,16 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 | ![Ayarlar, Genel](docs/screens/v0.1.8/settings-general-tr.jpg) | ![Ayarlar, Oyun Modları ve Haptik](docs/screens/v0.1.8/settings-game-mods-and-haptics-tr.jpg) |
 | ![Ayarlar, Kısayollar](docs/screens/v0.1.8/settings-shortcuts-tr.jpg) | ![Ayarlar, Fare Modu](docs/screens/v0.1.8/settings-mouse-mode-tr.jpg) |
 | ![Ayarlar, Bildirimler](docs/screens/v0.1.8/settings-notifications-tr.jpg) | |
+
+### Yasal uyarı
+
+DS5 Untethered resmi bir proje değildir. Sony Interactive Entertainment ile bağlantısı yoktur, şirketin onayını
+ya da desteğini de almamıştır. "DualSense", "DualSense Edge", "PlayStation" ve "PS5",
+Sony Interactive Entertainment Inc.'in ticari markalarıdır ve burada yalnızca uyumluluğu belirtmek için kullanılmıştır.
+"DS5" de yalnızca uyumluluğu belirtmek için, yaygın bir kısaltma olarak kullanılmıştır. Projede Sony'ye ait hiçbir
+donanım yazılımı, yazılım, görsel ya da logo yoktur. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
+kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Yazılımın herhangi
+bir garantisi yoktur. Kullanımdan doğabilecek her türlü sorumluluk size aittir.
 
 ### Lisans
 

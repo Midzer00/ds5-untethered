@@ -39,8 +39,8 @@ public class EdgeIdentityTests
 		Assert.Equal(0, edge.DeviceDescriptor[16]);
 		Assert.Equal("DualSense Edge Wireless Controller", edge.Strings[2]);
 		Assert.Equal(405, edge.HidReportDescriptor.Length);
-		// The public dump in references/edge, byte for byte.
-		string dump = File.ReadLines(RepoFile("references", "edge", "usb_descriptor.txt")).First();
+		// The public dump in docs/references/edge, byte for byte.
+		string dump = File.ReadLines(RepoFile("docs", "references", "edge", "usb_descriptor.txt")).First();
 		Assert.Equal(Convert.FromHexString(string.Concat(dump.Split(' ', StringSplitOptions.RemoveEmptyEntries))), edge.HidReportDescriptor);
 		// The first 109 bytes (input/output layout) are the DualSense's.
 		Assert.Equal(DualSense().HidReportDescriptor[..109], edge.HidReportDescriptor[..109]);

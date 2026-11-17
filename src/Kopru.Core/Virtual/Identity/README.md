@@ -39,7 +39,7 @@ Edge, so it is assembled from public data and is **not verified on hardware**:
   bcdDevice (0x0100), class and packet size are kept from the DualSense: the Edge's own values are unknown.
 - Strings: manufacturer as on the DualSense; product "DualSense Edge Wireless Controller" (the Edge's public name).
 - HID report descriptor: the 405-byte USB descriptor of a real Edge as shared publicly on the linux-input mailing list
-  (`references/edge/usb_descriptor.txt`). Its first 109 bytes (input report 0x01, output report 0x02) equal the
+  (`docs/references/edge/usb_descriptor.txt`). Its first 109 bytes (input report 0x01, output report 0x02) equal the
   DualSense's; the rest declares the same feature reports plus 0x60–0x65, 0x68 and 0x70–0x7B.
 - Configuration descriptor: the DualSense one (same interfaces and endpoints) with the HID descriptor's
   wDescriptorLength changed from 0x0121 (289) to 0x0195 (405). The total length is unchanged.
