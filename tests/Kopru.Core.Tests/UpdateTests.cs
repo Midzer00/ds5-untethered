@@ -118,7 +118,9 @@ public sealed class UpdateTests
 		Assert.True(m.NotesEn.Length <= UpdateManifest.MaxNotesChars + 1);
 	}
 
-	// The update.json committed at the repository root is a valid manifest of an existing release.
+	// The update.json committed at the repository root is a valid manifest of an existing release. Up to 0.1.8 it names
+	// the Setup.exe; later releases name the byte-identical Update.exe that only the updater downloads (docs/RELEASING.md,
+	// "Download counts").
 	[Fact]
 	public void CommittedManifest_IsValid()
 	{
@@ -130,8 +132,9 @@ public sealed class UpdateTests
 		Assert.NotNull(dir);
 		UpdateManifest? m = UpdateManifest.Parse(File.ReadAllText(Path.Combine(dir!, UpdateEndpoints.ManifestPath)), Endpoints, out string? problem);
 		Assert.True(m != null, problem);
-		Assert.Equal($"DS5-Untethered-{m!.Version}-Setup.exe", m.Setup.FileName);
-		Assert.Equal($"{Prefix}v{m.Version}/DS5-Untethered-{m.Version}-Setup.exe", m.Setup.Url);
+		string installer = m!.Version <= AppVersion.Parse("0.1.8")! ? "Setup" : "Update";
+		Assert.Equal($"DS5-Untethered-{m.Version}-{installer}.exe", m.Setup.FileName);
+		Assert.Equal($"{Prefix}v{m.Version}/DS5-Untethered-{m.Version}-{installer}.exe", m.Setup.Url);
 		Assert.Equal($"DS5-Untethered-{m.Version}-win-x64.zip", m.Zip!.FileName);
 	}
 

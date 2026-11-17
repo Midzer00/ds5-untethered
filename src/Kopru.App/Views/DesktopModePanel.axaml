@@ -25,13 +25,22 @@
                         AutomationProperties.Name="{Binding AutoOffLabel}" AutomationProperties.HelpText="{Binding AutoOffHint}" />
         </Grid>
         <Border Classes="divider" />
-        <!-- Which stick moves the pointer (the other scrolls): a two-step choice beside the name (under it in a narrow column) -->
-        <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding PointerStickHint}">
+        <!-- Which stick moves the pointer (the other scrolls): a two-step choice beside the name -->
+        <Grid Classes="settingRow stack inline" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding PointerStickHint}">
           <StackPanel Classes="text">
             <TextBlock Classes="label" Text="{Binding PointerStickLabel}" />
           </StackPanel>
           <ListBox Theme="{StaticResource Segmented}" Name="PointerStickChoice" ItemsSource="{Binding PointerSticks}" SelectedIndex="{Binding PointerStickIndex}"
                    Classes="control wide" AutomationProperties.Name="{Binding PointerStickLabel}" AutomationProperties.HelpText="{Binding PointerStickHint}" />
+        </Grid>
+        <Border Classes="divider" />
+        <!-- Which touchpad press right clicks (Off: every press is a left click), a three-step choice like the stick's -->
+        <Grid Classes="settingRow stack inline" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding RightClickHint}">
+          <StackPanel Classes="text">
+            <TextBlock Classes="label" Text="{Binding RightClickLabel}" />
+          </StackPanel>
+          <ListBox Theme="{StaticResource Segmented}" Name="RightClickChoice" ItemsSource="{Binding RightClicks}" SelectedIndex="{Binding RightClickIndex}"
+                   Classes="control wide" AutomationProperties.Name="{Binding RightClickLabel}" AutomationProperties.HelpText="{Binding RightClickHint}" />
         </Grid>
         <Border Classes="divider" />
         <!-- Speeds: one row each, slider and value on the shared right edge (under the name in a narrow column) -->

@@ -239,7 +239,10 @@ public sealed class SettingsFitTests
 						map = map.With(buttons[i], names[swap ? i ^ 1 : i]);
 					}
 					string longest = Text.DesktopActionName(names[0]);
-					vm.Settings.DesktopMode = vm.Settings.DesktopMode with { Buttons = map, PointerStick = Kopru.Core.Input.PointerStick.Left };
+					vm.Settings.DesktopMode = vm.Settings.DesktopMode with
+					{
+						Buttons = map, PointerStick = Kopru.Core.Input.PointerStick.Left, RightClick = Kopru.Core.Input.TouchpadRightClick.TwoFingers
+					};
 					var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 					window.Show();
 					vm.Navigate(vm.SettingsPage);

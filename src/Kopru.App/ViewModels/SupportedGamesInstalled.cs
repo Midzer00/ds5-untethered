@@ -7,12 +7,7 @@ using Kopru.Core.Localization;
 namespace Kopru.App.ViewModels;
 
 // One option of a segmented choice whose name can change while the language stays (e.g. a count in it).
-public sealed class FilterOption(Func<string> name) : ViewModelBase
-{
-	public string Name => name();
-
-	public void Refresh() => OnPropertyChanged(nameof(Name));
-}
+public sealed class FilterOption(Func<string> name) : LabelledChoice(name);
 
 // A folder the user added to look for games in (removable from the Folders menu).
 public sealed class GameFolderItem(string path)

@@ -461,6 +461,9 @@
     <DataTemplate DataType="vm:LightViewModel"><views:LightView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:SetupViewModel"><views:SetupView /></DataTemplate>
+    <!-- A picker's or segmented switch's choice without its own item template: its name, read again on a language switch
+         (the option lists stay the same objects, so the selection stays) -->
+    <DataTemplate DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

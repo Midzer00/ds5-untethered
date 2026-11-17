@@ -355,19 +355,20 @@ public static class AppInfo
 	public static string Version { get; } = typeof(AppInfo).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0";
 }
 
-// 24x24 stroke icons (own drawings).
+// 24x24 stroke icons (own drawings), drawn in the sidebar by IconSlot on their 24 grid: each glyph's ink is centred on
+// the grid (12,12), so every icon sits on its label's centre line (the gamepads' ink, grips included, spans 5.6..18.4).
 public static class Icons
 {
 	// Gamepad outline with a d-pad and two buttons.
-	public const string Overview = "M7.5,6 H16.5 C19,6 20.4,7.6 21,10.2 L22,15.5 C22.5,18 20.6,19.6 18.8,18.4 L16.2,15.8 H7.8 L5.2,18.4 C3.4,19.6 1.5,18 2,15.5 L3,10.2 C3.6,7.6 5,6 7.5,6 Z M7,9.5 V12.5 M5.5,11 H8.5 M16,10 L16.01,10 M17.8,12 L17.81,12";
+	public const string Overview = "M7.5,5.6 H16.5 C19,5.6 20.4,7.2 21,9.8 L22,15.1 C22.5,17.6 20.6,19.2 18.8,18 L16.2,15.4 H7.8 L5.2,18 C3.4,19.2 1.5,17.6 2,15.1 L3,9.8 C3.6,7.2 5,5.6 7.5,5.6 Z M7,9.1 V12.1 M5.5,10.6 H8.5 M16,9.6 L16.01,9.6 M17.8,11.6 L17.81,11.6";
 	// Gamepad with a check mark: games with native DualSense support.
-	public const string SupportedGames = "M7.5,6 H16.5 C19,6 20.4,7.6 21,10.2 L22,15.5 C22.5,18 20.6,19.6 18.8,18.4 L16.2,15.8 H7.8 L5.2,18.4 C3.4,19.6 1.5,18 2,15.5 L3,10.2 C3.6,7.6 5,6 7.5,6 Z M9,11 L11,13 L15,9";
+	public const string SupportedGames = "M7.5,5.6 H16.5 C19,5.6 20.4,7.2 21,9.8 L22,15.1 C22.5,17.6 20.6,19.2 18.8,18 L16.2,15.4 H7.8 L5.2,18 C3.4,19.2 1.5,17.6 2,15.1 L3,9.8 C3.6,7.2 5,5.6 7.5,5.6 Z M9,10.6 L11,12.6 L15,8.6";
 	// Waveform.
 	public const string Haptics = "M2,12 H4.5 M7,8 V16 M10,4.5 V19.5 M13,8 V16 M16,6 V18 M19,10 V14 M21.5,12 H22";
 	// Light rays around a dot.
 	public const string Light = "M12,9 A3,3 0 1 1 11.99,9 Z M12,2.5 V5 M12,19 V21.5 M2.5,12 H5 M19,12 H21.5 M5.3,5.3 L7,7 M17,17 L18.7,18.7 M5.3,18.7 L7,17 M17,7 L18.7,5.3";
 	// Gamepad with a pulse line: the controller page (test and tuning).
-	public const string Controller ="M7.5,6 H16.5 C19,6 20.4,7.6 21,10.2 L22,15.5 C22.5,18 20.6,19.6 18.8,18.4 L16.2,15.8 H7.8 L5.2,18.4 C3.4,19.6 1.5,18 2,15.5 L3,10.2 C3.6,7.6 5,6 7.5,6 Z M6,11.5 H9 L10.5,9 L13.5,14 L15,11.5 H18";
+	public const string Controller = "M7.5,5.6 H16.5 C19,5.6 20.4,7.2 21,9.8 L22,15.1 C22.5,17.6 20.6,19.2 18.8,18 L16.2,15.4 H7.8 L5.2,18 C3.4,19.2 1.5,17.6 2,15.1 L3,9.8 C3.6,7.2 5,5.6 7.5,5.6 Z M6,11.1 H9 L10.5,8.6 L13.5,13.6 L15,11.1 H18";
 	// Sliders.
 	public const string Settings = "M4,7 H20 M4,17 H20 M9,4.5 V9.5 M15,14.5 V19.5";
 }

@@ -67,10 +67,10 @@ public class DesktopModeTests
 		body[at + 3] = (byte)(y >> 4);
 	}
 
-	private static (DesktopMode Mode, RecordingSink Sink) Active()
+	private static (DesktopMode Mode, RecordingSink Sink) Active(TouchpadRightClick rightClick = TouchpadRightClick.Off)
 	{
 		var sink = new RecordingSink();
-		var mode = new DesktopMode(sink) { Active = true };
+		var mode = new DesktopMode(sink) { Active = true, Settings = DesktopModeSettings.Default with { RightClick = rightClick } };
 		mode.Apply(Body(), Frame);
 		return (mode, sink);
 	}
@@ -263,7 +263,7 @@ public class DesktopModeTests
 	[Fact]
 	public void Touchpad_TapClicks_TwoFingerTapRightClicks()
 	{
-		(DesktopMode mode, RecordingSink sink) = Active();
+		(DesktopMode mode, RecordingSink sink) = Active(TouchpadRightClick.TwoFingers);
 		byte[] down = Body();
 		Finger(down, 0, 1, 900, 500);
 		mode.Apply(down, Frame);
@@ -310,7 +310,7 @@ public class DesktopModeTests
 	[Fact]
 	public void TouchpadClick_LeftOrRightHalf()
 	{
-		(DesktopMode mode, RecordingSink sink) = Active();
+		(DesktopMode mode, RecordingSink sink) = Active(TouchpadRightClick.RightSide);
 		byte[] left = Body(b2: 0x02);
 		Finger(left, 0, 1, 300, 500);
 		mode.Apply(left, Frame);
@@ -325,6 +325,296 @@ public class DesktopModeTests
 		mode.Apply(right, Frame);
 		mode.Apply(Body(), Frame);
 		Assert.Equal(["Right down", "Right up"], sink.Events);
+	}
+
+	// One touchpad report: a finger (slot 0) at x, y, the click bit when pressed.
+	private static byte[] Pad(int x, int y, bool pressed, byte id = 1)
+	{
+		byte[] body = Body(b2: (byte)(pressed ? 0x02 : 0));
+		Finger(body, 0, id, x, y);
+		return body;
+	}
+
+	private static List<string> Clicks(RecordingSink sink) => sink.Events.Where(e => e != "move").ToList();
+
+	// A resting finger's position jitters by a few counts on every report: a slow tap (200 ms, 50 reports) is still a tap.
+	// The tap's travel used to be the path length, which the jitter alone pushed past TapMaxTravel.
+	[Fact]
+	public void Tap_RestingFingerJitter_StillClicks()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		for (int i = 0; i < 50; i++)
+			mode.Apply(Pad(900 + (i % 2 == 0 ? 4 : -4), 500 + (i % 3 == 0 ? 3 : -3), false), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+
+		// Moved away for real (more than TapMaxTravel from where it came down): no tap.
+		sink.Clear();
+		for (int i = 0; i < 10; i++)
+			mode.Apply(Pad(900 + i * 10, 500, false, id: 2), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Empty(Clicks(sink));
+	}
+
+	// The finger rolls as it presses the pad: the pointer stays where it was aimed from the press to the release, so the
+	// click is a click and not a small drag (which loses it on links, icons and text). Exactly one click, no tap on top.
+	[Fact]
+	public void TouchpadClick_FingerRoll_PointerStaysStill_OneClick()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		mode.Apply(Pad(600, 500, false), Frame);
+		mode.Apply(Pad(605, 500, false), Frame);
+		int x = 605;
+		for (int i = 0; i < 6; i++)
+		{
+			x += 12;
+			mode.Apply(Pad(x, 500 + i * 5, true), Frame);
+		}
+		x += 12;
+		mode.Apply(Pad(x, 530, false), Frame);
+		mode.Apply(Body(), Frame);
+		int down = sink.Events.IndexOf("Left down"), up = sink.Events.IndexOf("Left up");
+		Assert.True(down >= 0 && up > down);
+		Assert.DoesNotContain("move", sink.Events.Skip(down).Take(up - down));
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+	}
+
+	// Held and moved past ClickDragTravel: the pointer follows (drag-select, moving a window), from there on.
+	[Fact]
+	public void TouchpadClick_HeldAndMovedFar_Drags()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		mode.Apply(Pad(400, 500, false), Frame);
+		for (int i = 1; i <= 20; i++)
+			mode.Apply(Pad(400 + i * 20, 500, true), Frame);
+		mode.Apply(Pad(800, 500, false), Frame);
+		mode.Apply(Body(), Frame);
+		int down = sink.Events.IndexOf("Left down"), up = sink.Events.IndexOf("Left up");
+		Assert.Contains("move", sink.Events.Skip(down).Take(up - down));
+		Assert.True(sink.MoveX > 0);
+		// Only the movement past the threshold: less than the whole 400 counts.
+		Assert.True(sink.MoveX < (int)DesktopMode.TouchPixels(400, 20, DesktopModeSettings.Default), $"{sink.MoveX}");
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+	}
+
+	// The shortest press the controller reports (down in one report, up in the next) is one click; so is a press whose
+	// finger is not reported yet in its first report.
+	[Fact]
+	public void TouchpadClick_ShortestPress_AndPressBeforeTheFinger_OneClickEach()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		mode.Apply(Pad(500, 500, false), Frame);
+		mode.Apply(Pad(500, 500, true), Frame);
+		mode.Apply(Pad(500, 500, false), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+
+		sink.Clear();
+		mode.Apply(Body(b2: 0x02), Frame);
+		mode.Apply(Pad(500, 500, true, id: 2), Frame);
+		mode.Apply(Pad(500, 500, false, id: 2), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+	}
+
+	// Two fingers (slots 0 and 1) at x1 and x2, the click bit when pressed. Apply neutralizes the body in place: a new
+	// one per report.
+	private static byte[] Two(int x1, int x2, bool pressed)
+	{
+		byte[] two = Body(b2: (byte)(pressed ? 0x02 : 0));
+		Finger(two, 0, 2, x1, 500);
+		Finger(two, 1, 3, x2, 500);
+		return two;
+	}
+
+	// One press with two fingers on the pad, then both lift.
+	private static void TwoFingerPress(DesktopMode mode, int x1, int x2)
+	{
+		mode.Apply(Two(x1, x2, false), Frame);
+		mode.Apply(Two(x1, x2, true), Frame);
+		mode.Apply(Two(x1, x2, false), Frame);
+		mode.Apply(Body(), Frame);
+	}
+
+	// One press with one finger at x, then it lifts.
+	private static void OneFingerPress(DesktopMode mode, int x, byte id = 1)
+	{
+		mode.Apply(Pad(x, 500, false, id), Frame);
+		mode.Apply(Pad(x, 500, true, id), Frame);
+		mode.Apply(Pad(x, 500, false, id), Frame);
+		mode.Apply(Body(), Frame);
+	}
+
+	// Two Fingers: two fingers on the pad when it is pressed are a right click, also on the left half; one finger on the
+	// right half is a left click.
+	[Fact]
+	public void TouchpadClick_TwoFingers_RightClick()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active(TouchpadRightClick.TwoFingers);
+		TwoFingerPress(mode, 300, 600);
+		Assert.Equal(["Right down", "Right up"], Clicks(sink));
+		sink.Clear();
+		OneFingerPress(mode, 1500);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+	}
+
+	// Right Side: two fingers on the left half are a left click (only the side counts).
+	[Fact]
+	public void TouchpadClick_RightSide_TwoFingersOnTheLeftHalf_LeftClick()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active(TouchpadRightClick.RightSide);
+		TwoFingerPress(mode, 300, 600);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+		sink.Clear();
+		OneFingerPress(mode, 1500);
+		Assert.Equal(["Right down", "Right up"], Clicks(sink));
+	}
+
+	// Off (the default): every press is a left click, on either half, with one finger or two.
+	[Fact]
+	public void TouchpadClick_RightClickOff_EveryPressLeftClicks()
+	{
+		Assert.Equal(TouchpadRightClick.Off, DesktopModeSettings.Default.RightClick);
+		(DesktopMode mode, RecordingSink sink) = Active();
+		OneFingerPress(mode, 300);
+		OneFingerPress(mode, 1500, id: 2);
+		OneFingerPress(mode, TouchPoint.Width - 1, id: 3);
+		TwoFingerPress(mode, 300, 600);
+		TwoFingerPress(mode, 1200, 1700);
+		Assert.Equal(Enumerable.Repeat(new[] { "Left down", "Left up" }, 5).SelectMany(e => e), Clicks(sink));
+	}
+
+	// The choice applies at once while mouse mode is on: the next press follows it.
+	[Fact]
+	public void TouchpadClick_RightClickChoice_AppliesLive()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		OneFingerPress(mode, 1500);
+		mode.Settings = mode.Settings with { RightClick = TouchpadRightClick.RightSide };
+		OneFingerPress(mode, 1500, id: 2);
+		mode.Settings = mode.Settings with { RightClick = TouchpadRightClick.TwoFingers };
+		OneFingerPress(mode, 1500, id: 3);
+		TwoFingerPress(mode, 300, 600);
+		mode.Settings = mode.Settings with { RightClick = TouchpadRightClick.Off };
+		TwoFingerPress(mode, 300, 600);
+		Assert.Equal(["Left down", "Left up", "Right down", "Right up", "Left down", "Left up", "Right down", "Right up", "Left down", "Left up"],
+			Clicks(sink));
+	}
+
+	// A click held while the choice changes comes up as the button it went down as.
+	[Fact]
+	public void TouchpadClick_ChoiceChangedWhileHeld_ReleasesTheSameButton()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active(TouchpadRightClick.RightSide);
+		mode.Apply(Pad(1500, 500, true), Frame);
+		mode.Settings = mode.Settings with { RightClick = TouchpadRightClick.Off };
+		mode.Apply(Pad(1500, 500, false), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Right down", "Right up"], Clicks(sink));
+	}
+
+	// Off: two quick presses anywhere are a double click, the second landing somewhere else (the other half, or with two
+	// fingers): two left clicks, the pointer still from the first press to the last release, also when the finger rolls
+	// as the click comes up.
+	[Fact]
+	public void TouchpadClick_RightClickOff_TwoQuickPressesAnywhere_DoubleClick()
+	{
+		foreach (bool twoFingers in new[] { false, true })
+		{
+			(DesktopMode mode, RecordingSink sink) = Active();
+			mode.Apply(Pad(300, 500, false), Frame);
+			mode.Apply(Pad(300, 500, true), Frame);
+			mode.Apply(Pad(306, 503, false), Frame);
+			mode.Apply(Pad(318, 509, false), Frame);
+			mode.Apply(Body(), Frame);
+			if (twoFingers)
+			{
+				TwoFingerPress(mode, 1200, 1700);
+			}
+			else
+			{
+				mode.Apply(Pad(1700, 800, false, id: 2), Frame);
+				mode.Apply(Pad(1700, 800, true, id: 2), Frame);
+				mode.Apply(Pad(1690, 806, false, id: 2), Frame);
+				mode.Apply(Body(), Frame);
+			}
+			Assert.Equal(["Left down", "Left up", "Left down", "Left up"], Clicks(sink));
+			int first = sink.Events.IndexOf("Left down"), last = sink.Events.LastIndexOf("Left up");
+			Assert.DoesNotContain("move", sink.Events.Skip(first).Take(last - first + 1));
+			Assert.Equal(0, sink.Wheel);
+		}
+	}
+
+	// A two-finger tap right clicks only with Two Fingers; with Off and Right Side it is a left click, like every tap
+	// (taps don't go by side: a tap on the right half is a left click too).
+	[Theory]
+	[InlineData(TouchpadRightClick.Off, "Left")]
+	[InlineData(TouchpadRightClick.RightSide, "Left")]
+	[InlineData(TouchpadRightClick.TwoFingers, "Right")]
+	public void Tap_TwoFingers_RightClicksOnlyWithTwoFingers(TouchpadRightClick choice, string twoFingerButton)
+	{
+		(DesktopMode mode, RecordingSink sink) = Active(choice);
+		mode.Apply(Two(1200, 1700, false), Frame);
+		mode.Apply(Two(1200, 1700, false), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal([$"{twoFingerButton} down", $"{twoFingerButton} up"], Clicks(sink));
+		sink.Clear();
+		mode.Apply(Pad(1700, 500, false), Frame);
+		mode.Apply(Pad(1700, 500, false), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+	}
+
+	// After the click comes up the pointer stays still only for ReleaseHold: a finger left on the pad moves it after.
+	[Fact]
+	public void TouchpadClick_AfterReleaseHold_TheFingerMovesThePointer()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		mode.Apply(Pad(600, 500, false), Frame);
+		mode.Apply(Pad(600, 500, true), Frame);
+		mode.Apply(Pad(600, 500, false), Frame);
+		for (int i = 0; i < 6; i++)
+			mode.Apply(Pad(600, 500, false), TimeSpan.FromMilliseconds(50));
+		Assert.DoesNotContain("move", sink.Events);
+		for (int i = 1; i <= 5; i++)
+			mode.Apply(Pad(600 + i * 8, 500, false), Frame);
+		Assert.True(sink.MoveX > 0, $"{sink.MoveX}");
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Left down", "Left up"], Clicks(sink));
+	}
+
+	// Two quick presses on the left half: two left clicks with the pointer still in between (Windows' double click),
+	// even when the finger rolls a little on each press.
+	[Fact]
+	public void TouchpadClick_TwoQuickPresses_DoubleClick()
+	{
+		(DesktopMode mode, RecordingSink sink) = Active();
+		mode.Apply(Pad(700, 500, false), Frame);
+		mode.Apply(Pad(700, 500, true), Frame);
+		mode.Apply(Pad(708, 504, true), Frame);
+		mode.Apply(Pad(708, 504, false), Frame);
+		mode.Apply(Pad(708, 504, true), Frame);
+		mode.Apply(Pad(700, 500, true), Frame);
+		mode.Apply(Pad(700, 500, false), Frame);
+		mode.Apply(Body(), Frame);
+		Assert.Equal(["Left down", "Left up", "Left down", "Left up"], sink.Events.Where(e => e != "move").ToList());
+		int first = sink.Events.IndexOf("Left down"), last = sink.Events.LastIndexOf("Left up");
+		Assert.DoesNotContain("move", sink.Events.Skip(first).Take(last - first));
+	}
+
+	// The hint's press part follows the Right Click choice.
+	[Fact]
+	public void TouchpadHint_FollowsTheRightClickChoice()
+	{
+		Assert.Contains("; dokunmak ya da basmak sol tık.", Text.DesktopTouchpadHint(TouchpadRightClick.Off, Language.Turkish));
+		Assert.Contains("; tap or press to left click.", Text.DesktopTouchpadHint(TouchpadRightClick.Off, Language.English));
+		Assert.DoesNotContain("sağ tık", Text.DesktopTouchpadHint(TouchpadRightClick.Off, Language.Turkish));
+		Assert.DoesNotContain("right click", Text.DesktopTouchpadHint(TouchpadRightClick.Off, Language.English));
+		Assert.Contains("dokunmak sol tık; sol yarıya basmak sol tık, sağ yarıya basmak sağ tık", Text.DesktopTouchpadHint(TouchpadRightClick.RightSide, Language.Turkish));
+		Assert.Contains("tap to left click; press the left half to left click, the right half to right click", Text.DesktopTouchpadHint(TouchpadRightClick.RightSide, Language.English));
+		Assert.Contains("iki parmakla sağ tık", Text.DesktopTouchpadHint(TouchpadRightClick.TwoFingers, Language.Turkish));
+		Assert.Contains("tap or press with one finger to left click, with two to right click", Text.DesktopTouchpadHint(TouchpadRightClick.TwoFingers, Language.English));
+		Assert.Equal(Text.DesktopTouchpadHint(TouchpadRightClick.Off, Language.English), Text.DesktopTouchpadHint(l: Language.English));
 	}
 
 	[Fact]
@@ -425,6 +715,22 @@ public class DesktopModeTests
 		Assert.Equal(DesktopModeSettings.Default, JsonSerializer.Deserialize<DesktopModeSettings>("{}", options));
 	}
 
+	// Right Click is saved by name; missing (older files) or unknown: Off.
+	[Fact]
+	public void RightClick_RoundTrips_AndDefaultsToOff()
+	{
+		foreach (TouchpadRightClick choice in Enum.GetValues<TouchpadRightClick>())
+		{
+			var desktop = DesktopModeSettings.Default with { RightClick = choice, PointerSpeed = 1.4 };
+			string json = JsonSerializer.Serialize(desktop);
+			Assert.Contains($"\"RightClick\":\"{choice}\"", json);
+			Assert.Equal(desktop, JsonSerializer.Deserialize<DesktopModeSettings>(json));
+		}
+		Assert.Equal(TouchpadRightClick.Off, JsonSerializer.Deserialize<DesktopModeSettings>("{\"PointerSpeed\":2}")!.RightClick);
+		Assert.Equal(TouchpadRightClick.Off, JsonSerializer.Deserialize<DesktopModeSettings>("{\"RightClick\":\"Middle\"}")!.RightClick);
+		Assert.Equal(TouchpadRightClick.TwoFingers, JsonSerializer.Deserialize<DesktopModeSettings>("{\"RightClick\":\"twofingers\"}")!.RightClick);
+	}
+
 	[Fact]
 	public void Texts_Exist_InBothLanguages()
 	{
@@ -433,6 +739,8 @@ public class DesktopModeTests
 			Assert.NotEmpty(Text.DesktopModeSection(l));
 			Assert.Equal(DesktopButtonMap.Actions.Count, DesktopButtonMap.Actions.Select(a => Text.DesktopActionName(a, l)).Distinct().Count());
 			Assert.NotEqual(Text.DesktopStickLeft(l), Text.DesktopStickRight(l));
+			Assert.Equal(3, Enum.GetValues<TouchpadRightClick>().Select(m => Text.DesktopRightClickOption(m, l)).Distinct().Count());
+			Assert.NotEmpty(Text.DesktopRightClick(l));
 			Assert.NotEqual(Text.GyroTargetName(GyroTarget.Mouse, l), Text.GyroTargetName(GyroTarget.RightStick, l));
 		}
 		Assert.Equal("Fare Modu Açık", Text.DesktopOnTitle(Language.Turkish));

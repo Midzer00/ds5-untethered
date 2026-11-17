@@ -14,11 +14,7 @@ public sealed partial class SettingsViewModel
 	public string MicButtonModeHint => Text.MicButtonModeHint();
 
 	// 0 = Sessize Al, 1 = Tamamen Kapat (the Quick Settings row uses the same order).
-	public IReadOnlyList<string> MicButtonModes => _micButtonModes is { } m && m.SequenceEqual([Text.MicButtonMute(), Text.MicButtonTurnOff()])
-		? m
-		: _micButtonModes = [Text.MicButtonMute(), Text.MicButtonTurnOff()];
-
-	private IReadOnlyList<string>? _micButtonModes;
+	public IReadOnlyList<LabelledChoice> MicButtonModes { get; } = [new(() => Text.MicButtonMute()), new(() => Text.MicButtonTurnOff())];
 
 	public int MicButtonModeIndex
 	{

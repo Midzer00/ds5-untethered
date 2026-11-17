@@ -184,9 +184,10 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:NavItem">
+                <!-- The icon in the shared 24-grid IconSlot (not a stretched Path: Stretch=Uniform blows each glyph up to its own
+                     bounds and pins wide ones to the box's top, lifting them off the label's centre line) -->
                 <StackPanel Orientation="Horizontal" Spacing="13">
-                  <Path Data="{Binding Icon}" Stroke="{Binding $parent[ListBoxItem].Foreground}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
-                        Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center" />
+                  <c:IconSlot Data="{Binding Icon}" Stroke="{Binding $parent[ListBoxItem].Foreground}" Size="20" VerticalAlignment="Center" />
                   <TextBlock Text="{Binding Title}" FontSize="14.5" Foreground="{Binding $parent[ListBoxItem].Foreground}"
                              VerticalAlignment="Center" TextWrapping="NoWrap" />
                 </StackPanel>

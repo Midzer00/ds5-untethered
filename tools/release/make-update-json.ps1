@@ -2,10 +2,11 @@
 # Writes the update manifest (update.json, read by the app's in-app update check) for one release: the version, the
 # GitHub release download URLs for tag v<version>, the size and SHA-256 of the installer and the zip, the release page and
 # the short notes from tools\release\notes.json ({ "tr": "...", "en": "..." }, optional; empty when missing).
-# tools\publish.ps1 calls it; it can also be run on its own:
+# The download URL of each file is built from its file name. tools\publish.ps1 passes the Update.exe (the byte-identical
+# copy of the Setup.exe that only the in-app updater downloads, docs\RELEASING.md) as -Setup. It can also be run on its own:
 #
-#   powershell -ExecutionPolicy Bypass -File tools\release\make-update-json.ps1 -Version 0.1.6 `
-#     -Setup artifacts\DS5-Untethered-0.1.6-Setup.exe -Zip artifacts\DS5-Untethered-0.1.6-win-x64.zip -Out artifacts\update.json
+#   powershell -ExecutionPolicy Bypass -File tools\release\make-update-json.ps1 -Version 0.1.9 `
+#     -Setup artifacts\DS5-Untethered-0.1.9-Update.exe -Zip artifacts\DS5-Untethered-0.1.9-win-x64.zip -Out artifacts\update.json
 
 [CmdletBinding()]
 param(

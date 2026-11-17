@@ -268,6 +268,8 @@ public partial class App : Application
 			}
 		}
 
+		public bool IsMainWindowInFront => !IsExiting && presenter.IsInFront;
+
 		public void Exit()
 		{
 			if (IsExiting)

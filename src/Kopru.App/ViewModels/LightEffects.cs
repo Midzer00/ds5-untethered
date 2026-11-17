@@ -9,12 +9,6 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// One option of a segmented picker (the views bind Name on the base type).
-public class LabelledChoice(Func<string> name)
-{
-	public string Name => name();
-}
-
 public sealed class LightChoice<T>(T value, Func<string> name) : LabelledChoice(name)
 {
 	public T Value { get; } = value;
@@ -27,9 +21,30 @@ public sealed partial class LightViewModel
 {
 	private readonly Stopwatch _previewClock = Stopwatch.StartNew();
 
-	public IReadOnlyList<LightChoice<LightMode>> Modes { get; private set; } = [];
-	public IReadOnlyList<LightChoice<PlayerLedPattern>> Patterns { get; private set; } = [];
-	public IReadOnlyList<LightChoice<LedBrightness>> LedLevels { get; private set; } = [];
+	public IReadOnlyList<LightChoice<LightMode>> Modes { get; } =
+	[
+		new(LightMode.Static, () => Text.LightModeStatic()),
+		new(LightMode.Breathing, () => Text.LightModeBreathing()),
+		new(LightMode.Rainbow, () => Text.LightModeRainbow()),
+		new(LightMode.Battery, () => Text.LightModeBattery()),
+	];
+
+	public IReadOnlyList<LightChoice<PlayerLedPattern>> Patterns { get; } =
+	[
+		new(PlayerLedPattern.Off, () => Text.PlayerLedsOff()),
+		new(PlayerLedPattern.One, () => "1"),
+		new(PlayerLedPattern.Two, () => "2"),
+		new(PlayerLedPattern.Three, () => "3"),
+		new(PlayerLedPattern.Four, () => "4"),
+		new(PlayerLedPattern.All, () => Text.PlayerLedsAll()),
+	];
+
+	public IReadOnlyList<LightChoice<LedBrightness>> LedLevels { get; } =
+	[
+		new(LedBrightness.Low, () => Text.LedBrightnessLow()),
+		new(LedBrightness.Medium, () => Text.LedBrightnessMedium()),
+		new(LedBrightness.High, () => Text.LedBrightnessHigh()),
+	];
 
 	public string ModeLabel => Text.LightModeLabel();
 	public string ModeHint => Settings.LightMode switch
@@ -133,35 +148,8 @@ public sealed partial class LightViewModel
 
 	private void InitEffects()
 	{
-		BuildChoices();
 		UpdatePreview(TimeSpan.Zero);
 		Settings.PropertyChanged += OnSettingsChanged;
-	}
-
-	private void BuildChoices()
-	{
-		Modes =
-		[
-			new(LightMode.Static, () => Text.LightModeStatic()),
-			new(LightMode.Breathing, () => Text.LightModeBreathing()),
-			new(LightMode.Rainbow, () => Text.LightModeRainbow()),
-			new(LightMode.Battery, () => Text.LightModeBattery()),
-		];
-		Patterns =
-		[
-			new(PlayerLedPattern.Off, () => Text.PlayerLedsOff()),
-			new(PlayerLedPattern.One, () => "1"),
-			new(PlayerLedPattern.Two, () => "2"),
-			new(PlayerLedPattern.Three, () => "3"),
-			new(PlayerLedPattern.Four, () => "4"),
-			new(PlayerLedPattern.All, () => Text.PlayerLedsAll()),
-		];
-		LedLevels =
-		[
-			new(LedBrightness.Low, () => Text.LedBrightnessLow()),
-			new(LedBrightness.Medium, () => Text.LedBrightnessMedium()),
-			new(LedBrightness.High, () => Text.LedBrightnessHigh()),
-		];
 	}
 
 	private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
@@ -202,14 +190,5 @@ public sealed partial class LightViewModel
 		}
 		OnPropertyChanged(nameof(IsPreviewAnimated));
 		UpdatePreview(_previewClock.Elapsed);
-	}
-
-	// New lists so the pickers re-read the names in the new language.
-	private void RefreshChoices()
-	{
-		BuildChoices();
-		OnPropertyChanged(nameof(Modes));
-		OnPropertyChanged(nameof(Patterns));
-		OnPropertyChanged(nameof(LedLevels));
 	}
 }

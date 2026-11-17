@@ -22,10 +22,10 @@ internal sealed class FakeAudioSystem : IAudioDefaultsSystem
 
 	public int Watches { get; private set; }
 
-	public void Add(string id, AudioFlow flow, bool pad = false, int? port = null, bool notify = true)
+	public void Add(string id, AudioFlow flow, bool pad = false, int? port = null, bool notify = true, bool silent = false)
 	{
 		endpoints[id] = new AudioEndpointInfo(id, flow, true, id,
-			pad ? new PadAudioMatch(true, port, PadMatchMethod.DeviceTree, "test") : PadAudioMatch.None);
+			pad ? new PadAudioMatch(true, port, PadMatchMethod.DeviceTree, "test", silent) : PadAudioMatch.None);
 		if (notify)
 		{
 			listeners.ForEach(l => l.EndpointChanged(id));
@@ -427,6 +427,98 @@ public class DefaultAudioGuardTests
 		Assert.Equal("pc-speaker", Default(AudioFlow.Render, AudioRole.Console));
 	}
 
+	// The virtual DualShock 4: its speaker drops the sound, so it attaches with a silent speaker.
+	private void AttachDualShock4(int port = 1)
+	{
+		guard.PadAttaching(1, true, silentSpeaker: true);
+		guard.PadAttached(1, port);
+		time.Advance(TimeSpan.FromSeconds(2));
+		audio.Add(Speaker(port), AudioFlow.Render, pad: true, port: port, silent: true);
+		audio.Add(Mic(port), AudioFlow.Capture, pad: true, port: port, silent: true);
+	}
+
+	[Fact]
+	public void DualShock4Speaker_IsPutBack_EvenWhenTheControllerSpeakerWasChosenBefore()
+	{
+		guard.LoadPreferences(new AudioGuardPreferences(ControllerSpeakerChosen: true));
+		AttachDualShock4();
+		audio.Switch(AudioFlow.Render, Speaker(1));
+
+		foreach (AudioRole role in AllRoles)
+		{
+			Assert.Equal("pc-speaker", Default(AudioFlow.Render, role));
+		}
+		Assert.Contains(log, l => l.Contains("DualShock 4 speaker") && l.Contains("put the previous device back"));
+		Assert.True(guard.Preferences.ControllerSpeakerChosen);
+	}
+
+	[Fact]
+	public void DualShock4Speaker_IsPutBack_WithTheGuardOff_AndOutsideTheWindow_AndWhenTheUserPicksIt()
+	{
+		guard.Enabled = false;
+		AttachDualShock4();
+		audio.Switch(AudioFlow.Render, Speaker(1));
+		Assert.Equal("pc-speaker", Default(AudioFlow.Render, AudioRole.Console));
+
+		// Long after the arrival, a deliberate change (Windows' sound settings, the app's picker) is put back too.
+		time.Advance(TimeSpan.FromMinutes(5));
+		guard.UserChose(AudioFlow.Render, true);
+		audio.Switch(AudioFlow.Render, Speaker(1), AudioRole.Multimedia);
+		Assert.Equal("pc-speaker", Default(AudioFlow.Render, AudioRole.Multimedia));
+
+		// The guard off leaves the DualShock 4's microphone alone (it only has no sound).
+		audio.Switch(AudioFlow.Capture, Mic(1), AudioRole.Console);
+		Assert.Equal(Mic(1), Default(AudioFlow.Capture, AudioRole.Console));
+	}
+
+	[Fact]
+	public void DualShock4Speaker_WithoutARememberedDevice_GoesToAnotherOutput()
+	{
+		audio.Add("usb-headset", AudioFlow.Render, notify: false);
+		// The default was a virtual pad's speaker when the DualShock 4 attached: nothing is remembered for it.
+		audio.Add("old-pad-speaker", AudioFlow.Render, pad: true, port: 2, notify: false);
+		audio.Switch(AudioFlow.Render, "old-pad-speaker");
+		AttachDualShock4();
+		audio.Switch(AudioFlow.Render, Speaker(1));
+
+		string? now = Default(AudioFlow.Render, AudioRole.Console);
+		Assert.NotNull(now);
+		Assert.NotEqual(Speaker(1), now);
+		Assert.False(audio.Describe(now!)!.Pad.IsVirtualPad);
+		Assert.Contains(log, l => l.Contains("put another output back"));
+	}
+
+	[Fact]
+	public void DualSenseSpeaker_ChosenBefore_IsStillLeftAlone()
+	{
+		guard.LoadPreferences(new AudioGuardPreferences(ControllerSpeakerChosen: true));
+		Attach();
+		audio.Switch(AudioFlow.Render, Speaker(1));
+		Assert.Equal(Speaker(1), Default(AudioFlow.Render, AudioRole.Console));
+	}
+
+	[Fact]
+	public void Identity_DualShock4_HasASilentSpeaker_ByTreeAndByName()
+	{
+		DeviceNodeInfo[] chain =
+		[
+			new(@"USB\VID_054C&PID_09CC&MI_00\3&1&0&0000", [], "usbaudio", null),
+			new(@"USB\VID_054C&PID_09CC\2&2&0&1", [], "usbccgp", "Port_#0002.Hub_#0003"),
+			new(@"ROOT\USB\0000", [@"ROOT\USBIP_WIN2\UDE"], "usbip2_ude", null)
+		];
+		PadAudioMatch tree = PadAudioIdentity.Classify(chain);
+		Assert.True(tree.IsVirtualPad);
+		Assert.True(tree.SilentSpeaker);
+		Assert.Equal(2, tree.Port);
+		Assert.Contains("DualShock 4", tree.Detail);
+		Assert.DoesNotContain("DualSense", tree.Detail);
+
+		PadAudioMatch name = PadAudioIdentity.NameMatch("Hoparlör (Wireless Controller)");
+		Assert.Equal((true, PadMatchMethod.NameOnly, true), (name.IsVirtualPad, name.Method, name.SilentSpeaker));
+		PadAudioMatch dualSense = PadAudioIdentity.NameMatch("Hoparlör (DualSense Wireless Controller)");
+		Assert.Equal((true, false), (dualSense.IsVirtualPad, dualSense.SilentSpeaker));
+	}
+
 	[Fact]
 	public void Identity_DeviceTreeOfTheVirtualPad_GivesItsPort()
 	{
@@ -473,7 +565,7 @@ public class DefaultAudioGuardTests
 	}
 
 	[Fact]
-	public async Task BridgeHost_TellsTheGuardAboutEveryAttachAndDetach_WithAudioOnlyForDualSense()
+	public async Task BridgeHost_TellsTheGuardAboutEveryAttachAndDetach_WithAudioForDualSenseAndDualShock4()
 	{
 		ConcurrentQueue<string> bridgeLog = new();
 		ConcurrentQueue<string> events = new();
@@ -497,12 +589,13 @@ public class DefaultAudioGuardTests
 		Assert.True(SpinWait.SpinUntil(() => changed.Count == 1, 5000));
 		await host.StopAsync();
 
-		Assert.Equal(["attaching 1 audio", "attached 1 port 1", "detaching 1", "attaching 1 no audio", "attached 1 port 2", "detaching 1"], events);
+		Assert.Equal(["attaching 1 audio", "attached 1 port 1", "detaching 1", "attaching 1 audio silent speaker", "attached 1 port 2", "detaching 1"], events);
 	}
 
 	private sealed class RecordingPadAudio(ConcurrentQueue<string> events) : IPadAudioEvents
 	{
-		public void PadAttaching(int slot, bool hasAudio) => events.Enqueue($"attaching {slot} {(hasAudio ? "audio" : "no audio")}");
+		public void PadAttaching(int slot, bool hasAudio, bool silentSpeaker) =>
+			events.Enqueue($"attaching {slot} {(hasAudio ? "audio" : "no audio")}{(silentSpeaker ? " silent speaker" : string.Empty)}");
 
 		public void PadAttached(int slot, int port) => events.Enqueue($"attached {slot} port {port}");
 

@@ -74,6 +74,87 @@ public sealed class ControllerArtLightTests
 		}
 	}
 
+	// Every shipped mask in colour (as LightTint hands it to the drawing, at half the art's pixels) lights only the controller
+	// and only the strip with a short halo, as a real DualSense does: no alpha beyond the art's own (nothing off the body,
+	// at its edge no more than the body itself), nothing further than LightReach out from the strip's edge (no patch beside
+	// its ends, no speckles on the touchpad), the strip and its bright middle only on the strip, and the halo never
+	// stronger than LightGlowPeak.
+	[AvaloniaFact]
+	public void TintedLight_StaysOnTheBodyAndBesideTheStrip()
+	{
+		Rect light = ControllerLayout.LightRect;
+		int lw = (int)light.Width, lh = (int)light.Height;
+		bool[] strip = Raster(lw, lh, 3);
+		// The halo's reach, plus a pixel and a half for anti-aliasing and the masks' halving.
+		bool[] reach = Raster(lw, lh, ControllerLayout.LightReach + 1.5);
+		var red = Color.FromRgb(255, 0, 0);
+		foreach (bool edge in new[] { false, true })
+		{
+			byte[] art = Pixels(ControllerArt.ArtBitmap(edge), out int aw, out _);
+			foreach ((int part, string name) in new[] { (LightTint.Glow, "glow"), (LightTint.Strip, "strip"), (LightTint.Core, "core") })
+			{
+				byte[] px = Pixels(LightTint.Get(edge, part, red), out int w, out int h);
+				int factor = lw / w;
+				Assert.Equal((lw / factor, lh / factor), (w, h));
+				int offBody = 0, far = 0, offStrip = 0, bright = 0, lit = 0;
+				for (int y = 0; y < h; y++)
+				{
+					for (int x = 0; x < w; x++)
+					{
+						int a = px[(y * w + x) * 4 + 3];
+						if (a == 0)
+						{
+							continue;
+						}
+						lit++;
+						// The art pixels under this one: the least body alpha, and whether any is on the strip / in reach.
+						int body = 255;
+						bool onStrip = false, inReach = false;
+						for (int dy = 0; dy < factor; dy++)
+						{
+							for (int dx = 0; dx < factor; dx++)
+							{
+								int mx = x * factor + dx, my = y * factor + dy;
+								body = Math.Min(body, art[((my + (int)light.Y) * aw + mx + (int)light.X) * 4 + 3]);
+								onStrip |= strip[my * lw + mx];
+								inReach |= reach[my * lw + mx];
+							}
+						}
+						offBody += a > body + 2 ? 1 : 0;
+						far += inReach ? 0 : 1;
+						offStrip += part != LightTint.Glow && !onStrip ? 1 : 0;
+						bright += part == LightTint.Glow && !onStrip && a > ControllerLayout.LightGlowPeak * 255 + 2 ? 1 : 0;
+					}
+				}
+				string what = $"{(edge ? "Edge" : "DualSense")} {name}";
+				Assert.True(lit > 1000, $"{what}: the mask is empty");
+				Assert.True(offBody == 0, $"{what}: {offBody} pixels lit beyond the controller's body");
+				Assert.True(far == 0, $"{what}: {far} pixels lit further than {ControllerLayout.LightReach} px out from the strip");
+				Assert.True(offStrip == 0, $"{what}: {offStrip} pixels lit off the strip");
+				Assert.True(bright == 0, $"{what}: {bright} glow pixels brighter than {ControllerLayout.LightGlowPeak}");
+			}
+		}
+	}
+
+	// The light strip (ControllerArt's band) filled and stroked round its edge `grow` asset pixels wide, over LightRect.
+	private static bool[] Raster(int w, int h, double grow)
+	{
+		Rect light = ControllerLayout.LightRect;
+		using var target = new RenderTargetBitmap(new PixelSize(w, h));
+		using (DrawingContext dc = target.CreateDrawingContext())
+		using (dc.PushTransform(Matrix.CreateTranslation(-light.X, -light.Y)))
+		{
+			dc.DrawGeometry(Brushes.White, new Pen(Brushes.White, 2 * grow), ControllerArt.BandGeometry);
+		}
+		byte[] px = Pixels(target, out _, out _);
+		var inside = new bool[w * h];
+		for (int i = 0; i < inside.Length; i++)
+		{
+			inside[i] = px[i * 4 + 3] > 0;
+		}
+		return inside;
+	}
+
 	// Mask pixels with any light, grown by 1 % of the art's width (a device pixel at the smallest size covers ~20 art
 	// pixels, and smooth scaling spreads an edge by about one).
 	private static bool[] Allowed(bool edge)

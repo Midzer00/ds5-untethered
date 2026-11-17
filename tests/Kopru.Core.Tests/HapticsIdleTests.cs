@@ -48,6 +48,10 @@ internal sealed class RecordingWait : IPreciseWait
 
 // Most of these run with PauseHapticsInSilence on (the opt-in mode, also used by Low Power); the default mode, where the
 // game's audio packets keep the stream running, is covered by HapticsFeedTests.
+// Measures real timer pacing: runs one class at a time (collection "RealTime") and, in tools/test.ps1, in its own phase
+// with nothing else running (Category=RealTime).
+[Trait("Category", "RealTime")]
+[Collection("RealTime")]
 public class HapticsIdleTests
 {
 	private static readonly IsoPacket[] Packets = Enumerable.Range(0, 10).Select(i => new IsoPacket(i * 384, 384, 0, 0)).ToArray();
@@ -612,6 +616,10 @@ public class HapticsIdleAllocationTests
 	}
 }
 
+// Measures real timer pacing: runs one class at a time (collection "RealTime") and, in tools/test.ps1, in its own phase
+// with nothing else running (Category=RealTime).
+[Trait("Category", "RealTime")]
+[Collection("RealTime")]
 public class PreciseWaitTests
 {
 	[Fact]

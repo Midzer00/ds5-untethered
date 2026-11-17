@@ -25,6 +25,7 @@ STICK_WELL_R = 176     # how far a moved cap may reach (cap + travel)
 STICK_OPENING_R = 182  # the hole in the body the stick sits in
 SPRITE_HALF = 270      # moved-stick sprites: squares of 2 x this around the stick centre
 LIGHT_RECT = (560, 0, 1170, 640)  # x, y, w, h of the light-strip masks (the strip and its glow)
+LIGHT_REACH = 8       # the glow (a halo drawn by light_clip.py) ends this far out from the strip's edge
 WELL_SPRITE_R = 232    # the no-cap sprite fades out by here (the light strip is 239 px from a stick centre)
 DPAD_CENTRE = (436, 438)
 DPAD_REACH = {0: 197, 90: 199, 180: 202, 270: 198}

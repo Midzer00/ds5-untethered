@@ -8,15 +8,11 @@ using Kopru.Core.Localization;
 namespace Kopru.App.ViewModels;
 
 // One tab of a segmented switch; the name follows the language.
-public sealed class TabOption(Func<string> name) : ViewModelBase
-{
-	public string Name => name();
-}
+public sealed class TabOption(Func<string> name) : LabelledChoice(name);
 
-public sealed class CurveOption(ResponseCurve curve)
+public sealed class CurveOption(ResponseCurve curve) : LabelledChoice(() => Text.CurveName(curve))
 {
 	public ResponseCurve Curve { get; } = curve;
-	public string Name => Text.CurveName(Curve);
 }
 
 // One stick's settings (written back into SettingsState.Tuning); the Test tab shows them beside the live stick.
@@ -39,7 +35,7 @@ public sealed class StickEditor : ViewModelBase
 	public string OuterLabel => Text.OuterDeadzoneLabel();
 	public string AntiLabel => Text.AntiDeadzoneLabel();
 	public string CurveLabel => Text.ResponseCurveLabel();
-	public IReadOnlyList<CurveOption> Curves { get; private set; }
+	public IReadOnlyList<CurveOption> Curves { get; }
 
 	public double Inner { get => Current.InnerDeadzone; set => Set(t => t with { InnerDeadzone = value }); }
 	public double Outer { get => Current.OuterDeadzone; set => Set(t => t with { OuterDeadzone = value }); }
@@ -62,12 +58,6 @@ public sealed class StickEditor : ViewModelBase
 
 	// Called when SettingsState.Tuning changed.
 	public void Refresh() => OnPropertyChanged(string.Empty);
-
-	protected override void OnLanguageChanged()
-	{
-		Curves = BuildCurves();
-		base.OnLanguageChanged();
-	}
 
 	private static IReadOnlyList<CurveOption> BuildCurves() =>
 		[new(ResponseCurve.Linear), new(ResponseCurve.Smooth), new(ResponseCurve.Aggressive)];

@@ -19,6 +19,9 @@ public sealed partial class SettingsState : ViewModelBase
 	private readonly ISettingsStore? _store;
 	private readonly IStartupRegistration? _startup;
 	private readonly Timer? _saveTimer;
+	// One save at a time: the debounce timer took a snapshot, then a SaveNow wrote a newer one and the timer's older
+	// snapshot landed last (seen with a loaded CPU).
+	private readonly object _saveLock = new();
 	private readonly bool _loading;
 	private PendingSave? _pending;
 
@@ -393,6 +396,14 @@ public sealed partial class SettingsState : ViewModelBase
 	// includeBattery: also a remembered battery reading that waits for the next save (exit, Restart, explicit saves; the
 	// debounce timer writes only the pending change).
 	private void Save(bool includeBattery)
+	{
+		lock (_saveLock)
+		{
+			SaveLocked(includeBattery);
+		}
+	}
+
+	private void SaveLocked(bool includeBattery)
 	{
 		PendingSave? pending = Interlocked.Exchange(ref _pending, null);
 		if (pending == null && includeBattery && BatteryUnsaved && _store != null)

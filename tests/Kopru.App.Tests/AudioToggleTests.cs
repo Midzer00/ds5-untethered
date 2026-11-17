@@ -141,7 +141,7 @@ public class AudioToggleTests
 	}
 
 	[AvaloniaFact]
-	public void StepLists_StayTheSameUntilTheLanguageChanges()
+	public void StepLists_StayTheSame()
 	{
 		(MainWindowViewModel vm, _) = Create();
 		QuickSettingsViewModel q = vm.Overview.Quick;

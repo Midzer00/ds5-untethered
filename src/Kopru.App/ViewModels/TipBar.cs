@@ -67,8 +67,9 @@ public sealed partial class TipBar : ViewModelBase
 		{
 			return;
 		}
-		// The gesture needs the Virtual Controller running (the bridge reads the controller) and controller shortcuts on.
-		if (_service.IsGameConnected && _service.IsConnected && _settings.ShortcutsEnabled && !_settings.DesktopModeOn)
+		// The gesture needs the Virtual Controller running (the bridge reads the controller) and controller shortcuts on. Not
+		// while a PS tap brings the window up: Mouse Mode comes on with it.
+		if (_service.IsGameConnected && _service.IsConnected && _settings.ShortcutsEnabled && !_settings.DesktopModeOn && !_settings.PsOpeningApp)
 		{
 			TryShow(MouseModeGesture);
 		}

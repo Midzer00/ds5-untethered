@@ -6,6 +6,15 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.1.9 — 2026-11-17
+
+- A short PS press that opens the app now turns Mouse Mode on, with a short notification; going back to the game turns it off.
+- Mouse Mode: every touchpad press is exactly one click, and the pointer no longer drifts while you press.
+- New Right Click setting (Settings > Mouse Mode): Off (every press is a left click, the default), Right Side or Two Fingers.
+- The DualShock 4 type now looks to Windows like a real wired DualShock 4, so games with native DualShock 4 support accept it: a game with native DualShock 4 support that sent it nothing before now sends its output to it. The DualShock 4's speaker is never left as the default Windows output.
+- In-app updates download a separate `-Update.exe` copy of the installer, so new installs and updates can be counted apart.
+- Fixed: the light glow on the controller picture spilling outside the light strip; menu icons not lined up with their labels; pickers losing their choice when you switch the language.
+
 ### 0.1.8 — 2026-11-16
 
 - A game's settings open in a large pop-up over the Games page, in two columns on wide windows.
@@ -58,6 +67,15 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.1.9 — 17.11.2026
+
+- Uygulamayı açan kısa PS basışı artık Fare Modu'nu da açıyor ve kısa bir bildirim gösteriyor; oyuna dönünce Fare Modu kapanıyor.
+- Fare Modu: dokunmatik yüzeye her basış tam olarak tek tık; basarken imleç artık kaymıyor.
+- Yeni Sağ Tık ayarı (Ayarlar > Fare Modu): Kapalı (her basış sol tık, varsayılan), Sağ Taraf ya da İki Parmak.
+- DualShock 4 türü artık Windows'a gerçek, kablolu bir DualShock 4 gibi görünüyor; DualShock 4'ü doğrudan destekleyen oyunlar onu kabul ediyor. Önceden ona hiçbir şey göndermeyen, DualShock 4'ü doğrudan destekleyen bir oyun artık ona veri gönderiyor. DualShock 4'ün hoparlörü hiçbir zaman Windows'un varsayılan ses çıkışı olarak kalmıyor.
+- Uygulama içi güncellemeler kurulum dosyasının ayrı bir `-Update.exe` kopyasını indiriyor; böylece yeni kurulumlar ile güncellemeler ayrı sayılabiliyor.
+- Düzeltildi: kumanda görselindeki ışık parlamasının ışık şeridinin dışına taşması; sol menü simgelerinin yazılarıyla hizasız durması; dil değiştirince seçicilerin seçimini unutması.
 
 ### 0.1.8 — 16.11.2026
 

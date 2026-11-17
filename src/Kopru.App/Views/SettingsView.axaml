@@ -79,6 +79,32 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
+    <!-- A short segmented choice stays beside its text in a narrow column too, as wide as its steps, in a lower row (the
+         choice is lower than a switch) -->
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline">
+      <Setter Property="MinHeight" Value="44" />
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline > StackPanel.text">
+      <Setter Property="Grid.ColumnSpan" Value="1" />
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline > :is(Control).control">
+      <Setter Property="Grid.Column" Value="1" />
+      <Setter Property="Grid.Row" Value="0" />
+      <Setter Property="Grid.ColumnSpan" Value="1" />
+      <Setter Property="Width" Value="NaN" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <!-- Its steps as wide as their names (not all as wide as the longest), so the name beside it keeps one line -->
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline > ListBox.control">
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline > ListBox.control ListBoxItem">
+      <Setter Property="MinWidth" Value="56" />
+      <Setter Property="Padding" Value="10,0" />
+    </Style>
     <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack > StackPanel.rowEnd">
       <Setter Property="Grid.Column" Value="0" />
       <Setter Property="Grid.Row" Value="1" />

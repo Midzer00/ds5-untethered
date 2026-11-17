@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-using System.Diagnostics;
 using System.Text;
 using Kopru.Core.UsbIp;
 
@@ -35,37 +34,18 @@ public sealed class VirtualDualSense : IVirtualPad
 
 	private readonly Queue<(uint Sequence, Action<SubmitResult> Complete)> inputWaiting = new();
 
-	// Scheduled completions, in due order (guarded by gate).
-	private readonly List<IsoCompletion> isoScheduled = [];
+	private readonly IsoFrameClock iso;
 
-	// Completions taken out as due (only touched by the iso thread).
-	private readonly List<IsoCompletion> isoDue = [];
-
-	// Set when the iso thread should look again: something scheduled earlier than it waits for, or disposal.
-	private readonly AutoResetEvent isoWake = new(false);
-
-	// The due time the iso thread waits for (ms on clock; +inf while nothing is scheduled). Guarded by gate.
-	private double isoWaitingFor = double.PositiveInfinity;
-
-	private long isoWakeups;
-
-	private readonly Dictionary<(byte Request, ushort Value, ushort Index), byte[]> audioControls = [];
+	private readonly UsbAudioControls audioControls = new(_ => AudioRate);
 
 	private readonly Dictionary<int, byte> alternateSettings = [];
 
-	private readonly Stopwatch clock = Stopwatch.StartNew();
+	private readonly PadRequestLog requests;
 
-	private readonly Thread isoThread;
-
-	private volatile bool disposed;
+	// Fills a microphone transfer from Mic (one delegate for every transfer).
+	private readonly Action<byte[]> fillMic;
 
 	private byte[] latestInput;
-
-	private long? frameBase;
-
-	private long nextFrame;
-
-	private sealed record IsoCompletion(uint Sequence, double DueMs, Action<SubmitResult> Complete, SubmitResult Result);
 
 	public VirtualDualSense(DeviceIdentity identity, string busId = BusId)
 	{
@@ -77,9 +57,13 @@ public sealed class VirtualDualSense : IVirtualPad
 		byte[] d = identity.DeviceDescriptor;
 		Info = new UsbIpDeviceInfo("/kopru/dualsense", busId, 1, 1, UsbIpCodes.SpeedFull, (ushort)(d[8] | (d[9] << 8)), (ushort)(d[10] | (d[11] << 8)),
 			(ushort)(d[12] | (d[13] << 8)), d[4], d[5], d[6], identity.ConfigurationDescriptor[5], d[17], identity.Interfaces());
-		isoThread = new Thread(IsoLoop) { Name = "Virtual DualSense frames", IsBackground = true, Priority = ThreadPriority.AboveNormal };
-		isoThread.Start();
+		iso = new IsoFrameClock("Virtual DualSense frames", () => PreciseWaitFactory);
+		requests = new PadRequestLog("DualSense", busId, HidInterface, () => Log);
+		fillMic = data => Mic?.Fill(data, MicChannels);
 	}
+
+	// Where the request diagnostics go (null: the app log; tests).
+	public Action<string>? Log { get; init; }
 
 	public UsbIpDeviceInfo Info { get; }
 
@@ -116,7 +100,11 @@ public sealed class VirtualDualSense : IVirtualPad
 				waiting = inputWaiting.Dequeue();
 			}
 		}
-		waiting?.Item2(SubmitResult.In(report));
+		if (waiting is { } w)
+		{
+			requests.InputDelivered();
+			w.Item2(SubmitResult.In(report));
+		}
 	}
 
 	public void Submit(SubmitCommand command, Action<SubmitResult> complete)
@@ -124,23 +112,28 @@ public sealed class VirtualDualSense : IVirtualPad
 		switch (command.Endpoint)
 		{
 			case 0:
-				complete(Control(command.Setup, command.Data));
+				SubmitResult result = Control(command.Setup, command.Data);
+				complete(result);
+				requests.Control(command.Setup, result);
 				break;
 			case HidInEndpoint when command.IsIn:
 				lock (gate)
 				{
 					inputWaiting.Enqueue((command.Sequence, complete));
 				}
+				requests.InPoll(HidInEndpoint);
 				break;
 			case HidOutEndpoint when !command.IsIn:
 				complete(SubmitResult.Ok(command.Length));
+				requests.Output(command.Data, true);
 				OutputReceived?.Invoke(command.Data);
 				break;
 			case AudioOutEndpoint when command.IsIsochronous:
-				ScheduleAudioOut(command, complete);
+				iso.ScheduleOut(command, complete);
+				AudioReceived?.Invoke(command.Data);
 				break;
 			case MicInEndpoint when command.IsIsochronous:
-				ScheduleMicIn(command, complete);
+				iso.ScheduleIn(command, complete, MicBytesPerFrame, fillMic);
 				break;
 			default:
 				complete(SubmitResult.Stall());
@@ -159,8 +152,12 @@ public sealed class VirtualDualSense : IVirtualPad
 			{
 				inputWaiting.Enqueue(w);
 			}
-			return inputWaiting.Count < waiting || isoScheduled.RemoveAll(c => c.Sequence == sequence) > 0;
+			if (inputWaiting.Count < waiting)
+			{
+				return true;
+			}
 		}
+		return iso.Unlink(sequence);
 	}
 
 	public void Released()
@@ -168,22 +165,21 @@ public sealed class VirtualDualSense : IVirtualPad
 		lock (gate)
 		{
 			inputWaiting.Clear();
-			isoScheduled.Clear();
-			frameBase = null;
 			alternateSettings.Clear();
 		}
+		iso.Reset();
+		requests.End("host released");
 		HostReleased?.Invoke();
 	}
 
 	public void Dispose()
 	{
-		disposed = true;
-		isoWake.Set();
-		isoThread.Join(500);
+		requests.End("disposed");
+		iso.Dispose();
 	}
 
 	// Times the iso thread woke up (diagnostics, tests): once per due completion, none while nothing is scheduled.
-	public long IsoWakeups => Interlocked.Read(ref isoWakeups);
+	public long IsoWakeups => iso.Wakeups;
 
 	// Makes the wait the iso thread completes transfers on time with (tests); null = Bluetooth.PreciseWait.Create. Read
 	// when the first transfer is scheduled (the thread starts in the constructor, before initialisers run).
@@ -238,12 +234,12 @@ public sealed class VirtualDualSense : IVirtualPad
 		}
 		if (type == 1)
 		{
-			return AudioRequest(request, value, index, data, length);
+			return audioControls.Request(requestType, request, value, index, data, length);
 		}
 		return SubmitResult.Stall();
 	}
 
-	private int HidInterface => 3;
+	private const int HidInterface = 3;
 
 	private SubmitResult Descriptor(byte type, byte index, int length) => type switch
 	{
@@ -270,6 +266,7 @@ public sealed class VirtualDualSense : IVirtualPad
 					return Answer(latestInput, length);
 				}
 			case 9 when reportType == 2:
+				requests.Output(data, false);
 				OutputReceived?.Invoke(data);
 				return SubmitResult.Ok(data.Length);
 			case 9 when reportType == 3:
@@ -286,176 +283,11 @@ public sealed class VirtualDualSense : IVirtualPad
 		}
 	}
 
-	// UAC1 requests to the feature units (volume, mute) and the streaming endpoints (sampling rate): SET_CUR is kept,
-	// GET_CUR answers it; MIN/MAX/RES describe a 0 to -96 dB volume in 1 dB steps.
-	private SubmitResult AudioRequest(byte request, ushort value, ushort index, byte[] data, int length)
-	{
-		lock (gate)
-		{
-			if (request == 0x01)
-			{
-				audioControls[(request, value, index)] = data;
-				return SubmitResult.Ok(data.Length);
-			}
-			byte[] answer = request switch
-			{
-				0x81 => audioControls.GetValueOrDefault(((byte)0x01, value, index)) ?? Default(length),
-				0x82 => length == 2 ? [0x00, 0xA0] : Default(length),
-				0x83 => length == 2 ? [0x00, 0x00] : Default(length),
-				0x84 => length == 2 ? [0x00, 0x01] : Default(length),
-				_ => []
-			};
-			return answer.Length == 0 ? SubmitResult.Stall() : Answer(answer, length);
-		}
-
-		static byte[] Default(int length) => length == 3 ? [0x80, 0xBB, 0x00] : new byte[length];
-	}
-
 	private static SubmitResult Answer(byte[] data, int length) => SubmitResult.In(data[..Math.Min(length, data.Length)]);
 
 	private static byte[] StringDescriptor(string text)
 	{
 		byte[] body = Encoding.Unicode.GetBytes(text);
 		return [(byte)(body.Length + 2), 3, .. body];
-	}
-
-	// ---------------------------------------------------------------- isochronous audio
-	private void ScheduleAudioOut(SubmitCommand command, Action<SubmitResult> complete)
-	{
-		IsoPacket[] done = new IsoPacket[command.Packets.Length];
-		for (int i = 0; i < done.Length; i++)
-		{
-			done[i] = command.Packets[i] with { ActualLength = command.Packets[i].Length, Status = 0 };
-		}
-		int startFrame = NextFrames(command, out double dueMs);
-		Schedule(command.Sequence, dueMs, complete, new SubmitResult(0, command.Length, [], startFrame, done));
-		AudioReceived?.Invoke(command.Data);
-	}
-
-	private void ScheduleMicIn(SubmitCommand command, Action<SubmitResult> complete)
-	{
-		IsoPacket[] done = new IsoPacket[command.Packets.Length];
-		int offset = 0;
-		for (int i = 0; i < done.Length; i++)
-		{
-			int actual = Math.Min(MicBytesPerFrame, command.Packets[i].Length);
-			done[i] = command.Packets[i] with { ActualLength = actual, Status = 0 };
-			offset += actual;
-		}
-		byte[] data = new byte[offset];
-		try
-		{
-			Mic?.Fill(data, MicChannels);
-		}
-		catch (Exception)
-		{
-			Array.Clear(data);
-		}
-		int startFrame = NextFrames(command, out double dueMs);
-		Schedule(command.Sequence, dueMs, complete, new SubmitResult(0, offset, data, startFrame, done));
-	}
-
-	// Consecutive transfers get consecutive frames; a gap (the host was late) starts again from now.
-	private int NextFrames(SubmitCommand command, out double dueMs)
-	{
-		lock (gate)
-		{
-			double now = clock.Elapsed.TotalMilliseconds;
-			frameBase ??= (long)now - command.StartFrame;
-			long current = (long)now - frameBase.Value;
-			long start = Math.Max(nextFrame, current);
-			nextFrame = start + command.Packets.Length;
-			dueMs = frameBase.Value + nextFrame;
-			return (int)start;
-		}
-	}
-
-	private void Schedule(uint sequence, double dueMs, Action<SubmitResult> complete, SubmitResult result)
-	{
-		bool earlier;
-		lock (gate)
-		{
-			// Usually appended (consecutive transfers get later frames).
-			int at = isoScheduled.Count;
-			while (at > 0 && isoScheduled[at - 1].DueMs > dueMs)
-			{
-				at--;
-			}
-			isoScheduled.Insert(at, new IsoCompletion(sequence, dueMs, complete, result));
-			earlier = dueMs < isoWaitingFor;
-			if (earlier)
-			{
-				isoWaitingFor = dueMs;
-			}
-		}
-		if (earlier)
-		{
-			isoWake.Set();
-		}
-	}
-
-	// Completes scheduled transfers when they are due: waits for the earliest due time (high-resolution timer), or without
-	// a timer while nothing is scheduled. Allocates nothing per pass.
-	private void IsoLoop()
-	{
-		Bluetooth.IPreciseWait? wait = null;
-		try
-		{
-			IsoPasses(ref wait);
-		}
-		finally
-		{
-			wait?.Dispose();
-		}
-	}
-
-	private void IsoPasses(ref Bluetooth.IPreciseWait? wait)
-	{
-		while (!disposed)
-		{
-			double dueMs;
-			lock (gate)
-			{
-				double now = clock.Elapsed.TotalMilliseconds;
-				int taken = 0;
-				while (taken < isoScheduled.Count && isoScheduled[taken].DueMs <= now)
-				{
-					isoDue.Add(isoScheduled[taken]);
-					taken++;
-				}
-				isoScheduled.RemoveRange(0, taken);
-				dueMs = isoScheduled.Count > 0 ? isoScheduled[0].DueMs : double.PositiveInfinity;
-				isoWaitingFor = dueMs;
-			}
-			foreach (IsoCompletion c in isoDue)
-			{
-				c.Complete(c.Result);
-			}
-			isoDue.Clear();
-			if (double.IsPositiveInfinity(dueMs))
-			{
-				wait?.Idle();
-				isoWake.WaitOne();
-			}
-			else
-			{
-				wait ??= CreateWait();
-				long at = Stopwatch.GetTimestamp() + (long)((dueMs - clock.Elapsed.TotalMilliseconds) * Stopwatch.Frequency / 1000);
-				wait.WaitUntil(at, false, isoWake);
-			}
-			Interlocked.Increment(ref isoWakeups);
-		}
-	}
-
-	private Bluetooth.IPreciseWait CreateWait()
-	{
-		try
-		{
-			return (PreciseWaitFactory ?? Bluetooth.PreciseWait.Create)();
-		}
-		catch (Exception)
-		{
-			return Bluetooth.PreciseWait.CreateFallback();
-		}
 	}
 }

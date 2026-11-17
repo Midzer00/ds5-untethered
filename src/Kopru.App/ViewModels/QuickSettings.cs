@@ -87,16 +87,10 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	public string AdvancedText => Text.AdvancedSettings();
 	public string DisconnectedNote => Text.AppliedWhenConnected();
 
-	// Step names: a new list only when the language changed (a language switch rebuilds the segments). The same list
-	// otherwise, so a re-read of the bindings (every StateChanged refreshes the Overview) never resets the selection.
-	public IReadOnlyList<string> StrengthSteps => _strengthSteps = Same(_strengthSteps, [Text.StepLight(), Text.StepNormal(), Text.StepStrong()]);
-	public IReadOnlyList<string> LightSteps => _lightSteps = Same(_lightSteps, [Text.StepOff(), Text.StepLow(), Text.StepHigh()]);
-
-	private IReadOnlyList<string>? _strengthSteps;
-	private IReadOnlyList<string>? _lightSteps;
-
-	private static IReadOnlyList<string> Same(IReadOnlyList<string>? cached, IReadOnlyList<string> now) =>
-		cached != null && cached.SequenceEqual(now) ? cached : now;
+	// Step names: the same lists for good (only the names follow the language), so neither a re-read of the bindings (every
+	// StateChanged refreshes the Overview) nor a language switch resets the selection.
+	public IReadOnlyList<LabelledChoice> StrengthSteps { get; } = [new(() => Text.StepLight()), new(() => Text.StepNormal()), new(() => Text.StepStrong())];
+	public IReadOnlyList<LabelledChoice> LightSteps { get; } = [new(() => Text.StepOff()), new(() => Text.StepLow()), new(() => Text.StepHigh())];
 
 	// Without a controller the card stays usable; the values go to it when it connects.
 	public bool ShowsDisconnectedNote => !_service.IsConnected;
@@ -194,9 +188,7 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	// "Mikrofon Tuşu": 0 = Sessize Al, 1 = Tamamen Kapat.
 	public string MicButtonLabel => Text.MicButtonModeLabel();
 	public string MicButtonTip => Text.QuickMicButtonTip();
-	public IReadOnlyList<string> MicButtonModes => _micButtonModes = Same(_micButtonModes, [Text.MicButtonMute(), Text.MicButtonTurnOffShort()]);
-
-	private IReadOnlyList<string>? _micButtonModes;
+	public IReadOnlyList<LabelledChoice> MicButtonModes { get; } = [new(() => Text.MicButtonMute()), new(() => Text.MicButtonTurnOffShort())];
 
 	public int MicButtonModeIndex
 	{

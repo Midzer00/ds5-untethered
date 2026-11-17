@@ -17,7 +17,9 @@ surroundings without its cap, 540 x 540 around the stick) and `controller[-edge]
 from the art: the cap's pixels plus the darkening it causes, measured against the no-cap render), and the light-strip
 masks the app paints the live colour through, each covering `ControllerLayout.LightRect`:
 `controller[-edge]-light-strip.png` (the diffuser channel), `-light-core.png` (its bright middle) and `-light-glow.png`
-(the light the strip throws on the shell and touchpad: a render with the strip as the only light source).
+(a short soft halo hugging the strip, drawn by `light_clip.py` from the strip's outline: strongest at its edge, gone
+`LIGHT_REACH` px out). All three are cut to the body; `python tools/art/controller/light_clip.py` redoes the glow of the
+shipped masks.
 
 Defaults: 2290 x 1520 px, transparent background (RGBA PNG), 384 samples (adaptive) with denoising, AgX (Base Contrast,
 exposure +0.5), orthographic camera straight down at 100 px per world unit (the art's 2290 px are the controller's

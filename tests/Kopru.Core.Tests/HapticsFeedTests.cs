@@ -57,6 +57,10 @@ internal sealed class SimulatedWait(SimulatedClock time, long start) : IPreciseW
 // The default mode: while the game keeps sending audio packets to the virtual pad (silent or not) the haptics stream keeps
 // running as it always did; it stops only after the tail once the packets stop. PauseHapticsInSilence (opt-in, Low Power)
 // switches to stopping on silence, and can be switched while the stream runs.
+// Measures real timer pacing: runs one class at a time (collection "RealTime") and, in tools/test.ps1, in its own phase
+// with nothing else running (Category=RealTime).
+[Trait("Category", "RealTime")]
+[Collection("RealTime")]
 public class HapticsFeedTests
 {
 	private static readonly IsoPacket[] Packets = Enumerable.Range(0, 10).Select(i => new IsoPacket(i * 384, 384, 0, 0)).ToArray();

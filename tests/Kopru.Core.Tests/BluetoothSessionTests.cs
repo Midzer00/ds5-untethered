@@ -54,6 +54,10 @@ internal sealed class FakeLink(Transport transport = Transport.Bluetooth, int ou
 	}
 }
 
+// Measures real timer pacing: runs one class at a time (collection "RealTime") and, in tools/test.ps1, in its own phase
+// with nothing else running (Category=RealTime).
+[Trait("Category", "RealTime")]
+[Collection("RealTime")]
 public class BluetoothSessionTests
 {
 	private static void WaitUntil(Func<bool> condition) => Assert.True(SpinWait.SpinUntil(condition, 3000), "timed out");

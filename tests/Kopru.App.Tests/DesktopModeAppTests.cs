@@ -181,8 +181,8 @@ public class DesktopModeAppTests
 	{
 		(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
 		DesktopModeViewModel panel = vm.Settings.DesktopPanel;
-		Assert.Equal([Text.DesktopStickLeft(), Text.DesktopStickRight()], panel.PointerSticks);
-		IReadOnlyList<string> sticks = panel.PointerSticks;
+		Assert.Equal([Text.DesktopStickLeft(), Text.DesktopStickRight()], panel.PointerSticks.Select(s => s.Name));
+		IReadOnlyList<LabelledChoice> sticks = panel.PointerSticks;
 		Assert.Equal(1, panel.PointerStickIndex);
 		panel.PointerStickIndex = 0;
 		Assert.Equal(PointerStick.Left, fake.Settings.Desktop.PointerStick);
@@ -218,6 +218,56 @@ public class DesktopModeAppTests
 		Assert.True(panel.IsMappingDefault);
 	}
 
+	// Right Click: Off by default, each choice reaches the service at once, the touchpad hint follows it, and a language
+	// switch keeps the choice (one option list for good).
+	[AvaloniaFact]
+	public void RightClick_ReachesTheService_AndSurvivesALanguageSwitch()
+	{
+		Language? before = Localizer.Chosen;
+		try
+		{
+			Localizer.Chosen = Language.Turkish;
+			(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
+			DesktopModeViewModel panel = vm.Settings.DesktopPanel;
+			IReadOnlyList<LabelledChoice> choices = panel.RightClicks;
+			Assert.Equal(["Kapalı", "Sağ Taraf", "İki Parmak"], choices.Select(c => c.Name));
+			Assert.Equal("Sağ Tık", panel.RightClickLabel);
+			Assert.Equal(0, panel.RightClickIndex);
+			Assert.Equal(TouchpadRightClick.Off, fake.Settings.Desktop.RightClick);
+			Assert.Equal(Text.DesktopTouchpadHint(TouchpadRightClick.Off), panel.MappingHint);
+
+			vm.Settings.DesktopModeOn = true;
+			var changes = new List<string?>();
+			panel.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+			panel.RightClickIndex = 2;
+			Assert.Equal(TouchpadRightClick.TwoFingers, fake.Settings.Desktop.RightClick);
+			Assert.True(fake.Settings.DesktopModeOn);
+			Assert.Equal(Text.DesktopTouchpadHint(TouchpadRightClick.TwoFingers), panel.MappingHint);
+			Assert.NotEmpty(changes);
+			panel.RightClickIndex = 1;
+			Assert.Equal(TouchpadRightClick.RightSide, fake.Settings.Desktop.RightClick);
+			Assert.Equal(TouchpadRightClick.RightSide, vm.Settings.DesktopMode.RightClick);
+			panel.RightClickIndex = 7;
+			panel.RightClickIndex = -1;
+			Assert.Equal(1, panel.RightClickIndex);
+
+			Localizer.Chosen = Language.English;
+			Assert.Same(choices, panel.RightClicks);
+			Assert.Equal(["Off", "Right Side", "Two Fingers"], choices.Select(c => c.Name));
+			Assert.Equal(1, panel.RightClickIndex);
+			Assert.Equal(TouchpadRightClick.RightSide, fake.Settings.Desktop.RightClick);
+			Assert.Contains("the right half to right click", panel.MappingHint);
+
+			// Reset To Default (the button mapping) leaves it alone.
+			panel.ResetMappingCommand.Execute(null);
+			Assert.Equal(TouchpadRightClick.RightSide, fake.Settings.Desktop.RightClick);
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
+	}
+
 	[AvaloniaFact]
 	public void GyroTarget_ReachesTheService()
 	{
@@ -238,6 +288,7 @@ public class DesktopModeAppTests
 		var desktop = new DesktopModeSettings
 		{
 			PointerSpeed = 2.2, PointerAcceleration = 10, TouchpadSpeed = 1.5, ScrollSpeed = 0.6, AutoOffInGame = false, PointerStick = PointerStick.Left,
+			RightClick = TouchpadRightClick.TwoFingers,
 			Buttons = DesktopButtonMap.Default.With(DsButton.Square, MouseAction.Space).With(DsButton.L2, MouseAction.None)
 		};
 		vm.Settings.DesktopMode = desktop;
@@ -263,6 +314,7 @@ public class DesktopModeAppTests
 			File.WriteAllText(file.Path, "{\"Gyro\":{\"Mode\":\"Always\"}}");
 			(MainWindowViewModel old, _) = NewViewModel(file);
 			Assert.Equal(DesktopModeSettings.Default, old.Settings.DesktopMode);
+			Assert.Equal(TouchpadRightClick.Off, old.Settings.DesktopMode.RightClick);
 			Assert.Equal(GyroTarget.RightStick, old.Settings.Gyro.Target);
 
 			// A file from before the stick and the mapping: their defaults, the rest kept; a bad action falls back alone.

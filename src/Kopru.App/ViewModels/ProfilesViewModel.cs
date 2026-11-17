@@ -7,10 +7,14 @@ using Kopru.Core.Profiles;
 
 namespace Kopru.App.ViewModels;
 
-// A profile as a choice in a picker.
-public sealed record ProfileOption(string Id, string Name)
+// A profile as a choice in a picker: the default profile's name is read in the current language each time (never stored),
+// the user's own profiles keep their names.
+public sealed class ProfileOption(ControllerProfile profile) : LabelledChoice(() => SettingsState.DisplayName(profile))
 {
-	public override string ToString() => Name;
+	public string Id { get; } = profile.Id;
+
+	// What a list of profile choices shows, to tell when it has to be built again (a profile added, removed or renamed).
+	public static string Signature(IEnumerable<ControllerProfile> profiles) => string.Join("\n", profiles.Select(p => p.Id + "\t" + p.IsDefault + "\t" + p.Name));
 }
 
 // One row of the profiles list: name (renamed in place), active mark or Activate, and a menu with the other actions.
@@ -271,17 +275,20 @@ public sealed class GameProfilePicker : ObservableObject
 	}
 
 	private IReadOnlyList<ProfileOption> _options = [];
+	private string? _signature;
 
-	// The same list until a profile is added, removed or renamed: a picked profile changes the profiles' memory, which
-	// refreshes the pickers, and a new list there would make the open picker drop the choice it is making.
+	// The same list until a profile is added, removed or renamed (a language switch only renames the default profile on
+	// screen): a picked profile changes the profiles' memory, which refreshes the pickers, and a new list there would make
+	// the open picker drop the choice it is making.
 	public IReadOnlyList<ProfileOption> Options
 	{
 		get
 		{
-			List<ProfileOption> now = _settings.Profiles.Profiles.Select(p => new ProfileOption(p.Id, SettingsState.DisplayName(p))).ToList();
-			if (!now.SequenceEqual(_options))
+			string signature = ProfileOption.Signature(_settings.Profiles.Profiles);
+			if (signature != _signature)
 			{
-				_options = now;
+				_signature = signature;
+				_options = _settings.Profiles.Profiles.Select(p => new ProfileOption(p)).ToList();
 			}
 			return _options;
 		}

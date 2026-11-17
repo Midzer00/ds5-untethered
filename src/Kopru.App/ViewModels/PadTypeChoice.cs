@@ -6,7 +6,11 @@ using Kopru.Core.Virtual;
 namespace Kopru.App.ViewModels;
 
 // One choice of the default controller type: Type null is Automatic. Line: what the choice means (the item's tooltip).
-public sealed record PadChoiceOption(VirtualPadType? Type, string Name, string Line = "");
+public sealed class PadChoiceOption(VirtualPadType? type, Func<string> name, Func<string> line) : LabelledChoice(name)
+{
+	public VirtualPadType? Type { get; } = type;
+	public string Line => line();
+}
 
 // The default controller type, "Varsayılan Kumanda Türü" (Quick Settings and the Games page share this one instance from
 // SettingsState): the type games without their own choice see; Automatic (Per Game) leaves those on DualSense. A game's
@@ -14,7 +18,6 @@ public sealed record PadChoiceOption(VirtualPadType? Type, string Name, string L
 public sealed class PadTypeChoiceViewModel : ViewModelBase
 {
 	private readonly GameModeController _games;
-	private IReadOnlyList<PadChoiceOption>? _options;
 
 	public PadTypeChoiceViewModel(GameModeController games)
 	{
@@ -22,23 +25,13 @@ public sealed class PadTypeChoiceViewModel : ViewModelBase
 		games.MemoryChanged += () => RunOnUi(Refresh);
 	}
 
-	// Rebuilt only when the language changed, so a re-read of the bindings never resets the selection.
-	public IReadOnlyList<PadChoiceOption> Options
-	{
-		get
-		{
-			string auto = Text.PadChoiceAutoPerGame();
-			if (_options == null || _options[0].Name != auto)
-			{
-				_options =
-				[
-					new(null, auto, Text.PadChoiceAutoLine()),
-					.. TypeOptions().Select(o => new PadChoiceOption(o.Type, o.Name, o.Line))
-				];
-			}
-			return _options;
-		}
-	}
+	// The same list for good (the names follow the language), so neither a re-read of the bindings nor a language switch
+	// resets the selection.
+	public IReadOnlyList<PadChoiceOption> Options { get; } =
+	[
+		new(null, () => Text.PadChoiceAutoPerGame(), () => Text.PadChoiceAutoLine()),
+		.. TypeOptions().Select(o => new PadChoiceOption(o.Type, () => o.Name, o.Line))
+	];
 
 	public string Label => Text.PadTypeLabel();
 	public string Hint => Text.PadTypeDefaultHint();
@@ -47,11 +40,11 @@ public sealed class PadTypeChoiceViewModel : ViewModelBase
 	public string Tip => Text.PadTypeDefaultHint();
 
 	// The three types with what each one means, in the pickers' order (product names, the same in every language).
-	public static IEnumerable<(VirtualPadType Type, string Name, string Line)> TypeOptions() =>
+	public static IEnumerable<(VirtualPadType Type, string Name, Func<string> Line)> TypeOptions() =>
 	[
-		(VirtualPadType.DualSense, "DualSense", Text.PadTypeDualSenseLine()),
-		(VirtualPadType.DualShock4, "DualShock 4", Text.PadTypeDualShock4Line()),
-		(VirtualPadType.Xbox360, "Xbox 360", Text.PadTypeXboxLine())
+		(VirtualPadType.DualSense, "DualSense", () => Text.PadTypeDualSenseLine()),
+		(VirtualPadType.DualShock4, "DualShock 4", () => Text.PadTypeDualShock4Line()),
+		(VirtualPadType.Xbox360, "Xbox 360", () => Text.PadTypeXboxLine())
 	];
 
 	public PadChoiceOption? Selected
@@ -72,10 +65,4 @@ public sealed class PadTypeChoiceViewModel : ViewModelBase
 	}
 
 	private void Refresh() => OnPropertyChanged(nameof(Selected));
-
-	protected override void OnLanguageChanged()
-	{
-		OnPropertyChanged(nameof(Options));
-		base.OnLanguageChanged();
-	}
 }

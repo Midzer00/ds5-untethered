@@ -22,9 +22,32 @@ public static partial class Text
 		$"Dokunmatik yüzey, PS ve mikrofon tuşu değişmez.",
 		$"Touchpad, PS and Mute stay as they are.");
 
-	public static string DesktopTouchpadHint(Language? l = null) => Pick(l,
-		$"Dokunmatik yüzey: tek parmak imleci taşır; dokunma sol tık, iki parmakla dokunma sağ tık, iki parmak yukarı/aşağı kaydırır; basınca sol/sağ yarıya göre tıklar. PS + Seçenekler fare modunu açıp kapatır.",
-		$"Touchpad: one finger moves the pointer; tap = left click, two-finger tap = right click, two fingers up/down scroll; pressing clicks by left/right half. PS + Options turns mouse mode on and off.");
+	public static string DesktopRightClick(Language? l = null) => Pick(l, $"Sağ Tık", $"Right Click");
+
+	public static string DesktopRightClickHint(Language? l = null) => Pick(l,
+		$"Dokunmatik yüzeye hangi basışın sağ tık olacağı. Kapalıyken her basış sol tık.",
+		$"Which touchpad press right clicks. Off: every press is a left click.");
+
+	public static string DesktopRightClickOption(TouchpadRightClick mode, Language? l = null) => mode switch
+	{
+		TouchpadRightClick.RightSide => Pick(l, $"Sağ Taraf", $"Right Side"),
+		TouchpadRightClick.TwoFingers => Pick(l, $"İki Parmak", $"Two Fingers"),
+		_ => Pick(l, $"Kapalı", $"Off")
+	};
+
+	// The touchpad's gestures; the tap and press part follows the Right Click choice.
+	public static string DesktopTouchpadHint(TouchpadRightClick mode = TouchpadRightClick.Off, Language? l = null)
+	{
+		string clicks = mode switch
+		{
+			TouchpadRightClick.RightSide => Pick(l, $"dokunmak sol tık; sol yarıya basmak sol tık, sağ yarıya basmak sağ tık", $"tap to left click; press the left half to left click, the right half to right click"),
+			TouchpadRightClick.TwoFingers => Pick(l, $"tek parmakla dokunmak ya da basmak sol tık, iki parmakla sağ tık", $"tap or press with one finger to left click, with two to right click"),
+			_ => Pick(l, $"dokunmak ya da basmak sol tık", $"tap or press to left click")
+		};
+		return Pick(l,
+			$"Dokunmatik yüzey: tek parmak imleci taşır, iki parmak yukarı/aşağı kaydırır; {clicks}. PS + Seçenekler fare modunu açıp kapatır.",
+			$"Touchpad: one finger moves the pointer, two fingers up/down scroll; {clicks}. PS + Options turns mouse mode on and off.");
+	}
 
 	public static string DesktopActionName(MouseAction action, Language? l = null) => action switch
 	{

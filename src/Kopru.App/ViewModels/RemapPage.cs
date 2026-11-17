@@ -7,16 +7,14 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-public sealed class ButtonOption(DsButton button, Func<string>? name = null)
+public sealed class ButtonOption(DsButton button, Func<string>? name = null) : LabelledChoice(name ?? (() => Text.ButtonName(button)))
 {
 	public DsButton Button { get; } = button;
-	public string Name => name?.Invoke() ?? Text.ButtonName(Button);
 }
 
-public sealed class GyroModeOption(GyroMode mode)
+public sealed class GyroModeOption(GyroMode mode) : LabelledChoice(() => Text.GyroModeName(mode))
 {
 	public GyroMode Mode { get; } = mode;
-	public string Name => Text.GyroModeName(Mode);
 }
 
 // One physical button and the button it sends (written back into SettingsState.Remap).
@@ -61,7 +59,7 @@ public sealed partial class RemapViewModel : ViewModelBase
 
 	private readonly IControllerService _service;
 	private readonly TimeSpan _calibrationLength;
-	private IReadOnlyList<ButtonOption> _targets = BuildTargets();
+	private readonly IReadOnlyList<ButtonOption> _targets = BuildTargets();
 	private GyroAim _preview;
 
 	public RemapViewModel(IControllerService service, SettingsState settings, TimeSpan? calibrationLength = null)
@@ -97,7 +95,7 @@ public sealed partial class RemapViewModel : ViewModelBase
 
 	// DualSense Edge back paddles and presentation (shown only while an Edge is connected).
 	public EdgeRemapPanel Edge { get; }
-	public IReadOnlyList<GyroModeOption> Modes { get; private set; }
+	public IReadOnlyList<GyroModeOption> Modes { get; }
 
 	public string Intro => Text.RemapIntro();
 	public string RemapLabel => Text.ButtonRemapping();
@@ -201,19 +199,6 @@ public sealed partial class RemapViewModel : ViewModelBase
 		_preview.Apply(body);
 		OffsetX = _preview.OffsetX;
 		OffsetY = _preview.OffsetY;
-	}
-
-	protected override void OnLanguageChanged()
-	{
-		_targets = BuildTargets();
-		Modes = BuildModes();
-		Edge.Refresh();
-		GyroTargets = BuildGyroTargets();
-		foreach (RemapRow row in Rows)
-		{
-			row.Refresh();
-		}
-		base.OnLanguageChanged();
 	}
 
 	private static IReadOnlyList<ButtonOption> BuildTargets() =>

@@ -153,11 +153,11 @@ Not done yet:
 
 ### Building
 
-Requires the .NET 8 SDK. From the repository root:
+Requires the .NET 8 SDK. From the repository root (`tools\test.ps1` builds, then runs the test projects in parallel processes; plain `dotnet test` works too, only slower):
 
 ```
 dotnet build
-dotnet test
+powershell -ExecutionPolicy Bypass -File tools\test.ps1
 ```
 
 ### Screenshots
@@ -312,11 +312,11 @@ Henüz yapılmadı:
 
 ### Derleme
 
-.NET 8 SDK gerekir. Deponun kök klasöründe şunları çalıştırın:
+.NET 8 SDK gerekir. Deponun kök klasöründe şunları çalıştırın (`tools\test.ps1` derler, sonra test projelerini paralel süreçlerde çalıştırır; düz `dotnet test` de çalışır, yalnızca daha yavaştır):
 
 ```
 dotnet build
-dotnet test
+powershell -ExecutionPolicy Bypass -File tools\test.ps1
 ```
 
 ### Ekran görüntüleri

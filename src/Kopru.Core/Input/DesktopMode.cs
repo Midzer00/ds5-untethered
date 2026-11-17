@@ -22,6 +22,10 @@ public sealed record DesktopModeSettings
 	[System.Text.Json.Serialization.JsonConverter(typeof(LenientEnumConverter<PointerStick>))]
 	public PointerStick PointerStick { get; init; } = PointerStick.Right;
 
+	// Which touchpad presses right click (missing in older files: none, every press is a left click).
+	[System.Text.Json.Serialization.JsonConverter(typeof(LenientEnumConverter<TouchpadRightClick>))]
+	public TouchpadRightClick RightClick { get; init; } = TouchpadRightClick.Off;
+
 	// What each button does (missing in older files, or a button or action not known: that button's default).
 	public DesktopButtonMap Buttons
 	{
@@ -36,8 +40,13 @@ public sealed record DesktopModeSettings
 // body is replaced by a neutral one (sticks centred, triggers released, no buttons, no touches), so games don't react.
 //
 // Mapping (the buttons are Settings.Buttons; the defaults below):
-//   touchpad      one finger moves the pointer (with acceleration); tap = left click; two-finger tap = right click;
-//                 two fingers moving up/down = scroll; touchpad click = left click (left half) / right click (right half)
+//   touchpad      one finger moves the pointer (with acceleration); two fingers moving up/down = scroll; a tap and a
+//                 touchpad click are a left click, or a right click as Settings.RightClick picks (Off: never, anywhere and
+//                 with any number of fingers a left click, so two quick presses are a double click wherever they land;
+//                 RightSide: a click on the right half, taps stay left; TwoFingers: a tap or click with two fingers); while
+//                 the click is held, and for ReleaseHold after it while the finger stays, the pointer stays still until
+//                 the finger has moved ClickDragTravel (pressing and letting go roll the finger: a drag instead of a click
+//                 loses it, a moved pointer loses a double click), then it drags
 //   right stick   pointer (speed and acceleration curve)          left stick   scroll (vertical and horizontal)
 //                 (Settings.PointerStick = Left swaps the two)
 //   Cross         left mouse button (held = drag)                 Circle       right mouse button
@@ -72,7 +81,15 @@ public sealed class DesktopMode
 	public const double TouchScrollPerCount = 1.5;
 
 	public static readonly TimeSpan TapMaxLength = TimeSpan.FromMilliseconds(250);
+	// How far (touchpad counts, straight from where the finger came down) a tap may move. The distance from the start,
+	// not the path: the path of a resting finger grows with the sensor's jitter and turned slow taps into no click.
 	public const int TapMaxTravel = 60;
+	// While the touchpad click is held, the finger must move this far (counts, from where it was at the press) before
+	// the pointer follows (a drag); less is the finger rolling as it presses, and the click stays where it was aimed.
+	public const int ClickDragTravel = 100;
+	// After the touchpad click comes up, the pointer stays still this long while the finger is still on the pad (it
+	// rolls as it lifts): the next press of a double click lands where the first did.
+	public static readonly TimeSpan ReleaseHold = TimeSpan.FromMilliseconds(250);
 	public static readonly TimeSpan SwitcherHold = TimeSpan.FromMilliseconds(700);
 
 	private readonly TimeProvider time;
@@ -106,8 +123,18 @@ public sealed class DesktopMode
 	private bool touching, touchClicked, hasLast, hasLastPair;
 	private int lastX, lastY, lastId, maxFingers;
 	private double lastPairY, touchStart, travel;
+	// Where the current finger (startId) / finger pair came down: a tap's travel is measured from here.
+	private int startX, startY, startId;
+	private bool hasStart, hasPairStart;
+	private double pairStartY;
 	private bool padClickDown;
 	private MouseButton padClickButton;
+	// The pointer held still under a held touchpad click (anchor: the finger's position at the press) until it drags.
+	private bool clickAnchored, clickDragging;
+	private int clickAnchorX, clickAnchorY;
+	// The click came up at clickReleasedAt with the pointer still held: it stays held for ReleaseHold.
+	private bool releaseHeld;
+	private double clickReleasedAt;
 
 	public DesktopMode(IInputSink? sink = null, TimeProvider? time = null)
 	{
@@ -501,8 +528,8 @@ public sealed class DesktopMode
 		TouchPoint f1 = TouchPoint.Parse(body[Touch1..]), f2 = TouchPoint.Parse(body[Touch2..]);
 		touching = f1.Active || f2.Active;
 		touchClicked = touching;
-		hasLast = hasLastPair = false;
-		padClickDown = false;
+		hasLast = hasLastPair = hasStart = hasPairStart = false;
+		padClickDown = clickAnchored = clickDragging = releaseHeld = false;
 		travel = 0;
 	}
 
@@ -513,16 +540,18 @@ public sealed class DesktopMode
 		bool click = (buttons & PadButtons.Touchpad) != 0;
 		if (click && (previous & PadButtons.Touchpad) == 0)
 		{
-			TouchPoint at = f1.Active ? f1 : f2;
-			padClickButton = at.Active && at.X >= TouchPoint.Width / 2 ? MouseButton.Right : MouseButton.Left;
+			padClickButton = IsRightClick(s.RightClick, f1, f2) ? MouseButton.Right : MouseButton.Left;
 			PressMouse(output, padClickButton);
 			padClickDown = true;
 			touchClicked = true;
+			clickAnchored = clickDragging = releaseHeld = false;
 		}
 		else if (!click && padClickDown)
 		{
 			padClickDown = false;
 			ReleaseMouse(output, padClickButton);
+			releaseHeld = clickAnchored && !clickDragging;
+			clickReleasedAt = clock;
 		}
 
 		if (fingers == 0)
@@ -532,12 +561,13 @@ public sealed class DesktopMode
 				touching = false;
 				if (!touchClicked && clock - touchStart <= TapMaxLength.TotalSeconds && travel <= TapMaxTravel)
 				{
-					MouseButton tap = maxFingers >= 2 ? MouseButton.Right : MouseButton.Left;
+					MouseButton tap = maxFingers >= 2 && s.RightClick == TouchpadRightClick.TwoFingers ? MouseButton.Right : MouseButton.Left;
 					output.MouseButton(tap, true);
 					output.MouseButton(tap, false);
 				}
 			}
-			hasLast = hasLastPair = false;
+			hasLast = hasLastPair = hasStart = hasPairStart = false;
+			releaseHeld = false;
 			return;
 		}
 		if (!touching)
@@ -547,17 +577,40 @@ public sealed class DesktopMode
 			touchStart = clock;
 			travel = 0;
 			maxFingers = 0;
-			hasLast = hasLastPair = false;
+			hasLast = hasLastPair = hasStart = hasPairStart = false;
 		}
 		maxFingers = Math.Max(maxFingers, fingers);
 		if (fingers == 1)
 		{
 			TouchPoint p = f1.Active ? f1 : f2;
-			if (hasLast && p.Id == lastId)
+			if (!hasStart || p.Id != startId)
+			{
+				startX = p.X;
+				startY = p.Y;
+				startId = p.Id;
+				hasStart = true;
+			}
+			travel = Math.Max(travel, Distance(p.X - startX, p.Y - startY));
+			bool held = false;
+			if (releaseHeld && clock - clickReleasedAt > ReleaseHold.TotalSeconds)
+			{
+				releaseHeld = false;
+			}
+			if ((padClickDown || releaseHeld) && !clickDragging)
+			{
+				if (!clickAnchored)
+				{
+					clickAnchorX = p.X;
+					clickAnchorY = p.Y;
+					clickAnchored = true;
+				}
+				clickDragging = Distance(p.X - clickAnchorX, p.Y - clickAnchorY) >= ClickDragTravel;
+				held = !clickDragging;
+			}
+			if (hasLast && p.Id == lastId && !held)
 			{
 				int dx = p.X - lastX, dy = p.Y - lastY;
 				double magnitude = Math.Sqrt(dx * dx + dy * dy);
-				travel += magnitude;
 				remX += TouchPixels(dx, magnitude, s);
 				remY += TouchPixels(dy, magnitude, s);
 				int px = (int)Math.Truncate(remX), py = (int)Math.Truncate(remY);
@@ -577,10 +630,15 @@ public sealed class DesktopMode
 		else
 		{
 			double y = (f1.Y + f2.Y) / 2.0;
+			if (!hasPairStart)
+			{
+				pairStartY = y;
+				hasPairStart = true;
+			}
+			travel = Math.Max(travel, Math.Abs(y - pairStartY));
 			if (hasLastPair)
 			{
 				double dy = y - lastPairY;
-				travel += Math.Abs(dy);
 				// Natural scrolling: fingers moving down show what is above (scroll up).
 				wheelRem += dy * TouchScrollPerCount * Math.Max(0, s.ScrollSpeed);
 				int w = (int)Math.Truncate(wheelRem);
@@ -594,6 +652,19 @@ public sealed class DesktopMode
 			hasLastPair = true;
 			hasLast = false;
 		}
+	}
+
+	// A touchpad press as a right click: never (Off), the finger on the right half (RightSide), or two fingers on the pad
+	// (TwoFingers). No finger reported yet: a left click.
+	public static bool IsRightClick(TouchpadRightClick mode, TouchPoint f1, TouchPoint f2)
+	{
+		TouchPoint at = f1.Active ? f1 : f2;
+		return mode switch
+		{
+			TouchpadRightClick.RightSide => at.Active && at.X >= TouchPoint.Width / 2,
+			TouchpadRightClick.TwoFingers => f1.Active && f2.Active,
+			_ => false
+		};
 	}
 
 	private void ReleaseAll(IInputSink output)
@@ -617,11 +688,13 @@ public sealed class DesktopMode
 		Array.Clear(pressed);
 		swallowed = PadButtons.None;
 		CloseSwitcher(output);
-		padClickDown = false;
+		padClickDown = clickAnchored = clickDragging = releaseHeld = false;
 		engaged = false;
 		remX = remY = wheelRem = hwheelRem = 0;
 		touching = hasLast = hasLastPair = false;
 	}
+
+	private static double Distance(int dx, int dy) => Math.Sqrt((double)dx * dx + (double)dy * dy);
 
 	// 128 (the resting value) is exactly 0.
 	private static double Axis(byte raw) => Math.Clamp((raw - 128) / 127.0, -1, 1);

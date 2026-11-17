@@ -6,11 +6,14 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// One entry of a device picker: a short name (the controller's own endpoints get plain names), the Windows name for the
-// tooltip.
-public sealed record AudioDeviceItem(string Id, string Name, string FullName, bool IsPad)
+// One entry of a device picker: a short name (the controller's own endpoints get plain names, read in the current
+// language), the Windows name for the tooltip. Key: what tells two lists apart (the shown names aside).
+public sealed class AudioDeviceItem(string id, Func<string> name, string fullName, bool isPad, string key) : LabelledChoice(name)
 {
-	public override string ToString() => Name;
+	public string Id { get; } = id;
+	public string FullName { get; } = fullName;
+	public bool IsPad { get; } = isPad;
+	public string Key { get; } = key;
 }
 
 // The "Ses Çıkışı" and "Mikrofon" pickers (Quick Settings and Settings use this one instance through SettingsState): the
@@ -39,6 +42,7 @@ public sealed partial class AudioDevicesViewModel : ViewModelBase
 			Apply(_devices.Snapshot);
 			_devices.Start();
 		}
+		// The mic state words follow the language (SnapshotChanged); the lists stay, only the item names change.
 		Localizer.LanguageChanged += _ => RunOnUi(() => Apply(Snapshot, force: true));
 	}
 
@@ -142,12 +146,12 @@ public sealed partial class AudioDevicesViewModel : ViewModelBase
 		{
 			IReadOnlyList<AudioDeviceItem> outputs = Items(snapshot.Render, AudioFlow.Render);
 			IReadOnlyList<AudioDeviceItem> inputs = Items(snapshot.Capture, AudioFlow.Capture);
-			if (!outputs.SequenceEqual(_outputs))
+			if (!outputs.Select(i => i.Key).SequenceEqual(_outputs.Select(i => i.Key)))
 			{
 				_outputs = outputs;
 				OnPropertyChanged(nameof(Outputs));
 			}
-			if (!inputs.SequenceEqual(_inputs))
+			if (!inputs.Select(i => i.Key).SequenceEqual(_inputs.Select(i => i.Key)))
 			{
 				_inputs = inputs;
 				OnPropertyChanged(nameof(Inputs));
@@ -184,12 +188,13 @@ public sealed partial class AudioDevicesViewModel : ViewModelBase
 			}
 			ordinal++;
 			int? slot = pads > 1 ? (e.Port is int port ? _service.SlotOfAudioPort(port) : null) ?? ordinal : null;
-			string name = flow == AudioFlow.Render ? Text.ControllerSpeakerDevice(slot) : Text.ControllerMicDevice(slot);
-			list.Add(new AudioDeviceItem(e.Id, name, e.Name, true));
+			Func<string> name = flow == AudioFlow.Render ? () => Text.ControllerSpeakerDevice(slot) : () => Text.ControllerMicDevice(slot);
+			list.Add(new AudioDeviceItem(e.Id, name, e.Name, true, $"{e.Id}|{e.Name}|pad|{slot}"));
 		}
 		// The controller first, then the PC's devices by name.
-		list.AddRange(entries.Where(e => !e.IsPad).Select(e => new AudioDeviceItem(e.Id, ShortName(e.Name), e.Name, false))
-			.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase));
+		list.AddRange(entries.Where(e => !e.IsPad).Select(e => (Entry: e, Short: ShortName(e.Name)))
+			.OrderBy(d => d.Short, StringComparer.CurrentCultureIgnoreCase)
+			.Select(d => new AudioDeviceItem(d.Entry.Id, () => d.Short, d.Entry.Name, false, $"{d.Entry.Id}|{d.Entry.Name}")));
 		return list;
 	}
 

@@ -97,7 +97,7 @@ public class DualShock4EmulationTests
 
 	private static byte[] GetFeature(VirtualDualShock4 pad, byte id, int length = 255)
 	{
-		SubmitResult r = pad.Control([0xA1, 0x01, id, 0x03, 0x00, 0x00, (byte)length, (byte)(length >> 8)], []);
+		SubmitResult r = pad.Control([0xA1, 0x01, id, 0x03, VirtualDualShock4.HidInterface, 0x00, (byte)length, (byte)(length >> 8)], []);
 		Assert.Equal(0, r.Status);
 		return r.Data;
 	}
@@ -117,7 +117,7 @@ public class DualShock4EmulationTests
 	// ---------------------------------------------------------------- descriptors
 
 	[Fact]
-	public void DeviceAndConfigurationDescriptors_AreAWiredDualShock4v2_HidOnly()
+	public void DeviceAndConfigurationDescriptors_AreAWiredDualShock4v2_AudioOnInterfaces0To2_HidOn3()
 	{
 		byte[] d = VirtualDualShock4.DeviceDescriptor;
 		Assert.Equal((18, 1), (d[0], d[1]));
@@ -127,62 +127,88 @@ public class DualShock4EmulationTests
 		Assert.Equal((0, 0, 0, 64), (d[4], d[5], d[6], d[7]));
 		Assert.Equal(1, d[17]);
 
+		// The real pad's configuration is 225 bytes with four interfaces.
 		byte[] c = VirtualDualShock4.ConfigurationDescriptor;
+		Assert.Equal(225, c.Length);
 		Assert.Equal(c.Length, c[2] | (c[3] << 8));
-		int interfaces = 0, at = 0;
-		List<byte[]> endpoints = [];
+		List<(int Number, int Alt, int Class, int SubClass, int Endpoints)> interfaces = [];
+		List<(int Interface, byte[] Item)> endpoints = [];
 		byte[]? hid = null;
+		int at = 0, acTotal = 0, acStart = -1;
 		while (at < c.Length)
 		{
 			Assert.True(c[at] > 0);
 			byte[] item = c[at..(at + c[at])];
-			interfaces += item[1] == 4 ? 1 : 0;
 			if (item[1] == 4)
 			{
-				Assert.Equal((3, 0, 0, 2), (item[5], item[6], item[7], item[4]));
+				interfaces.Add((item[2], item[3], item[5], item[6], item[4]));
 			}
 			if (item[1] == 5)
 			{
-				endpoints.Add(item);
+				endpoints.Add((interfaces[^1].Number, item));
 			}
 			if (item[1] == 0x21)
 			{
 				hid = item;
 			}
+			if (item[1] == 0x24 && interfaces[^1].Number == 0)
+			{
+				acStart = acStart < 0 ? at : acStart;
+				acTotal += item[0];
+			}
 			at += c[at];
 		}
 		Assert.Equal(c.Length, at);
-		Assert.Equal(1, interfaces);
-		Assert.Equal(c[4], interfaces);
-		Assert.Equal(new byte[] { 0x84, 0x03 }, endpoints.Select(e => e[2]));
-		Assert.All(endpoints, e => Assert.Equal((3, 64), (e[3], e[4] | (e[5] << 8))));
+		Assert.Equal(4, c[4]);
+		Assert.Equal([(0, 0, 1, 1, 0), (1, 0, 1, 2, 0), (1, 1, 1, 2, 1), (2, 0, 1, 2, 0), (2, 1, 1, 2, 1), (3, 0, 3, 0, 2)], interfaces);
+		// The audio control header's total length covers its class-specific descriptors.
+		Assert.Equal(acTotal, c[acStart + 5] | (c[acStart + 6] << 8));
+		Assert.Equal(new[] { 0x01, 0x82, 0x84, 0x03 }, endpoints.Select(e => (int)e.Item[2]));
+		Assert.Equal([(1, 132), (2, 34)], endpoints.Take(2).Select(e => (e.Interface, e.Item[4] | (e.Item[5] << 8))));
+		Assert.All(endpoints.Take(2), e => Assert.Equal(1, e.Item[3] & 3)); // isochronous
+		Assert.All(endpoints.Skip(2), e => Assert.Equal((3, 3, 64), (e.Interface, (int)e.Item[3], e.Item[4] | (e.Item[5] << 8))));
 		Assert.NotNull(hid);
 		Assert.Equal(VirtualDualShock4.HidDescriptor, hid);
 		Assert.Equal(VirtualDualShock4.ReportDescriptor.Length, hid![7] | (hid[8] << 8));
-		Assert.Equal(0x22, hid[6]);
+		Assert.Equal((0x22, 0x0111), (hid[6], hid[2] | (hid[3] << 8)));
 
-		VirtualDualShock4 pad = new();
+		using VirtualDualShock4 pad = new();
 		Assert.Equal((VirtualDualShock4.VendorId, VirtualDualShock4.ProductId), (pad.Info.VendorId, pad.Info.ProductId));
-		Assert.Equal(((byte)0x03, (byte)0x00, (byte)0x00), Assert.Single(pad.Info.Interfaces));
+		Assert.Equal([((byte)1, (byte)1, (byte)0), ((byte)1, (byte)2, (byte)0), ((byte)1, (byte)2, (byte)0), ((byte)3, (byte)0, (byte)0)], pad.Info.Interfaces);
 		Assert.Equal(UsbIpCodes.SpeedFull, pad.Info.Speed);
 		Assert.Equal(VirtualPadType.DualShock4, pad.Type);
 	}
 
 	[Fact]
-	public void ReportDescriptor_DeclaresTheDs4ReportSizes()
+	public void ReportDescriptor_DeclaresEveryReportOfTheRealPad_WithItsSize()
 	{
 		(Dictionary<(string Kind, byte Id), int> bits, int depth) = HidReportParser.Parse(VirtualDualShock4.ReportDescriptor);
 		Assert.Equal(0, depth);
+		// Same length as the real pad's descriptor.
+		Assert.Equal(507, VirtualDualShock4.ReportDescriptor.Length);
 		Assert.Equal((DualShock4Reports.InputSize - 1) * 8, bits[(HidReportParser.Input, DualShock4Reports.InputId)]);
 		Assert.Equal((DualShock4Reports.OutputSize - 1) * 8, bits[(HidReportParser.Output, DualShock4Reports.OutputId)]);
 		Assert.Equal((DualShock4Reports.CalibrationSize - 1) * 8, bits[(HidReportParser.Feature, 0x02)]);
 		Assert.Equal((DualShock4Reports.PairingSize - 1) * 8, bits[(HidReportParser.Feature, 0x12)]);
 		Assert.Equal((DualShock4Reports.AddressSize - 1) * 8, bits[(HidReportParser.Feature, 0x81)]);
 		Assert.Equal((DualShock4Reports.FirmwareSize - 1) * 8, bits[(HidReportParser.Feature, 0xA3)]);
-		Assert.Equal(6, bits.Count);
-		Assert.All(bits.Values, b => Assert.Equal(0, b % 8));
-		// Starts as a Generic Desktop game pad application collection.
+		// The feature reports of a DS4 v2 (id: size without the id).
+		Dictionary<byte, int> expected = new()
+		{
+			[0x02] = 36, [0x04] = 36, [0x08] = 3, [0x10] = 4, [0x11] = 2, [0x12] = 15, [0x13] = 22, [0x14] = 16, [0x15] = 44,
+			[0x80] = 6, [0x81] = 6, [0x82] = 5, [0x83] = 1, [0x84] = 4, [0x85] = 6, [0x86] = 6, [0x87] = 35, [0x88] = 63, [0x89] = 2,
+			[0x90] = 5, [0x91] = 3, [0x92] = 3, [0x93] = 12, [0x94] = 63, [0xA0] = 6, [0xA1] = 1, [0xA2] = 1, [0xA3] = 48, [0xA4] = 13,
+			[0xA7] = 1, [0xA8] = 1, [0xA9] = 8, [0xAA] = 1, [0xAB] = 57, [0xAC] = 57, [0xAD] = 11, [0xAE] = 1, [0xAF] = 2, [0xB0] = 63,
+			[0xB3] = 63, [0xB4] = 63, [0xB5] = 63, [0xD0] = 63, [0xD4] = 63, [0xE0] = 2, [0xF0] = 63, [0xF1] = 63, [0xF2] = 15
+		};
+		Assert.Equal(expected.OrderBy(e => e.Key), bits.Where(b => b.Key.Kind == HidReportParser.Feature)
+			.Select(b => KeyValuePair.Create(b.Key.Id, b.Value / 8)).OrderBy(e => e.Key));
+		Assert.Equal(expected.Count + 2, bits.Count);
+		Assert.All(expected, e => Assert.Equal(e.Value + 1, DualShock4Reports.FeatureSize(e.Key)));
+		Assert.Equal(0, DualShock4Reports.FeatureSize(0x03));
+		// Starts as a Generic Desktop game pad application collection; the largest feature report is 64 bytes with its id.
 		Assert.Equal(new byte[] { 0x05, 0x01, 0x09, 0x05, 0xA1, 0x01 }, VirtualDualShock4.ReportDescriptor[..6]);
+		Assert.Equal(63 * 8, bits.Where(b => b.Key.Kind == HidReportParser.Feature).Max(b => b.Value));
 	}
 
 	[Fact]
@@ -200,7 +226,9 @@ public class DualShock4EmulationTests
 		Assert.Equal(bits.Count(b => b.Key.Kind == HidReportParser.Feature), pad.FeatureReports.Count);
 		// Short reads get the start of the report; unknown ids stall.
 		Assert.Equal(new byte[] { 0x12, pad.Address[5] }, GetFeature(pad, 0x12, 2));
-		Assert.NotEqual(0, pad.Control([0xA1, 0x01, 0x99, 0x03, 0, 0, 64, 0], []).Status);
+		Assert.NotEqual(0, pad.Control([0xA1, 0x01, 0x99, 0x03, VirtualDualShock4.HidInterface, 0, 64, 0], []).Status);
+		// HID requests go to interface 3 only (interface 0 is audio control).
+		Assert.NotEqual(0, pad.Control([0xA1, 0x01, 0x12, 0x03, 0, 0, 16, 0], []).Status);
 	}
 
 	[Fact]
@@ -287,8 +315,8 @@ public class DualShock4EmulationTests
 		}
 		Assert.Equal("Sony Interactive Entertainment", Str(1));
 		Assert.Equal("Wireless Controller", Str(2));
-		Assert.Equal(VirtualDualShock4.ReportDescriptor, pad.Control([0x81, 6, 0, 0x22, 0, 0, 0xFF, 0x01], []).Data);
-		Assert.Equal(VirtualDualShock4.HidDescriptor, pad.Control([0x81, 6, 0, 0x21, 0, 0, 0xFF, 0], []).Data);
+		Assert.Equal(VirtualDualShock4.ReportDescriptor, pad.Control([0x81, 6, 0, 0x22, VirtualDualShock4.HidInterface, 0, 0xFF, 0x01], []).Data);
+		Assert.Equal(VirtualDualShock4.HidDescriptor, pad.Control([0x81, 6, 0, 0x21, VirtualDualShock4.HidInterface, 0, 0xFF, 0], []).Data);
 	}
 
 	// ---------------------------------------------------------------- input
@@ -538,10 +566,10 @@ public class DualShock4EmulationTests
 		List<byte[]> outputs = [];
 		pad.OutputReceived += outputs.Add;
 		pad.Submit(Command(1, UsbIpCodes.DirOut, VirtualDualShock4.OutEndpoint, Ds4Output(0x01, strong: 100)), _ => { });
-		SubmitResult r = pad.Control([0x21, 0x09, 0x05, 0x02, 0, 0, 32, 0], Ds4Output(0x02, red: 7));
+		SubmitResult r = pad.Control([0x21, 0x09, 0x05, 0x02, VirtualDualShock4.HidInterface, 0, 32, 0], Ds4Output(0x02, red: 7));
 		Assert.Equal(0, r.Status);
 		// A feature write is accepted and does nothing.
-		Assert.Equal(0, pad.Control([0x21, 0x09, 0x13, 0x03, 0, 0, 23, 0], new byte[23]).Status);
+		Assert.Equal(0, pad.Control([0x21, 0x09, 0x13, 0x03, VirtualDualShock4.HidInterface, 0, 23, 0], new byte[23]).Status);
 		Assert.Equal(2, outputs.Count);
 		Assert.Equal(100, outputs[0][1 + OutputBlock.MotorLeft]);
 		Assert.Equal(7, outputs[1][1 + OutputBlock.Red]);
@@ -621,10 +649,11 @@ public class DualShock4EmulationTests
 			await list.ConnectAsync("127.0.0.1", server.Port);
 			NetworkStream ls = list.GetStream();
 			await ls.WriteAsync(UsbIpWire.OpHeader(UsbIpCodes.OpReqDevlist, 0));
-			byte[] reply = await UsbIpWire.ReadExactlyAsync(ls, 8 + 4 + 312 + 4, default);
+			byte[] reply = await UsbIpWire.ReadExactlyAsync(ls, 8 + 4 + 312 + 4 * 4, default);
+			Assert.Equal((0x03, 0x00, 0x00), (reply[12 + 324], reply[12 + 325], reply[12 + 326]));
 			Assert.Equal((0x054C, 0x09CC), (BinaryPrimitives.ReadUInt16BigEndian(reply.AsSpan(12 + 300)), BinaryPrimitives.ReadUInt16BigEndian(reply.AsSpan(12 + 302))));
-			Assert.Equal(1, reply[12 + 311]);
-			Assert.Equal((0x03, 0x00, 0x00), (reply[12 + 312], reply[12 + 313], reply[12 + 314]));
+			Assert.Equal(4, reply[12 + 311]);
+			Assert.Equal((0x01, 0x01, 0x00), (reply[12 + 312], reply[12 + 313], reply[12 + 314]));
 		}
 
 		using TcpClient client = new();
@@ -643,11 +672,11 @@ public class DualShock4EmulationTests
 		await s.WriteAsync(Submit(3, UsbIpCodes.DirOut, 0, 0, setup: [0x00, 9, 1, 0, 0, 0, 0, 0]));
 		Assert.Equal(3u, UsbIpWire.U32(await UsbIpWire.ReadExactlyAsync(s, 48, default), 4));
 		int hidLength = VirtualDualShock4.ReportDescriptor.Length;
-		await s.WriteAsync(Submit(4, UsbIpCodes.DirIn, 0, hidLength + 64, setup: [0x81, 6, 0, 0x22, 0, 0, (byte)(hidLength + 64), 0]));
+		await s.WriteAsync(Submit(4, UsbIpCodes.DirIn, 0, hidLength + 64, setup: [0x81, 6, 0, 0x22, VirtualDualShock4.HidInterface, 0, (byte)(hidLength + 64), (byte)((hidLength + 64) >> 8)]));
 		Assert.Equal(VirtualDualShock4.ReportDescriptor, (await UsbIpWire.ReadExactlyAsync(s, 48 + hidLength, default))[48..]);
 
 		// GET_FEATURE 0x12 as games and Steam ask it.
-		await s.WriteAsync(Submit(5, UsbIpCodes.DirIn, 0, 16, setup: [0xA1, 0x01, 0x12, 0x03, 0, 0, 16, 0]));
+		await s.WriteAsync(Submit(5, UsbIpCodes.DirIn, 0, 16, setup: [0xA1, 0x01, 0x12, 0x03, VirtualDualShock4.HidInterface, 0, 16, 0]));
 		byte[] pairing = (await UsbIpWire.ReadExactlyAsync(s, 48 + 16, default))[48..];
 		Assert.Equal(pad.FeatureReports[0x12], pairing);
 

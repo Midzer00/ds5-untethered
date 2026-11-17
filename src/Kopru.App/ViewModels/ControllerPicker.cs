@@ -24,10 +24,10 @@ public sealed class ControllerChipViewModel(ControllerEntry entry, bool selected
 	public IRelayCommand SelectCommand { get; } = new RelayCommand(() => select(entry.Id));
 }
 
-// A profile a controller can run; Id null is the global settings.
-public sealed record ControllerProfileOption(string? Id, string Name)
+// A profile a controller can run; Id null is the global settings. The name is read in the current language each time.
+public sealed class ControllerProfileOption(string? id, Func<string> name) : LabelledChoice(name)
 {
-	public override string ToString() => Name;
+	public string? Id { get; } = id;
 }
 
 // Several controllers: the list (sidebar) and the selector chips with the selected controller's profile (page headers).
@@ -78,8 +78,28 @@ public sealed partial class ControllerPickerViewModel : ViewModelBase
 
 	public ControllerChipViewModel? Selected => Items.FirstOrDefault(i => i.IsSelected);
 
-	public IReadOnlyList<ControllerProfileOption> ProfileOptions =>
-		[new(null, Text.ControllerProfileGlobal()), .. _settings.Profiles.Profiles.Select(p => new ControllerProfileOption(p.Id, SettingsState.DisplayName(p)))];
+	// The same list until a profile is added, removed or renamed, so a re-read of the bindings (or a language switch)
+	// never resets the selection.
+	public IReadOnlyList<ControllerProfileOption> ProfileOptions
+	{
+		get
+		{
+			string signature = ProfileOption.Signature(_settings.Profiles.Profiles);
+			if (signature != _profileSignature)
+			{
+				_profileSignature = signature;
+				_profileOptions =
+				[
+					new(null, () => Text.ControllerProfileGlobal()),
+					.. _settings.Profiles.Profiles.Select(p => new ControllerProfileOption(p.Id, () => SettingsState.DisplayName(p)))
+				];
+			}
+			return _profileOptions;
+		}
+	}
+
+	private IReadOnlyList<ControllerProfileOption> _profileOptions = [];
+	private string? _profileSignature;
 
 	// The selected controller's profile (the global settings when it has none).
 	public ControllerProfileOption? SelectedProfile

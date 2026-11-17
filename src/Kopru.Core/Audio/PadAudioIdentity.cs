@@ -21,6 +21,9 @@ public static class PadAudioIdentity
 
 	public const string SonyVid = "VID_054C";
 
+	// The virtual DualShock 4's USB product id (its speaker drops the sound).
+	public const string DualShock4Pid = "PID_09CC";
+
 	// The endpoint property value without its "{n}." prefix.
 	public static string StripPrefix(string value)
 	{
@@ -50,8 +53,10 @@ public static class PadAudioIdentity
 			return new PadAudioMatch(false, null, PadMatchMethod.NotPad, "another device on the USB/IP virtual host");
 		}
 		int? port = ParsePort(usb.LocationInfo);
+		bool ds4 = usb.InstanceId.Contains(DualShock4Pid, StringComparison.OrdinalIgnoreCase);
 		return new PadAudioMatch(true, port, PadMatchMethod.DeviceTree,
-			"USB DualSense on the USB/IP virtual host" + (port is int p ? string.Create(CultureInfo.InvariantCulture, $", port {p}") : ", port unknown"));
+			(ds4 ? "USB DualShock 4" : "USB DualSense") + " on the USB/IP virtual host" +
+			(port is int p ? string.Create(CultureInfo.InvariantCulture, $", port {p}") : ", port unknown"), ds4);
 	}
 
 	public static bool IsUsbIpHost(DeviceNodeInfo node) =>
@@ -71,9 +76,15 @@ public static class PadAudioIdentity
 		return int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out int port) && port > 0 ? port : null;
 	}
 
-	// Fallback when the device tree cannot be read.
-	public static PadAudioMatch NameMatch(string name) =>
-		name.Contains("DualSense", StringComparison.OrdinalIgnoreCase)
-			? new PadAudioMatch(true, null, PadMatchMethod.NameOnly, "name contains DualSense (device tree not readable)")
-			: new PadAudioMatch(false, null, PadMatchMethod.NotPad, "device tree not readable, name is not a DualSense");
+	// Fallback when the device tree cannot be read. "Wireless Controller" without "DualSense" is the DualShock 4's name.
+	public static PadAudioMatch NameMatch(string name)
+	{
+		if (name.Contains("DualSense", StringComparison.OrdinalIgnoreCase))
+		{
+			return new PadAudioMatch(true, null, PadMatchMethod.NameOnly, "name contains DualSense (device tree not readable)");
+		}
+		return name.Contains("Wireless Controller", StringComparison.OrdinalIgnoreCase)
+			? new PadAudioMatch(true, null, PadMatchMethod.NameOnly, "name is a DualShock 4's (device tree not readable)", true)
+			: new PadAudioMatch(false, null, PadMatchMethod.NotPad, "device tree not readable, name is not a controller's");
+	}
 }

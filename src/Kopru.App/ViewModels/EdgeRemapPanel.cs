@@ -12,6 +12,7 @@ public sealed class EdgeRemapPanel : ViewModelBase
 	private readonly IControllerService _service;
 	private readonly Func<IReadOnlyList<ButtonOption>> _standardTargets;
 	private readonly Dictionary<DsButton, IReadOnlyList<ButtonOption>> _targets = [];
+	private bool? _builtAsEdge;
 
 	public EdgeRemapPanel(IControllerService service, SettingsState settings, Func<IReadOnlyList<ButtonOption>> standardTargets)
 	{
@@ -46,7 +47,7 @@ public sealed class EdgeRemapPanel : ViewModelBase
 	public string PresentAsEdgeLabel => Text.PresentAsEdge();
 	public string PresentAsEdgeHint => Text.PresentAsEdgeHint();
 
-	// After a remap or language change: the "keep" option comes and goes with PresentAsEdge.
+	// After a remap: the "keep" option comes and goes with PresentAsEdge.
 	public void Refresh()
 	{
 		BuildTargets();
@@ -57,8 +58,14 @@ public sealed class EdgeRemapPanel : ViewModelBase
 		OnPropertyChanged(string.Empty);
 	}
 
+	// Built again only when PresentAsEdge changed, so the paddle pickers keep their selection otherwise.
 	private void BuildTargets()
 	{
+		if (_builtAsEdge == Settings.Remap.PresentAsEdge)
+		{
+			return;
+		}
+		_builtAsEdge = Settings.Remap.PresentAsEdge;
 		foreach (DsButton paddle in ButtonRemap.Paddles)
 		{
 			IReadOnlyList<ButtonOption> standard = _standardTargets();

@@ -27,6 +27,7 @@ from mathutils.geometry import delaunay_2d_cdt
 sys.dont_write_bytecode = True  # no __pycache__ next to the script
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import layout as L  # noqa: E402
+import light_clip  # noqa: E402
 
 S = 0.01  # world units per art pixel
 SMOOTH_MIN = 12.0  # px: blend width where two edge profiles meet
@@ -746,31 +747,15 @@ def _write_mask(path, alpha):
     _write(path, rgba)
 
 
-def render_light_masks(scene, prefix, folder):
-    """Masks the app paints the live light colour through (all cut to L.LIGHT_RECT):
-    {prefix}-light-strip.png  the diffuser channel itself (anti-aliased coverage),
+def render_light_masks(scene, prefix, folder, main_png):
+    """Masks the app paints the live light colour through (all cut to L.LIGHT_RECT and to the body by light_clip):
+    {prefix}-light-strip.png  the diffuser channel itself (anti-aliased coverage, a render of the strip alone),
     {prefix}-light-core.png   its bright middle,
-    {prefix}-light-glow.png   the light it throws on the shell and touchpad around it: a render with the strip as the
-                              only light source (white emission, no lamps, no world), outside the strip itself."""
+    {prefix}-light-glow.png   a short soft halo hugging the strip (light_clip.halo: drawn from the strip's outline, not
+                              rendered, so it is smooth and the same all along the strip)."""
     strip = scene.objects["light-strip"]
-    lamps = [o for o in scene.objects if o.type == "LIGHT"]
     others = [o for o in scene.objects if o.type == "MESH" and o != strip]
-    strength = scene.world.node_tree.nodes["Background"].inputs["Strength"]
-    keep = (strength.default_value, scene.view_settings.view_transform, scene.view_settings.look, scene.view_settings.exposure,
-            strip.data.materials[0], scene.cycles.samples)
-    emit = bpy.data.materials.new("strip-emission")
-    bsdf = emit.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (0, 0, 0, 1)
-    bsdf.inputs["Emission Color"].default_value = (1, 1, 1, 1)
-    bsdf.inputs["Emission Strength"].default_value = float(os.environ.get("ART_STRIP_EMISSION", "10"))
-    strength.default_value = 0
-    scene.view_settings.view_transform, scene.view_settings.look, scene.view_settings.exposure = "Standard", "None", 0
-    for o in lamps:
-        o.hide_render = True
-    strip.data.materials[0] = emit
-    spill_png = os.path.join(folder, f"{prefix}-spill.tmp.png")
-    scene.render.filepath = spill_png
-    bpy.ops.render.render(write_still=True)
+    samples = scene.cycles.samples
     for o in others:  # the strip alone, for its coverage
         o.visible_camera = False
     cover_png = os.path.join(folder, f"{prefix}-stripcover.tmp.png")
@@ -779,22 +764,13 @@ def render_light_masks(scene, prefix, folder):
     bpy.ops.render.render(write_still=True)
     for o in others:
         o.visible_camera = True
-    for o in lamps:
-        o.hide_render = False
-    (strength.default_value, scene.view_settings.view_transform, scene.view_settings.look, scene.view_settings.exposure,
-     strip.data.materials[0], scene.cycles.samples) = keep
+    scene.cycles.samples = samples
     x, y, w, h = L.LIGHT_RECT
     box = (slice(y, y + h), slice(x, x + w))
-    spill, cover = _read(spill_png)[box], _read(cover_png)[box][..., 3]
-    os.remove(spill_png)
+    cover = _read(cover_png)[box][..., 3]
     os.remove(cover_png)
-    lum = (spill[..., :3] * np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)).sum(-1) * spill[..., 3]
-    # The spill near the strip, cleaned of render noise and faded out within ~50 px (further off it is only a faint
-    # general brightening, which as a mask would show the rectangle's edge), then lifted a little so it carries.
-    glow = _box_blur(np.clip((lum - 0.015) / 0.985, 0, 1), 3)
-    window = np.clip(_box_blur(cover, 45) * 6, 0, 1)
-    glow = (glow * window) ** 0.7 * (1 - cover)
     core = np.clip((_box_blur(cover, 5) - 0.86) / 0.12, 0, 1) * cover
+    glow, cover, core = light_clip.finish_masks(cover, core, _read(main_png)[box][..., 3])
     _write_mask(os.path.join(folder, f"{prefix}-light-strip.png"), cover)
     _write_mask(os.path.join(folder, f"{prefix}-light-core.png"), core)
     _write_mask(os.path.join(folder, f"{prefix}-light-glow.png"), glow)
@@ -871,7 +847,7 @@ def main():
         if not opts["out"]:
             raise SystemExit("--sprites needs --out (the sprites are cut from the art)")
         render_sprites(scene, caps, prefix, os.path.abspath(opts["sprites"]), os.path.abspath(opts["out"]))
-        render_light_masks(scene, prefix, os.path.abspath(opts["sprites"]))
+        render_light_masks(scene, prefix, os.path.abspath(opts["sprites"]), os.path.abspath(opts["out"]))
         print(f"sprites in {time.time() - t2:.1f} s -> {opts['sprites']}")
 
 

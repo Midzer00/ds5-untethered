@@ -11,6 +11,17 @@ public enum PointerStick
 	Left
 }
 
+// Which touchpad presses are a right click in mouse mode; every other press is a left click.
+public enum TouchpadRightClick
+{
+	// Every press (either half, one or two fingers) is a left click.
+	Off,
+	// A press with the finger on the right half.
+	RightSide,
+	// A press with two fingers on the pad.
+	TwoFingers
+}
+
 // What a button does in mouse mode. Mouse buttons and the "held" keys stay down while the controller button is held (so
 // dragging works); the others are one press (a key tap or a shortcut) when the button goes down.
 public enum MouseAction

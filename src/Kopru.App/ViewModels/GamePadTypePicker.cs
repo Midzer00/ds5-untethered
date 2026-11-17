@@ -7,7 +7,11 @@ using Kopru.Core.Virtual;
 namespace Kopru.App.ViewModels;
 
 // One choice of a game's controller type: Type null is Automatic (the default type). Line: what the choice means.
-public sealed record PadTypeOption(VirtualPadType? Type, string Name, string Line);
+public sealed class PadTypeOption(VirtualPadType? type, Func<string> name, Func<string> line) : LabelledChoice(name)
+{
+	public VirtualPadType? Type { get; } = type;
+	public string Line => line();
+}
 
 // The controller type picker on a games row: Automatic (the default type) or the type this game always sees. Never off: a
 // game's own choice wins over the default type.
@@ -15,7 +19,6 @@ public sealed class GamePadTypePicker : ObservableObject
 {
 	private readonly GameModeController _games;
 	private readonly string _key;
-	private IReadOnlyList<PadTypeOption>? _options;
 
 	public GamePadTypePicker(GameModeController games, string key)
 	{
@@ -23,10 +26,10 @@ public sealed class GamePadTypePicker : ObservableObject
 		_key = key;
 	}
 
-	public IReadOnlyList<PadTypeOption> Options => _options ??=
+	public IReadOnlyList<PadTypeOption> Options { get; } =
 	[
-		new(null, Text.PadChoiceAuto(), Text.PadTypeAutoLine()),
-		.. PadTypeChoiceViewModel.TypeOptions().Select(o => new PadTypeOption(o.Type, o.Name, o.Line))
+		new(null, () => Text.PadChoiceAuto(), () => Text.PadTypeAutoLine()),
+		.. PadTypeChoiceViewModel.TypeOptions().Select(o => new PadTypeOption(o.Type, () => o.Name, o.Line))
 	];
 
 	public string Label => Text.PadTypeLabel();

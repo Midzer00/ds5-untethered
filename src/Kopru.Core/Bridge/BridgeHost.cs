@@ -691,7 +691,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			await host.CleanupStaleAsync(token).ConfigureAwait(false);
 			server = new UsbIpServer(pad);
 			server.Start();
-			host.NotifyPadAudio(a => a.PadAttaching(host.Slot, pad.Type == VirtualPadType.DualSense));
+			host.NotifyPadAudio(a => a.PadAttaching(host.Slot, pad.Type != VirtualPadType.Xbox360, pad.Type == VirtualPadType.DualShock4));
 			try
 			{
 				port = await host.attacher.AttachAsync(server.Port, host.BusId, token).ConfigureAwait(false);

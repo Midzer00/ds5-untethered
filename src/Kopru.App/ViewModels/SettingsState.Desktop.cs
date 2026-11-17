@@ -8,8 +8,8 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// Desktop mode: the switch (not saved; PS + Options, the touchpad double press, the tray, Quick Settings and the Settings
-// group change it through SetDesktopMode, which logs who did it), its tuning (saved), a toast when it was switched from
+// Desktop mode: the switch (not saved; PS + Options, the touchpad double press, the PS tap that opens the app, the tray,
+// Quick Settings and the Settings group change it through SetDesktopMode, which logs who did it), its tuning (saved), a toast when it was switched from
 // the controller, and the automatic switch-off when a game takes the controller: a known game (catalog or added) coming
 // to the front, or a program with the virtual pad open using the controller as a game does (IControllerService.GameUsingController: a trigger
 // effect, haptics sound, rumble) while a program that could be a game is in front (PossibleGameInFront: never this app or
@@ -92,9 +92,9 @@ public sealed partial class SettingsState
 			return;
 		}
 		AppLog.Write($"mouse mode: {(value ? "on" : "off")} ({source ?? "app"})");
-		// A toast only when it was switched from the controller (PS + Options, the touchpad double press): a switch in the app
-		// or the tray menu shows the change where it was made.
-		if (source is ShortcutSource or TouchpadDoublePressSource)
+		// A toast only when it was switched from the controller (PS + Options, the touchpad double press, the PS tap that opened
+		// the app): a switch in the app or the tray menu shows the change where it was made.
+		if (source is ShortcutSource or TouchpadDoublePressSource or PsOpenSource)
 		{
 			ShortcutFeedback?.Invoke(value ? Text.DesktopOnTitle() : Text.DesktopOffTitle(), value ? Text.DesktopOnBody() : Text.DesktopOffBody());
 		}
@@ -108,9 +108,50 @@ public sealed partial class SettingsState
 	// again. Logged like any change; no toast (the game coming back is the feedback).
 	public const string BackToGameSource = "back to game";
 
+	// The source when a PS tap brought the app's window to the front ("PS: Open The App", OpenWithPs).
+	public const string PsOpenSource = "ps opened the app";
+
 	// Mouse mode was turned on or off by the user, and from where (SetDesktopMode's source; not the automatic switch-off).
 	// Raised on the UI thread.
 	public event Action<bool, string>? DesktopModeSwitched;
+
+	// True while a PS tap is bringing the app's window up (OpenWithPs): Mouse Mode comes on right after, so the touchpad tip
+	// does not show for this activation (TipBar).
+	public bool PsOpeningApp { get; private set; }
+
+	// A PS tap opens the app ("PS: Open The App"): show runs the window up, inFront then tells whether it really is the
+	// foreground window. In front, Mouse Mode comes on (with the usual "Mouse Mode On" toast) so the controller drives the
+	// app at once; not when it is on already (no second toast), when Windows kept another window in front (a game in front
+	// would lose the controller), or on the controller page's Test or Remap tab (the user is trying the buttons there).
+	// No fight with the automatic switch-off: the app in front is never a possible game, nor a known game coming to the
+	// front, and every way back to a game (the PS tap, Back To Game) turns it off again. UI thread.
+	public void OpenWithPs(Action show, Func<bool> inFront)
+	{
+		PsOpeningApp = true;
+		try
+		{
+			show();
+		}
+		finally
+		{
+			PsOpeningApp = false;
+		}
+		if (DesktopModeOn)
+		{
+			return;
+		}
+		if (!inFront())
+		{
+			AppLog.Write("mouse mode: stays off, PS opened the app but Windows kept another window in front");
+			return;
+		}
+		if (_service.ButtonPageShown)
+		{
+			AppLog.Write("mouse mode: stays off, PS opened the app on the controller's Test or Remap tab");
+			return;
+		}
+		SetDesktopMode(true, PsOpenSource);
+	}
 
 	private void InitDesktop()
 	{

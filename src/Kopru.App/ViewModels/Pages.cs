@@ -295,7 +295,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 			Profiles.Clear();
 			foreach (var p in Settings.Profiles.Profiles)
 			{
-				Profiles.Add(new ProfileOption(p.Id, SettingsState.DisplayName(p)));
+				Profiles.Add(new ProfileOption(p));
 			}
 			SelectedProfile = Profiles.FirstOrDefault(o => o.Id == Settings.Profiles.Active.Id);
 		}
@@ -465,10 +465,9 @@ public sealed partial class OverviewViewModel : PageViewModel
 	}
 }
 
-public sealed class TriggerEffectItem(TriggerTestEffect effect, Func<string> name, Func<string> hint)
+public sealed class TriggerEffectItem(TriggerTestEffect effect, Func<string> name, Func<string> hint) : LabelledChoice(name)
 {
 	public TriggerTestEffect Effect { get; } = effect;
-	public string Name => name();
 	public string Hint => hint();
 }
 
@@ -493,7 +492,7 @@ public sealed partial class TriggersViewModel : ViewModelBase
 	}
 
 	public SettingsState Settings { get; }
-	public IReadOnlyList<TriggerEffectItem> Effects { get; private set; }
+	public IReadOnlyList<TriggerEffectItem> Effects { get; }
 	public string StrengthLabel => Text.TriggerStrength();
 	public string EffectsLabel => Text.TesterTriggerEffects();
 
@@ -512,15 +511,6 @@ public sealed partial class TriggersViewModel : ViewModelBase
 		}
 	}
 
-	protected override void OnLanguageChanged()
-	{
-		// Item templates do not observe the items, so hand the list out again to rebuild them with new names.
-		TriggerEffectItem selected = SelectedEffect;
-		Effects = Effects.ToList();
-		base.OnLanguageChanged();
-		SelectedEffect = selected;
-	}
-
 	[RelayCommand]
 	private void TestEffect(TriggerTestEffect effect)
 	{
@@ -530,10 +520,9 @@ public sealed partial class TriggersViewModel : ViewModelBase
 	}
 }
 
-public sealed class ColourPreset(uint rgb, Func<string> name)
+public sealed class ColourPreset(uint rgb, Func<string> name) : LabelledChoice(name)
 {
 	public uint Rgb { get; } = rgb;
-	public string Name => name();
 	public IBrush Brush { get; } = new SolidColorBrush(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
 }
 
@@ -559,7 +548,7 @@ public sealed partial class LightViewModel : PageViewModel
 	}
 
 	public SettingsState Settings { get; }
-	public IReadOnlyList<ColourPreset> Presets { get; private set; }
+	public IReadOnlyList<ColourPreset> Presets { get; }
 	public override string Title => Text.NavLight();
 	public string Intro => Text.LightIntro();
 	public string ColourLabel => Text.LightbarColour();
@@ -578,21 +567,11 @@ public sealed partial class LightViewModel : PageViewModel
 		Settings.LightbarColour = value.Rgb;
 		_service.TestLight(value.Rgb);
 	}
-
-	protected override void OnLanguageChanged()
-	{
-		ColourPreset selected = SelectedPreset;
-		Presets = Presets.ToList();
-		RefreshChoices();
-		base.OnLanguageChanged();
-		SelectedPreset = selected;
-	}
 }
 
-public sealed class LanguageOption(Language? language, Func<string> name)
+public sealed class LanguageOption(Language? language, Func<string> name) : LabelledChoice(name)
 {
 	public Language? Language { get; } = language;
-	public string Name => name();
 }
 
 public sealed partial class SettingsViewModel : PageViewModel
@@ -615,7 +594,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 	}
 
 	public SettingsState Settings { get; }
-	public ObservableCollection<LanguageOption> Languages { get; private set; }
+	public IReadOnlyList<LanguageOption> Languages { get; }
 	public override string Title => Text.NavSettings();
 	public string GeneralLabel => Text.General();
 	public string LanguageLabel => Text.LanguageLabel();
@@ -696,7 +675,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 	[NotifyPropertyChangedFor(nameof(HasToolResult))]
 	private string _toolResult = string.Empty;
 
-	private static ObservableCollection<LanguageOption> BuildLanguages() =>
+	private static IReadOnlyList<LanguageOption> BuildLanguages() =>
 	[
 		new(null, () => Text.LanguageFollowSystem()),
 		new(Language.Turkish, () => "Türkçe"),
@@ -709,18 +688,6 @@ public sealed partial class SettingsViewModel : PageViewModel
 		{
 			Localizer.Chosen = value.Language;
 		}
-	}
-
-	protected override void OnLanguageChanged()
-	{
-		// Refresh the "follow system" entry name without re-triggering the language choice.
-		Language? chosen = Localizer.Chosen;
-		var fresh = BuildLanguages();
-		Languages = fresh;
-#pragma warning disable MVVMTK0034 // set the backing field to avoid a feedback loop
-		_selectedLanguage = fresh.First(o => o.Language == chosen);
-#pragma warning restore MVVMTK0034
-		base.OnLanguageChanged();
 	}
 
 	[RelayCommand]

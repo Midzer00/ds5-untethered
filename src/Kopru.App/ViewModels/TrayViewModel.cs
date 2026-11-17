@@ -16,6 +16,9 @@ public interface IAppShell
 	{
 	}
 
+	// Whether the main window is the foreground window now (after ShowMainWindow: Windows may keep another window in front).
+	bool IsMainWindowInFront => true;
+
 	// Exits for real (stops the bridge and undoes the hiding).
 	void Exit();
 }
@@ -44,13 +47,13 @@ public sealed partial class TrayViewModel : ViewModelBase
 				OnPropertyChanged(string.Empty);
 			}
 		});
-		// "PS: Open The App": the controller's PS tap shows the window like the tray icon does (on its current page), and
-		// hides it again when it is already in front.
+		// "PS: Open The App": the controller's PS tap shows the window like the tray icon does (on its current page), with
+		// Mouse Mode on once it is in front (SettingsState.OpenWithPs), and hides it again when it is already in front.
 		_service.Shortcut += (_, action) =>
 		{
 			if (action == Kopru.Core.Input.ShortcutAction.OpenApp)
 			{
-				RunOnUi(() => _shell.ShowMainWindow());
+				RunOnUi(() => _settings.OpenWithPs(() => _shell.ShowMainWindow(), () => _shell.IsMainWindowInFront));
 			}
 			else if (action == Kopru.Core.Input.ShortcutAction.HideApp)
 			{

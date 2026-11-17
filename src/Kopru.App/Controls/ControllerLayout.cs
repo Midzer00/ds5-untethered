@@ -79,6 +79,11 @@ public static class ControllerLayout
 	// Where the light-strip masks sit (the strip and the reach of its glow), in asset pixels.
 	public static readonly Rect LightRect = new(560, 0, 1170, 640);
 
+	// The masks are cut to the controller, and the glow is a short soft halo hugging the strip (tools/art/controller/
+	// light_clip.py): it ends LightReach asset pixels out from the strip's edge and is never stronger than LightGlowPeak.
+	public const double LightReach = 8;
+	public const double LightGlowPeak = 0.45;
+
 	private static readonly Point DpadCentre = new(436, 438);
 
 	private static IReadOnlyList<ControllerRegion>? _regions;

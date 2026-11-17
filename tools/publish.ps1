@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Builds the user download: artifacts\DS5-Untethered-<version>-win-x64.zip, plus
 # artifacts\DS5-Untethered-<version>-Setup.exe when Inno Setup 6 is installed (tools\installer\DS5Untethered.iss), and with
-# both, artifacts\update.json: the next update manifest for the repository root (tools\release\make-update-json.ps1;
+# both, artifacts\DS5-Untethered-<version>-Update.exe (a byte-identical copy of the Setup.exe that only the in-app updater
+# downloads, so GitHub's per-asset download counts tell new downloads from updates) and artifacts\update.json: the next
+# update manifest for the repository root, pointing at the Update.exe (tools\release\make-update-json.ps1;
 # docs\RELEASING.md has the release order).
 #
 #   powershell -ExecutionPolicy Bypass -File tools\publish.ps1
@@ -53,6 +55,8 @@ if (-not [string]::IsNullOrWhiteSpace($StagingDir)) {
 $zip = Join-Path $artifacts "$name.zip"
 $iss = Join-Path $PSScriptRoot 'installer\DS5Untethered.iss'
 $setup = Join-Path $artifacts "DS5-Untethered-$version-Setup.exe"
+# The same installer under the name only update.json links to (docs\RELEASING.md, "Download counts").
+$update = Join-Path $artifacts "DS5-Untethered-$version-Update.exe"
 $manifest = Join-Path $artifacts 'update.json'
 Write-Host "Version: $version"
 
@@ -69,7 +73,7 @@ if (Test-Path $staging) {
 	}
 	Remove-Item -Recurse -Force $staging
 }
-foreach ($old in @($zip, $setup, $manifest)) {
+foreach ($old in @($zip, $setup, $update, $manifest)) {
 	if (Test-Path $old) {
 		Remove-Item -Force $old
 	}
@@ -270,11 +274,21 @@ Write-Host "Setup:   $($setupInfo.FullName)"
 Write-Host ("Size:    {0:N1} MB" -f ($setupInfo.Length / 1MB))
 Write-Host "SHA-256: $((Get-FileHash -Algorithm SHA256 $setup).Hash)"
 
+# --- In-app update copy (artifacts\DS5-Untethered-<version>-Update.exe) ---
+# Byte for byte the Setup.exe; update.json points at this name, so its download count is the number of in-app updates.
+Copy-Item -Force $setup $update
+if ((Get-FileHash -Algorithm SHA256 $update).Hash -ne (Get-FileHash -Algorithm SHA256 $setup).Hash) {
+	Fail 'The Update.exe copy differs from the Setup.exe.'
+}
+Write-Host "Update:  $update (copy of the Setup.exe, for in-app updates)"
+
 # --- Update manifest (artifacts\update.json) ---
-& (Join-Path $releaseFiles 'make-update-json.ps1') -Version $version -Setup $setup -Zip $zip -Out $manifest
+& (Join-Path $releaseFiles 'make-update-json.ps1') -Version $version -Setup $update -Zip $zip -Out $manifest
 Write-Host ''
 Write-Host 'Release order (docs\RELEASING.md):' -ForegroundColor Cyan
-Write-Host "  1. Create the GitHub release v$version and upload both files above."
-Write-Host '  2. Check that both download links work.'
+Write-Host "  1. Create the GitHub release v$version and upload all three files, under exactly these names:"
+Write-Host "     $(Split-Path $setup -Leaf), $(Split-Path $zip -Leaf), $(Split-Path $update -Leaf)"
+Write-Host '     Link only the Setup.exe and the zip in the release notes; the Update.exe is used by in-app updates.'
+Write-Host '  2. Check that all three download links work.'
 Write-Host '  3. Only then copy artifacts\update.json over the repository''s update.json, commit and push it to main.'
 Write-Host '     (Running copies see the new version within a week, or at once with Check Now.)'

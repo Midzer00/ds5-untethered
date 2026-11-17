@@ -27,8 +27,9 @@ public enum PadMatchMethod
 	NameOnly
 }
 
-// Port: the virtual hub port of the USB device (the port "usbip attach" returned), when known.
-public sealed record PadAudioMatch(bool IsVirtualPad, int? Port, PadMatchMethod Method, string Detail)
+// Port: the virtual hub port of the USB device (the port "usbip attach" returned), when known. SilentSpeaker: the pad drops
+// what its speaker gets (the virtual DualShock 4), so that endpoint must never be Windows' default output.
+public sealed record PadAudioMatch(bool IsVirtualPad, int? Port, PadMatchMethod Method, string Detail, bool SilentSpeaker = false)
 {
 	public static readonly PadAudioMatch None = new(false, null, PadMatchMethod.NotPad, "not a virtual pad");
 }
@@ -72,8 +73,9 @@ public interface IAudioDefaultsSystem
 // The bridge's virtual pad lifecycle (BridgeHost calls these for every slot; they never block nor throw).
 public interface IPadAudioEvents
 {
-	// Just before "usbip attach"; hasAudio: the pad has a USB audio device (DualSense, not DualShock 4 / Xbox 360).
-	void PadAttaching(int slot, bool hasAudio);
+	// Just before "usbip attach"; hasAudio: the pad has a USB audio device (DualSense, DualShock 4; not Xbox 360);
+	// silentSpeaker: its speaker drops the sound (DualShock 4), so it is never left as the default output.
+	void PadAttaching(int slot, bool hasAudio, bool silentSpeaker = false);
 
 	// The attach returned the virtual hub port.
 	void PadAttached(int slot, int port);
@@ -166,10 +168,11 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 			: $"audio defaults: you picked another {Word(flow)} in the app: the controller {Word(flow)} is no longer kept as the default");
 	});
 
-	public void PadAttaching(int slot, bool hasAudio) => post(() =>
+	// A pad with a silent speaker is watched even with the guard off: its speaker never stays the default output.
+	public void PadAttaching(int slot, bool hasAudio, bool silentSpeaker = false) => post(() =>
 	{
-		pads[slot] = new Pad(hasAudio, time.GetUtcNow());
-		if (!hasAudio || !enabled || !EnsureWatching())
+		pads[slot] = new Pad(hasAudio, time.GetUtcNow()) { SilentSpeaker = hasAudio && silentSpeaker };
+		if (!hasAudio || (!enabled && !silentSpeaker) || !EnsureWatching())
 		{
 			return;
 		}
@@ -183,7 +186,7 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 			return;
 		}
 		pad.Port = port;
-		if (pad.HasAudio && enabled && watching)
+		if (pad.HasAudio && (enabled || pad.SilentSpeaker) && watching)
 		{
 			CheckAll();
 		}
@@ -265,7 +268,7 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 	{
 		DateTimeOffset now = time.GetUtcNow();
 		quietUntil = Later(quietUntil, now + Quiet);
-		if (!enabled || !watching)
+		if ((!enabled && !pads.Values.Any(p => p.SilentSpeaker)) || !watching)
 		{
 			return;
 		}
@@ -305,7 +308,19 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 	{
 		current.TryGetValue((flow, role), out string? previous);
 		current[(flow, role)] = id;
-		if (!enabled || !watching || id == null || id == previous)
+		if (!watching || id == null)
+		{
+			return;
+		}
+		// A silent speaker never stays the default output: whatever the setting, the user's earlier choice or the window.
+		if (flow == AudioFlow.Render && pads.Values.Any(p => p.SilentSpeaker)
+			&& Safe(() => system.Describe(id)) is { Pad: { IsVirtualPad: true, SilentSpeaker: true } silent }
+			&& pads.Values.Any(p => p.SilentSpeaker && p.Matches(silent.Port)))
+		{
+			RevertSilent(role, id);
+			return;
+		}
+		if (!enabled || id == previous)
 		{
 			return;
 		}
@@ -399,6 +414,40 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 			: $"audio defaults: tried to put the previous device back for the {what}, but Windows still reports {(now == controllerId ? "the controller" : "another device")}");
 	}
 
+	// The silent speaker became (or still is) the default for role: back to the remembered device, else to any active
+	// output that is not a virtual pad's.
+	private void RevertSilent(AudioRole role, string silentId)
+	{
+		string what = $"DualShock 4 speaker ({Name(role)})";
+		if (setFailed)
+		{
+			return;
+		}
+		string? back = remembered.TryGetValue((AudioFlow.Render, role), out string? r) && Safe(() => system.Describe(r)) is { IsActive: true, Pad.IsVirtualPad: false }
+			? r
+			: Safe(() => system.Endpoints(AudioFlow.Render))?.FirstOrDefault(e => e.IsActive && !e.Pad.IsVirtualPad)?.Id;
+		if (back == null)
+		{
+			log($"audio defaults: the {what} is the default output, but there is no other output to put back");
+			return;
+		}
+		try
+		{
+			system.SetDefault(back, role);
+		}
+		catch (Exception e)
+		{
+			setFailed = true;
+			log($"audio defaults: could not move the default output off the {what} ({e.GetType().Name}); protecting the default audio device is off for this run");
+			return;
+		}
+		string? now = Safe(() => system.GetDefault(AudioFlow.Render, role));
+		current[(AudioFlow.Render, role)] = now;
+		log(now == back
+			? $"audio defaults: the {what} plays nothing, so it is never the default output: put {(back == r ? "the previous device" : "another output")} back"
+			: $"audio defaults: tried to move the default output off the {what}, but Windows still reports {(now == silentId ? "it" : "another device")}");
+	}
+
 	private bool Chosen(AudioFlow flow) => flow == AudioFlow.Render ? preferences.ControllerSpeakerChosen : preferences.ControllerMicChosen;
 
 	private void SetChosen(AudioFlow flow, bool value)
@@ -435,6 +484,9 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 	private sealed class Pad(bool hasAudio, DateTimeOffset start)
 	{
 		public bool HasAudio { get; } = hasAudio;
+
+		// The pad's speaker drops its sound (DualShock 4): never left as the default output.
+		public bool SilentSpeaker { get; init; }
 
 		public int? Port { get; set; }
 

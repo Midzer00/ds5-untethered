@@ -51,6 +51,9 @@ public sealed class ControllerArt : Control
 	// The touchpad in asset pixels, as modelled in the render (the input overlay outlines it on a touchpad click).
 	internal static Geometry PadGeometry => Shapes.Value.Pad;
 
+	// The light strip in asset pixels (where the light masks may light up, with their glow round it).
+	internal static Geometry BandGeometry => Shapes.Value.Band;
+
 	static ControllerArt()
 	{
 		AffectsRender<ControllerArt>(IsEdgeProperty, LightColorProperty, LightIntensityProperty, PlayerLedsProperty, PlayerLedMaskProperty, PlayerLedLevelProperty);

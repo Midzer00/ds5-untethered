@@ -164,6 +164,57 @@ public static class DualShock4Reports
 
 	// ---------------------------------------------------------------- feature reports
 
+	// Every feature report a wired DualShock 4 v2 (CUH-ZCT2, 054C:09CC) declares, in its report descriptor's order, with
+	// the vendor usage page it switches to (0: stays on the previous one), the vendor usage and the size without the id.
+	// From public descriptions of that pad's USB report descriptor (507 bytes); see VirtualDualShock4.ReportDescriptor.
+	public static readonly IReadOnlyList<(byte Id, ushort Page, byte Usage, int Count)> Features =
+	[
+		(0x04, 0, 0x23, 36), (0x02, 0, 0x24, 36), (0x08, 0, 0x25, 3), (0x10, 0, 0x26, 4), (0x11, 0, 0x27, 2),
+		(0x12, 0xFF02, 0x21, 15), (0x13, 0, 0x22, 22),
+		(0x14, 0xFF05, 0x20, 16), (0x15, 0, 0x21, 44),
+		(0x80, 0xFF80, 0x20, 6), (0x81, 0, 0x21, 6), (0x82, 0, 0x22, 5), (0x83, 0, 0x23, 1), (0x84, 0, 0x24, 4),
+		(0x85, 0, 0x25, 6), (0x86, 0, 0x26, 6), (0x87, 0, 0x27, 35), (0x88, 0, 0x28, 63), (0x89, 0, 0x29, 2),
+		(0x90, 0, 0x30, 5), (0x91, 0, 0x31, 3), (0x92, 0, 0x32, 3), (0x93, 0, 0x33, 12), (0x94, 0, 0x34, 63),
+		(0xA0, 0, 0x40, 6), (0xA1, 0, 0x41, 1), (0xA2, 0, 0x42, 1), (0xA3, 0, 0x43, 48), (0xA4, 0, 0x44, 13),
+		(0xF0, 0, 0x47, 63), (0xF1, 0, 0x48, 63), (0xF2, 0, 0x49, 15),
+		(0xA7, 0, 0x4A, 1), (0xA8, 0, 0x4B, 1), (0xA9, 0, 0x4C, 8), (0xAA, 0, 0x4E, 1), (0xAB, 0, 0x4F, 57),
+		(0xAC, 0, 0x50, 57), (0xAD, 0, 0x51, 11), (0xAE, 0, 0x52, 1), (0xAF, 0, 0x53, 2), (0xB0, 0, 0x54, 63),
+		(0xE0, 0, 0x57, 2), (0xB3, 0, 0x55, 63), (0xB4, 0, 0x55, 63), (0xB5, 0, 0x56, 63), (0xD0, 0, 0x58, 63),
+		(0xD4, 0, 0x59, 63)
+	];
+
+	// The size of a declared feature report with its id, or 0.
+	public static int FeatureSize(byte id)
+	{
+		foreach ((byte Id, ushort Page, byte Usage, int Count) f in Features)
+		{
+			if (f.Id == id)
+			{
+				return f.Count + 1;
+			}
+		}
+		return 0;
+	}
+
+	// The answer to every declared feature report: calibration (0x02), pairing info (0x12), address (0x81) and firmware
+	// info (0xA3) as described below; the rest (vendor status, test and authentication reports whose content is not
+	// publicly described) are the id followed by zeros, at their declared size.
+	public static Dictionary<byte, byte[]> FeatureAnswers(ReadOnlySpan<byte> address, byte[]? dualSenseCalibration)
+	{
+		Dictionary<byte, byte[]> answers = [];
+		foreach ((byte id, _, _, int count) in Features)
+		{
+			byte[] report = new byte[count + 1];
+			report[0] = id;
+			answers[id] = report;
+		}
+		answers[CalibrationFeature] = Calibration(dualSenseCalibration);
+		answers[PairingFeature] = Pairing(address);
+		answers[AddressFeature] = Address(address);
+		answers[FirmwareFeature] = Firmware();
+		return answers;
+	}
+
 	// Feature 0x02 (USB): 17 int16 LE like the DualSense's 0x05, but the gyro range values are in the DS4 USB order
 	// (pitch+, yaw+, roll+, pitch-, yaw-, roll-) instead of the plus/minus pairs the DualSense (and the DS4 over
 	// Bluetooth) use (community-documented quirk of the DS4's USB calibration report). dualSense is the USB form of the

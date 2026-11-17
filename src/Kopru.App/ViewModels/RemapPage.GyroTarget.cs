@@ -4,22 +4,15 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-public sealed class GyroTargetOption(GyroTarget target)
+public sealed class GyroTargetOption(GyroTarget target) : LabelledChoice(() => Text.GyroTargetName(target))
 {
 	public GyroTarget Target { get; } = target;
-	public string Name => Text.GyroTargetName(Target);
 }
 
 // Where gyro aiming goes: the right stick or the mouse pointer (GyroMouse).
 public sealed partial class RemapViewModel
 {
-	private IReadOnlyList<GyroTargetOption>? _gyroTargets;
-
-	public IReadOnlyList<GyroTargetOption> GyroTargets
-	{
-		get => _gyroTargets ??= BuildGyroTargets();
-		private set => _gyroTargets = value;
-	}
+	public IReadOnlyList<GyroTargetOption> GyroTargets { get; } = [new(GyroTarget.RightStick), new(GyroTarget.Mouse)];
 
 	public string GyroTargetLabel => Text.GyroTargetLabel();
 	public string GyroTargetHint => Text.GyroTargetHint();
@@ -35,6 +28,4 @@ public sealed partial class RemapViewModel
 			}
 		}
 	}
-
-	private static IReadOnlyList<GyroTargetOption> BuildGyroTargets() => [new(GyroTarget.RightStick), new(GyroTarget.Mouse)];
 }

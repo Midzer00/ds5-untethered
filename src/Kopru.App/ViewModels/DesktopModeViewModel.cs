@@ -5,10 +5,9 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-public sealed class MouseActionOption(MouseAction action)
+public sealed class MouseActionOption(MouseAction action) : LabelledChoice(() => Text.DesktopActionName(action))
 {
 	public MouseAction Action { get; } = action;
-	public string Name => Text.DesktopActionName(Action);
 }
 
 // One remappable button of mouse mode and the action it does (written back into SettingsState.DesktopMode).
@@ -44,8 +43,7 @@ public sealed class DesktopButtonRow : ViewModelBase
 // The mouse mode tab (Settings): the switch, auto-off, the pointer stick, the speed sliders and the button mapping.
 public sealed partial class DesktopModeViewModel : ViewModelBase
 {
-	private IReadOnlyList<MouseActionOption> _actions = BuildActions();
-	private IReadOnlyList<string>? _pointerSticks;
+	private readonly IReadOnlyList<MouseActionOption> _actions = BuildActions();
 
 	public DesktopModeViewModel(SettingsState settings)
 	{
@@ -92,7 +90,9 @@ public sealed partial class DesktopModeViewModel : ViewModelBase
 	public string ScrollSpeedLabel => Text.DesktopScrollSpeed();
 	public string MappingTitle => Text.DesktopButtonsTitle();
 	public string MappingNote => Text.DesktopButtonsNote();
-	public string MappingHint => Text.DesktopTouchpadHint();
+	public string MappingHint => Text.DesktopTouchpadHint(Settings.DesktopMode.RightClick);
+	public string RightClickLabel => Text.DesktopRightClick();
+	public string RightClickHint => Text.DesktopRightClickHint();
 	public string ResetText => Text.ResetToDefault();
 
 	public bool AutoOffInGame { get => Settings.DesktopMode.AutoOffInGame; set => Set(d => d with { AutoOffInGame = value }); }
@@ -106,11 +106,8 @@ public sealed partial class DesktopModeViewModel : ViewModelBase
 	public string TouchpadSpeedText => Text.MultiplierValue(TouchpadSpeed);
 	public string ScrollSpeedText => Text.MultiplierValue(ScrollSpeed);
 
-	// 0 = left stick, 1 = right stick (the segmented choice's order). The same list while the language stays, so the
-	// choice keeps its selection when the settings change.
-	public IReadOnlyList<string> PointerSticks => _pointerSticks is { } s && s.SequenceEqual([Text.DesktopStickLeft(), Text.DesktopStickRight()])
-		? s
-		: _pointerSticks = [Text.DesktopStickLeft(), Text.DesktopStickRight()];
+	// 0 = left stick, 1 = right stick (the segmented choice's order).
+	public IReadOnlyList<LabelledChoice> PointerSticks { get; } = [new(() => Text.DesktopStickLeft()), new(() => Text.DesktopStickRight())];
 
 	public int PointerStickIndex
 	{
@@ -124,6 +121,23 @@ public sealed partial class DesktopModeViewModel : ViewModelBase
 		}
 	}
 
+	// Which touchpad press right clicks, in the segmented choice's order (index = TouchpadRightClick: Off, Right Side,
+	// Two Fingers); one list for good, so a language switch keeps the choice.
+	public IReadOnlyList<LabelledChoice> RightClicks { get; } = Enum.GetValues<TouchpadRightClick>()
+		.Select(m => new LabelledChoice(() => Text.DesktopRightClickOption(m))).ToList();
+
+	public int RightClickIndex
+	{
+		get => (int)Settings.DesktopMode.RightClick;
+		set
+		{
+			if (Enum.IsDefined((TouchpadRightClick)value))
+			{
+				Set(d => d with { RightClick = (TouchpadRightClick)value });
+			}
+		}
+	}
+
 	// The remappable buttons, in display order, and the actions their pickers offer.
 	public IReadOnlyList<DesktopButtonRow> Rows { get; }
 	public IReadOnlyList<MouseActionOption> Actions => _actions;
@@ -133,16 +147,6 @@ public sealed partial class DesktopModeViewModel : ViewModelBase
 
 	[RelayCommand]
 	private void ResetMapping() => Set(d => d with { Buttons = DesktopButtonMap.Default });
-
-	protected override void OnLanguageChanged()
-	{
-		_actions = BuildActions();
-		foreach (DesktopButtonRow row in Rows)
-		{
-			row.Refresh();
-		}
-		base.OnLanguageChanged();
-	}
 
 	private static IReadOnlyList<MouseActionOption> BuildActions() => DesktopButtonMap.Actions.Select(a => new MouseActionOption(a)).ToList();
 
