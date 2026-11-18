@@ -60,7 +60,15 @@
       "name": "DualSense'in haptiği ve adaptif tetikleri PC'de Bluetooth'la çalışır mı?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Kendi başına çalışmaz, oyunlar bunları yalnızca kabloyla bağlı kumandaya yollar. DS5 Untethered açıkken oyun kabloyla takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır."
+        "text": "Kendi başına tam çalışmaz: oyunlar detaylı haptiği yalnızca kabloyla bağlı kumandaya yollar, çoğu oyun tetik efektlerini de yalnızca o zaman gönderir. Bluetooth'ta haptik düz titreşime düşer. DS5 Untethered açıkken oyun kabloyla takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bazı oyunlarımda Bluetooth'ta zaten titreşim ve tetikler çalışıyor. Buna neden ihtiyacım olsun?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bazı oyunlar Bluetooth'ta da kendiliğinden adaptif tetik efektleri ve basit titreşim gönderir. Detaylı, sese dayalı haptik ise normalde yalnızca kabloyla bağlı kumandaya gider; Bluetooth'ta düz titreşim alırsınız. DS5 Untethered oyuna kabloyla bağlı bir kumanda gösterir; böylece tam haptiği kablosuz alırsınız, Bluetooth'ta hiçbir DualSense özelliği sunmayan oyunlarda da."
       }
     },
     {
@@ -84,7 +92,15 @@
       "name": "Hangi oyunlarda çalışır?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda klasik titreşim ayarları ya da Sesi Titreşime Çevir kullanılabilir."
+        "text": "DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda Xbox ve DS4 Titreşimi ayarları ya da Sesi Titreşime Çevir kullanılabilir. Xbox tetik titreşimi kullanan oyunlar, özellikle yarış oyunları, deneysel Xbox Tetik Titreşimi ayarıyla (varsayılan olarak kapalı) bunu DualSense tetiklerinde çalabilir."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Oyundan çıkmadan ayar değiştirebilir miyim?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Evet. Oyun açıkken PS tuşuna kısa basınca uygulama Fare Modu açık olarak öne gelir, dokunmatik yüzey fare olur. Oyuna Dön oyunu geri getirir ve Fare Modu'nu kapatır."
       }
     },
     {
@@ -118,7 +134,7 @@
 
     <section>
       <h2>Sorun</h2>
-      <p>PC&#x27;de DualSense&#x27;in haptiği ve adaptif tetikleri yalnızca USB kabloyla çalışıyor. Bluetooth&#x27;la bağlayınca oyun başka bir cihaz görüyor, ikisi de gidiyor.</p>
+      <p>PC&#x27;de DualSense&#x27;in oyun haptiği yalnızca USB kabloyla bağlıyken çalışır; çoğu oyunda adaptif tetikler de öyle. Bluetooth&#x27;ta oyunlar farklı bir cihaz görür: detaylı haptik düz titreşime düşer, çoğu oyun da tetik efektlerini bırakır.</p>
     </section>
 
     <section>
@@ -129,6 +145,25 @@
         <li class="card"><span class="num" aria-hidden="true">3</span><p>Oyunun haptiği, tetik efektleri ve ışığı Bluetooth&#x27;tan gerçek kumandaya aktarılıyor.</p></li>
       </ol>
       <p class="note">DS5 Untethered iki ücretsiz sürücü kullanıyor: <a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> ve <a href="https://github.com/nefarius/HidHide">HidHide</a>. Kurulum sayfası bunları kontrol edip kumandayı eşleştirirken yol gösteriyor.</p>
+    </section>
+
+    <section>
+      <h2>Profiller ve hızlı ayar</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>İsimli profiller</h3>
+          <p>Her profil kendi titreşim, haptik, tetik, ışık ve Sesi Titreşime Çevir ayarlarını saklar; bir oyunun birkaç profili olabilir, örneğin &quot;Yarış&quot; ve &quot;Rahat&quot; adını verdiğiniz iki profil. Oyunlar sayfasında oyunun ayarlarından adını vererek profil oluşturun, sonra yeniden adlandırın ya da çoğaltın. Profiller arasında Genel Bakış&#x27;tan ya da oyunun ayarlarından geçin; oyun açıkken yapılan geçiş hemen etki eder. Gerçek kumandada her gün kullanılıyor.</p>
+        </div>
+        <div class="card">
+          <h3>Oyundan çıkmadan ayar değiştirme</h3>
+          <p>Oyun açıkken PS tuşuna kısa basınca uygulama öne gelir ve Fare Modu açılır: dokunmatik yüzey fare olur, basmak tıklamak demek, Sağ Tık isteğe bağlı. Ayarı değiştirip Oyuna Dön&#x27;e basınca oyun öne döner, Fare Modu kapanır ve kumanda oyuna geri geçer. Klavye ya da fare gerekmez. Gerçek kumandada denendi.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>DualSense desteklemeyen oyunlarda tetik titreşimi</h2>
+      <p>Bazı oyunlar, özellikle yarış oyunları, Xbox kumandanın tetiklerini titretir: gaz, fren, ABS, patinaj. Xbox Tetik Titreşimi açıkken bu oyunlar Xbox Series kumanda alır; oyunun tetik titreşimi Xbox&#x27;ın tetik motorlarını taklit ederek DualSense&#x27;in kendi tetik motorlarında çalınır. His profile göre seçilir: Xbox Gibi, Yumuşak ya da Keskin. Uygulama bu tür 87 oyunu tanıyor ve yenilerini öğreniyor. Xbox Tetik Titreşimi deneysel ve varsayılan olarak kapalı. Ayarlar &gt; Kumandalar &gt; Tetikler&#x27;den ya da Oyunlar sayfasından açılır.</p>
     </section>
 
     <section>
@@ -145,25 +180,27 @@
           <li>DualShock 4 kumanda türü (şimdilik bir oyunda doğrulandı)</li>
           <li>Fare modu: dokunmatik yüzeyle imleç, her basışa tek tık, Sağ Tık ayarı, kısa PS basışıyla açılma, Oyuna Dön</li>
           <li>Uygulama içinden güncelleme</li>
+          <li>Xbox ve DS4 Titreşimi ve Sesi Titreşime Çevir (şimdilik kendi haptiği olmayan bir oyunda doğrulandı)</li>
+          <li>Adlandırılmış profiller ve oyun başına profiller, günlük kullanımda</li>
           </ul>
         </div>
         <div>
           <h3>Uygulamada var, kodda test edildi, gerçek kumandada henüz doğrulanmadı</h3>
           <ul>
-          <li>Oyuna özel profiller</li>
+          <li>Xbox Series kumanda türü ve Xbox Tetik Titreşimi (deneysel, varsayılan olarak kapalı)</li>
+          <li>Oyun kapandıktan sonra süren titreşimin durdurulması; mikrofonun daha az kesilmesi</li>
           <li>Tetik ve haptik gücü</li>
           <li>Tuş atama</li>
           <li>Gyro ile nişan alma</li>
           <li>Fare modunda analogla imleç ve tuş atama</li>
           <li>Işık efektleri</li>
-          <li>Oyunlar sayfası: Steam ve Epic&#x27;ten bulunan Desteklenen ve Desteklenmeyen oyunlar</li>
-          <li>DualSense desteklemeyen oyunlar için Sesi Titreşime Çevir</li>
+          <li>Oyunlar sayfası: Steam ve Epic&#x27;ten bulunan Desteklenen, Xbox Tetik Titreşimi ve Desteklenmeyen oyunlar</li>
           <li>Gerçek kumandanın HidHide ile gizlenmesi</li>
           <li>Yeniden bağlanma, pil uyarısı, boştayken kapanma</li>
           <li>Mikrofon tuşunun ışığı ve bildirimleri, oyunlarda kumanda hoparlörü</li>
           <li>Canlı bağlantı kalitesi</li>
           <li>DualSense Edge; hatırlanan ve adlandırılabilen en çok dört kumanda</li>
-          <li>Oyun başına Kumanda Türü: DualSense, DualShock 4 ya da Xbox 360</li>
+          <li>Oyun başına Kumanda Türü: DualSense, DualShock 4, Xbox Series ya da Xbox 360; Otomatik her oyun için kendisi seçiyor</li>
           </ul>
         </div>
       </div>
@@ -208,13 +245,17 @@
     <section class="faq">
       <h2>Sık sorulanlar</h2>
         <h3>DualSense&#x27;in haptiği ve adaptif tetikleri PC&#x27;de Bluetooth&#x27;la çalışır mı?</h3>
-        <p>Kendi başına çalışmaz, oyunlar bunları yalnızca kabloyla bağlı kumandaya yollar. DS5 Untethered açıkken oyun kabloyla takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth&#x27;tan kumandaya ulaşır.</p>
+        <p>Kendi başına tam çalışmaz: oyunlar detaylı haptiği yalnızca kabloyla bağlı kumandaya yollar, çoğu oyun tetik efektlerini de yalnızca o zaman gönderir. Bluetooth&#x27;ta haptik düz titreşime düşer. DS5 Untethered açıkken oyun kabloyla takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth&#x27;tan kumandaya ulaşır.</p>
+        <h3>Bazı oyunlarımda Bluetooth&#x27;ta zaten titreşim ve tetikler çalışıyor. Buna neden ihtiyacım olsun?</h3>
+        <p>Bazı oyunlar Bluetooth&#x27;ta da kendiliğinden adaptif tetik efektleri ve basit titreşim gönderir. Detaylı, sese dayalı haptik ise normalde yalnızca kabloyla bağlı kumandaya gider; Bluetooth&#x27;ta düz titreşim alırsınız. DS5 Untethered oyuna kabloyla bağlı bir kumanda gösterir; böylece tam haptiği kablosuz alırsınız, Bluetooth&#x27;ta hiçbir DualSense özelliği sunmayan oyunlarda da.</p>
         <h3>Dongle ya da ek donanım gerekiyor mu?</h3>
         <p>Özel bir donanım gerekmiyor. Bilgisayarın kendi Bluetooth&#x27;u ya da sıradan bir USB Bluetooth adaptörü yetiyor. Kurulum sayfası adaptörü test ediyor.</p>
         <h3>Gecikme ekliyor mu?</h3>
         <p>Tek kumanda ve tek adaptörle yapılan 60 saniyelik testte girdi yaklaşık 750 Hz&#x27;de, düşük ek gecikmeyle ve kayıpsız aktarıldı. Genel Bakış sayfası gecikmeyi canlı gösteriyor, kendi kurulumunuzda bakabilirsiniz.</p>
         <h3>Hangi oyunlarda çalışır?</h3>
-        <p>DualSense&#x27;in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda klasik titreşim ayarları ya da Sesi Titreşime Çevir kullanılabilir.</p>
+        <p>DualSense&#x27;in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda Xbox ve DS4 Titreşimi ayarları ya da Sesi Titreşime Çevir kullanılabilir. Xbox tetik titreşimi kullanan oyunlar, özellikle yarış oyunları, deneysel Xbox Tetik Titreşimi ayarıyla (varsayılan olarak kapalı) bunu DualSense tetiklerinde çalabilir.</p>
+        <h3>Oyundan çıkmadan ayar değiştirebilir miyim?</h3>
+        <p>Evet. Oyun açıkken PS tuşuna kısa basınca uygulama Fare Modu açık olarak öne gelir, dokunmatik yüzey fare olur. Oyuna Dön oyunu geri getirir ve Fare Modu&#x27;nu kapatır.</p>
         <h3>Ücretli mi?</h3>
         <p>Hayır. DS5 Untethered ücretsiz ve açık kaynak (GPL-3.0), ücretli sürümü yok.</p>
     </section>

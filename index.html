@@ -60,7 +60,15 @@
       "name": "Do DualSense haptics and adaptive triggers work over Bluetooth on PC?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Not by themselves: games only send them to a controller connected with a cable. With DS5 Untethered running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth."
+        "text": "Not fully by themselves: games send the detailed haptics only to a controller connected with a cable, and most games send their trigger effects only then too. Over Bluetooth the haptics fall back to plain rumble. With DS5 Untethered running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Some of my games already vibrate and use the triggers over Bluetooth. Why would I need this?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Some games send adaptive trigger effects and basic rumble over Bluetooth on their own. The detailed, audio-based haptics normally go only to a wired controller, so over Bluetooth you get plain rumble. DS5 Untethered makes the game see a wired controller, so you get the full haptics wirelessly, also in games that offer no DualSense features over Bluetooth."
       }
     },
     {
@@ -84,7 +92,15 @@
       "name": "Which games does it work with?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's Games page, under Supported. Games without DualSense support can use the classic rumble settings or Turn Sound Into Haptics."
+        "text": "Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with the experimental Xbox Trigger Rumble setting (off by default)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I change settings without leaving the game?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. In a game, a short PS press brings the app to the front with Mouse Mode on, so the touchpad works as the mouse. Back To Game brings the game back and turns Mouse Mode off."
       }
     },
     {
@@ -118,7 +134,7 @@
 
     <section>
       <h2>The problem</h2>
-      <p>On PC, a DualSense&#x27;s haptic feedback and adaptive triggers only work over a USB cable. Connect it over Bluetooth and games see a different device, so both are gone.</p>
+      <p>On a PC, a DualSense controller&#x27;s game haptics only work when it is connected with a USB cable, and in most games the adaptive triggers do too. Over Bluetooth, games see a different device: the detailed haptics fall back to plain rumble, and most games drop the trigger effects.</p>
     </section>
 
     <section>
@@ -129,6 +145,25 @@
         <li class="card"><span class="num" aria-hidden="true">3</span><p>The game&#x27;s haptics, trigger effects and lights are passed on to the real controller over Bluetooth.</p></li>
       </ol>
       <p class="note">DS5 Untethered uses two free drivers, <a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>. The Setup page checks for them and walks you through pairing.</p>
+    </section>
+
+    <section>
+      <h2>Profiles and quick settings</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Named profiles</h3>
+          <p>A profile keeps its own rumble, haptics, trigger, light and Turn Sound Into Haptics settings, and one game can have several, for example ones you name &quot;Racing&quot; and &quot;Relaxed&quot;. Create one with a name from the game&#x27;s settings on the Games page, then rename or duplicate it. Switch on the Overview page or in the game&#x27;s settings; a switch while the game runs applies at once. In daily use on a real controller.</p>
+        </div>
+        <div class="card">
+          <h3>Change settings without leaving the game</h3>
+          <p>In a game, a short PS press brings the app to the front and turns Mouse Mode on: the touchpad is the mouse, a press is a click, Right Click is optional. Change what you need and press Back To Game: the game comes back, Mouse Mode turns off and the controller goes back to the game. No keyboard or mouse needed. Tested on a real controller.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Trigger rumble in games without DualSense support</h2>
+      <p>Some games rumble the triggers of an Xbox controller, racing games especially: throttle, brake, ABS, wheelspin. With Xbox Trigger Rumble on, these games get an Xbox Series controller, and their trigger rumble plays on the DualSense&#x27;s own trigger motors, made to feel like the Xbox trigger motors. The feel is set per profile: Xbox-Like, Soft or Sharp. The app knows 87 such games and learns new ones. Xbox Trigger Rumble is experimental and off by default. Turn it on in Settings &gt; Controllers &gt; Triggers or on the Games page.</p>
     </section>
 
     <section>
@@ -145,25 +180,27 @@
           <li>DualShock 4 controller type (verified in one game so far)</li>
           <li>Mouse mode: touchpad pointer, one click per press, Right Click setting, a short PS press turns it on, Back To Game</li>
           <li>In-app updates</li>
+          <li>Xbox And DS4 Rumble and Turn Sound Into Haptics (verified in one game without native haptics so far)</li>
+          <li>Named profiles and per-game profiles, in daily use</li>
           </ul>
         </div>
         <div>
           <h3>In the app, tested in code, not yet verified on hardware</h3>
           <ul>
-          <li>Profiles per game</li>
+          <li>Xbox Series controller type, and Xbox Trigger Rumble (experimental, off by default)</li>
+          <li>Stopping rumble that keeps going after a game closes; fewer microphone dropouts</li>
           <li>Trigger and haptics strength</li>
           <li>Button remapping</li>
           <li>Gyro aim</li>
           <li>Mouse mode with a stick as the pointer, and its button mapping</li>
           <li>Light effects</li>
-          <li>Games page: supported and unsupported games found from Steam and Epic</li>
-          <li>Turn Sound Into Haptics for games without DualSense support</li>
+          <li>Games page: Supported, Xbox Trigger Rumble and Unsupported games found from Steam and Epic</li>
           <li>Hiding the real controller with HidHide</li>
           <li>Reconnection, battery warning, idle power-off</li>
           <li>Microphone button light and notifications, controller speaker in games</li>
           <li>Live link quality</li>
           <li>DualSense Edge, up to four controllers that are remembered and can be named</li>
-          <li>Controller type per game: DualSense, DualShock 4 or Xbox 360</li>
+          <li>Controller type per game: DualSense, DualShock 4, Xbox Series or Xbox 360; Automatic picks it for each game</li>
           </ul>
         </div>
       </div>
@@ -208,13 +245,17 @@
     <section class="faq">
       <h2>Questions</h2>
         <h3>Do DualSense haptics and adaptive triggers work over Bluetooth on PC?</h3>
-        <p>Not by themselves: games only send them to a controller connected with a cable. With DS5 Untethered running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.</p>
+        <p>Not fully by themselves: games send the detailed haptics only to a controller connected with a cable, and most games send their trigger effects only then too. Over Bluetooth the haptics fall back to plain rumble. With DS5 Untethered running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.</p>
+        <h3>Some of my games already vibrate and use the triggers over Bluetooth. Why would I need this?</h3>
+        <p>Some games send adaptive trigger effects and basic rumble over Bluetooth on their own. The detailed, audio-based haptics normally go only to a wired controller, so over Bluetooth you get plain rumble. DS5 Untethered makes the game see a wired controller, so you get the full haptics wirelessly, also in games that offer no DualSense features over Bluetooth.</p>
         <h3>Do I need a dongle or extra hardware?</h3>
         <p>No special hardware. The Bluetooth already in your PC or an ordinary USB Bluetooth adapter is enough. The Setup page tests the adapter.</p>
         <h3>Does it add input lag?</h3>
         <p>In a 60 second test with one controller and one adapter, input was relayed at about 750 Hz with low added latency and no loss. The Overview page shows the delay live, so you can check your own setup.</p>
         <h3>Which games does it work with?</h3>
-        <p>Games that support the DualSense&#x27;s haptics or adaptive triggers over a USB cable. Known ones are listed on the app&#x27;s Games page, under Supported. Games without DualSense support can use the classic rumble settings or Turn Sound Into Haptics.</p>
+        <p>Games that support the DualSense&#x27;s haptics or adaptive triggers over a USB cable. Known ones are listed on the app&#x27;s Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with the experimental Xbox Trigger Rumble setting (off by default).</p>
+        <h3>Can I change settings without leaving the game?</h3>
+        <p>Yes. In a game, a short PS press brings the app to the front with Mouse Mode on, so the touchpad works as the mouse. Back To Game brings the game back and turns Mouse Mode off.</p>
         <h3>Is it free?</h3>
         <p>Yes. DS5 Untethered is free and open source under GPL-3.0, and there is no paid version.</p>
     </section>
