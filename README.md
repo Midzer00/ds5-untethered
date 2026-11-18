@@ -250,34 +250,41 @@ GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PART
 
 ## Türkçe
 
-DS5 Untethered, oyunun kendi haptiğini ve adaptif tetiklerini DualSense'te Bluetooth üzerinden çalıştırır.
+DS5 Untethered ile PC'de DualSense'in haptik titreşimlerini ve adaptif tetiklerini kablosuz kullanabilirsiniz.
+Uygulama, destekleyen oyunların kendi efektlerini Bluetooth üzerinden kumandaya aktarır. Ücretsiz ve açık kaynaklıdır;
+bilgisayarınızın Bluetooth'u veya standart bir USB Bluetooth adaptörü yeterlidir.
 
 ### Hızlı Başlangıç
 
 1. [Releases](https://github.com/Midzer00/ds5-untethered/releases/latest) sayfasından kurulum dosyasını
    (`DS5-Untethered-<sürüm>-Setup.exe`) indirip çalıştırın.
-2. İki sürücüyü, [usbip-win2](https://github.com/vadimgrn/usbip-win2) ile [HidHide](https://github.com/nefarius/HidHide)'ı
-   kurun. Kurulum programları yönetici izni ister.
+2. Gerekli iki sürücüyü kurun: [usbip-win2](https://github.com/vadimgrn/usbip-win2) ve
+   [HidHide](https://github.com/nefarius/HidHide). Sürücü kurulumu için yönetici izni gerekir.
 3. Kumandayı Windows'ta Bluetooth'la eşleştirin.
-4. DS5 Untethered'ı açıp kurulum sayfasındaki adımları izleyin: sayfa sürücülere bakar, eşleştirmede yol gösterir ve
+4. DS5 Untethered'ı açıp kurulum sayfasındaki adımları izleyin: uygulama sürücüleri kontrol eder, eşleştirme adımlarını gösterir ve
    Bluetooth adaptörünü test eder.
-5. Oyunu başlatın. Oyun kabloyla takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
+5. Oyunu başlatın. Oyun kumandayı kablolu bir DualSense olarak tanır, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
 
-Sorunuz mu var? [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazın. Web sitesi: [midzer00.github.io/ds5-untethered/tr](https://midzer00.github.io/ds5-untethered/tr/).
+Sorularınız için [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazın. Web sitesi: [midzer00.github.io/ds5-untethered/tr](https://midzer00.github.io/ds5-untethered/tr/).
 
-### Sorun
+### Neden böyle bir uygulama gerekiyor?
 
-PC'de DualSense'in oyun haptiği yalnızca USB kabloyla bağlıyken çalışır; çoğu oyunda adaptif tetikler de öyle.
-Bluetooth'ta oyunlar farklı bir cihaz görür: detaylı haptik düz titreşime düşer, çoğu oyun da tetik efektlerini bırakır.
-DS5 Untethered oyunlara kabloyla bağlı bir kumanda gösterip bu özellikleri Bluetooth üzerinden kumandaya taşır.
+DualSense'i PS5'te kullananlar bilir: haptik titreşimler ve adaptif tetikler oyun deneyiminde önemli bir yer tutuyor.
+PC'de ise destekleyen oyunlarda bu özelliklerden tam olarak yararlanmak için çoğunlukla kumandayı USB kablosuyla
+bağlamak gerekiyor. Bazı oyunlar Bluetooth üzerinden de basit titreşim veya tetik efekti gönderebilse de ayrıntılı
+haptik titreşimler kablolu bağlantıyla sınırlı kalıyor.
 
-### Nasıl çalışır
+DS5 Untethered, oyuna kabloyla bağlı bir DualSense göstererek oyunun bu efektleri göndermesini sağlıyor.
+Efektler daha sonra Bluetooth üzerinden elinizdeki kumandaya aktarılıyor.
 
-DS5 Untethered kumandaya Bluetooth'la bağlanıp yerel bir USB/IP sunucusu ve usbip-win2 üzerinden aynı bilgisayarda
-kabloyla bağlı görünen sanal bir DualSense oluşturur. Oyunlar bu sanal kumandayı bilgisayara takılı sanıp onunla
-haberleşir. Gerçek kumandadan gelen girdi sanal kumandaya aktarılırken oyunun gönderdiği çıktı (adaptif tetikler,
-ışıklar) ve haptik sesi dönüştürülüp Bluetooth'la kumandaya geri yollanır. HidHide gerçek kumandayı oyunlardan
-gizlediği için oyunlar yalnızca sanal kumandayı görür.
+### Nasıl çalışıyor?
+
+Uygulama, DualSense'e Bluetooth üzerinden bağlanır. Aynı bilgisayarda yerel bir USB/IP sunucusu ve usbip-win2
+aracılığıyla sanal bir kablolu DualSense oluşturur. Oyun bu sanal aygıtı gerçek bir kablolu kumanda olarak tanır.
+
+Tuş, analog ve hareket verileri gerçek kumandadan sanal kumandaya aktarılır. Oyunun gönderdiği adaptif tetik,
+ışık ve haptik ses verileri de Bluetooth bağlantısına uygun biçime dönüştürülerek gerçek kumandaya iletilir.
+HidHide, gerçek kumandayı oyunlardan gizleyerek aynı tuşa iki kez basılmış gibi algılanmasını önler.
 
 ```mermaid
 flowchart LR
@@ -290,35 +297,44 @@ flowchart LR
   HH["HidHide"] -.->|"gerçek kumandayı gizler"| GAME
 ```
 
-### Nasıl Kullanılır
+### Kullanım
 
-- **Profiller.** Profil; haptik, tetik ve titreşim ayarlarını tutar. Bir oyunun adlandırılmış birden çok profili
-  olabilir: oyunun ayarlarından (Oyunlar sayfası) adını vererek profil oluşturun, yeniden adlandırın ya da çoğaltın;
-  profiller arasında Genel Bakış'tan ya da oyunun ayarlarından geçin. Oyun açıkken yapılan geçiş hemen etki eder.
-- **Oyundan çıkmadan hızlı ayar.** PS tuşuna kısa basın: uygulama öne gelir ve Fare Modu açılır, dokunmatik yüzey fare
-  gibi çalışır. İstediğinizi değiştirip Oyuna Dön'e basın: oyun yeniden öne gelir, Fare Modu kapanır.
+- **Oyun başına ayarlar ve profiller.** Oyunlar sayfasından bir oyunun ayarlarını açıp farklı adlarla profiller
+  oluşturabilir, mevcut profilleri yeniden adlandırabilir veya çoğaltabilirsiniz. Her profil kendi haptik titreşim,
+  tetik ve standart titreşim ayarlarını saklar. Genel Bakış'tan veya oyunun ayarlarından profil seçebilirsiniz;
+  oyun açıkken profil değiştirdiğinizde yeni ayarlar hemen uygulanır.
+- **Kumandayı bırakmadan ayar değiştirme.** Oyundayken PS tuşuna kısa basınca uygulama öne gelir ve Fare Modu açılır.
+  Dokunmatik yüzeyi fare olarak kullanıp ayarlarınızı değiştirebilirsiniz. Oyuna Dön'e bastığınızda oyun yeniden
+  öne gelir ve Fare Modu kapanır.
+- **Xbox oyunlarında tetik titreşimi.** 0.2.0 ile gelen Xbox Series kumanda türü, Xbox'ın Impulse Triggers
+  özelliğini kullanan oyunların gönderdiği tetik titreşimini DualSense'in tetik motorlarına aktarır. Özellikle yarış
+  oyunlarında gaz, fren, ABS ve patinaj gibi etkiler için kullanılır. Ayarlar > Kumandalar bölümündeki Tetikler
+  kartından veya Oyunlar sayfasındaki Xbox Tetik Titreşimi bölümünden açabilirsiniz. Her profilde Xbox Gibi,
+  Yumuşak, Keskin veya Kapalı seçilebilir. **Bu özellik deneyseldir ve varsayılan olarak kapalıdır.**
+  Otomatik seçim, özellik açıkken ilgili oyunlar için Xbox Series türünü kullanır; yerel DualSense desteği olan
+  oyunlarda öncelik yine DualSense'tedir. Xbox Series türü için Windows 10 21H2 veya sonrası gerekir.
 
 ### İndirme
 
 Güncel sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz.
 Kurulum dosyası (`DS5-Untethered-<sürüm>-Setup.exe`) uygulamayı yalnızca sizin hesabınıza kurar ve yönetici izni
-istemez. Zip'i (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp `Kopru.App.exe`'yi çalıştırmanız yeterli.
-.NET ikisinin de içinde olduğundan uygulama için başka bir şey kurmanız gerekmez.
+istemez. ZIP paketini (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp `Kopru.App.exe`'yi çalıştırmanız yeterli.
+.NET her iki pakete de dahildir; ayrıca .NET kurmanız gerekmez.
 
-- Derleme imzalı olmadığından Windows SmartScreen uyarı gösterebilir. "Ek bilgi"ye, ardından "Yine de çalıştır"a
+- Uygulamada kod imzası bulunmadığından Windows SmartScreen uyarı gösterebilir. "Ek bilgi"ye, ardından "Yine de çalıştır"a
   tıklayın.
-- Kurulum sayfası, bir kez tamamlanana kadar uygulama her açıldığında karşınıza çıkar. Sayfa iki sürücünün, usbip-win2
-  ile HidHide'ın kurulu olup olmadığına bakar ve resmi indirme sayfalarını açar (sürücüleri uygulama kurmaz, kurulum
-  programları yönetici izni ister), sonra kumandayı Bluetooth'la eşleştirirken size yol gösterir. İki sürücü de
-  kurulmadan sanal kumanda başlamaz.
-- Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe durur.
-- Her sürümde neyin değiştiği [CHANGELOG.md](CHANGELOG.md) dosyasında.
-- Ağ erişimi: "Oyun Görsellerini İndir" açıkken (Oyunlar sayfasındadır, baştan açık gelir) uygulama oyun
+- Kurulum sayfası, bir kez tamamlanana kadar uygulama her açıldığında karşınıza çıkar. Önce usbip-win2 ve HidHide'ın
+  kurulu olup olmadığını kontrol eder; eksik sürücüler için resmi indirme sayfalarını açar. Sürücüleri kendiniz
+  kurmanız gerekir ve bu işlem yönetici izni ister. Ardından Bluetooth eşleştirme adımlarını gösterir. Sanal kumandanın
+  çalışması için iki sürücünün de kurulu olması gerekir.
+- Ayarlar, profiller ve günlükler `%LOCALAPPDATA%\Untethered` klasöründe saklanır.
+- Sürümlerdeki değişiklikleri [CHANGELOG.md](CHANGELOG.md) dosyasında bulabilirsiniz.
+- Ağ erişimi: "Oyun Görsellerini İndir" açıkken (Oyunlar sayfasındadır, varsayılan olarak açıktır) uygulama oyun
   görsellerini Steam'in herkese açık CDN'inden (yeni oyunlarda Steam'in herkese açık uygulama bilgilerinden de) indirir
   ve yalnızca `%LOCALAPPDATA%\Untethered\cache\game-images` klasöründe tutar. İsteklerle yalnızca oyunun Steam uygulama
-  kimliği gönderilir, size ait hiçbir bilgi gitmez.
-  Uygulama ayrıca açılışta ve haftada bir GitHub'da yeni sürüm var mı diye bakar (Ayarlar > Genel'deki "Güncellemeleri
-  Otomatik Denetle" ile kapatılır); bu yalnızca bir dosya isteğidir, size ait hiçbir bilgi gitmez.
+  kimliği gönderilir, kişisel bilgi gönderilmez.
+  Uygulama ayrıca açılışta ve haftada bir GitHub'da yeni sürüm olup olmadığını kontrol eder (Ayarlar > Genel'deki "Güncellemeleri
+  Otomatik Denetle" ile kapatılır); bu işlem yalnızca güncelleme dosyasını sorgular, kişisel bilgi gönderilmez.
 - Kaldırma: "Windows ile Başlat"ı kapatın, saat yanındaki simgeden uygulamadan çıkın, Windows Ayarlar →
   Uygulamalar'dan "DS5 Untethered"ı kaldırın (zip kullandıysanız klasörü silin). Ayarların da silinmesini istiyorsanız
   `%LOCALAPPDATA%\Untethered` klasörünü silin. Başka bir program kullanmıyorsa "USBip" ve "HidHide"ı da kaldırın.
@@ -327,20 +343,20 @@ istemez. Zip'i (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp
 
 #### DualSense'in haptiği ve adaptif tetikleri PC'de Bluetooth'la çalışır mı?
 
-Kendi başına tam çalışmaz: oyunlar detaylı haptiği yalnızca kabloyla bağlı kumandaya yollar, çoğu oyun tetik
-efektlerini de yalnızca o zaman gönderir. Bluetooth'ta haptik düz titreşime düşer. DS5 Untethered açıkken oyun kabloyla
-takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
+Her oyunda tam olarak çalışmaz. Ayrıntılı haptik titreşimler genellikle USB bağlantısı gerektirir; çoğu oyun
+adaptif tetik efektlerini de yalnızca kablolu bağlantıda gönderir. Bluetooth bağlantısında basit titreşimle sınırlı
+kalabilirsiniz. DS5 Untethered, oyunun kumandayı kablolu olarak tanımasını sağlayıp gönderilen efektleri Bluetooth
+üzerinden kumandaya aktarır.
 
 #### Bazı oyunlarımda Bluetooth'ta zaten titreşim ve tetikler çalışıyor. Buna neden ihtiyacım olsun?
 
-Bazı oyunlar Bluetooth'ta da kendiliğinden adaptif tetik efektleri ve basit titreşim gönderir. Detaylı, sese dayalı
-haptik ise normalde yalnızca kabloyla bağlı kumandaya gider; Bluetooth'ta düz titreşim alırsınız. DS5 Untethered oyuna
-kabloyla bağlı bir kumanda gösterir; böylece tam haptiği kablosuz alırsınız, Bluetooth'ta hiçbir DualSense özelliği
-sunmayan oyunlarda da.
+Bazı oyunlar Bluetooth üzerinden adaptif tetik efektleri ve basit titreşim gönderebiliyor. Ayrıntılı haptik
+verileri ise genellikle yalnızca USB bağlantısında gönderiliyor. Uygulama bu verileri de kablosuz aktararak
+destekleyen oyunların kablolu bağlantıda sunduğu kumanda efektlerini Bluetooth üzerinden kullanmanızı sağlıyor.
 
-#### Dongle ya da ek donanım gerekiyor mu?
+#### Özel bir adaptör veya ek donanım gerekiyor mu?
 
-Özel bir donanım gerekmiyor. Bilgisayarın kendi Bluetooth'u ya da sıradan bir USB Bluetooth adaptörü yetiyor. Kurulum
+Özel bir donanım gerekmiyor. Bilgisayarınızın dahili Bluetooth'u veya standart bir USB Bluetooth adaptörü yeterli. Kurulum
 sayfası adaptörü test ediyor.
 
 #### Gecikme ekliyor mu?
@@ -350,17 +366,19 @@ aktarıldı. Genel Bakış sayfası gecikmeyi canlı gösteriyor, kendi kurulumu
 
 #### Hangi oyunlarda çalışır?
 
-DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki
+USB bağlantısında DualSense'in haptik titreşimlerini veya adaptif tetiklerini destekleyen oyunlarda. Bilinen oyunlar uygulamadaki
 Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda Xbox ve DS4 Titreşimi
-ayarları ya da Sesi Titreşime Çevir kullanılabilir. Xbox tetik titreşimi kullanan oyunlar, özellikle yarış oyunları,
-deneysel Xbox Tetik Titreşimi ayarıyla (varsayılan olarak kapalı) bunu DualSense tetiklerinde çalabilir.
+ayarları ya da Sesi Titreşime Çevir kullanılabilir. Xbox tetik titreşimini destekleyen oyunlarda da deneysel Xbox Tetik Titreşimi
+ayarını açarak bu efektleri DualSense'in tetiklerinde kullanabilirsiniz. Bu seçenek varsayılan olarak kapalıdır.
 
 #### Ücretli mi?
 
 Hayır. Ücretsiz ve açık kaynak (GPL-3.0), ücretli sürümü yok.
 
-DS5 Untethered ücretsiz ve ücretsiz kalacak. İşinize yaradıysa geliştirilmesine
-[GitHub Sponsors](https://github.com/sponsors/Midzer00) üzerinden destek olabilirsiniz.
+DS5 Untethered ücretsiz ve açık kaynaklı kalacak. İşinize yaradıysa
+[GitHub'da yıldız vererek](https://github.com/Midzer00/ds5-untethered) projeyi destekleyebilirsiniz.
+Maddi destek olmak isteyenler için [GitHub Sponsors](https://github.com/sponsors/Midzer00) da açık.
+Hata bildirimleri, öneriler ve kod katkıları da projenin gelişmesine yardımcı oluyor.
 
 ### Sorun Giderme
 
@@ -376,19 +394,19 @@ DS5 Untethered ücretsiz ve ücretsiz kalacak. İşinize yaradıysa geliştirilm
   Uygulama "Eşleşmemiş" gösteriyorsa Create ve PS tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
 - **Kumanda USB kablosuyla takılı.** Oyunlar onu zaten kablolu gördüğü için uygulama sanal kumandayı durdurur ("Kablo
   Bağlandı"). Kablosuz oynamak için kabloyu çıkarın; sanal kumanda Bluetooth'ta kendiliğinden yeniden başlar.
-- **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Derleme imzalı değil: "Ek bilgi"ye, ardından "Yine de
+- **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Uygulamada kod imzası yok: "Ek bilgi"ye, ardından "Yine de
   çalıştır"a tıklayın.
 - **Kumanda Türü değişince oyun kumandayı görmüyor.** Oyun açıkken yapılan değişiklik, oyunu yeniden başlatınca geçerli
-  olur. "Şimdi Uygula" hemen geçirir ama oyun kumandayı kaybedebilir; o zaman oyunu yeniden başlatın.
+  olur. "Şimdi Uygula" değişikliği hemen uygular. Oyun kumandayı algılamayı bırakırsa oyunu yeniden başlatın.
 - **Hata bildirirken.** Ayarlar ve profiller `%LOCALAPPDATA%\Untethered` klasöründe, günlükler de içindeki `logs`
-  klasöründe durur. [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazarken günlüğü
+  klasöründe saklanır. [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazarken günlüğü
   ekleyin.
 
-### Ne durumda
+### Geliştirme ve test durumu
 
 Özelliklerin çoğu şimdilik yalnızca kod testlerinden geçti.
 
-Tamamlandı, donanımda doğrulandı:
+Gerçek kumandayla doğrulananlar:
 - Bluetooth oturumu: girdi okuma, çıktı raporları, haptik akışı; Bluetooth adaptör testi.
 - usbip-win2 ile sanal kablolu DualSense: Windows kablolu DualSense olarak tanıyor, girdi uygulamalara ulaşıyor,
   oyun sesi geliyor.
@@ -402,22 +420,23 @@ Tamamlandı, donanımda doğrulandı:
 - Bu deponun Releases sayfasından uygulama içi güncelleme (0.1.8 kendini 0.1.9'a güncelledi).
 - DualShock 4 türü: kendini gerçek bir kablolu DualShock 4 gibi tanıtıyor; şimdilik DualShock 4'ü doğrudan destekleyen
   bir oyunda doğrulandı.
-- Xbox ve DS4 Titreşimi (oyunun titreşiminin haptik olarak çalınması) ve Sesi Titreşime Çevir: şimdilik kendi haptiği
+- Xbox ve DS4 Titreşimi (oyunun standart titreşiminin haptik titreşime dönüştürülmesi) ve Sesi Titreşime Çevir: şimdilik kendi haptiği
   olmayan bir oyunda doğrulandı (Sesi Titreşime Çevir 0.1.10'da düzeltildi).
-- Adlandırılmış profiller ve oyun başına profiller, günlük kullanımda.
+- İsim verilebilen profiller ve oyun başına profiller, günlük kullanımda.
 
-Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
+Otomatik testleri tamamlanan, donanım doğrulaması bekleyenler:
 - Xbox Series kumanda türü ve Xbox Tetik Titreşimi (deneysel, varsayılan olarak kapalı): Xbox tetik titreşimi kullanan
-  oyunlar Xbox Series kumanda alır, tetik titreşimleri de DualSense tetiklerinde çalınır. Windows 10 21H2'den eski
-  sürümlerde uygulama yerine Xbox 360 kullanır.
-- Oyun kapandıktan sonra süren titreşimin durdurulması; mikrofonun daha az kesilmesi (uyarlanan tampon, kaybolan
-  paketlerin gizlenmesi).
+  oyunlara sanal bir Xbox Series kumandası gösterilir;
+  oyunun gönderdiği tetik titreşimi DualSense'in tetik motorlarına aktarılır. Windows 10 21H2'den eski
+  sürümlerde bunun yerine Xbox 360 türü kullanılır.
+- Oyun kapandıktan sonra süren titreşimin durdurulması; mikrofonun daha az kesilmesi (bağlantıya göre ayarlanan ses tamponu ve kayıp
+  ses paketlerinin telafi edilmesi).
 - Uygulama: kurulum sayfası, Genel Bakış, Oyunlar, Titreşim ve Tetikler, tek bir Kumanda sayfası (Test, Çıkış
   Testleri, Tuş Atama ve Gyro), Işık, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda"
   adıyla görünür ve kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
   Kumanda görselleri kumandanın ışığını gerçek rengiyle gösterir.
 - Oyun başına Kumanda Türü (DualSense, DualShock 4, Xbox Series ya da Xbox 360): DualSense destekleyen oyunların kendi
-  haptiği ve tetikleri olduğu gibi geçer; Xbox ve DS4 Titreşimi ayarları yalnızca oyunun hiçbir şey göndermediği yerde
+  haptik titreşimleri ve tetik efektleri doğrudan aktarılır; Xbox ve DS4 Titreşimi ayarları yalnızca oyunun hiçbir şey göndermediği yerde
   devreye girer. Otomatik oyuna göre seçer: DualSense'i doğrudan destekleyen oyunlara DualSense (uygulamanın listesi,
   uygulamayla gelen Steam mağaza bilgisi ya da oyun oynanırken öğrenilir), Xbox Tetik Titreşimi açıkken Xbox tetik
   titreşimi olan oyunlara Xbox Series, yalnızca DualShock 4'ü destekleyenlere
@@ -430,7 +449,7 @@ Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
 - DSX Mod Desteği (varsayılan olarak kapalı): DSX için yapılmış oyun modları tetik ve ışık efektlerini gönderebilir.
 - Tetik gücü, tuş atama, gyro ile nişan alma, ışık efektleri.
 - Mikrofon tuşunun ışığı ve bildirimleri, oyunlarda kumanda hoparlörü.
-- DualSense Edge; hatırlanan ve adlandırılabilen en çok dört kumanda.
+- DualSense Edge; en fazla dört kumanda; uygulama kumandaları hatırlar ve her birine isim verilebilir.
 
 Henüz yapılmadı:
 - İki sürücünün kurulum programından kurulması, kod imzalama.
@@ -469,7 +488,7 @@ DS5 Untethered resmi bir proje değildir. Sony Interactive Entertainment ile ba�
 ya da desteğini de almamıştır. "DualSense", "DualSense Edge", "PlayStation" ve "PS5",
 Sony Interactive Entertainment Inc.'in ticari markalarıdır ve burada yalnızca uyumluluğu belirtmek için kullanılmıştır.
 "DS5" de yalnızca uyumluluğu belirtmek için, yaygın bir kısaltma olarak kullanılmıştır. Projede Sony'ye ait hiçbir
-donanım yazılımı, yazılım, görsel ya da logo yoktur. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
+donanım yazılımı, yazılım, görsel veya logo bulunmaz. Kumanda çizimleri özgündür. Protokol, herkese açık belgelere ve
 kendi ölçümlerimize dayanılarak, birlikte çalışabilirlik amacıyla bağımsız olarak uygulanmıştır. Yazılımın herhangi
 bir garantisi yoktur. Kullanımdan doğabilecek her türlü sorumluluk size aittir.
 
