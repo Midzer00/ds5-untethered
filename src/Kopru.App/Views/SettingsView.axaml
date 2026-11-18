@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
              xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.SettingsView" x:DataType="vm:SettingsViewModel">
   <UserControl.Resources>
     <!-- One line of a button legend (shortcuts, mouse mode): the buttons as a chip, what they do beside it; the chips of a
@@ -138,6 +138,10 @@
     <Style Selector=":disabled TextBlock">
       <Setter Property="Opacity" Value="0.5" />
     </Style>
+    <!-- A disabled button shows the shared disabled look (App.axaml), not faded on top of it -->
+    <Style Selector="Button:disabled TextBlock, ToggleButton:disabled TextBlock">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
   </UserControl.Styles>
   <ScrollViewer Classes="page">
     <StackPanel Spacing="{StaticResource GapLarge}" Classes="page">
@@ -166,7 +170,7 @@
                     <TextBlock Classes="label" Text="{Binding LanguageLabel}" />
                     <TextBlock Classes="body" Text="{Binding LanguageHint, Converter={x:Static v:KeepLastWords.Instance}}" />
                   </StackPanel>
-                  <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" Width="{StaticResource ControlWidthCompact}"
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" Width="{StaticResource ControlWidthPicker}"
                             HorizontalAlignment="Right"
                             AutomationProperties.Name="{Binding LanguageLabel}">
                     <ComboBox.ItemTemplate>
@@ -203,13 +207,13 @@
                 </Grid>
                 <!-- The virtual controller: its state and a small Stop / Start (the Overview's command) -->
                 <Border Classes="divider" IsVisible="{Binding HasBridge}" />
-                <Grid Classes="settingRow stack" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Name="BridgeRow" IsVisible="{Binding HasBridge}"
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="BridgeRow" IsVisible="{Binding HasBridge}"
                       ToolTip.Tip="{Binding BridgeRowHint}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding Bridge.BridgeRowLabel, FallbackValue=''}" />
                     <TextBlock Classes="body" Text="{Binding BridgeRowShort, Converter={x:Static v:KeepLastWords.Instance}}" />
                   </StackPanel>
-                  <StackPanel Classes="rowEnd" Orientation="Horizontal" Spacing="{StaticResource Gap}" HorizontalAlignment="Right">
+                  <StackPanel Grid.Column="1" Classes="rowEnd" Orientation="Horizontal" Spacing="{StaticResource Gap}" HorizontalAlignment="Right">
                     <TextBlock Classes="value" Name="BridgeRowState" Text="{Binding Bridge.BridgeRowState, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="NoWrap" />
                     <Button Theme="{StaticResource QuietButton}" Name="BridgeRowButton" MinWidth="104" Content="{Binding Bridge.BridgeRowButtonText, FallbackValue=''}"
                             Command="{Binding Bridge.ToggleBridgeCommand, FallbackValue={x:Null}}" IsEnabled="{Binding Bridge.CanToggleBridge, FallbackValue=False}"
@@ -365,8 +369,30 @@
               </StackPanel>
             </Border>
           </DockPanel>
-          <!-- Haptics: pause the haptics stream while the game is silent (opt-in; Low Power turns it on too) -->
+          <!-- Triggers: the experimental Xbox Trigger Rumble switch (off by default: Automatic gives Xbox Series only while it
+               is on), its title with a muted Experimental tag; the feel row is on the Haptics And Triggers page while it is on -->
           <DockPanel Classes="card" c:SettingsLayout.Column="1">
+            <TextBlock Classes="section" Text="{Binding TriggersGroupLabel}" />
+            <Border Classes="panel" Padding="20,0" Name="XboxTriggerRumblePanel">
+              <StackPanel>
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="XboxTriggerRumbleRow" ToolTip.Tip="{Binding XboxTriggerRumbleHint}">
+                  <StackPanel Classes="text">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Classes="label" Name="XboxTriggerRumbleTitle" Text="{Binding XboxTriggerRumbleTitle}" />
+                      <TextBlock Classes="caption" Name="XboxTriggerRumbleTag" Text="{Binding ExperimentalTag}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Classes="body" Name="XboxTriggerRumbleLine" Text="{Binding XboxTriggerRumbleShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Name="XboxTriggerRumbleSwitch" IsChecked="{Binding Settings.XboxTriggerRumbleOn}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                AutomationProperties.Name="{Binding XboxTriggerRumbleLabel}" AutomationProperties.HelpText="{Binding XboxTriggerRumbleHint}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+          </DockPanel>
+          <v:ProfilesPanel DataContext="{Binding Settings.ProfilesPanel}" c:SettingsLayout.Fill="True" />
+          <!-- Haptics: pause the haptics stream while the game is silent (opt-in; Low Power turns it on too). Under the
+               profiles, whose list gives up the height it needs -->
+          <DockPanel Classes="card">
             <TextBlock Classes="section" Text="{Binding HapticsGroupLabel}" />
             <Border Classes="panel" Padding="20,0" Name="HapticsPanel">
               <StackPanel>
@@ -381,7 +407,6 @@
               </StackPanel>
             </Border>
           </DockPanel>
-          <v:ProfilesPanel DataContext="{Binding Settings.ProfilesPanel}" c:SettingsLayout.Fill="True" />
         </c:SettingsLayout>
 
         <!-- Audio: the controller's speaker, its microphone beside it -->

@@ -46,6 +46,9 @@ public sealed record GameProfile(
 	// "Turn sound into haptics" for this game (AudioHapticsRunner; not part of what the bridge runs with).
 	public Audio.AudioHapticsSettings AudioHaptics { get; init; } = Audio.AudioHapticsSettings.Default;
 
+	// How the Xbox Series pad's trigger rumble feels (only that pad sends it).
+	public TriggerRumbleFeel TriggerRumble { get; init; } = TriggerRumbleFeel.XboxLike;
+
 	// The fallback effect bytes, or null when it is off.
 	public byte[]? TriggerEffect => Trigger == FallbackTrigger.Off ? null : GameProfiles.Effect(Trigger, FallbackStrength);
 }
@@ -68,5 +71,6 @@ public static class GameProfiles
 	// What the bridge runs with. gameSession: GameModeController's count of game sessions (a new one lets the fallback
 	// trigger effect back on until the next game sends its first effect; see ControllerBridge.FallbackTrigger).
 	public static BridgeProfile For(GameProfile profile, long gameSession = 0) => new(profile.GameHapticsLevel, profile.RumbleLevel,
-		profile.Feel, Math.Clamp(profile.TriggerIntensity, 0, 1), profile.LightFromGame, profile.TriggerEffect, gameSession);
+		profile.Feel, Math.Clamp(profile.TriggerIntensity, 0, 1), profile.LightFromGame, profile.TriggerEffect, gameSession,
+		Enum.IsDefined(profile.TriggerRumble) ? profile.TriggerRumble : TriggerRumbleFeel.XboxLike);
 }

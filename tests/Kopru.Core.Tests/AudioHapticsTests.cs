@@ -106,6 +106,18 @@ public class AudioHapticsDspTests
 	}
 
 	[Fact]
+	public void PeakEnvelope_FollowsTheLoudestBandLevel_AndResets()
+	{
+		AudioHapticsDsp dsp = new();
+		Run(dsp, Stereo(Rate / 2, Tone(60, 0.3), Tone(60, 0.3)));
+		Assert.InRange(dsp.PeakEnvelope, 0.2, 0.4);
+		Run(dsp, Stereo(Rate / 2));
+		Assert.InRange(dsp.PeakEnvelope, 0.2, 0.4);
+		dsp.Reset();
+		Assert.Equal(0, dsp.PeakEnvelope);
+	}
+
+	[Fact]
 	public void Strength_ScalesTheOutput()
 	{
 		float[] tone = Stereo(Rate / 2, Tone(80, 0.02), Tone(80, 0.02));
@@ -437,6 +449,139 @@ public class AudioHapticsRunnerTests
 		runner.Update(null, On);
 		string summary = Assert.Single(log, l => l.StartsWith("audio haptics: session summary:", StringComparison.Ordinal));
 		Assert.Contains(output.Frames + " frames played", summary);
+		Assert.Contains("sound in: 48000 frames (1.0 s, 48000 Hz 2 ch), peak -8.0 dBFS, rms -11.0 dBFS, silent 0 %", summary);
+		Assert.Contains($"haptics out: {output.Frames} frames", summary);
+		Assert.Contains($"peak {output.Peak * 100 / 127} %", summary);
+		Assert.DoesNotContain("non-zero 0 ", summary);
+		Assert.Contains("0 paused for native haptics, 0 without a controller", summary);
+		Assert.StartsWith("audio haptics: session verdict: haptics played for ", Assert.Single(log, l => l.Contains("session verdict", StringComparison.Ordinal)));
+	}
+
+	private static (string Summary, string Verdict) Summary(List<string> log) =>
+		(Assert.Single(log, l => l.StartsWith("audio haptics: session summary:", StringComparison.Ordinal)),
+			Assert.Single(log, l => l.StartsWith("audio haptics: session verdict:", StringComparison.Ordinal)));
+
+	// What the owner's Just Cause 4 run (band full, 50 %, the game in the background the whole time) logged as "peak 0 %":
+	// the capture delivered digital silence. The summary now says so instead of leaving it open.
+	[Fact]
+	public void SilentCapture_TheSummarySaysTheSoundWasSilent()
+	{
+		(AudioHapticsRunner runner, FakeCaptureFactory factory, FakeOutput output, List<string> log) = Create();
+		runner.Update(Game("JustCause4.exe"), new AudioHapticsSettings(true, 0.5, AudioHapticsBand.Full));
+		float[] silence = new float[960];
+		for (int i = 0; i < 100; i++)
+		{
+			factory.Sink!.OnAudio(silence, 2, 48000);
+		}
+		runner.Update(null, On);
+
+		(string summary, string verdict) = Summary(log);
+		Assert.Contains("sound in: 48000 frames (1.0 s, 48000 Hz 2 ch), peak -inf dBFS, rms -inf dBFS, silent 100 %", summary);
+		Assert.Contains("band peak -inf dBFS", summary);
+		Assert.Contains("haptics out: 3000 frames (1.0 s), peak 0 %, non-zero 0 (0 %)", summary);
+		Assert.Contains("3000 frames played (0 non-zero)", summary);
+		Assert.Equal(0, output.Peak);
+		Assert.Contains("digital silence", verdict);
+	}
+
+	// The same settings with sound: band full at 50 % still turns it into haptics (the DSP and the peak are not the problem).
+	[Fact]
+	public void FullBandAtHalfStrength_TurnsSoundIntoHaptics_AndTheSummaryShowsIt()
+	{
+		(AudioHapticsRunner runner, FakeCaptureFactory factory, FakeOutput output, List<string> log) = Create();
+		runner.Update(Game("JustCause4.exe"), new AudioHapticsSettings(true, 0.5, AudioHapticsBand.Full));
+		float[] tone = AudioHapticsDspTests.Stereo(4800, AudioHapticsDspTests.Tone(200, 0.1), AudioHapticsDspTests.Tone(200, 0.1));
+		for (int i = 0; i < 10; i++)
+		{
+			factory.Sink!.OnAudio(tone, 2, 48000);
+		}
+		Assert.True(output.Peak > 10, $"peak {output.Peak}");
+		runner.Update(null, On);
+
+		(string summary, string verdict) = Summary(log);
+		Assert.Contains("peak -20.0 dBFS, rms -23.0 dBFS, silent 0 %", summary);
+		Assert.Matches(@"band peak -2\d\.\d dBFS \(gate opens at -46\)", summary);
+		Assert.Contains($"peak {output.Peak * 100 / 127} %", summary);
+		// Nearly every frame of a steady tone (a frame landing right on a zero crossing rounds to 0).
+		Assert.InRange(long.Parse(System.Text.RegularExpressions.Regex.Match(summary, @"non-zero (\d+) \(").Groups[1].Value), 2000, 3000);
+		Assert.Matches(@"^audio haptics: session verdict: haptics played for (0\.[6-9]|1\.0) s$", verdict);
+	}
+
+	[Fact]
+	public void QuietSound_UnderTheGate_TheVerdictSaysSo()
+	{
+		(AudioHapticsRunner runner, FakeCaptureFactory factory, _, List<string> log) = Create();
+		runner.Update(Game(), On);
+		float[] quiet = AudioHapticsDspTests.Stereo(4800, AudioHapticsDspTests.Tone(60, 0.001), AudioHapticsDspTests.Tone(60, 0.001));
+		for (int i = 0; i < 10; i++)
+		{
+			factory.Sink!.OnAudio(quiet, 2, 48000);
+		}
+		runner.Update(null, On);
+
+		(string summary, string verdict) = Summary(log);
+		Assert.Contains("peak -60.0 dBFS", summary);
+		Assert.Contains("non-zero 0 (0 %)", summary);
+		Assert.Contains("never got over the gate", verdict);
+	}
+
+	[Fact]
+	public void NoController_FramesAreCounted_AndTheVerdictSaysNoneArrived()
+	{
+		(AudioHapticsRunner runner, FakeCaptureFactory factory, FakeOutput output, List<string> log) = Create();
+		runner.Update(Game(), On);
+		output.Answer = AudioHapticsPush.NoController;
+		float[] tone = AudioHapticsDspTests.Stereo(4800, AudioHapticsDspTests.Tone(60, 0.4), AudioHapticsDspTests.Tone(60, 0.4));
+		for (int i = 0; i < 10; i++)
+		{
+			factory.Sink!.OnAudio(tone, 2, 48000);
+		}
+		runner.Update(null, On);
+
+		(string summary, string verdict) = Summary(log);
+		Assert.Contains($"0 frames played (0 non-zero), 0 paused for native haptics, {output.Frames} without a controller", summary);
+		Assert.Contains("none reached the controller", verdict);
+	}
+
+	[Fact]
+	public void NothingCaptured_TheVerdictSaysNoSoundArrived()
+	{
+		(AudioHapticsRunner runner, _, _, List<string> log) = Create();
+		runner.Update(Game(), On);
+		runner.Update(null, On);
+
+		(string summary, string verdict) = Summary(log);
+		Assert.Contains("sound in: 0 frames (0.0 s, no format)", summary);
+		Assert.Contains("no sound arrived", verdict);
+	}
+
+	[Fact]
+	public void Stats_MeasureTheSoundBeforeTheDsp()
+	{
+		AudioHapticsStats stats = new();
+		// 4 channels, two silent frames, two at 0.5 / -0.5 on every channel.
+		float[] samples = [0, 0, 0, 0, 0.5f, -0.5f, 0.5f, -0.5f, 0, 0, 0, 0, -0.5f, 0.5f, -0.5f, 0.5f];
+		stats.AddInput(samples, 4, 44100);
+		Assert.Equal(4, stats.InputFrames);
+		Assert.Equal(2, stats.SilentInputFrames);
+		Assert.Equal(0.5, stats.InputPeak, 6);
+		Assert.Equal(Math.Sqrt(0.125), stats.InputRms, 6);
+		Assert.Equal("-6.0", AudioHapticsStats.Db(stats.InputPeak));
+		Assert.Equal("-inf", AudioHapticsStats.Db(0));
+
+		stats.AddOutput([0, 5, -100], [0, -7, 3], AudioHapticsPush.Played);
+		stats.AddOutput([1, 0], [0, 0], AudioHapticsPush.NativeHaptics);
+		Assert.Equal(5, stats.OutputFrames);
+		Assert.Equal(3, stats.NonZeroFrames);
+		Assert.Equal(2, stats.NonZeroPlayedFrames);
+		Assert.Equal(100, stats.OutputPeak);
+		Assert.Equal(3, stats.PlayedFrames);
+		Assert.Equal(2, stats.PausedFrames);
+
+		stats.Clear();
+		Assert.Equal(0, stats.InputFrames);
+		Assert.Equal(0, stats.OutputPeak);
+		Assert.Equal(0, stats.InputRms);
 	}
 
 	[Fact]

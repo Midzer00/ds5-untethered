@@ -71,6 +71,7 @@ public sealed partial class SettingsState
 		RumbleFeel = RumbleFeel,
 		FallbackTrigger = FallbackTrigger,
 		FallbackStrength = FallbackStrength,
+		TriggerRumble = TriggerRumble,
 		AudioHaptics = AudioHapticsOn,
 		AudioHapticsStrength = AudioHapticsStrength,
 		AudioHapticsBand = AudioHapticsBand,
@@ -219,7 +220,7 @@ public sealed partial class SettingsState
 	private void CaptureProfileValue(string property)
 	{
 		if (property is nameof(GameHapticsLevel) or nameof(TriggerStrength) or nameof(LightFromGame) or nameof(RumbleLevel)
-			or nameof(RumbleFeel) or nameof(FallbackTrigger) or nameof(FallbackStrength) or nameof(Tuning) or nameof(LightbarColour)
+			or nameof(RumbleFeel) or nameof(FallbackTrigger) or nameof(FallbackStrength) or nameof(TriggerRumble) or nameof(Tuning) or nameof(LightbarColour)
 			or nameof(Brightness) or nameof(PlayerLeds) or nameof(Remap) or nameof(Gyro) or nameof(LightMode) or nameof(BreathingPeriod)
 			or nameof(BreathingMin) or nameof(BreathingMax) or nameof(RainbowSpeed) or nameof(PlayerLedPattern) or nameof(PlayerLedBrightness)
 			or nameof(SpeakerEnabled) or nameof(SpeakerVolume) or nameof(HeadphoneVolume)
@@ -266,6 +267,7 @@ public sealed partial class SettingsState
 		RumbleFeel = v.RumbleFeel;
 		FallbackTrigger = v.FallbackTrigger;
 		FallbackStrength = v.FallbackStrength;
+		TriggerRumble = Enum.IsDefined(v.TriggerRumble) ? v.TriggerRumble : Kopru.Core.Bridge.TriggerRumbleFeel.XboxLike;
 		AudioHapticsOn = v.AudioHaptics;
 		AudioHapticsStrength = Math.Clamp(v.AudioHapticsStrength, 0, AudioHapticsStrengthMax);
 		AudioHapticsBand = Enum.IsDefined(v.AudioHapticsBand) ? v.AudioHapticsBand : Kopru.Core.Audio.AudioHapticsBand.Bass;

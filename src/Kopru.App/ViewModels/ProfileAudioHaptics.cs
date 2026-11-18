@@ -57,11 +57,27 @@ public sealed class ProfileAudioHapticsViewModel : ObservableObject, IAudioHapti
 		}
 	}
 
+	public string StrengthText => Text.PercentValue(Math.Round(Strength));
+
 	public AudioHapticsBand Band => IsLive ? _settings.AudioHapticsBand : Values.AudioHapticsBand;
 
 	// Chip toggles: checking one picks it; unchecking the picked one leaves it picked.
 	public bool IsBass { get => Band == AudioHapticsBand.Bass; set => SetBand(AudioHapticsBand.Bass); }
 	public bool IsFull { get => Band == AudioHapticsBand.Full; set => SetBand(AudioHapticsBand.Full); }
+
+	// Bass | All Sound as one segmented switch (-1, nothing selected, is ignored).
+	public IReadOnlyList<LabelledChoice> BandChoices { get; } = [new(() => Text.AudioHapticsBandBass()), new(() => Text.AudioHapticsBandFull())];
+	public int BandIndex
+	{
+		get => Band == AudioHapticsBand.Full ? 1 : 0;
+		set
+		{
+			if (value is 0 or 1)
+			{
+				SetBand(value == 1 ? AudioHapticsBand.Full : AudioHapticsBand.Bass);
+			}
+		}
+	}
 
 	public string Status => IsLive ? _settings.AudioHapticsStatus
 		: Values.AudioHaptics ? Text.AudioHapticsStatusWaiting() : Text.AudioHapticsStatusOff();

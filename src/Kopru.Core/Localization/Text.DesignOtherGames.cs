@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 namespace Kopru.Core.Localization;
 
 // User-facing texts of the Games and Haptics And Triggers pages: the profile's cards, the try-it tooltips and the pages.
@@ -31,8 +31,8 @@ public static partial class Text
 	public static string PageHapticsTriggers(Language? l = null) => Pick(l, $"Titreşim ve Tetikler", $"Haptics And Triggers");
 
 	public static string PageHapticsTriggersIntro(Language? l = null) => Pick(l,
-		$"Oyunun gönderdiği efektler olduğu gibi geçer. Oyun bir şey göndermezse Xbox ve DS4 Titreşimi ayarları kullanılır.",
-		$"What the game sends passes through. Where it sends nothing, the Xbox And DS4 Rumble settings are used.");
+		$"Oyunun efektleri aynen geçer; oyun efekt göndermezse Xbox ve DS4 Titreşimi devreye girer.",
+		$"The game's own effects pass through; where it sends none, Xbox And DS4 Rumble takes over.");
 
 	// The games not in the supported list: the Games page's second view, and the link to it on Haptics And Triggers.
 	public static string UnsupportedGamesTitle(Language? l = null) => Pick(l, $"Desteklenmeyen Oyunlar", $"Unsupported Games");

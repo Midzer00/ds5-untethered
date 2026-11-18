@@ -90,6 +90,8 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		host.DetailsRead += OnDetailsRead;
 		host.RawInput += body => OnHostRawInput(1, body);
 		host.PadTypeChanged += type => RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, type.ToString()));
+		host.XboxSeriesFailed += Games.ReportXboxSeriesFailed;
+		host.XboxSeriesStarted += Games.ReportXboxSeriesStarted;
 		host.Shortcuts.Triggered += action =>
 		{
 			AppLog.Write("shortcut: " + action);

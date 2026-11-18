@@ -13,7 +13,7 @@ public static partial class Text
 
 	public static string NotifyControllerGroup(Language? l = null) => Pick(l, $"Kumanda Bildirimleri", $"Controller Alerts");
 
-	public static string NotifyGamesGroup(Language? l = null) => Pick(l, $"Oyun ve Sanal Kumanda", $"Games and Virtual Controller");
+	public static string NotifyGamesGroup(Language? l = null) => Pick(l, $"Oyun ve Sanal Kumanda", $"Games And Virtual Controller");
 
 	public static string ShortcutCombosGroup(Language? l = null) => Pick(l, $"Tuş Kombinasyonları", $"Button Combos");
 
@@ -30,8 +30,8 @@ public static partial class Text
 		$"Starts with the app and on reconnect.");
 
 	public static string BridgeRowShort(Language? l = null) => Pick(l,
-		$"Kumandayı başka programa bırakmak için durdur.",
-		$"Stop it to hand the controller to another program.");
+		$"Başka programa bırakmak için durdur.",
+		$"Stop it to free the controller.");
 
 	public static string PowerOffWhenIdleShort(Language? l = null) => Pick(l,
 		$"Süre dolunca kumandayı da kapatır.",

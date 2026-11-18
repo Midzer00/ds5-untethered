@@ -40,7 +40,7 @@ public sealed class AutoPadTypeAppTests
 		var vm = new MainWindowViewModel(service,
 			new AppEnvironment(new MemorySettingsStore(new AppSettings()), InstalledGames: FakeFoundGames.Installed(FakeFoundGames.Folders())));
 		await vm.SupportedGames.ScanTask;
-		vm.SupportedGames.ViewIndex = 1;
+		vm.SupportedGames.ViewIndex = 2;
 		return (vm, service);
 	}
 
@@ -64,6 +64,7 @@ public sealed class AutoPadTypeAppTests
 		GamePadTypePicker racer = vm.SupportedGames.Games.Single(g => g.Key == "steam:9009").PadType!;
 		GamePadTypePicker epic = vm.SupportedGames.Games.Single(g => g.Name == "Hollow Peak").PadType!;
 		Assert.Null(racer.Selected!.Type);
+		// Nothing known: Xbox 360 (the Xbox Series pad only for Xbox trigger rumble games, with its setting on).
 		Assert.Equal(VirtualPadType.Xbox360, racer.AutomaticType);
 		WithLanguage(Language.Turkish, () =>
 		{
@@ -72,6 +73,9 @@ public sealed class AutoPadTypeAppTests
 			Assert.Equal("Oyuna En Uygun Kumandayı Seçer", racer.Options[0].Line);
 		});
 		WithLanguage(Language.English, () => Assert.Equal("Automatic (Xbox 360)", racer.Options[0].Name));
+		service.Games.XboxTriggerRumbleOn = true;
+		WithLanguage(Language.English, () => Assert.Equal("Automatic (Xbox 360)", racer.Options[0].Name));
+		service.Games.XboxTriggerRumbleOn = false;
 
 		// The store says DualShock 4 / DualSense.
 		service.Games.PlayStation = new PlayStationSupport([new(9009, PlayStationPad.DualShock4)]);

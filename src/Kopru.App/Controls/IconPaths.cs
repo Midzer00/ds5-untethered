@@ -31,7 +31,13 @@ public static class IconPaths
 	// An arrow pointing back: back to the game.
 	public static Geometry Back { get; } = Geometry.Parse("M10,5.5 L3.5,12 L10,18.5 M4,12 H20.5");
 	public static Geometry ChevronRight { get; } = Geometry.Parse("M9.5,6 L15.5,12 L9.5,18");
+	// A folder: a file to choose (a game's start file).
+	public static Geometry Folder { get; } = Geometry.Parse("M3.5,7 C3.5,5.9 4.4,5 5.5,5 H9.5 L11.5,7.5 H18.5 C19.6,7.5 20.5,8.4 20.5,9.5 V17 C20.5,18.1 19.6,19 18.5,19 H5.5 C4.4,19 3.5,18.1 3.5,17 Z");
+	// A cross: remove.
+	public static Geometry Cross { get; } = Geometry.Parse("M7,7 L17,17 M17,7 L7,17");
 	// A heart outline: support (GitHub Sponsors).
 	public static Geometry Heart { get; } = Geometry.Parse("M12,19.5 C12,19.5 3.5,14.6 3.5,9 C3.5,6.4 5.4,4.5 7.9,4.5 C9.7,4.5 11.2,5.5 12,7.1 C12.8,5.5 14.3,4.5 16.1,4.5 C18.6,4.5 20.5,6.4 20.5,9 C20.5,14.6 12,19.5 12,19.5 Z");
+	// A five-pointed star outline: star the project on GitHub.
+	public static Geometry Star { get; } = Geometry.Parse("M12,3.5 L14.6,8.9 L20.5,9.6 L16.1,13.6 L17.3,19.5 L12,16.6 L6.7,19.5 L7.9,13.6 L3.5,9.6 L9.4,8.9 Z");
 	public static Geometry Battery { get; } = Geometry.Parse("M4,7.5 H17 C18.1,7.5 19,8.4 19,9.5 V14.5 C19,15.6 18.1,16.5 17,16.5 H4 C2.9,16.5 2,15.6 2,14.5 V9.5 C2,8.4 2.9,7.5 4,7.5 Z M22,10.5 V13.5 M5.5,10.5 V13.5 M9,10.5 V13.5");
 }

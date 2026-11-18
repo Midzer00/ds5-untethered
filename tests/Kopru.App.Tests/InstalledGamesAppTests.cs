@@ -265,9 +265,9 @@ public sealed class InstalledGamesAppTests
 		Assert.True(page.ShowsAddHint);
 		Assert.Equal("Returnal", Assert.Single(page.Games).Name);
 
-		page.ViewIndex = 1;
+		page.ViewIndex = 2;
 		Assert.True(page.ShowsAddHint);
-		Assert.Equal(Text.UnsupportedViewCount(4), page.ViewFilters[1].Name);
+		Assert.Equal(Text.UnsupportedViewCount(4), page.ViewFilters[2].Name);
 		Assert.Equal(new[] { "Hollow Peak", "Indie Game", "Moss Garden: A Very Long Name For A Quiet Little Gardening Game", "Pixel Racer" },
 			page.Games.Select(g => g.Name));
 		GameItemViewModel racer = page.Games.Single(g => g.Name == "Pixel Racer");

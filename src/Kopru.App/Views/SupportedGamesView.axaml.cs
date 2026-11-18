@@ -85,7 +85,15 @@ public partial class SupportedGamesView : UserControl
 	{
 		if (e.Key == Key.Escape && _panel is { IsOpen: true } && IsEffectivelyVisible)
 		{
-			_panel.CloseCommand.Execute(null);
+			// Esc in the profile name field cancels the name, not the pop-up.
+			if (_panel.IsNaming)
+			{
+				_panel.CancelProfileNameCommand.Execute(null);
+			}
+			else
+			{
+				_panel.CloseCommand.Execute(null);
+			}
 			e.Handled = true;
 		}
 	}

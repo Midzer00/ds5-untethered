@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Kopru.App.ViewModels"
         xmlns:c="using:Kopru.App.Controls"
@@ -132,25 +132,37 @@
               <StackPanel Spacing="6" IsVisible="{Binding Overview.HasPendingPadType}">
                 <TextBlock Text="{Binding Overview.PendingPadLine}" Classes="caption" TextWrapping="Wrap" Background="Transparent"
                            ToolTip.Tip="{Binding Overview.PendingPadTip}" />
-                <Button Theme="{StaticResource QuietButton}" Height="28" MinHeight="28" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left"
+                <Button Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" MinHeight="0" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left"
                         Content="{Binding Overview.ApplyPadTypeNowText}" Command="{Binding Overview.ApplyPadTypeNowCommand}" ToolTip.Tip="{Binding Overview.PendingPadTip}" />
               </StackPanel>
             </StackPanel>
             <!-- Active profile, compact -->
-            <TextBlock Text="{Binding Settings.ActiveProfileLine}" Classes="caption" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,-4,0,0" />
+            <TextBlock x:Name="ActiveProfileLine" Text="{Binding Settings.ActiveProfileLine}" ToolTip.Tip="{Binding Settings.ActiveProfileLine}" Classes="caption"
+                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,-4,0,0" />
           </StackPanel>
         </Border>
 
-        <!-- Support (GitHub Sponsors): a pink pill the card's width, right above it; always there (the sidebar has one width).
-             A click opens the sponsors page in the browser, nothing else. -->
-        <Button DockPanel.Dock="Bottom" x:Name="SupportPill" Theme="{StaticResource SupportPill}" Margin="14,8,14,0"
-                Command="{Binding Support.OpenCommand}" ToolTip.Tip="{Binding Support.Tip}"
-                AutomationProperties.Name="{Binding Support.Label}" AutomationProperties.HelpText="{Binding Support.Tip}">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <c:IconSlot Data="{x:Static c:IconPaths.Heart}" Stroke="{StaticResource SupportTextBrush}" Size="18" Weight="1.8" VerticalAlignment="Center" />
-            <TextBlock x:Name="SupportPillText" Text="{Binding Support.Label}" VerticalAlignment="Center" TextWrapping="NoWrap" />
-          </StackPanel>
-        </Button>
+        <!-- Support (GitHub Sponsors) and a star for the project: one row the card's width, right above it; always there (the
+             sidebar has one width). The pink pill opens the sponsors page, the outline "Star" pill (icon and label) the project's GitHub page;
+             a click opens the page in the browser, nothing else. -->
+        <Grid DockPanel.Dock="Bottom" x:Name="SupportRow" Margin="14,8,14,0" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <Button x:Name="SupportPill" Theme="{StaticResource SupportPill}"
+                  Command="{Binding Support.OpenCommand}" ToolTip.Tip="{Binding Support.Tip}"
+                  AutomationProperties.Name="{Binding Support.Label}" AutomationProperties.HelpText="{Binding Support.Tip}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:IconSlot Data="{x:Static c:IconPaths.Heart}" Stroke="{StaticResource SupportTextBrush}" Size="18" Weight="1.8" VerticalAlignment="Center" />
+              <TextBlock x:Name="SupportPillText" Text="{Binding Support.Label}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="1" x:Name="StarButton" Theme="{StaticResource StarPill}"
+                  Command="{Binding Support.OpenRepoCommand}" ToolTip.Tip="{Binding Support.StarTip}"
+                  AutomationProperties.Name="{Binding Support.StarTip}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:IconSlot Data="{x:Static c:IconPaths.Star}" Stroke="{StaticResource TextBrush}" Size="16" Weight="1.8" VerticalAlignment="Center" />
+              <TextBlock x:Name="StarButtonText" Text="{Binding Support.StarLabel}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+            </StackPanel>
+          </Button>
+        </Grid>
 
         <!-- One row per page; the rows share the height between the logo and the controller (40 px rows centred in cells of up to 59 px) -->
         <!-- The first row takes the height up to its cap; whatever is left stays empty above the controller card -->

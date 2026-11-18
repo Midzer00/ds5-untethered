@@ -58,10 +58,12 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		NoGame(fake);
 		PadTypeChoiceViewModel choice = vm.Overview.Quick.PadType;
 		Assert.Same(vm.Settings.PadType, choice);
-		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.Xbox360], choice.Options.Select(o => o.Type));
-		Assert.Equal(["Otomatik (Oyuna Göre)", "DualSense", "DualShock 4", "Xbox 360"], new[] { Text.PadChoiceAutoPerGame(Language.Turkish) }.Concat(choice.Options.Skip(1).Select(o => o.Name)));
+		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.XboxSeries, VirtualPadType.Xbox360], choice.Options.Select(o => o.Type));
+		WithLanguage(Language.Turkish, () =>
+			Assert.Equal(["Otomatik (Oyuna Göre)", "DualSense", "DualShock 4", "Xbox Series", "Xbox 360"], choice.Options.Select(o => o.Name)));
+		WithLanguage(Language.English, () => Assert.Equal("Xbox Series", choice.Options[3].Name));
 		// Every option says what it means (its tooltip).
-		Assert.Equal([Text.PadChoiceAutoLine(), Text.PadTypeDualSenseLine(), Text.PadTypeDualShock4Line(), Text.PadTypeXboxLine()], choice.Options.Select(o => o.Line));
+		Assert.Equal([Text.PadChoiceAutoLine(), Text.PadTypeDualSenseLine(), Text.PadTypeDualShock4Line(), Text.PadTypeXboxSeriesLine(), Text.PadTypeXboxLine()], choice.Options.Select(o => o.Line));
 		Assert.Null(choice.Selected!.Type);
 
 		choice.Selected = choice.Options[2];
@@ -79,7 +81,7 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 	{
 		var store = new MemorySettingsStore(new AppSettings());
 		(MainWindowViewModel vm, _) = Create(store);
-		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[3];
+		vm.Settings.PadType.Selected = vm.Settings.PadType.Options.Single(o => o.Type == VirtualPadType.Xbox360);
 		vm.Settings.SaveNow();
 		Assert.Equal(VirtualPadType.Xbox360, store.Saved!.ForcedPadType);
 
@@ -156,7 +158,7 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		WithLanguage(Language.English, () =>
 			Assert.Equal("Rumble and light work; no adaptive triggers, game haptics or speaker.", vm.Overview.PadLossLine));
 
-		vm.Settings.PadType.Selected = vm.Settings.PadType.Options[3];
+		vm.Settings.PadType.Selected = vm.Settings.PadType.Options.Single(o => o.Type == VirtualPadType.Xbox360);
 		Settle();
 		Assert.Equal(Text.GameSees("Xbox 360"), vm.Overview.GameSeesText);
 		WithLanguage(Language.Turkish, () =>

@@ -87,6 +87,34 @@ public sealed partial class BridgeHost
 			$"mic check{LogSlot}: {MicCheckDelay.TotalSeconds:F0} s after mic on: {s.MicReports - c.MicCheckMic} mic reports, {s.InputReports - c.MicCheckInputs} inputs, {s.RejectedReports - c.MicCheckRejected} rejected, decoded {c.Mic?.Packets ?? 0}, stream running {s.IsHapticsStreaming}"));
 	}
 
+	// How often the running mic writes its summary line (packets, loss, underruns, buffer depth); also written when the
+	// mic goes off and when the connection closes.
+	public static readonly TimeSpan MicStatsInterval = TimeSpan.FromSeconds(60);
+
+	private void LogMicStats(Connection c, DateTimeOffset now)
+	{
+		if (c.Mic is not { } p || !c.Session.MicStreamEnabled)
+		{
+			c.MicStatsAt = null;
+			return;
+		}
+		c.MicStatsAt ??= now + MicStatsInterval;
+		if (now >= c.MicStatsAt)
+		{
+			c.MicStatsAt = now + MicStatsInterval;
+			WriteMicStats(p, $"last {MicStatsInterval.TotalSeconds:F0} s");
+		}
+	}
+
+	// One summary line of what the mic pipeline did since the last one (nothing when no packet came and nothing failed).
+	private void WriteMicStats(MicPipeline p, string what)
+	{
+		if (p.HasNews)
+		{
+			Diagnostics.AppLog.Write($"mic stats{LogSlot} ({what}): {p.TakeSummary()}");
+		}
+	}
+
 	// The mute LED (the orange light of the mic button) always shows the microphone the button acts on: lit while it is
 	// live (MicSettings.IsLive: the controller microphone on and not muted, or the selected PC microphone not muted), dark
 	// otherwise. It is not part of the light settings, so no light effect, profile or game light can hide it. It is written
@@ -189,14 +217,21 @@ public sealed partial class BridgeHost
 				if (p != null)
 				{
 					c.Session.MicReportReceived -= p.PushReport;
+					WriteMicStats(p, "mic off");
 				}
 				c.MicCheckAt = null;
+				c.MicStatsAt = null;
 				return true;
 			}
 			if (p == null)
 			{
 				p = new MicPipeline(MicDecoderFactory());
 				c.Mic = p;
+			}
+			else if (!c.Session.MicStreamEnabled)
+			{
+				// Back on after off: no loss or underrun counted for the pause.
+				p.Restart();
 			}
 			p.Gain = s.Gain;
 			p.NoiseGate = s.NoiseGate;
@@ -223,6 +258,9 @@ public sealed partial class BridgeHost
 	{
 		// The mute LED value last written to this controller (ControllerBridge.NoAppMuteLed: none yet / the game's).
 		public int MuteLedSent = ControllerBridge.NoAppMuteLed;
+
+		// When the next mic summary line is due (null: the mic is not running).
+		public DateTimeOffset? MicStatsAt;
 	}
 
 	// Input thread: the app decides what the press does (Core Audio calls it may need are slow: never here).

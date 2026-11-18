@@ -44,7 +44,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		Overview = new OverviewViewModel(service, Settings);
 		Overview.BackToGame = BackToGame;
 		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now, _environment.GameImages,
-			_environment.InstalledGames);
+			_environment.InstalledGames) { BackToGame = BackToGame };
 		OtherGames = new OtherGamesViewModel(service, Settings);
 		Controller = new ControllerPageViewModel(service, Settings);
 		Controller.PropertyChanged += (_, e) =>

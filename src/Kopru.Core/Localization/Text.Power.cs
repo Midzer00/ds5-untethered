@@ -18,7 +18,7 @@ public static partial class Text
 
 	public static string PowerOffWhenIdleSetting(Language? l = null) => Pick(l,
 		$"Kullanılmadığında Kumandayı Kapat",
-		$"Turn Off the Controller When Idle");
+		$"Turn Off The Controller When Idle");
 
 	// "Pause Haptics In Silence" (Settings, General, Power).
 	public static string PauseHapticsInSilence(Language? l = null) => Pick(l,

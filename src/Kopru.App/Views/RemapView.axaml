@@ -10,6 +10,10 @@
     <Style Selector=":disabled TextBlock">
       <Setter Property="Opacity" Value="0.5" />
     </Style>
+    <!-- A disabled button shows the shared disabled look (App.axaml), not faded on top of it -->
+    <Style Selector="Button:disabled TextBlock, ToggleButton:disabled TextBlock">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
     <!-- Label (with an optional caption under it) on the left of a setting row -->
     <Style Selector="Grid.settingRow > StackPanel.text">
       <Setter Property="Spacing" Value="2" />

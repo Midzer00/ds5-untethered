@@ -18,7 +18,7 @@ public sealed class ProfileFeelViewModel : ObservableObject
 	[
 		nameof(SettingsState.GameHapticsLevel), nameof(SettingsState.TriggerStrength), nameof(SettingsState.LightFromGame),
 		nameof(SettingsState.RumbleLevel), nameof(SettingsState.RumbleFeel), nameof(SettingsState.FallbackTrigger),
-		nameof(SettingsState.FallbackStrength)
+		nameof(SettingsState.FallbackStrength), nameof(SettingsState.TriggerRumble)
 	];
 
 	private readonly SettingsState _settings;
@@ -58,10 +58,16 @@ public sealed class ProfileFeelViewModel : ObservableObject
 	public string FallbackLabel => Text.FallbackTriggerLabel();
 	public string FallbackHint => Text.FallbackTriggerHint();
 	public string FallbackStrengthLabel => Text.FallbackStrength();
+	public string FallbackStrengthHint => Text.FallbackStrengthHint();
 	public string OffText => Text.EffectOff();
 	public string FeedbackText => Text.EffectFeedback();
 	public string WeaponText => Text.EffectWeapon();
 	public string VibrationText => Text.EffectVibration();
+	public string TriggerRumbleLabel => Text.TriggerRumbleLabel();
+	public string TriggerRumbleHint => Text.TriggerRumbleHint();
+	public string XboxLikeText => Text.TriggerRumbleXboxLike();
+	public string TriggerSoftText => Text.TriggerRumbleSoft();
+	public string TriggerSharpText => Text.TriggerRumbleSharp();
 	public string LightLabel => Text.LightFromGame();
 	public string LightHint => Text.LightFromGameHint();
 
@@ -109,6 +115,58 @@ public sealed class ProfileFeelViewModel : ObservableObject
 	public bool IsFallbackWeapon { get => Values.FallbackTrigger == FallbackTrigger.Weapon; set => SetFallback(FallbackTrigger.Weapon); }
 	public bool IsFallbackVibration { get => Values.FallbackTrigger == FallbackTrigger.Vibration; set => SetFallback(FallbackTrigger.Vibration); }
 
+	// The same two choices as one segmented switch and the fallback effect as a picker (a game's pop-up, where a row's control
+	// has a fixed width). -1 (nothing selected) is ignored.
+	private static readonly FallbackTrigger[] FallbackOrder = [FallbackTrigger.Off, FallbackTrigger.Feedback, FallbackTrigger.Weapon, FallbackTrigger.Vibration];
+	public IReadOnlyList<LabelledChoice> FeelChoices { get; } = [new(() => Text.RumbleFeelSoft()), new(() => Text.RumbleFeelPunchy())];
+	public int FeelIndex
+	{
+		get => Values.RumbleFeel == RumbleFeel.Punchy ? 1 : 0;
+		set
+		{
+			if (value is 0 or 1)
+			{
+				SetFeel(value == 1 ? RumbleFeel.Punchy : RumbleFeel.Soft);
+			}
+		}
+	}
+	public IReadOnlyList<LabelledChoice> FallbackChoices { get; } =
+		[new(() => Text.EffectOff()), new(() => Text.EffectFeedback()), new(() => Text.EffectWeapon()), new(() => Text.EffectVibration())];
+	public int FallbackIndex
+	{
+		get => Math.Max(0, Array.IndexOf(FallbackOrder, Values.FallbackTrigger));
+		set
+		{
+			if (value >= 0 && value < FallbackOrder.Length)
+			{
+				SetFallback(FallbackOrder[value]);
+			}
+		}
+	}
+
+	// Trigger Rumble (only the Xbox Series type sends it): Off, Xbox-Like, Soft, Sharp, as chips (the card) or a picker (a
+	// game's pop-up).
+	public bool IsTriggerRumbleOff { get => Values.TriggerRumble == TriggerRumbleFeel.Off; set => SetTriggerRumble(TriggerRumbleFeel.Off); }
+	public bool IsTriggerRumbleXboxLike { get => Values.TriggerRumble == TriggerRumbleFeel.XboxLike; set => SetTriggerRumble(TriggerRumbleFeel.XboxLike); }
+	public bool IsTriggerRumbleSoft { get => Values.TriggerRumble == TriggerRumbleFeel.Soft; set => SetTriggerRumble(TriggerRumbleFeel.Soft); }
+	public bool IsTriggerRumbleSharp { get => Values.TriggerRumble == TriggerRumbleFeel.Sharp; set => SetTriggerRumble(TriggerRumbleFeel.Sharp); }
+	private static readonly TriggerRumbleFeel[] TriggerRumbleOrder = [TriggerRumbleFeel.Off, TriggerRumbleFeel.XboxLike, TriggerRumbleFeel.Soft, TriggerRumbleFeel.Sharp];
+	public IReadOnlyList<LabelledChoice> TriggerRumbleChoices { get; } =
+		[new(() => Text.EffectOff()), new(() => Text.TriggerRumbleXboxLike()), new(() => Text.TriggerRumbleSoft()), new(() => Text.TriggerRumbleSharp())];
+	public int TriggerRumbleIndex
+	{
+		get => Math.Max(0, Array.IndexOf(TriggerRumbleOrder, Values.TriggerRumble));
+		set
+		{
+			if (value >= 0 && value < TriggerRumbleOrder.Length)
+			{
+				SetTriggerRumble(TriggerRumbleOrder[value]);
+			}
+		}
+	}
+
+	private void SetTriggerRumble(TriggerRumbleFeel feel) => Set(v => v with { TriggerRumble = feel }, s => s.TriggerRumble = feel);
+
 	private void SetFeel(RumbleFeel feel) => Set(v => v with { RumbleFeel = feel }, s => s.RumbleFeel = feel);
 
 	private void SetFallback(FallbackTrigger trigger) => Set(v => v with { FallbackTrigger = trigger }, s => s.FallbackTrigger = trigger);
@@ -129,8 +187,16 @@ public sealed class ProfileFeelViewModel : ObservableObject
 
 	public void Refresh() => OnPropertyChanged(string.Empty);
 
+	// The Trigger Rumble row shows only while the experimental Xbox Trigger Rumble setting is on (off, Automatic never gives
+	// Xbox Series, the only type that sends it).
+	public bool ShowsTriggerRumble => _settings.XboxTriggerRumbleOn;
+
 	private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
 	{
+		if (e.PropertyName == nameof(SettingsState.XboxTriggerRumbleOn))
+		{
+			OnPropertyChanged(nameof(ShowsTriggerRumble));
+		}
 		if (e.PropertyName != null && FeelNames.Contains(e.PropertyName) && IsLive)
 		{
 			Refresh();
@@ -145,7 +211,10 @@ public interface IAudioHapticsSettings : INotifyPropertyChanged
 	bool Available { get; }
 	bool On { get; set; }
 	double Strength { get; set; }
+	string StrengthText { get; }
 	bool IsBass { get; set; }
 	bool IsFull { get; set; }
+	IReadOnlyList<LabelledChoice> BandChoices { get; }
+	int BandIndex { get; set; }
 	string Status { get; }
 }

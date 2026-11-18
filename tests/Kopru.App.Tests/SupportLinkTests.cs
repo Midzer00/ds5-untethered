@@ -157,11 +157,14 @@ public sealed class SupportLinkTests
 		Image logo = sidebar.Children.OfType<Image>().Single();
 		List<ListBoxItem> rows = window.GetVisualDescendants().OfType<ListBoxItem>().Where(i => i.DataContext is NavItem).ToList();
 		Assert.Equal(vm.NavItems.Count, rows.Count);
-		Rect p = Rect(pill, sidebar), c = Rect(card, sidebar), l = Rect(logo, sidebar);
-		Assert.True(pill.IsEffectivelyVisible && logo.IsEffectivelyVisible, $"{at}: the pill or the logo is hidden");
+		Button star = Star(window);
+		Rect p = Rect(pill, sidebar), c = Rect(card, sidebar), l = Rect(logo, sidebar), s = Rect(star, sidebar);
+		Assert.True(pill.IsEffectivelyVisible && logo.IsEffectivelyVisible && star.IsEffectivelyVisible, $"{at}: the pill, the star or the logo is hidden");
 		Assert.Equal(36, p.Height, 1);
-		// The card's width, right above it.
-		Assert.True(Math.Abs(p.Left - c.Left) < 0.5 && Math.Abs(p.Right - c.Right) < 0.5, $"{at}: the pill ({p}) is not the card's width ({c})");
+		Assert.Equal(36, s.Height, 1);
+		// The pill and the star in one row the card's width, right above it.
+		Assert.True(Math.Abs(p.Left - c.Left) < 0.5 && Math.Abs(s.Right - c.Right) < 0.5 && s.Left >= p.Right + 4 - 0.5 && Math.Abs(s.Top - p.Top) < 0.5,
+			$"{at}: the pill ({p}) and the star ({s}) are not one row the card's width ({c})");
 		Assert.True(p.Bottom <= c.Top - 8 + 0.5, $"{at}: the pill ({p}) runs into the card ({c})");
 		Assert.True(c.Bottom <= sidebar.Bounds.Height + 0.5, $"{at}: the card ends at {c.Bottom:0.#}, below the sidebar ({sidebar.Bounds.Height:0.#})");
 		// The page rows: whole, apart, between the logo and the pill.
@@ -183,10 +186,69 @@ public sealed class SupportLinkTests
 
 	private static Button Pill(MainWindow window) => window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "SupportPill");
 
+	private static Button Star(MainWindow window) => window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "StarButton");
+
+	// A star pill beside the support pill: star icon and "Yıldızla" / "Star" (whole, not cut), its name and tooltip "GitHub'da yıldız ver" / "Star on GitHub"; keyboard focusable;
+	// a click opens the project's GitHub page through the same URL launcher.
+	[AvaloniaFact]
+	public void Sidebar_HasTheStarButton_ItOpensTheRepository()
+	{
+		foreach ((Language language, string code, string tip, string label) in new[]
+		{
+			(Language.Turkish, "tr", "GitHub'da yıldız ver", "Yıldızla"),
+			(Language.English, "en", "Star on GitHub", "Star"),
+		})
+		{
+			Run(language, code, (window, vm, links) =>
+			{
+				Button star = Star(window);
+				Assert.True(star.IsEffectivelyVisible, $"{code}: no star button");
+				Assert.Equal(tip, ToolTip.GetTip(star));
+				Assert.Equal(tip, Avalonia.Automation.AutomationProperties.GetName(star));
+				Assert.True(star.Focusable && star.IsTabStop, $"{code}: the star cannot take keyboard focus");
+				Assert.Same(IconPaths.Star, star.GetVisualDescendants().OfType<IconSlot>().Single().Data);
+				Assert.Equal(new CornerRadius(18), star.CornerRadius);
+				Assert.Equal(36, star.Bounds.Height, 1);
+				TextBlock text = star.GetVisualDescendants().OfType<TextBlock>().Single();
+				Assert.Equal(label, text.Text);
+				Assert.False(text.TextLayout.TextLines.Any(t => t.HasCollapsed), $"{code}: \"{text.Text}\" is cut");
+				Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5, $"{code}: \"{text.Text}\" is wider than its room");
+				star.Command!.Execute(null);
+				Assert.Equal(["https://github.com/Midzer00/ds5-untethered"], links.Opened);
+				Assert.Same(vm.Overview, vm.SelectedNav.Page);
+			});
+		}
+	}
+
+	// With KOPRU_STAR_PREVIEW_DIR set: the sidebar's support row in both languages, 1152 wide with one controller and
+	// 1100 wide with four, saved as star-*.png for a look (no checks beyond the star's text being whole).
+	[AvaloniaFact]
+	public void Sidebar_StarPreview()
+	{
+		if (Environment.GetEnvironmentVariable("KOPRU_STAR_PREVIEW_DIR") is not { Length: > 0 } dir)
+		{
+			return;
+		}
+		Directory.CreateDirectory(dir);
+		foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+		{
+			foreach ((string state, int width) in new[] { ("one", 1152), ("four", 1100) })
+			{
+				Run(language, code, (window, _, _) =>
+				{
+					TextBlock text = Star(window).GetVisualDescendants().OfType<TextBlock>().Single();
+					Assert.False(text.TextLayout.TextLines.Any(t => t.HasCollapsed), $"{code} {width}: the star's text is cut");
+					using var frame = window.CaptureRenderedFrame();
+					frame!.Save(Path.Combine(dir, $"star-{code}-{width}-{state}.png"));
+				}, state, width);
+			}
+		}
+	}
+
 	// The Overview with the bridge on and a game running (a made-up game), the URL launcher a recording fake. States:
 	// "one" controller, "ds4-pending" (DualShock 4 for every game with the running game's own choice held back), "four"
 	// controllers.
-	private static void Run(Language language, string code, Action<MainWindow, MainWindowViewModel, RealServiceTests.Links> check, string state = "one")
+	private static void Run(Language language, string code, Action<MainWindow, MainWindowViewModel, RealServiceTests.Links> check, string state = "one", int width = 1152)
 	{
 		Language? before = Localizer.Chosen;
 		try
@@ -218,7 +280,7 @@ public sealed class SupportLinkTests
 				Assert.True(vm.Settings.HasPendingPadType);
 			}
 			fake.RaiseStateChanged();
-			var window = new MainWindow { DataContext = vm, Width = 1152, Height = 700 };
+			var window = new MainWindow { DataContext = vm, Width = width, Height = 700 };
 			window.Show();
 			vm.SelectedNav = vm.NavItems[0];
 			Settle();

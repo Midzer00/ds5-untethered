@@ -20,6 +20,8 @@ public sealed record ProfileValues
 	public RumbleFeel RumbleFeel { get; init; } = RumbleFeel.Soft;
 	public FallbackTrigger FallbackTrigger { get; init; } = FallbackTrigger.Off;
 	public double FallbackStrength { get; init; } = 50;
+	// How the Xbox Series pad's trigger rumble feels (missing in older profiles: Xbox-like).
+	public TriggerRumbleFeel TriggerRumble { get; init; } = TriggerRumbleFeel.XboxLike;
 	// "Turn sound into haptics" (missing in older profiles: off, 100 %, bass); strength in percent (0-200).
 	public bool AudioHaptics { get; init; }
 	public double AudioHapticsStrength { get; init; } = 100;

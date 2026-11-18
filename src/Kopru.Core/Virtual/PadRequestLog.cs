@@ -176,6 +176,10 @@ public sealed class PadRequestLog
 		Queue(() => Summary($"session end ({reason})", counts));
 	}
 
+	// A pad-specific line (the experimental Xbox One pad's GIP steps), written in order with the others. The line is made
+	// on the writer thread.
+	public void Note(Func<string> line) => Queue(line);
+
 	// The session start (set by the first event).
 	private long Begin(long now)
 	{

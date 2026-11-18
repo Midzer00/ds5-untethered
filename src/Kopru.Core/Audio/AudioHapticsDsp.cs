@@ -64,6 +64,7 @@ public sealed class AudioHapticsDsp
 
 	// 3 kHz stage.
 	private double envelope;
+	private double peakEnvelope;
 	private double gateGain;
 	private bool gateOpen;
 	private int holdFrames;
@@ -98,6 +99,9 @@ public sealed class AudioHapticsDsp
 	// The envelope (0..1 of full scale) after the last block, for diagnostics.
 	public double Envelope => envelope;
 
+	// The loudest envelope (0..1 of full scale, what the gate compares with) since Reset, for diagnostics.
+	public double PeakEnvelope => peakEnvelope;
+
 	// Whether the gate let anything through in the last frame.
 	public bool GateOpen => gateOpen;
 
@@ -109,6 +113,7 @@ public sealed class AudioHapticsDsp
 	public void Reset()
 	{
 		configured = false;
+		peakEnvelope = 0;
 		ResetState();
 	}
 
@@ -171,6 +176,10 @@ public sealed class AudioHapticsDsp
 		if (envelope < Settled)
 		{
 			envelope = 0;
+		}
+		if (envelope > peakEnvelope)
+		{
+			peakEnvelope = envelope;
 		}
 		double db = envelope > 0 ? 20 * Math.Log10(envelope) : -200;
 		if (db >= GateOpenDb)

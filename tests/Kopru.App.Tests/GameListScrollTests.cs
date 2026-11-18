@@ -94,7 +94,7 @@ public sealed class GameListScrollTests(ITestOutputHelper output)
 				Assert.Equal(offset, list.Offset.Y, 1);
 
 				// Picking another value (Xbox 360; the second profile) and closing: still there, and the row too.
-				box.SelectedIndex = picker == 0 ? 3 : 1;
+				box.SelectedIndex = picker == 0 ? 4 : 1;
 				box.IsDropDownOpen = false;
 				Settle();
 				Assert.Equal(offset, list.Offset.Y, 1);
@@ -181,7 +181,7 @@ public sealed class GameListScrollTests(ITestOutputHelper output)
 			vm.Settings.InstalledGamesOnly = true;
 			Assert.Equal(Text.SupportedGameList(), vm.SupportedGames.ListLabel);
 			Assert.DoesNotContain(vm.SupportedGames.Games, g => g.IsFound || g.IsUnsupported);
-			vm.SupportedGames.ViewIndex = 1;
+			vm.SupportedGames.ViewIndex = 2;
 			Assert.True(vm.SupportedGames.ShowUnsupported);
 			Assert.Equal(Text.UnsupportedGamesTitle(), vm.SupportedGames.ListLabel);
 			Assert.Contains(nameof(SupportedGamesViewModel.ListLabel), changed);

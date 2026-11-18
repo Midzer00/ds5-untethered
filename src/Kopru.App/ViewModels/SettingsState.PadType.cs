@@ -34,8 +34,8 @@ public sealed partial class SettingsState
 
 	public string ApplyPadTypeNowText => Text.PadTypeApplyNow();
 
-	// The game's light can show: not in Low Power, and not on an Xbox 360 pad (games can't set its light).
-	public bool GameLightWorks => !LowPowerOn && PadStatus.Current != VirtualPadType.Xbox360;
+	// The game's light can show: not in Low Power, and not on an Xbox pad (games can't set its light).
+	public bool GameLightWorks => !LowPowerOn && PadStatus.Current.HasLight();
 
 	// The speaker plays: the switch on, not in Low Power and the type is DualSense (only it has a speaker).
 	public bool SpeakerWorks => SpeakerEnabled && !LowPowerOn && PadStatus.Current == VirtualPadType.DualSense;
@@ -52,19 +52,43 @@ public sealed partial class SettingsState
 	{
 		VirtualPadType.DualShock4 => "DualShock 4",
 		VirtualPadType.Xbox360 => "Xbox 360",
+		VirtualPadType.XboxSeries => "Xbox Series",
 		_ => "DualSense"
 	};
+
+	// The experimental Xbox Trigger Rumble switch (Settings > Controllers, and Turn On on the Games page's Xbox view): off
+	// by default. It lives in the game controller and is saved with the games (its MemoryChanged saves it), so it is not a
+	// profile value and is not pushed here.
+	public bool XboxTriggerRumbleOn
+	{
+		get => _service.Games.XboxTriggerRumbleOn;
+		set => _service.Games.XboxTriggerRumbleOn = value;
+	}
+
+	[RelayCommand]
+	private void TurnOnXboxTriggerRumble() => XboxTriggerRumbleOn = true;
+
+	private bool _xboxTriggerRumbleShown;
 
 	// Read-only state raised here: never a setting change to push or save.
 	private static readonly HashSet<string> PadStateNames =
 	[
 		nameof(PadStatus), nameof(CurrentPadType), nameof(HasPendingPadType), nameof(PendingPadType), nameof(GameLightWorks),
-		nameof(SpeakerWorks)
+		nameof(SpeakerWorks), nameof(XboxTriggerRumbleOn)
 	];
 
 	// Constructor.
 	private void InitPadType()
 	{
+		_xboxTriggerRumbleShown = XboxTriggerRumbleOn;
+		_service.Games.MemoryChanged += () => RunOnUi(() =>
+		{
+			if (_xboxTriggerRumbleShown != XboxTriggerRumbleOn)
+			{
+				_xboxTriggerRumbleShown = !_xboxTriggerRumbleShown;
+				OnPropertyChanged(nameof(XboxTriggerRumbleOn));
+			}
+		});
 		_service.Games.PadStateChanged += () => RunOnUi(NotifyPadType);
 		_service.Games.PadSwapped += swap => RunOnUi(() => PadSwapped?.Invoke(swap));
 		PropertyChanged += (_, e) =>

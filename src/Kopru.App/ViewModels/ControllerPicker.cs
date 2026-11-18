@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
 using Kopru.Core.Localization;
@@ -48,7 +49,7 @@ public sealed partial class ControllerPickerViewModel : ViewModelBase
 		service.StateChanged += (_, _) => RunOnUi(Refresh);
 		settings.ProfilesChanged += () => RunOnUi(() =>
 		{
-			OnPropertyChanged(nameof(ProfileOptions));
+			_ = ProfileOptions;
 			OnPropertyChanged(nameof(SelectedProfile));
 		});
 		// A controller renamed: the chips, the list and the selected name show it.
@@ -78,8 +79,8 @@ public sealed partial class ControllerPickerViewModel : ViewModelBase
 
 	public ControllerChipViewModel? Selected => Items.FirstOrDefault(i => i.IsSelected);
 
-	// The same list until a profile is added, removed or renamed, so a re-read of the bindings (or a language switch)
-	// never resets the selection.
+	// One collection, brought up to date in place when a profile is added, removed or renamed (see ProfileOption.Sync), so
+	// neither that nor a re-read of the bindings (or a language switch) resets the selection.
 	public IReadOnlyList<ControllerProfileOption> ProfileOptions
 	{
 		get
@@ -88,17 +89,14 @@ public sealed partial class ControllerPickerViewModel : ViewModelBase
 			if (signature != _profileSignature)
 			{
 				_profileSignature = signature;
-				_profileOptions =
-				[
-					new(null, () => Text.ControllerProfileGlobal()),
-					.. _settings.Profiles.Profiles.Select(p => new ControllerProfileOption(p.Id, () => SettingsState.DisplayName(p)))
-				];
+				ProfileOption.Sync(_profileOptions, [null, .. _settings.Profiles.Profiles.Select(p => (string?)p.Id)], o => o.Id,
+					id => new ControllerProfileOption(id, id == null ? () => Text.ControllerProfileGlobal() : ProfileOption.NameOf(_settings, id)));
 			}
 			return _profileOptions;
 		}
 	}
 
-	private IReadOnlyList<ControllerProfileOption> _profileOptions = [];
+	private readonly ObservableCollection<ControllerProfileOption> _profileOptions = [];
 	private string? _profileSignature;
 
 	// The selected controller's profile (the global settings when it has none).

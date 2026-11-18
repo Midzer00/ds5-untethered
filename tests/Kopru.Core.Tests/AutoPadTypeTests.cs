@@ -65,7 +65,8 @@ public class AutoPadTypeTests : IDisposable
 		var processes = new GameModeTests.FakeProcesses();
 		var bridge = new SignalBridge();
 		var watcher = new GameWatcher(Catalog, processes, steam, log: _ => { });
-		var games = new GameModeController(Catalog, watcher, bridge) { Log = _ => { }, PlayStation = Shipped, ClockMs = () => now };
+		// The end of the chain on a PC without the Xbox Series pad: Xbox 360 (XboxSeriesPadTypeTests covers Xbox Series).
+		var games = new GameModeController(Catalog, watcher, bridge) { Log = _ => { }, PlayStation = Shipped, ClockMs = () => now, XboxSeriesOsSupported = false };
 		games.FoundGames = found;
 		return (games, processes, bridge);
 	}
@@ -427,9 +428,10 @@ public class AutoPadTypeTests : IDisposable
 
 		public GameSignals Signals;
 
-		public void ApplyProfile(BridgeProfile profile)
-		{
-		}
+		// The last profile applied.
+		public BridgeProfile? Profile { get; private set; }
+
+		public void ApplyProfile(BridgeProfile profile) => Profile = profile;
 
 		public GameSignals TakeGameSignals()
 		{

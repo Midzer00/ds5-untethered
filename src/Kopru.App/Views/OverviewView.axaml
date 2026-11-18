@@ -150,7 +150,7 @@
          fit the smallest window): icon and label left, control right; every control has the same width and ends on the
          card's right edge. The shared ControlWidth (240) leaves the labels no room at 1100 px, so the card uses its own. -->
     <Style Selector="Grid.quickRow">
-      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="MinHeight" Value="{StaticResource ControlHeight}" />
       <Setter Property="ColumnSpacing" Value="{StaticResource Gap}" />
       <Setter Property="Background" Value="Transparent" />
     </Style>
@@ -168,18 +168,9 @@
       <Setter Property="HorizontalAlignment" Value="Right" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Grid.quickRow ComboBox">
-      <Setter Property="Height" Value="30" />
-      <Setter Property="MinHeight" Value="30" />
-    </Style>
-    <Style Selector="Grid.quickRow ListBox">
-      <Setter Property="Height" Value="30" />
-    </Style>
     <!-- The two sound device pickers side by side, each under its tile: as tall as the row controls, the full column wide;
          the opened list is wider than the closed picker so whole device names show -->
     <Style Selector="Grid.quickPickers > ComboBox.quickDevice">
-      <Setter Property="Height" Value="30" />
-      <Setter Property="MinHeight" Value="30" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="ToolTip.ShowDelay" Value="350" />
@@ -240,12 +231,12 @@
            lives in Settings and the tray menu) -->
       <Grid Classes="pageHeader" ColumnDefinitions="*,Auto,Auto,Auto">
         <StackPanel Spacing="4">
-          <TextBlock Classes="display" Text="{Binding Title}" />
+          <TextBlock Classes="h1" Text="{Binding Title}" />
           <TextBlock Classes="body" Text="{Binding StatusLine}" ToolTip.Tip="{Binding Warning}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
           <TextBlock Classes="caption" Text="{Binding PowerOffResult}" IsVisible="{Binding HasPowerOffResult}" />
           <v:ControllerSelector DataContext="{Binding Picker}" Margin="0,6,0,0" />
         </StackPanel>
-        <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Height="40" Padding="14,0" Name="BackToGame"
+        <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Height="{StaticResource ControlHeightLarge}" Padding="14,0" Name="BackToGame"
                 Command="{Binding BackToGame.BackCommand}" IsVisible="{Binding BackToGame.IsGameRunning}"
                 ToolTip.Tip="{Binding BackToGame.ToolTip}" AutomationProperties.Name="{Binding BackToGame.Label}"
                 AutomationProperties.HelpText="{Binding BackToGame.ToolTip}">
@@ -254,7 +245,7 @@
             <TextBlock Text="{Binding BackToGame.Label}" VerticalAlignment="Center" TextWrapping="NoWrap" />
           </StackPanel>
         </Button>
-        <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Height="40" Padding="14,0" Command="{Binding PowerOffCommand}" IsEnabled="{Binding CanPowerOff}"
+        <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightLarge}" Padding="14,0" Command="{Binding PowerOffCommand}" IsEnabled="{Binding CanPowerOff}"
                 IsVisible="{Binding IsConnected}" ToolTip.Tip="{Binding PowerOffText}">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
             <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Power}" />
@@ -310,7 +301,7 @@
                   <StackPanel Spacing="4" IsVisible="{Binding HasPendingPadType}">
                     <TextBlock Classes="caption" Foreground="{StaticResource TextBrush}" Text="{Binding PendingPadLine}" TextWrapping="Wrap" MaxLines="3"
                                TextTrimming="CharacterEllipsis" Background="Transparent" ToolTip.Tip="{Binding PendingPadTip}" />
-                    <Button Name="HeroApplyPadType" Theme="{StaticResource QuietButton}" Height="28" MinHeight="28" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left"
+                    <Button Name="HeroApplyPadType" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" MinHeight="0" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left"
                             Content="{Binding ApplyPadTypeNowText}" Command="{Binding ApplyPadTypeNowCommand}" ToolTip.Tip="{Binding PendingPadTip}" />
                   </StackPanel>
                 </StackPanel>
@@ -319,7 +310,7 @@
                   <TextBlock Classes="hero" Text="{Binding NoControllerTitle}" TextWrapping="Wrap" MaxLines="2" />
                   <TextBlock Classes="body" Text="{Binding NoControllerReason}" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" />
                   <TextBlock Classes="caption" Text="{Binding LastBatteryText}" IsVisible="{Binding ShowsLastBatteryInHero}" />
-                  <Button Theme="{StaticResource QuietButton}" Height="28" MinHeight="28" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left" Margin="0,4,0,0"
+                  <Button Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" MinHeight="0" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left" Margin="0,4,0,0"
                           Content="{Binding HeroActionText}" Command="{Binding HeroActionCommand}" IsVisible="{Binding HasHeroAction}" />
                 </StackPanel>
                 <!-- Several controllers: the selected one can run its own profile instead of the global settings -->

@@ -57,6 +57,12 @@ DS5 Untethered does not include these tools. It only calls them after the user h
 | usbip-win2 | BSD-2-Clause (repository `LICENSE.txt`) | Copyright (c) 2021-2026, Vadym Hrynchyshyn | https://github.com/vadimgrn/usbip-win2 |
 | HidHide | MIT | Nefarius Software Solutions e.U. | https://github.com/nefarius/HidHide |
 
+## Xbox trigger rumble game list
+
+`src/Kopru.Core/Games/xbox-trigger-games.json` (embedded; a separate data file): Xbox trigger rumble game list - data from PCGamingWiki,
+https://www.pcgamingwiki.com/wiki/List_of_games_that_support_Xbox_One_impulse_triggers, licensed CC BY-NC-SA 3.0,
+https://creativecommons.org/licenses/by-nc-sa/3.0/; this file keeps that licence (it is not covered by the GPL of the code).
+
 ## Controller image
 
 `src/Kopru.App/Assets/controller*.png` come from an illustration supplied by the project author (background removed,

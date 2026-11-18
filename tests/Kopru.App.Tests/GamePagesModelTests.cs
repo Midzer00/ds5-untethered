@@ -111,7 +111,8 @@ public sealed class GamePagesModelTests
 		FitCheck.Settle(window);
 		SupportedGamesView games = window.GetVisualDescendants().OfType<SupportedGamesView>().Single();
 		Assert.Empty(games.GetVisualDescendants().OfType<Slider>());
-		Assert.Empty(games.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null));
+		// The one exception: the Xbox view's Xbox Trigger Rumble switch, the same setting as in Settings (kept in step).
+		Assert.Empty(games.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null && t.Name != "GamesXboxTriggerRumbleSwitch"));
 
 		vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
 		FitCheck.Settle(window);
@@ -223,10 +224,10 @@ public sealed class GamePagesModelTests
 		Dispatcher.UIThread.RunJobs();
 		Assert.False(games.ShowUnsupported);
 		Assert.All(games.Games, g => Assert.False(g.IsUnsupported));
-		Assert.Equal(Text.UnsupportedViewCount(games.UnsupportedGames.Count), games.ViewFilters[1].Name);
+		Assert.Equal(Text.UnsupportedViewCount(games.UnsupportedGames.Count), games.ViewFilters[2].Name);
 		Assert.True(games.ShowsInstalledChoice);
 
-		games.ViewIndex = 1;
+		games.ViewIndex = 2;
 		Assert.True(games.ShowUnsupported);
 		Assert.False(games.ShowsInstalledChoice);
 		Assert.Equal(games.UnsupportedGames, games.Games);
@@ -238,7 +239,7 @@ public sealed class GamePagesModelTests
 		GameItemViewModel row = games.Games.First(g => g.IsUserAdded);
 		row.PadType!.Selected = row.PadType.Options.Single(o => o.Type == VirtualPadType.DualShock4);
 		games.ViewIndex = 0;
-		games.ViewIndex = 1;
+		games.ViewIndex = 2;
 		Assert.Equal(VirtualPadType.DualShock4, games.Games.Single(g => g.Key == row.Key).PadType!.Selected!.Type);
 
 		// "Installed" on the supported side: catalog games found here only.

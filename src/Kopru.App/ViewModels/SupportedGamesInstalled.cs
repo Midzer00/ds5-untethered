@@ -23,6 +23,7 @@ public sealed partial class GameItemViewModel
 	[NotifyPropertyChangedFor(nameof(InstalledTip))]
 	[NotifyPropertyChangedFor(nameof(Launch))]
 	[NotifyPropertyChangedFor(nameof(CanLaunch))]
+	[NotifyPropertyChangedFor(nameof(ShowsPlay))]
 	private InstalledGame? _installed;
 
 	public bool IsInstalled => Installed != null;
@@ -66,16 +67,19 @@ public sealed partial class SupportedGamesViewModel
 		}
 	}
 
-	// The supported games installed on this PC ("Installed (n)").
-	public int InstalledCount => InstalledGames.Count;
+	// The games of the shown view on this PC ("Installed (n)"): the supported games installed here, or on "Xbox Trigger
+	// Rumble" its games on this PC.
+	public int InstalledCount => ShowXboxTriggers ? XboxTriggerGames.Count(g => g.IsOnThisPc) : InstalledGames.Count;
 
 	// The line under the list on "Installed" and "Unsupported": a game not found is added with Add Game.
 	public string InstalledAddHint => Text.InstalledAddHint();
 
 	// The line under the rows: on "Unsupported" what these games get first ("these games use the Classic Rumble settings of
 	// the profile you pick"), then the Add Game hint.
-	public string AddHintLine => ShowUnsupported ? Text.UnsupportedGamesHint() + " " + Text.InstalledAddHint() : Text.InstalledAddHint();
-	public bool ShowsAddHint => (ShowUnsupported || InstalledOnly) && !IsSearchingInstalled;
+	public string AddHintLine => ShowUnsupported ? Text.UnsupportedGamesHint() + " " + Text.InstalledAddHint()
+		: ShowXboxTriggers ? Text.XboxTriggerGamesHint()
+		: Text.InstalledAddHint();
+	public bool ShowsAddHint => (ShowUnsupported || ShowXboxTriggers || InstalledOnly) && !IsSearchingInstalled;
 
 	// Found games the user hid (shown again from the Folders menu).
 	public string HiddenGamesHeader => Text.HiddenGamesHeader();
@@ -139,6 +143,9 @@ public sealed partial class SupportedGamesViewModel
 
 	// The games of the shown view that are on this PC (-1 on "All": it lists the whole catalog).
 	private int ShownCountOnThisPc => ShowUnsupported ? UnsupportedGames.Count : InstalledOnly ? InstalledCount : -1;
+
+	// The Xbox trigger rumble games ("Xbox Trigger Rumble"), taken once per rebuild.
+	public IReadOnlyList<GameItemViewModel> XboxTriggerGames { get; private set; } = [];
 	public string InstalledEmptyText => Text.InstalledEmpty();
 	public string InstalledSearchingText => Text.InstalledSearching();
 
@@ -284,9 +291,10 @@ public sealed partial class SupportedGamesViewModel
 
 	private void RefreshList()
 	{
-		InstalledGames = _all.Where(g => !g.IsUnsupported && g.IsInstalled).ToList();
+		InstalledGames = _all.Where(g => !g.IsUnsupported && !g.IsXboxTrigger && g.IsInstalled).ToList();
 		UnsupportedGames = _all.Where(g => g.IsUnsupported).ToList();
-		ViewFilters[1].Refresh();
+		XboxTriggerGames = _all.Where(g => g.IsXboxTrigger).ToList();
+		ViewFilters[2].Refresh();
 		OnPropertyChanged(nameof(UnsupportedGames));
 		InstalledFilters[1].Refresh();
 		OnPropertyChanged(nameof(ListLabel));

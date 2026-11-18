@@ -6,6 +6,16 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.2.0 — 2026-11-18
+
+- New Xbox Series controller type: games see an Xbox Series controller, and Create works as View/Back. On Windows older than 10 21H2, or if Windows doesn't start it, the app uses Xbox 360 instead.
+- Xbox Trigger Rumble (experimental, off by default; Settings > Controllers > Triggers, or the Games page): games that use Xbox trigger rumble, racing games especially, get an Xbox Series controller, and their trigger rumble plays on the DualSense's own trigger motors, made to feel like the Xbox trigger motors (stronger rumble is faster and finer, with a soft start and stop). The Trigger Rumble feel is set per profile: Xbox-Like, Soft, Sharp or Off. The app knows 87 such games and learns new ones.
+- Games page: a new Xbox Trigger Rumble section. Automatic picks per game in this order: DualSense for native DualSense support, Xbox Series for Xbox trigger rumble games (while Xbox Trigger Rumble is on), DualShock 4, your Default Controller Type, else Xbox 360.
+- Profiles: create one with a name from a game's settings, rename it or duplicate it. Switching profiles while the game runs applies at once.
+- Refreshed look: the same rows, sizes and spacing on every page, a redesigned game settings pop-up, and a Light page that fits without scrolling. A Back To Game button in the game pop-up and the Games list for the game that is running.
+- Sidebar: a Star button (GitHub) next to the Support button.
+- Fixed: the controller could keep vibrating after a game closed, especially with Steam Input; rumble now stops when the game exits, lets go of the controller or stops sending. The microphone cuts out less (adaptive buffer, lost-packet concealment). Empty profile pickers in the Games list. The Turn Sound Into Haptics session log is clearer.
+
 ### 0.1.10 — 2026-11-17
 
 - Automatic Controller Type now picks per game: DualSense for games with native DualSense support (the app's own list, Steam store data shipped with the app for about 21,000 games, or learned when the game in front sends real trigger effects or haptics for a few seconds), DualShock 4 for games that only support DualShock 4, otherwise the Default Controller Type, else Xbox 360. It reads Steam's local app info to tell games from tools; nothing about your games is sent anywhere.
@@ -77,6 +87,16 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.2.0 — 18.11.2026
+
+- Yeni Xbox Series kumanda türü: oyunlar bir Xbox Series kumanda görür, Create tuşu View/Back olarak çalışır. Windows 10 21H2'den eski sürümlerde ya da Windows onu başlatamazsa uygulama yerine Xbox 360 kullanır.
+- Xbox Tetik Titreşimi (deneysel, varsayılan olarak kapalı; Ayarlar > Kumandalar > Tetikler ya da Oyunlar sayfası): Xbox tetik titreşimi kullanan oyunlar, özellikle yarış oyunları, Xbox Series kumanda alır; oyunun tetik titreşimi Xbox'ın tetik motorlarını taklit ederek DualSense'in kendi tetik motorlarında çalınır (titreşim güçlendikçe daha hızlı ve ince olur, yumuşak başlayıp yumuşak biter). Tetik Titreşimi hissi profile göre seçilir: Xbox Gibi, Yumuşak, Keskin ya da Kapalı. Uygulama bu tür 87 oyunu tanıyor ve yenilerini öğreniyor.
+- Oyunlar sayfası: yeni Xbox Tetik Titreşimi bölümü. Otomatik oyuna göre şu sırayla seçer: DualSense'i doğrudan destekleyen oyunlara DualSense, Xbox tetik titreşimi olan oyunlara (Xbox Tetik Titreşimi açıkken) Xbox Series, sonra DualShock 4, Varsayılan Kumanda Türü, o da yoksa Xbox 360.
+- Profiller: bir oyunun ayarlarından adını vererek profil oluşturma, yeniden adlandırma ve çoğaltma. Oyun açıkken profil değiştirmek hemen etki ediyor.
+- Yenilenen görünüm: her sayfada aynı satırlar, boyutlar ve boşluklar, yeniden tasarlanan oyun ayarları penceresi ve kaydırmadan sığan bir Işık sayfası. Çalışan oyun için oyun penceresinde ve Oyunlar listesinde Oyuna Dön düğmesi.
+- Sol menü: Destek Ol düğmesinin yanında Yıldızla düğmesi (GitHub).
+- Düzeltildi: oyun kapandıktan sonra kumandanın titremeye devam edebilmesi (özellikle Steam Input'la); titreşim artık oyun kapanınca, kumandayı bırakınca ya da göndermeyi kesince duruyor. Mikrofon daha az kesiliyor (uyarlanan tampon, kaybolan paketlerin gizlenmesi). Oyunlar listesindeki boş profil seçicileri. Sesi Titreşime Çevir oturum günlüğü daha anlaşılır.
 
 ### 0.1.10 — 17.11.2026
 

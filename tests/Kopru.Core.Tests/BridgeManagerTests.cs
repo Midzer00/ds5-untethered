@@ -117,6 +117,23 @@ public class BridgeManagerTests
 
 	private BridgeManager Manager() => new(controllers, Host(), _ => Host());
 
+	// A slot's own profile keeps its Trigger Rumble choice, but the Xbox Trigger Rumble setting is the app's (the global one).
+	[Fact]
+	public async Task SlotProfile_FollowsTheGlobalXboxTriggerRumbleSetting()
+	{
+		await using BridgeManager manager = Manager();
+		manager.SetProfileOverride(2, new Games.GameProfile { TriggerRumble = TriggerRumbleFeel.Soft });
+		manager.ApplyProfile(new BridgeProfile(XboxTriggerRumbleOn: false));
+		Assert.Equal(TriggerRumbleFeel.Soft, manager.ProfileFor(2).TriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.Off, manager.ProfileFor(2).PlayedTriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.Off, manager.Host(2).Profile.PlayedTriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.Off, manager.ProfileFor(1).PlayedTriggerRumble);
+		manager.ApplyProfile(new BridgeProfile(XboxTriggerRumbleOn: true));
+		Assert.Equal(TriggerRumbleFeel.Soft, manager.ProfileFor(2).PlayedTriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.Soft, manager.Host(2).Profile.PlayedTriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.XboxLike, manager.ProfileFor(1).PlayedTriggerRumble);
+	}
+
 	[Fact]
 	public async Task ThreeControllers_AttachWithDistinctPortsBusIdsAndSlots()
 	{

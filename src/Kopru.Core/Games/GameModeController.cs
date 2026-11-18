@@ -15,10 +15,15 @@ public sealed record KnownGame(string Name, string Exe, bool Haptics, bool Adapt
 	string? Path = null);
 
 // What is saved: the games the user added, the controller type per game, the default controller type for the games
-// without one (null: Automatic) and the game keys learned to use the DualSense natively (NativeSupportDetector).
+// without one (null: Automatic), the game keys learned to use the DualSense natively (NativeSupportDetector) and to send
+// Xbox trigger rumble (XboxTriggerDetector), whether this PC remembers that the Xbox Series pad does not start here, the
+// failures in a row so far, when and with which app version it was remembered (the retry, GameModePadTypes), and the
+// experimental Xbox Trigger Rumble setting (off by default: Automatic never gives Xbox Series then).
 public sealed record GameMemory(IReadOnlyList<UserGame> UserGames,
 	IReadOnlyDictionary<string, Kopru.Core.Virtual.VirtualPadType>? PadTypes = null, Kopru.Core.Virtual.VirtualPadType? ForcedPad = null,
-	IReadOnlyList<string>? NativeGames = null)
+	IReadOnlyList<string>? NativeGames = null, IReadOnlyList<string>? XboxTriggerGames = null, bool XboxSeriesFailed = false,
+	int XboxSeriesFailures = 0, DateTimeOffset? XboxSeriesFailedAt = null, string? XboxSeriesFailedVersion = null,
+	bool XboxTriggerRumbleOn = false)
 {
 	public static GameMemory Default { get; } = new([]);
 }
@@ -56,6 +61,7 @@ public sealed partial class GameModeController
 		this.catalog = catalog;
 		this.watcher = watcher;
 		this.bridge = bridge;
+		ShareTriggerGames();
 		Apply();
 	}
 
@@ -195,6 +201,13 @@ public sealed partial class GameModeController
 					lines.Add($"game: {active.Name} uses the DualSense natively (learned)");
 				}
 			}
+			// Trigger rumble only reaches us through the Xbox Series pad: what the game in front sent there counts.
+			if (seen != null && active != null && SameLaunch(seen, active) && appliedPad == Kopru.Core.Virtual.VirtualPadType.XboxSeries
+				&& xboxTriggers.Observe(active.Key, signals.TriggerRumble, gameSession))
+			{
+				learned = true;
+				lines.Add($"game: {active.Name} sends Xbox trigger rumble (learned)");
+			}
 			ForegroundGame? before = active;
 			if (active != null && !watcher.IsRunning(active))
 			{
@@ -237,6 +250,16 @@ public sealed partial class GameModeController
 		{
 			// The game's hold on the light ends with it (a game still writing its light takes it back at once).
 			bridge?.GameEnded();
+			bool none;
+			lock (gate)
+			{
+				none = active == null;
+			}
+			if (none)
+			{
+				// Gone with no game taking over: its last rumble stops (on a switch the new game takes the rumble over).
+				bridge?.GameExited();
+			}
 		}
 		if (learned)
 		{
@@ -310,8 +333,9 @@ public sealed partial class GameModeController
 			userGames = memory.UserGames.Where(g => GameCatalog.Normalize(g.Path).Length > 0)
 				.DistinctBy(g => g.Path, StringComparer.OrdinalIgnoreCase).ToList();
 			watcher.UserGames = userGames.ToList();
-			LoadPadTypes(memory.PadTypes, memory.ForcedPad, memory.NativeGames);
+			LoadPadTypes(memory);
 		}
+		ShareTriggerGames();
 		CatalogChanged?.Invoke();
 		Apply();
 	}
@@ -320,7 +344,8 @@ public sealed partial class GameModeController
 	{
 		lock (gate)
 		{
-			return new GameMemory(userGames.ToList(), SnapshotPadTypes(), forcedPad, NativeKeys());
+			return new GameMemory(userGames.ToList(), SnapshotPadTypes(), forcedPad, NativeKeys(), TriggerKeys(), xboxSeriesRemembered,
+				xboxSeriesFailures, xboxSeriesFailedAt, xboxSeriesFailedVersion, xboxTriggerRumbleOn);
 		}
 	}
 
@@ -420,7 +445,7 @@ public sealed partial class GameModeController
 				state = next;
 				changed = next;
 			}
-			BridgeProfile bridgeProfile = GameProfiles.For(profile, gameSession);
+			BridgeProfile bridgeProfile = GameProfiles.For(profile, gameSession) with { XboxTriggerRumbleOn = xboxTriggerRumbleOn };
 			if (applied == null || !applied.SameAs(bridgeProfile))
 			{
 				applied = toApply = bridgeProfile;

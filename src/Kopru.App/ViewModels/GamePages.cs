@@ -79,9 +79,12 @@ public sealed partial class GameItemViewModel : ObservableObject
 	{
 		OnPropertyChanged(nameof(Launch));
 		OnPropertyChanged(nameof(CanLaunch));
+		OnPropertyChanged(nameof(ShowsPlay));
 	}
 	public GameLaunch? Launch => FindLaunch?.Invoke(this);
 	public bool CanLaunch => Launch != null;
+	// "Oyna" where we know how to start the game and it is not already running (then "Oyuna Dön" stands in its place).
+	public bool ShowsPlay => CanLaunch && !IsRunning;
 	public string PlayText => Text.PlayGame();
 	public string PlayTip => Text.PlayGameTip();
 
@@ -91,8 +94,34 @@ public sealed partial class GameItemViewModel : ObservableObject
 	[RelayCommand]
 	private void PlayGame() => Play?.Invoke(this);
 
-	// A game not in the supported list: found by its launcher, or added and unknown to the list.
-	public bool IsUnsupported => IsFound || (IsUserAdded && Game.Catalog == null);
+	// The key of the game running now (null: none; set by the list): that game's row and panel show "Oyuna Dön".
+	public Func<string?>? RunningKey { get; init; }
+	public bool IsRunning => RunningKey?.Invoke() is { } key && string.Equals(key, Key, StringComparison.OrdinalIgnoreCase);
+	public string BackToGameText => Text.BackToGame();
+	public string BackToGameTip => Text.BackToGameTip(Name);
+
+	// Back to the running game: the Overview's "Oyuna Dön" (GameReturn: Mouse Mode off, the game to the front; set by the list).
+	public Action? GoBack { get; init; }
+
+	[RelayCommand]
+	private void BackToGame() => GoBack?.Invoke();
+
+	public void RefreshRunning()
+	{
+		OnPropertyChanged(nameof(IsRunning));
+		OnPropertyChanged(nameof(ShowsPlay));
+	}
+
+	// A game not in the supported list: found by its launcher, or added and unknown to the list (not an Xbox trigger rumble
+	// game: those have their own view).
+	public bool IsUnsupported => !IsXboxTrigger && (IsFound || (IsUserAdded && Game.Catalog == null));
+
+	// A game that sends Xbox trigger rumble and does not support the DualSense (the Xbox Trigger Rumble view): from the
+	// shipped list or learned. A listed DualSense game is never one (DualSense wins).
+	public bool IsXboxTrigger { get; init; }
+
+	// On this PC: found by its launcher, found installed, or added by hand.
+	public bool IsOnThisPc => IsInstalled || IsFound || IsUserAdded;
 
 	[RelayCommand]
 	private void RemoveGame()
@@ -190,7 +219,8 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 			}
 		};
 		InstalledFilters = [new FilterOption(() => Text.InstalledFilterAll()), new FilterOption(() => InstalledFilterName)];
-		ViewFilters = [new FilterOption(() => Text.SupportedView()), new FilterOption(() => Text.UnsupportedViewCount(UnsupportedGames.Count))];
+		ViewFilters = [new FilterOption(() => Text.SupportedView()), new FilterOption(() => Text.XboxTriggerView()),
+			new FilterOption(() => Text.UnsupportedViewCount(UnsupportedGames.Count))];
 		Rebuild();
 		InitInstalled();
 		// The pictures follow the download setting: the rows load again (downloaded pictures only while it is on).
@@ -208,7 +238,7 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 		};
 		service.Games.MemoryChanged += () => RunOnUi(() =>
 		{
-			if (Service.Games.KnownGames().Count != _knownCount)
+			if (Service.Games.KnownGames().Count != _knownCount || Service.Games.LearnedTriggerGames.Count != _learnedTriggerCount)
 			{
 				Rebuild();
 			}
@@ -232,6 +262,32 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 			Rebuild();
 			OnPropertyChanged(nameof(ListStatusText));
 		});
+		// A game started or ended: its row and panel swap "Oyna" and "Oyuna Dön".
+		service.Games.StateChanged += _ => RunOnUi(RefreshRunning);
+	}
+
+	// The way back to the running game (the Overview's "Oyuna Dön"; set by the main window). Without it no row offers it.
+	public GameReturn? BackToGame
+	{
+		get => _backToGame;
+		set
+		{
+			_backToGame = value;
+			RefreshRunning();
+		}
+	}
+	private GameReturn? _backToGame;
+
+	private string? RunningKey() => _backToGame != null ? Service.Games.ActiveGame?.Key : null;
+
+	private void GoBackToGame() => _backToGame?.BackCommand.Execute(null);
+
+	private void RefreshRunning()
+	{
+		foreach (GameItemViewModel item in _all)
+		{
+			item.RefreshRunning();
+		}
 	}
 
 	// The automatic check found new games (the count); raised on the UI thread.
@@ -324,7 +380,7 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 		? status.GameName is { } game ? GameModeText.Join(game, SettingsState.PadTypeName(pending)) : SettingsState.PadTypeName(pending)
 		: string.Empty;
 	// The view's name (the main switch's accessible name).
-	public string ListLabel => ShowUnsupported ? Text.UnsupportedGamesTitle() : Text.SupportedGameList();
+	public string ListLabel => ShowUnsupported ? Text.UnsupportedGamesTitle() : ShowXboxTriggers ? Text.XboxTriggerView() : Text.SupportedGameList();
 	public string SearchWatermark => Text.SearchGames();
 	public string DownloadImagesLabel => Text.DownloadGameImages();
 	public string DownloadImagesHint => Text.DownloadGameImagesHint();
@@ -376,11 +432,23 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 
 	// "Desteklenen": the catalog games (and added ones the list knows), all or only those installed here. "Desteklenmeyen": the
 	// games found here or added that the list does not know (all on this PC, so "Installed" does not apply to them).
-	public IReadOnlyList<GameItemViewModel> Games => _all.Where(g => InShownView(g) && g.Matches((SearchText ?? string.Empty).Trim())).ToList();
+	// "Xbox Tetik Titreşimi": the games that send Xbox trigger rumble (the shipped list and learned ones), those on this PC
+	// first.
+	public IReadOnlyList<GameItemViewModel> Games
+	{
+		get
+		{
+			string query = (SearchText ?? string.Empty).Trim();
+			IEnumerable<GameItemViewModel> shown = _all.Where(g => InShownView(g) && g.Matches(query));
+			return (ShowXboxTriggers ? shown.OrderByDescending(g => g.IsOnThisPc) : shown).ToList();
+		}
+	}
 
-	private bool InShownView(GameItemViewModel game) => ShowUnsupported ? game.IsUnsupported : !game.IsUnsupported && (!InstalledOnly || game.IsInstalled);
+	private bool InShownView(GameItemViewModel game) => ShowUnsupported ? game.IsUnsupported
+		: ShowXboxTriggers ? game.IsXboxTrigger && (!InstalledOnly || game.IsOnThisPc)
+		: !game.IsUnsupported && !game.IsXboxTrigger && (!InstalledOnly || game.IsInstalled);
 
-	// The main switch: Supported | Unsupported (n). Not saved: the page opens on Supported.
+	// The main switch: Supported | Xbox Trigger Rumble | Unsupported (n). Not saved: the page opens on Supported.
 	public IReadOnlyList<FilterOption> ViewFilters { get; }
 
 	[ObservableProperty]
@@ -388,17 +456,46 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 	[NotifyPropertyChangedFor(nameof(ShowsInstalledChoice))]
 	private bool _showUnsupported;
 
-	partial void OnShowUnsupportedChanged(bool value) => RefreshList();
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(ViewIndex))]
+	[NotifyPropertyChangedFor(nameof(ShowsInstalledChoice))]
+	private bool _showXboxTriggers;
 
-	// 0 = Supported, 1 = Unsupported; -1 (selection cleared) leaves the choice alone.
+	// The Xbox view's switch row: the experimental Xbox Trigger Rumble setting (the same one as in Settings, so both stay in step).
+	public string XboxTriggerRumbleTitle => Text.XboxTriggerRumbleTitle();
+	public string ExperimentalTag => Text.ExperimentalTag();
+	public string XboxTriggerRumbleShort => Text.XboxTriggerRumbleSettingShort();
+	public string XboxTriggerRumbleLabel => Text.XboxTriggerRumbleSetting();
+	public string XboxTriggerRumbleHint => Text.XboxTriggerRumbleSettingHint();
+
+	partial void OnShowUnsupportedChanged(bool value)
+	{
+		if (value)
+		{
+			ShowXboxTriggers = false;
+		}
+		RefreshList();
+	}
+
+	partial void OnShowXboxTriggersChanged(bool value)
+	{
+		if (value)
+		{
+			ShowUnsupported = false;
+		}
+		RefreshList();
+	}
+
+	// 0 = Supported, 1 = Xbox Trigger Rumble, 2 = Unsupported; -1 (selection cleared) leaves the choice alone.
 	public int ViewIndex
 	{
-		get => ShowUnsupported ? 1 : 0;
+		get => ShowXboxTriggers ? 1 : ShowUnsupported ? 2 : 0;
 		set
 		{
-			if (value is 0 or 1)
+			if (value is 0 or 1 or 2)
 			{
-				ShowUnsupported = value == 1;
+				ShowXboxTriggers = value == 1;
+				ShowUnsupported = value == 2;
 			}
 		}
 	}
@@ -446,19 +543,30 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 		base.OnLanguageChanged();
 	}
 
+	private int _learnedTriggerCount = -1;
+
+	// A found or added game that sends Xbox trigger rumble and does not support the DualSense.
+	private bool XboxTriggerOnly(string key, FoundGame? found = null) =>
+		Service.Games.UsesXboxTriggers(key, found) && !Service.Games.SupportsDualSense(key, found);
+
 	private void Rebuild()
 	{
 		IReadOnlyList<KnownGame> known = Service.Games.KnownGames();
 		_knownCount = known.Count;
+		_learnedTriggerCount = Service.Games.LearnedTriggerGames.Count;
 		IEnumerable<GameItemViewModel> rows = known.Select(g => new GameItemViewModel(g, Service.Games)
 		{
+			IsXboxTrigger = g.Catalog == null && XboxTriggerOnly(g.Key),
 			FindLaunch = LaunchFor,
 			Play = PlayRow,
+			RunningKey = RunningKey,
+			GoBack = GoBackToGame,
 			Profile = new GameProfilePicker(Settings, g.Key),
 			PadType = new GamePadTypePicker(Service.Games, g.Key),
 			Image = _images == null ? null : new GameImageHandle(_images, new GameImageRequest(g.Key, g.Catalog?.SteamAppId, g.IsUserAdded ? g.Path ?? g.Exe : null))
 		});
-		_all = rows.Concat(VisibleFound(known).Select(FoundRow)).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+		List<GameItemViewModel> listed = rows.Concat(VisibleFound(known).Select(FoundRow)).ToList();
+		_all = listed.Concat(TriggerListRows(listed)).OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
 		PushFound(known);
 		MarkInstalled();
 		// The open panel follows its game into the new rows (closed when the game is gone).
@@ -474,13 +582,49 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 		return new GameItemViewModel(game, Service.Games)
 		{
 			Found = found,
+			IsXboxTrigger = XboxTriggerOnly(found.Key, found),
 			Hide = HideFound,
 			FindLaunch = LaunchFor,
 			Play = PlayRow,
+			RunningKey = RunningKey,
+			GoBack = GoBackToGame,
 			Profile = new GameProfilePicker(Settings, found.Key),
 			PadType = new GamePadTypePicker(Service.Games, found.Key),
 			Image = _images == null ? null : new GameImageHandle(_images, new GameImageRequest(found.Key, found.SteamAppId, found.LaunchExe))
 		};
+	}
+}
+
+// The Xbox trigger rumble games that no row stands for yet (not installed, found or added here): one row each, keyed like
+// the running game would be (XboxTriggerGame.Key). A game the supported list knows, or one Steam lists with DualSense
+// support, is left out (DualSense wins).
+public sealed partial class SupportedGamesViewModel
+{
+	private IEnumerable<GameItemViewModel> TriggerListRows(IReadOnlyList<GameItemViewModel> rows)
+	{
+		HashSet<string> keys = new(rows.Select(r => r.Key), StringComparer.OrdinalIgnoreCase);
+		HashSet<string> names = new(rows.Select(r => GameCatalog.NormalizeName(r.Name)), StringComparer.Ordinal);
+		GameCatalog catalog = Service.Games.Catalog;
+		foreach (XboxTriggerGame entry in Service.Games.TriggerGames.Games)
+		{
+			if (keys.Contains(entry.Key) || names.Contains(GameCatalog.NormalizeName(entry.Name)) || catalog.FindBySteamAppId(entry.SteamAppId) != null
+				|| catalog.FindByName(entry.Name) != null || Service.Games.SupportsDualSense(entry.Key))
+			{
+				continue;
+			}
+			var game = new KnownGame(entry.Name, entry.Exe.FirstOrDefault() ?? string.Empty, false, false, false, null, entry.Key);
+			yield return new GameItemViewModel(game, Service.Games)
+			{
+				IsXboxTrigger = true,
+				FindLaunch = LaunchFor,
+				Play = PlayRow,
+				RunningKey = RunningKey,
+				GoBack = GoBackToGame,
+				Profile = new GameProfilePicker(Settings, entry.Key),
+				PadType = new GamePadTypePicker(Service.Games, entry.Key),
+				Image = _images == null ? null : new GameImageHandle(_images, new GameImageRequest(entry.Key, entry.SteamAppId, null))
+			};
+		}
 	}
 }
 
@@ -516,8 +660,11 @@ public sealed partial class OtherGamesViewModel : GameModePageViewModel
 	public string ProfileTip => Text.EditingProfileTip();
 	// The active profile's feel settings (the same view model as a game's panel on the Games page).
 	public ProfileFeelViewModel Feel { get; }
-	public string RumbleTestText => Text.TestRumble();
-	public string TriggerTestText => Text.TestFallbackTrigger();
+	// The try row at the end of the Xbox And DS4 Rumble card: "Dene" with the rumble, one side and the fallback effect.
+	public string TryLabel => Text.TryRowLabel();
+	public string TryHint => Text.TryRowHint();
+	public string RumbleTestText => Text.RumbleLevel();
+	public string TriggerTestText => Text.TryTriggerEffect();
 	public string LeftText => Text.TestHapticsLeft();
 	public string RightText => Text.TestHapticsRight();
 	public string RumbleTryHint => Text.OtherGamesRumbleTryHint();

@@ -33,6 +33,10 @@ leaves the file alone. Pages are cached per day under `<out-dir>\cache\playstati
 resumes. Commit the new file with its `generated` date. Installed Steam games the list does not know are also looked up
 in Steam's own cache on the PC (`appcache\appinfo.vdf`, read only).
 
+## Xbox trigger rumble game list
+
+`src/Kopru.Core/Games/xbox-trigger-games.json` (CC BY-NC-SA 3.0, see THIRD-PARTY-NOTICES.md) lists the games Automatic gives the Xbox Series pad (while the experimental Xbox Trigger Rumble setting is on). To refresh it, take the "Native support" entries of PCGamingWiki's "List of games that support Xbox One impulse triggers" page (name, Steam app id or null, exe names when known, the game's page as `source`), keep the schema and set `generated`; keep it a separate file under that licence.
+
 ## Publish (in this order)
 
 1. Create the GitHub release with the tag `v<version>` and upload all three files (Setup.exe, zip, Update.exe), under

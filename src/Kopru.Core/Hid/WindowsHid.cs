@@ -230,6 +230,10 @@ public interface IHidLink : IDisposable
 // An open controller. Reads and writes use separate handles, so a blocking read never holds up a write.
 public sealed class HidConnection : IHidLink
 {
+	// Input reports Windows queues for the read handle (its default is 32: about 50 ms at the ~650 reports/s of a
+	// Bluetooth DualSense with the mic on, so a short stall of the read thread lost reports, mic audio among them).
+	public const int InputBuffers = 256;
+
 	private readonly SafeFileHandle writeHandle;
 
 	private readonly SafeFileHandle readHandle;
@@ -241,6 +245,8 @@ public sealed class HidConnection : IHidLink
 		Device = device;
 		writeHandle = handle;
 		readHandle = WindowsHid.OpenHandle(device.Path, Native.GenericRead);
+		// Best effort: the default queue still works.
+		Native.HidD_SetNumInputBuffers(readHandle, InputBuffers);
 	}
 
 	public HidDevice Device { get; }
@@ -454,6 +460,10 @@ internal static unsafe class Native
 	[DllImport("hid.dll", SetLastError = true)]
 	[return: MarshalAs(UnmanagedType.U1)]
 	public static extern bool HidD_GetFeature(SafeFileHandle handle, byte[] buffer, int length);
+
+	[DllImport("hid.dll", SetLastError = true)]
+	[return: MarshalAs(UnmanagedType.U1)]
+	public static extern bool HidD_SetNumInputBuffers(SafeFileHandle handle, uint buffers);
 
 	[DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 	public static extern IntPtr SetupDiGetClassDevsW(ref Guid classGuid, string? enumerator, IntPtr parent, uint flags);

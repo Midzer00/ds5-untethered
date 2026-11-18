@@ -47,6 +47,7 @@ public sealed partial class SettingsState
 		RumbleFeel = v.RumbleFeel,
 		FallbackTrigger = v.FallbackTrigger,
 		FallbackStrength = v.FallbackStrength,
+		TriggerRumble = v.TriggerRumble,
 		AudioHapticsOn = v.AudioHaptics,
 		AudioHapticsStrength = Math.Clamp(v.AudioHapticsStrength, 0, AudioHapticsStrengthMax),
 		AudioHapticsBand = v.AudioHapticsBand,

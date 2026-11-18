@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Developer tool for the experimental Xbox One pad probe; how to run it: docs/research/xbox-one-probe.md. A window of
+       its own, because Windows.Gaming.Input gives readings and vibration only to the app in the foreground. Not in
+       Kopru.sln: it needs the Windows SDK projection (Windows.Gaming.Input) and is only run by hand. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The impulse trigger tuning (presets, mapping, the tuning file): the same code the app runs, so the sliders show
+         what the app will play. It has no dependencies outside the BCL. -->
+    <Compile Include="..\..\src\Kopru.Core\Bridge\ImpulseTuning.cs" Link="ImpulseTuning.cs" />
+  </ItemGroup>
+
+</Project>

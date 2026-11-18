@@ -147,6 +147,8 @@ public sealed class VirtualDualShock4 : IVirtualPad
 	// DualSense-format output (0x02) with the game's rumble in the classic motor bytes and its lightbar colour.
 	public event Action<byte[]>? OutputReceived;
 
+	public event Action? HostReleased;
+
 	public event Action<ReadOnlyMemory<byte>>? AudioReceived
 	{
 		add { }
@@ -302,6 +304,7 @@ public sealed class VirtualDualShock4 : IVirtualPad
 		}
 		iso.Reset();
 		requests.End("host released");
+		HostReleased?.Invoke();
 	}
 
 	public void Dispose()

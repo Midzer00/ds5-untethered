@@ -46,6 +46,19 @@ public sealed partial class BridgeHost
 		}
 	}
 
+	// The active game exited with no other game taking over (GameModeController): its last rumble stops, trigger rumble too.
+	public void GameExited()
+	{
+		try
+		{
+			current?.Bridge.StopAllRumble("the active game exited");
+		}
+		catch (Exception)
+		{
+			// The controller is going away.
+		}
+	}
+
 	private void StopLightSender() => Interlocked.Exchange(ref lightSender, null)?.Dispose();
 
 	// True when the settings change went to a running sender (it sends the change itself).

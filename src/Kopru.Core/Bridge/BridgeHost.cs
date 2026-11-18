@@ -98,6 +98,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		this.identities = identities;
 		this.attacher = attacher;
 		this.time = time ?? TimeProvider.System;
+		// A test clock drives the Xbox Series start check too; the real one is the awake time (sleep does not count).
+		AwakeTime = time == null || time == TimeProvider.System ? () => AwakeClock.Now : () => TimeSpan.FromTicks(this.time.GetUtcNow().UtcTicks);
 		linkQuality = new Diagnostics.LinkQualityMonitor(line => Diagnostics.AppLog.Write(line + LogSlot));
 	}
 
@@ -110,7 +112,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 	public static BridgeHost CreateDefault()
 	{
 		WindowsControllerSource source = new();
-		return new(source, IdentitySources.Default(), new UsbIpExeAttacher()) { BatteryProbe = new BatteryProbe(source), StateFile = BridgeStateFile.CreateDefault(), InputSink = new Input.WindowsInputSink() };
+		return new(source, IdentitySources.Default(), new UsbIpExeAttacher()) { BatteryProbe = new BatteryProbe(source), StateFile = BridgeStateFile.CreateDefault(), InputSink = new Input.WindowsInputSink(),
+			SeriesStore = XboxSeriesStore.Shared };
 	}
 
 	// A running haptics stream without a new report for this long trips the watchdog. Infinite turns it off.
@@ -431,6 +434,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				{
 					while (!token.IsCancellationRequested && !Monitor(connection))
 					{
+						CheckXboxSeriesStart(connection);
 						await SwapPadIfNeededAsync(connection, token).ConfigureAwait(false);
 						await Task.Delay(MonitorInterval, token).ConfigureAwait(false);
 					}
@@ -508,7 +512,9 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			return true;
 		}
 		LogMicCheck(c, now);
+		LogMicStats(c, now);
 		c.Bridge.CheckGameOutputIdle();
+		c.Bridge.CheckRumbleStale();
 		if (c.Watchdog.Check(now, c.ServerAlive, c.Session.IsHapticsStreaming, haptics) is { } reason)
 		{
 			c.WatchdogReason = reason;
@@ -628,9 +634,10 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		public Connection(IHidLink link, DeviceIdentity identity, BridgeHost host)
 		{
 			this.host = host;
+			this.link = link;
 			this.identity = CalibrationOverlay.Apply(
 				EdgeIdentity.Choose(identity, link.Device.IsEdge, host.inputTransform.RemapSettings.PresentAsEdge).ForSlot(host.Slot), link);
-			pad = CreatePad(host.padType);
+			pad = CreatePad(host.EffectivePadType);
 			Session = new BluetoothSession(link) { PauseHapticsInSilence = host.PauseHapticsInSilence };
 			Bridge = CreateBridge();
 			host.Shortcuts.Reset();
@@ -686,12 +693,18 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 
 		public long RateInputs, RateHaptics;
 
+		// When the current virtual pad was plugged in (BridgeHost.AwakeTime), and whether the Xbox Series start check is done
+		// for it.
+		public TimeSpan? PadAttachedAt;
+
+		public bool XboxSeriesJudged;
+
 		public async Task AttachAsync(CancellationToken token)
 		{
 			await host.CleanupStaleAsync(token).ConfigureAwait(false);
 			server = new UsbIpServer(pad);
 			server.Start();
-			host.NotifyPadAudio(a => a.PadAttaching(host.Slot, pad.Type != VirtualPadType.Xbox360, pad.Type == VirtualPadType.DualShock4));
+			host.NotifyPadAudio(a => a.PadAttaching(host.Slot, pad.Type.HasAudio(), pad.Type == VirtualPadType.DualShock4));
 			try
 			{
 				port = await host.attacher.AttachAsync(server.Port, host.BusId, token).ConfigureAwait(false);
@@ -704,6 +717,9 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			int attached = port.Value;
 			host.NotifyPadAudio(a => a.PadAttached(host.Slot, attached));
 			host.RecordAttached(attached, server.Port);
+			// The Xbox Series pad must be started by Windows within XboxSeriesStartTimeout (BridgeHostPads).
+			PadAttachedAt = host.AwakeTime();
+			XboxSeriesJudged = false;
 			// Games see the pad from now on: their first reports to it are no new use of the controller.
 			Bridge.QuietGameUse(ControllerBridge.GameUseSettle);
 		}
@@ -717,6 +733,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			}
 			if (port is int p)
 			{
+				await NoticeUnplugAsync().ConfigureAwait(false);
 				host.NotifyPadAudio(a => a.PadDetaching(host.Slot));
 				try
 				{
@@ -737,7 +754,11 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				await server.DisposeAsync().ConfigureAwait(false);
 			}
 			Session.Dispose();
-			Mic?.Dispose();
+			if (Mic is { } mic)
+			{
+				host.WriteMicStats(mic, "connection closed");
+				mic.Dispose();
+			}
 			lock (SpeakerSenders)
 			{
 				SpeakerSenders.ForEach(s => s.Dispose());

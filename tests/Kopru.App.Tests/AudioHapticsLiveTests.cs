@@ -138,7 +138,7 @@ public sealed class AudioHapticsLivePanelTests
 		vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.SupportedGames);
 		GamePanelViewModel panel = vm.SupportedGames.Panel;
 		vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == "Cyberpunk 2077"));
-		panel.UseOwnSettingsCommand.Execute(null);
+		panel.UseOwnSettingsCommand.Execute(null); panel.SaveProfileNameCommand.Execute(null);
 		panel.AudioHaptics.On = true;
 		fake.AudioHapticsStatus = new AudioHapticsStatus(AudioHapticsStatusKind.Unavailable, "Cyberpunk 2077");
 		FitCheck.Settle(window);

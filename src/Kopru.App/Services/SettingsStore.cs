@@ -74,6 +74,9 @@ public sealed class AppSettings
 	public FallbackTrigger FallbackTrigger { get; set; } = FallbackTrigger.Off;
 	public double FallbackStrength { get; set; } = 50;
 
+	// How the Xbox Series pad's trigger rumble feels (missing in older files: Xbox-like).
+	public TriggerRumbleFeel TriggerRumble { get; set; } = TriggerRumbleFeel.XboxLike;
+
 	// Notifications (missing in older files: all on, quiet while playing off) and the tray.
 	public bool NotificationsEnabled { get; set; } = true;
 	public bool NotifyConnection { get; set; } = true;
@@ -150,6 +153,28 @@ public sealed class AppSettings
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public List<string>? NativeGames { get; set; }
 
+	// The game keys learned to send Xbox trigger rumble (Automatic gives them Xbox Series; missing: none yet).
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<string>? XboxTriggerGames { get; set; }
+
+	// The Xbox Series pad failed to start on this PC enough times in a row that Automatic gives Xbox 360 (missing: false),
+	// the failures in a row so far, and when and with which app version it was remembered (Automatic tries Xbox Series again
+	// a week later or with another version; missing: none).
+	public bool XboxSeriesFailed { get; set; }
+
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public int XboxSeriesFailures { get; set; }
+
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public DateTimeOffset? XboxSeriesFailedAt { get; set; }
+
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public string? XboxSeriesFailedVersion { get; set; }
+
+	// The experimental Xbox Trigger Rumble setting (Settings > Controllers): on, Automatic gives the Xbox trigger rumble
+	// games Xbox Series. Missing in older files (and new installs): off.
+	public bool XboxTriggerRumbleOn { get; set; }
+
 	// Profiles (missing in older files: the settings above become the default profile), the active one, the profile per
 	// game key, and the controller shortcuts switch. The settings above always hold the active profile's values.
 	public List<Kopru.Core.Profiles.ControllerProfile>? Profiles { get; set; }
@@ -221,7 +246,8 @@ public sealed class AppSettings
 				users.Add(new UserGame(ForegroundGame.DisplayName(file), file));
 			}
 		}
-		return new GameMemory(users, GamePadTypes, ForcedPadType, NativeGames);
+		return new GameMemory(users, GamePadTypes, ForcedPadType, NativeGames, XboxTriggerGames, XboxSeriesFailed, XboxSeriesFailures,
+			XboxSeriesFailedAt, XboxSeriesFailedVersion, XboxTriggerRumbleOn);
 	}
 
 	// Takes the game memory to save (the old per-exe and DualSense Mode fields are left out from now on).
@@ -234,6 +260,12 @@ public sealed class AppSettings
 		GamePadTypes = memory.PadTypes is { Count: > 0 } pads ? new(pads, StringComparer.OrdinalIgnoreCase) : null;
 		ForcedPadType = memory.ForcedPad;
 		NativeGames = memory.NativeGames is { Count: > 0 } native ? native.ToList() : null;
+		XboxTriggerGames = memory.XboxTriggerGames is { Count: > 0 } triggers ? triggers.ToList() : null;
+		XboxSeriesFailed = memory.XboxSeriesFailed;
+		XboxSeriesFailures = memory.XboxSeriesFailures;
+		XboxSeriesFailedAt = memory.XboxSeriesFailedAt;
+		XboxSeriesFailedVersion = memory.XboxSeriesFailedVersion;
+		XboxTriggerRumbleOn = memory.XboxTriggerRumbleOn;
 		GameOverrides = null;
 		LearnedGames = null;
 		return this;

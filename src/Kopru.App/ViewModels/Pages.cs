@@ -231,6 +231,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 	{
 		VirtualPadType.DualShock4 => Text.PadTypeDualShock4Line(),
 		VirtualPadType.Xbox360 => Text.PadTypeXboxLine(),
+		VirtualPadType.XboxSeries => Text.PadTypeXboxSeriesLine(),
 		_ => Text.PadTypeDualSenseLine()
 	};
 	public bool HasPendingPadType => Settings.HasPendingPadType;
@@ -250,6 +251,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 		{
 			VirtualPadType.DualShock4 => Text.PadTypeDualShock4Line(),
 			VirtualPadType.Xbox360 => Text.PadTypeXboxLine(),
+			VirtualPadType.XboxSeries => Text.PadTypeXboxSeriesLine(),
 			_ => null
 		};
 		if (line == null)

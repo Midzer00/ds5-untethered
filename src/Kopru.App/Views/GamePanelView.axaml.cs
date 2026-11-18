@@ -16,7 +16,28 @@ public partial class GamePanelView : UserControl
 		InitializeComponent();
 		SizeChanged += (_, e) => Arrange(e.NewSize.Width >= TwoColumnWidth);
 		Arrange(false);
+		DataContextChanged += (_, _) =>
+		{
+			if (_model != null)
+			{
+				_model.NamingStarted -= FocusName;
+			}
+			_model = DataContext as ViewModels.GamePanelViewModel;
+			if (_model != null)
+			{
+				_model.NamingStarted += FocusName;
+			}
+		};
 	}
+
+	private ViewModels.GamePanelViewModel? _model;
+
+	// The profile name field opened: the keyboard goes to it with the name selected, so typing replaces it.
+	private void FocusName() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+	{
+		ProfileNameBox.Focus();
+		ProfileNameBox.SelectAll();
+	}, Avalonia.Threading.DispatcherPriority.Loaded);
 
 	public bool IsTwoColumns { get; private set; }
 

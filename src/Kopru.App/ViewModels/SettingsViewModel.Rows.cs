@@ -28,4 +28,13 @@ public sealed partial class SettingsViewModel
 	public string ProtectDefaultAudioShort => Text.ProtectDefaultAudioShort();
 	public string NotifyLinkShort => Text.NotifyLinkShort();
 	public string NotifyHidHideShort => Text.NotifyHidHideShort();
+
+	// The experimental Xbox Trigger Rumble switch (Controllers tab, its own Triggers card in the right column): the title
+	// with a muted Experimental tag; the full name (tag included) is the switch's accessible name.
+	public string TriggersGroupLabel => Text.TriggersGroup();
+	public string ExperimentalTag => Text.ExperimentalTag();
+	public string XboxTriggerRumbleTitle => Text.XboxTriggerRumbleTitle();
+	public string XboxTriggerRumbleLabel => Text.XboxTriggerRumbleSetting();
+	public string XboxTriggerRumbleShort => Text.XboxTriggerRumbleSettingShort();
+	public string XboxTriggerRumbleHint => Text.XboxTriggerRumbleSettingHint();
 }

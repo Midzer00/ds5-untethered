@@ -39,7 +39,9 @@ public enum NotificationType
 	// A newer version of the app is out (once per version, see UpdatesViewModel)
 	UpdateAvailable,
 	// Mouse mode switched itself off because a game came to the front (SettingsState.DesktopAutoOff)
-	MouseModeOff
+	MouseModeOff,
+	// The Xbox Series pad could not be used: games get Xbox 360 (GameModeController.XboxSeriesFellBack)
+	PadFallback
 }
 
 // The page a click on a toast opens.

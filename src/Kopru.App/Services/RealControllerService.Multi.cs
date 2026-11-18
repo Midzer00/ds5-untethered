@@ -33,6 +33,8 @@ public sealed partial class RealControllerService
 			other.StatusUpdated += status => OnHostStatus(s, status, other.HeadphonesPlugged);
 			other.InputSink = host.InputSink;
 			other.PadTypeChanged += type => RaiseNotice(new ServiceNotice(ServiceNoticeKind.PadTypeChanged, type.ToString()));
+			other.XboxSeriesFailed += Games.ReportXboxSeriesFailed;
+			other.XboxSeriesStarted += Games.ReportXboxSeriesStarted;
 			other.ControllerOpened = HideOtherAsync;
 			other.RawInput += body => OnHostRawInput(s, body);
 			other.Shortcuts.Triggered += action => Shortcut?.Invoke(this, action);

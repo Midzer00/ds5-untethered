@@ -29,7 +29,7 @@ public sealed class GamePadTypePicker : ObservableObject
 		[
 			new(null, () => Text.PadChoiceAutoFor(SettingsState.PadTypeName(_games.AutomaticPadTypeFor(_key))),
 				() => _games.ForcedPadType != null ? Text.PadTypeAutoDefaultLine() : Text.PadTypeAutoLine()),
-			.. PadTypeChoiceViewModel.TypeOptions().Select(o => new PadTypeOption(o.Type, () => o.Name, o.Line))
+			.. PadTypeChoiceViewModel.TypeOptions().Select(o => new PadTypeOption(o.Type, o.Name, o.Line))
 		];
 	}
 

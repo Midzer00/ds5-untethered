@@ -316,7 +316,7 @@ public class GameLightTests
 
 	private sealed class EndCountingBridge : IGameBridge
 	{
-		public int Ended;
+		public int Ended, Exited;
 
 		public void ApplyProfile(BridgeProfile profile)
 		{
@@ -325,6 +325,8 @@ public class GameLightTests
 		public GameSignals TakeGameSignals() => default;
 
 		public void GameEnded() => Ended++;
+
+		public void GameExited() => Exited++;
 	}
 
 	[Fact]
@@ -342,6 +344,26 @@ public class GameLightTests
 		games.Tick();
 		games.Tick();
 		Assert.Equal(1, bridge.Ended);
+		Assert.Equal(1, bridge.Exited);
+	}
+
+	[Fact]
+	public void GameModeController_AnotherGameTakingOver_EndsTheGame_ButIsNoExit()
+	{
+		Kopru.Core.Games.GameCatalog catalog = new([
+			new Kopru.Core.Games.CatalogGame("Returnal", ["Returnal-Win64-Shipping.exe"], 1649240, true, true),
+			new Kopru.Core.Games.CatalogGame("Other", ["Other.exe"], 1, true, true)]);
+		GameModeTests.FakeProcesses processes = new();
+		EndCountingBridge bridge = new();
+		Kopru.Core.Games.GameModeController games = new(catalog, new Kopru.Core.Games.GameWatcher(catalog, processes, log: _ => { }), bridge) { Log = _ => { } };
+		processes.Show("Returnal-Win64-Shipping.exe");
+		games.Tick();
+		processes.Show("Other.exe");
+		games.Tick();
+		games.Tick();
+		// The new game's rumble must not be cut by the switch.
+		Assert.Equal(1, bridge.Ended);
+		Assert.Equal(0, bridge.Exited);
 	}
 
 	[Fact]

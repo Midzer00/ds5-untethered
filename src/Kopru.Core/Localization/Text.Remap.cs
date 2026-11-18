@@ -75,7 +75,7 @@ public static partial class Text
 		_ => Pick(l, $"Kapalı", $"Off")
 	};
 
-	public static string GyroToggle(Language? l = null) => Pick(l, $"Basınca Aç/Kapat", $"Press to Toggle");
+	public static string GyroToggle(Language? l = null) => Pick(l, $"Basınca Aç/Kapat", $"Press To Toggle");
 
 	public static string GyroToggleHint(Language? l = null) => Pick(l,
 		$"Açıkken tuşa her basış gyroyu açar ya da kapatır.",

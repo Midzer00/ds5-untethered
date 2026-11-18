@@ -21,6 +21,7 @@ public sealed partial class NotificationCenter
 	public static string PadTypeTitle(VirtualPadType type) => type switch
 	{
 		VirtualPadType.Xbox360 => Text.PadModeXboxTitle(),
+		VirtualPadType.XboxSeries => Text.PadModeXboxSeriesTitle(),
 		VirtualPadType.DualShock4 => Text.PadModeDualShock4Title(),
 		_ => Text.PadModeDualSenseTitle()
 	};
@@ -48,6 +49,17 @@ public sealed partial class NotificationCenter
 	{
 		_settings.PadSwapped += OnPadSwapped;
 		_settings.PropertyChanged += OnPadState;
+		_service.Games.XboxSeriesFellBack += OnXboxSeriesFallback;
+	}
+
+	// "Xbox 360 Modu · Xbox Series couldn't start, using Xbox 360." (instead of the swap's own controller type toast).
+	public static AppNotification XboxSeriesFallback(bool isEdge = false) =>
+		new(NotificationType.PadFallback, NotificationKind.Warning, Text.PadModeXboxTitle(), Text.XboxSeriesFallbackBody(), AppPage.SupportedGames, IsEdge: isEdge);
+
+	private void OnXboxSeriesFallback(XboxSeriesFallback fallback)
+	{
+		bool shown = Post(XboxSeriesFallback(IsEdge), false, false, out string? why);
+		Log(shown ? $"toast: Xbox Series fell back to Xbox 360 shown ({fallback.Reason})" : $"toast: Xbox Series fell back to Xbox 360 not shown ({why})");
 	}
 
 	private bool PadToastsMatter => _service.IsConnected && _service.IsBridgeRunning;
@@ -63,6 +75,11 @@ public sealed partial class NotificationCenter
 			_pendingShown = null;
 		}
 		string what = $"{swap.From} -> {swap.To}";
+		if (swap.Fallback)
+		{
+			Log($"toast: controller type {what} not shown (the Xbox Series fallback toast says it)");
+			return;
+		}
 		if (!PadToastsMatter)
 		{
 			Log($"toast: controller type {what} not shown (virtual controller not running)");

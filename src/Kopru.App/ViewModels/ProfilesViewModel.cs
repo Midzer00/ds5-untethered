@@ -9,11 +9,54 @@ namespace Kopru.App.ViewModels;
 
 // A profile as a choice in a picker: the default profile's name is read in the current language each time (never stored),
 // the user's own profiles keep their names.
-public sealed class ProfileOption(ControllerProfile profile) : LabelledChoice(() => SettingsState.DisplayName(profile))
+public sealed class ProfileOption(string id, Func<string> name) : LabelledChoice(name)
 {
-	public string Id { get; } = profile.Id;
+	public ProfileOption(ControllerProfile profile) : this(profile.Id, () => SettingsState.DisplayName(profile))
+	{
+	}
 
-	// What a list of profile choices shows, to tell when it has to be built again (a profile added, removed or renamed).
+	public string Id { get; } = id;
+
+	// The name of the profile with this id as it is now (renamed in place), in the current language for the default profile.
+	public static Func<string> NameOf(SettingsState settings, string id) =>
+		() => settings.Profiles.Profiles.FirstOrDefault(p => p.Id == id) is { } p ? SettingsState.DisplayName(p) : string.Empty;
+
+	// Brings a picker's choices in line with the profiles IN PLACE: a new profile is inserted, a removed one taken out, the
+	// order followed and every kept choice told to read its name again. The choices stay the same objects in the same
+	// collection, so a picker keeps its selection when another profile is added or renamed. (A new list made every picker
+	// drop its selection, and its binding then ignored the same choice offered again: the Games list's profile pickers
+	// went empty when one game got its own profile.)
+	public static void Sync<T>(ObservableCollection<T> options, IReadOnlyList<string?> ids, Func<T, string?> idOf, Func<string?, T> create) where T : LabelledChoice
+	{
+		for (int i = 0; i < ids.Count; i++)
+		{
+			int at = -1;
+			for (int j = i; j < options.Count; j++)
+			{
+				if (idOf(options[j]) == ids[i])
+				{
+					at = j;
+					break;
+				}
+			}
+			if (at < 0)
+			{
+				options.Insert(i, create(ids[i]));
+				continue;
+			}
+			if (at != i)
+			{
+				options.Move(at, i);
+			}
+			options[i].Refresh();
+		}
+		while (options.Count > ids.Count)
+		{
+			options.RemoveAt(options.Count - 1);
+		}
+	}
+
+	// What a list of profile choices shows, to tell when it has to be brought up to date (a profile added, removed or renamed).
 	public static string Signature(IEnumerable<ControllerProfile> profiles) => string.Join("\n", profiles.Select(p => p.Id + "\t" + p.IsDefault + "\t" + p.Name));
 }
 
@@ -274,12 +317,12 @@ public sealed class GameProfilePicker : ObservableObject
 		_key = key;
 	}
 
-	private IReadOnlyList<ProfileOption> _options = [];
+	private readonly ObservableCollection<ProfileOption> _options = [];
 	private string? _signature;
 
-	// The same list until a profile is added, removed or renamed (a language switch only renames the default profile on
-	// screen): a picked profile changes the profiles' memory, which refreshes the pickers, and a new list there would make
-	// the open picker drop the choice it is making.
+	// One collection for the picker's life, brought up to date in place when a profile is added, removed or renamed (see
+	// ProfileOption.Sync): a picked profile changes the profiles' memory, which refreshes the pickers, and a new list there
+	// would make every picker drop its choice.
 	public IReadOnlyList<ProfileOption> Options
 	{
 		get
@@ -288,7 +331,8 @@ public sealed class GameProfilePicker : ObservableObject
 			if (signature != _signature)
 			{
 				_signature = signature;
-				_options = _settings.Profiles.Profiles.Select(p => new ProfileOption(p)).ToList();
+				ProfileOption.Sync(_options, _settings.Profiles.Profiles.Select(p => (string?)p.Id).ToList(), o => o.Id,
+					id => new ProfileOption(id!, ProfileOption.NameOf(_settings, id!)));
 			}
 			return _options;
 		}
@@ -316,7 +360,7 @@ public sealed class GameProfilePicker : ObservableObject
 
 	public void Refresh()
 	{
-		OnPropertyChanged(nameof(Options));
+		_ = Options;
 		OnPropertyChanged(nameof(Selected));
 		OnPropertyChanged(nameof(HasProfile));
 		OnPropertyChanged(nameof(Tip));

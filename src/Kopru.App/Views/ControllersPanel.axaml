@@ -41,7 +41,7 @@
         <!-- The list scrolls inside the card when there are more controllers than room -->
         <ScrollViewer Grid.Row="1" IsVisible="{Binding HasRows}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding Hint}">
-          <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><StackPanel Spacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
@@ -49,8 +49,17 @@
               <DataTemplate x:DataType="vm:KnownControllerRowViewModel">
                 <Border Classes="knownRow">
                   <Panel>
-                    <!-- Name (renamed in place) over the model; state, last battery and profile; Forget -->
-                    <Grid Classes="knownLine" ColumnDefinitions="2*,16,3*,12,Auto" RowDefinitions="Auto,Auto" IsVisible="{Binding IsNotConfirming}">
+                    <!-- Name (renamed in place) over the model; state, last battery and profile; Forget. The connected
+                         controller can't be forgotten: its state says Connected and it has no Forget (a greyed-out button there
+                         looked broken); its column keeps the other rows' width, so the states line up. -->
+                    <Grid Classes="knownLine" RowDefinitions="Auto,Auto" IsVisible="{Binding IsNotConfirming}">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="ForgetColumn" />
+                      </Grid.ColumnDefinitions>
                       <StackPanel Classes="name" Spacing="1" VerticalAlignment="Center">
                         <v:ControllerNameEditor DataContext="{Binding NameEditor}" />
                         <TextBlock Classes="caption" Text="{Binding ModelText}" />
@@ -61,7 +70,7 @@
                         <TextBlock Classes="caption" Text="{Binding ProfileText}" IsVisible="{Binding HasProfile}" />
                       </StackPanel>
                       <Button Grid.Column="4" Theme="{StaticResource QuietButton}" MinWidth="72" Content="{Binding ForgetText}" Command="{Binding ForgetCommand}"
-                              IsEnabled="{Binding CanForget}" ToolTip.Tip="{Binding ForgetTip}" VerticalAlignment="Center" />
+                              IsVisible="{Binding CanForget}" ToolTip.Tip="{Binding ForgetTip}" VerticalAlignment="Center" />
                     </Grid>
                     <!-- Forget pressed: ask first -->
                     <Grid ColumnDefinitions="*,Auto,8,Auto" IsVisible="{Binding IsConfirming}">

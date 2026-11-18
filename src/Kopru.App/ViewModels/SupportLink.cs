@@ -13,6 +13,25 @@ public sealed partial class SupportLinkViewModel(IUrlLauncher launcher) : ViewMo
 {
 	public const string Url = "https://github.com/sponsors/Midzer00";
 
+	// The project's GitHub page (the star button beside the pill).
+	public const string RepoUrl = "https://github.com/Midzer00/ds5-untethered";
+
+	public string StarTip => Text.StarOnGitHub();
+	public string StarLabel => Text.StarLabel();
+
+	[RelayCommand]
+	private void OpenRepo()
+	{
+		try
+		{
+			launcher.Open(RepoUrl);
+		}
+		catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+		{
+			AppLog.Write($"support: could not open the project page ({e.GetType().Name})");
+		}
+	}
+
 	public string Label => Text.SupportLabel();
 	public string Tip => Text.SupportTip();
 	// The service's own name, the same in every language (like the product name).

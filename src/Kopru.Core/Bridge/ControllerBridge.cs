@@ -219,6 +219,11 @@ public sealed partial class ControllerBridge : IDisposable
 		session.InputBodyReceived += OnInput;
 		pad.OutputReceived += OnOutput;
 		pad.AudioReceived += OnAudio;
+		if (pad is ITriggerRumbleSource triggerRumble)
+		{
+			triggerRumble.TriggerRumbleChanged += PlayTriggerRumble;
+		}
+		pad.HostReleased += OnHostReleased;
 		refill = RefillRumble;
 		session.HapticsRefill = refill;
 	}
@@ -324,6 +329,7 @@ public sealed partial class ControllerBridge : IDisposable
 		RestoreGameLight();
 		TriggerIntensity = profile.TriggerIntensity;
 		FallbackTrigger = profile.FallbackTrigger;
+		TriggerRumbleFeel = profile.PlayedTriggerRumble;
 		(byte[] right, byte[] left) = ControllerTriggers();
 		session.UpdateOutput(b => OutputBlock.SetTriggers(b, right, left));
 		ResendGameOutput();
@@ -432,7 +438,7 @@ public sealed partial class ControllerBridge : IDisposable
 
 	// What the game sent since the last call (native support detection).
 	public GameSignals TakeGameSignals() => new(Interlocked.Exchange(ref sawHaptics, 0) != 0,
-		Interlocked.Exchange(ref sawTriggers, 0) != 0, Interlocked.Exchange(ref sawRumble, 0) != 0);
+		Interlocked.Exchange(ref sawTriggers, 0) != 0, Interlocked.Exchange(ref sawRumble, 0) != 0, TakeTriggerRumbleSignal());
 
 	public long Inputs => Interlocked.Read(ref inputs);
 
@@ -494,15 +500,26 @@ public sealed partial class ControllerBridge : IDisposable
 
 	public void Dispose()
 	{
+		// The last rumble must not outlive the bridge (app exit, bridge stop, pad swap): the refill stops topping it up.
+		StopRumble("bridge stopped");
 		disposed = true;
 		session.InputBodyReceived -= OnInput;
 		pad.OutputReceived -= OnOutput;
 		pad.AudioReceived -= OnAudio;
+		if (pad is ITriggerRumbleSource triggerRumble)
+		{
+			triggerRumble.TriggerRumbleChanged -= PlayTriggerRumble;
+		}
+		EndTriggerRumble();
+		pad.HostReleased -= OnHostReleased;
 		if (session.HapticsRefill == refill)
 		{
 			session.HapticsRefill = null;
 		}
 	}
+
+	// The host let go of the virtual pad (USB/IP detach, the host driver unplugged it): nobody is left to stop the rumble.
+	private void OnHostReleased() => StopAllRumble("the host released the virtual pad");
 
 	private void OnInput(ReadOnlySpan<byte> body)
 	{
@@ -540,6 +557,7 @@ public sealed partial class ControllerBridge : IDisposable
 		}
 		RememberGameLight(block);
 		Interlocked.Exchange(ref lastGameOutput, Time.GetTimestamp());
+		NoteRumbleReport(block);
 		CountGameLight(block);
 		byte[] sent;
 		bool triggersStarted = false;
@@ -590,22 +608,22 @@ public sealed partial class ControllerBridge : IDisposable
 		{
 			RaiseGameUse(GameUse.TriggerEffect);
 		}
-		if ((sent[OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect)) != 0)
+		if (MotorsAsked(sent) is { } asked)
 		{
+			bool running = asked.Left != 0 || asked.Right != 0;
 			bool motorsStarted;
 			lock (rumbleGate)
 			{
-				bool running = sent[OutputBlock.MotorLeft] != 0 || sent[OutputBlock.MotorRight] != 0;
 				motorsStarted = running && !gameRumbleOn;
 				gameRumbleOn = running;
-				leftMotor = sent[OutputBlock.MotorLeft];
-				rightMotor = sent[OutputBlock.MotorRight];
+				leftMotor = asked.Left;
+				rightMotor = asked.Right;
 			}
 			if (motorsStarted)
 			{
 				RaiseGameUse(GameUse.Rumble);
 			}
-			if (sent[OutputBlock.MotorLeft] != 0 || sent[OutputBlock.MotorRight] != 0)
+			if (running)
 			{
 				Interlocked.Exchange(ref sawRumble, 1);
 				KickRumble();
@@ -736,7 +754,8 @@ public sealed partial class ControllerBridge : IDisposable
 	}
 
 	// Scales the game's trigger effects, or puts the fallback effect on when the game sets none (only until the game sent
-	// its first real trigger effect in the game session: TriggersSeen). fromGame: a new game
+	// its first real trigger effect in the game session: TriggersSeen); a trigger rumble (ControllerBridgeImpulse) and a
+	// mod's effects go over them. fromGame: a new game
 	// report (counts the native signal and unknown modes), not a re-apply of the last one.
 	private void ApplyTriggers(byte[] block, bool fromGame)
 	{
@@ -778,6 +797,7 @@ public sealed partial class ControllerBridge : IDisposable
 			}
 			block[OutputBlock.Flag0] |= OutputBlock.RightTriggerEffect | OutputBlock.LeftTriggerEffect;
 		}
+		ApplyImpulseTriggers(block, k);
 		ApplyModTriggers(block, fromGame, rightSet, leftSet, k);
 	}
 
@@ -959,7 +979,12 @@ public sealed partial class ControllerBridge : IDisposable
 	// RumbleAheadFrames of rumble buffered. Nothing to do (and nothing allocated) otherwise.
 	private void RefillRumble()
 	{
-		if (disposed || Time.GetTimestamp() - Interlocked.Read(ref lastAudio) <= AudioIdleTicks || AudioHapticsFlowing || Motors == (0, 0))
+		if (disposed)
+		{
+			return;
+		}
+		CheckRumbleStale();
+		if (Time.GetTimestamp() - Interlocked.Read(ref lastAudio) <= AudioIdleTicks || AudioHapticsFlowing || Motors == (0, 0))
 		{
 			return;
 		}
@@ -988,7 +1013,8 @@ public sealed partial class ControllerBridge : IDisposable
 	// Adds the rumble tones to a block of frames (one lock for the block).
 	private void MixRumble(Span<sbyte> left, Span<sbyte> right)
 	{
-		double level = RumbleLevel;
+		// Fades out a rumble no game report holds any more (CheckRumbleStale then zeroes the motors).
+		double level = RumbleLevel * RumbleGain;
 		RumbleFeel feel = RumbleFeel;
 		lock (rumbleGate)
 		{

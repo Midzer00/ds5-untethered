@@ -83,6 +83,8 @@ public sealed class VirtualXbox360 : IVirtualPad
 	// DualSense-format output (0x02) with the game's rumble in the classic motor bytes.
 	public event Action<byte[]>? OutputReceived;
 
+	public event Action? HostReleased;
+
 	public event Action<ReadOnlyMemory<byte>>? AudioReceived
 	{
 		add { }
@@ -198,6 +200,7 @@ public sealed class VirtualXbox360 : IVirtualPad
 			// A host that attaches again starts from a pad at rest: the current state goes out with its first IN.
 			lastSent = XboxReports.FromDualSense([]);
 		}
+		HostReleased?.Invoke();
 	}
 
 	public void Dispose() => Released();

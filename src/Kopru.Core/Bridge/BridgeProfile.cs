@@ -14,10 +14,23 @@ public enum RumbleFeel
 	Punchy
 }
 
+// How the Xbox Series pad's trigger rumble (the game's "impulse trigger" motors) feels on the adaptive triggers
+// (ImpulseTuning presets); Off leaves the triggers alone.
+public enum TriggerRumbleFeel
+{
+	XboxLike,
+	Soft,
+	Sharp,
+	Off
+}
+
 // What the bridge does with the game's output. GameHapticsLevel and RumbleLevel: 1.0 = as sent. TriggerIntensity
 // 0..1 scales the game's trigger effects (TriggerEffects.Scale). LightFromGame false keeps the user's light.
 // FallbackTrigger: the effect put on a trigger the game has not set, until the game sends its first real trigger effect
 // (null = leave them). GameSession: a new value starts a new game session for that rule (GameModeController counts them).
+// TriggerRumble: how the Xbox Series pad's trigger rumble feels (scaled by TriggerIntensity too). XboxTriggerRumbleOn: the
+// experimental Xbox Trigger Rumble setting (GameModeController.XboxTriggerRumbleOn); off, the game's trigger motor levels
+// are not played (the triggers keep what they have without them) whatever TriggerRumble says, see PlayedTriggerRumble.
 public sealed record BridgeProfile(
 	double GameHapticsLevel = HapticsConverter.DefaultLevel,
 	double RumbleLevel = ControllerBridge.DefaultRumbleLevel,
@@ -25,9 +38,14 @@ public sealed record BridgeProfile(
 	double TriggerIntensity = 1,
 	bool LightFromGame = true,
 	byte[]? FallbackTrigger = null,
-	long GameSession = 0)
+	long GameSession = 0,
+	TriggerRumbleFeel TriggerRumble = TriggerRumbleFeel.XboxLike,
+	bool XboxTriggerRumbleOn = true)
 {
 	public static BridgeProfile Default { get; } = new();
+
+	// What the bridge plays the trigger rumble with: the profile's choice while the setting is on, else Off.
+	public TriggerRumbleFeel PlayedTriggerRumble => XboxTriggerRumbleOn ? TriggerRumble : TriggerRumbleFeel.Off;
 
 	// Equal values, the fallback bytes compared by content.
 	public bool SameAs(BridgeProfile other) =>
@@ -35,10 +53,14 @@ public sealed record BridgeProfile(
 		&& (FallbackTrigger ?? []).AsSpan().SequenceEqual(other.FallbackTrigger ?? []);
 }
 
-// What the game sent since the last look: non-silent haptics audio, a trigger effect other than off, rumble.
-public readonly record struct GameSignals(bool Haptics, bool Triggers, bool Rumble)
+// What the game sent since the last look: non-silent haptics audio, a trigger effect other than off, rumble, and trigger
+// motor rumble on the Xbox Series pad (TriggerRumble; never counts as native DualSense use).
+public readonly record struct GameSignals(bool Haptics, bool Triggers, bool Rumble, bool TriggerRumble = false)
 {
 	public bool IsNative => Haptics || Triggers;
+
+	public GameSignals Or(GameSignals other) =>
+		new(Haptics || other.Haptics, Triggers || other.Triggers, Rumble || other.Rumble, TriggerRumble || other.TriggerRumble);
 }
 
 // A strong sign that a program with the virtual pad open started using the controller as a game does
@@ -85,6 +107,12 @@ public interface IGameBridge
 
 	// The active game ended (exited or another took over): the bridge hands the light back to the user.
 	void GameEnded()
+	{
+	}
+
+	// The active game exited and no other game took over: the bridge stops the game's last rumble (a game that died, or
+	// Steam Input in between, may never have sent the zero). Not on a switch: the new game's rumble is never cut.
+	void GameExited()
 	{
 	}
 }

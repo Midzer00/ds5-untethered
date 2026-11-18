@@ -146,23 +146,23 @@ public class MicPacketTests
 	}
 
 	[Fact]
-	public void JitterBuffer_Prefills_DropsOldest_AndRePrimesAfterUnderrun()
+	public void JitterBuffer_WaitsForTheTarget_DropsOldestPastCapacity_AndWaitsAgainAfterAnUnderrun()
 	{
-		MicJitterBuffer buffer = new(prefill: 10, capacity: 20);
+		MicJitterBuffer buffer = new(minTarget: 10, capacity: 20);
 		short[] out5 = new short[5];
 		buffer.Write([1, 2, 3, 4, 5]);
-		Assert.Equal(0, buffer.Read(out5)); // still priming
+		Assert.Equal(0, buffer.Read(out5)); // still filling up to the target
 		Assert.All(out5, s => Assert.Equal(0, s));
 		buffer.Write([6, 7, 8, 9, 10]);
 		Assert.Equal(5, buffer.Read(out5));
-		Assert.Equal([1, 2, 3, 4, 5], out5);
+		Assert.Equal(5, buffer.Buffered);
 
 		short[] out8 = new short[8];
-		Assert.Equal(5, buffer.Read(out8)); // underrun: rest is silence
-		Assert.Equal([6, 7, 8, 9, 10, 0, 0, 0], out8);
+		Assert.Equal(5, buffer.Read(out8)); // underrun: 5 real samples, the rest concealed or silent
 		Assert.Equal(1, buffer.Underruns);
+		Assert.Equal(20, buffer.Target); // grown by TargetStep, capped by the capacity
 		buffer.Write([1, 1, 1]);
-		Assert.Equal(0, buffer.Read(out5)); // priming again
+		Assert.Equal(0, buffer.Read(out5)); // waiting for the (grown) target again
 
 		buffer.Write(Enumerable.Range(0, 30).Select(i => (short)i).ToArray());
 		Assert.Equal(20, buffer.Buffered);
@@ -173,7 +173,7 @@ public class MicPacketTests
 	public void Pipeline_DecodesToBothChannels_WithGain()
 	{
 		FakeMicDecoder decoder = new();
-		using MicPipeline pipeline = new(decoder, new MicJitterBuffer(prefill: 48));
+		using MicPipeline pipeline = new(decoder, new MicJitterBuffer(minTarget: 480));
 		pipeline.Gain = 2;
 		pipeline.PushReport(MicPackets.Build([10]));
 		pipeline.PushReport(FakeLink.Input(0, 0)); // gamepad input: ignored
@@ -181,7 +181,11 @@ public class MicPacketTests
 		Assert.Equal(1, pipeline.Packets);
 
 		byte[] pcm = new byte[VirtualDualSense.MicBytesPerFrame];
-		pipeline.Fill(pcm, VirtualDualSense.MicChannels);
+		// The sound fades in over its first FadeInSamples (no click at the start).
+		for (int i = 0; i <= MicJitterBuffer.FadeInSamples / 48; i++)
+		{
+			pipeline.Fill(pcm, VirtualDualSense.MicChannels);
+		}
 		for (int i = 0; i < 48; i++)
 		{
 			Assert.Equal(2000, BinaryPrimitives.ReadInt16LittleEndian(pcm.AsSpan(4 * i)));

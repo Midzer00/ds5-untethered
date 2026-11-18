@@ -41,7 +41,7 @@ public sealed class DualShock4AppTests : IDisposable
 	{
 		using FakeControllerService fake = new(animate: false);
 		GamePadTypePicker picker = new(fake.Games, "exe:old.exe");
-		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.Xbox360], picker.Options.Select(o => o.Type));
+		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.XboxSeries, VirtualPadType.Xbox360], picker.Options.Select(o => o.Type));
 		Assert.Equal("DualShock 4", picker.Options[2].Name);
 		// Automatic, then every pad type exactly once.
 		Assert.Equal(Enum.GetValues<VirtualPadType>().Order(), picker.Options.Skip(1).Select(o => o.Type!.Value).Order());

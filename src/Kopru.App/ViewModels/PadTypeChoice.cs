@@ -30,7 +30,7 @@ public sealed class PadTypeChoiceViewModel : ViewModelBase
 	public IReadOnlyList<PadChoiceOption> Options { get; } =
 	[
 		new(null, () => Text.PadChoiceAutoPerGame(), () => Text.PadChoiceAutoLine()),
-		.. TypeOptions().Select(o => new PadChoiceOption(o.Type, () => o.Name, o.Line))
+		.. TypeOptions().Select(o => new PadChoiceOption(o.Type, o.Name, o.Line))
 	];
 
 	public string Label => Text.PadTypeLabel();
@@ -39,12 +39,14 @@ public sealed class PadTypeChoiceViewModel : ViewModelBase
 	public string DefaultLabel => Text.PadTypeDefaultLabel();
 	public string Tip => Text.PadTypeDefaultHint();
 
-	// The three types with what each one means, in the pickers' order (product names, the same in every language).
-	public static IEnumerable<(VirtualPadType Type, string Name, Func<string> Line)> TypeOptions() =>
+	// The four types with what each one means, in the pickers' order (product names, the same in every language; Xbox
+	// Series is an ordinary type, only its trigger rumble is experimental, behind the Xbox Trigger Rumble switch).
+	public static IEnumerable<(VirtualPadType Type, Func<string> Name, Func<string> Line)> TypeOptions() =>
 	[
-		(VirtualPadType.DualSense, "DualSense", () => Text.PadTypeDualSenseLine()),
-		(VirtualPadType.DualShock4, "DualShock 4", () => Text.PadTypeDualShock4Line()),
-		(VirtualPadType.Xbox360, "Xbox 360", () => Text.PadTypeXboxLine())
+		(VirtualPadType.DualSense, () => "DualSense", () => Text.PadTypeDualSenseLine()),
+		(VirtualPadType.DualShock4, () => "DualShock 4", () => Text.PadTypeDualShock4Line()),
+		(VirtualPadType.XboxSeries, () => "Xbox Series", () => Text.PadTypeXboxSeriesLine()),
+		(VirtualPadType.Xbox360, () => "Xbox 360", () => Text.PadTypeXboxLine())
 	];
 
 	public PadChoiceOption? Selected

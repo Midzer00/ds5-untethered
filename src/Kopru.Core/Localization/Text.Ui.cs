@@ -89,7 +89,7 @@ public static partial class Text
 	// Settings
 	public static string LanguageLabel(Language? l = null) => Pick(l, $"Dil", $"Language");
 	public static string LanguageFollowSystem(Language? l = null) => Pick(l, $"Sistemi İzle", $"Follow System");
-	public static string StartWithWindows(Language? l = null) => Pick(l, $"Windows ile Başlat", $"Start with Windows");
+	public static string StartWithWindows(Language? l = null) => Pick(l, $"Windows ile Başlat", $"Start With Windows");
 	public static string StartWithWindowsHint(Language? l = null) => Pick(l, $"Oturum açınca pencere açmadan arka planda başlar.", $"Starts in the background when you sign in, without opening the window.");
 	public static string IdlePowerOff(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");
 	public static string IdlePowerOffHint(Language? l = null) => Pick(l,
@@ -129,7 +129,7 @@ public static partial class Text
 	public static string EffectFeedbackHint(Language? l = null) => Pick(l, $"Bir noktadan sonra sabit direnç", $"Steady resistance past a point");
 	public static string EffectWeaponHint(Language? l = null) => Pick(l, $"Artan direnç, sonra kırılma", $"Builds up, then snaps");
 	public static string EffectVibrationHint(Language? l = null) => Pick(l, $"Basılıyken titreşir", $"Pulses while pressed");
-	public static string LanguageHint(Language? l = null) => Pick(l, $"Arayüzün dili.", $"The language of the interface.");
+	public static string LanguageHint(Language? l = null) => Pick(l, $"Arayüzün dili.", $"The app's language.");
 	public static string RunSetupWizardHint(Language? l = null) => Pick(l,
 		$"Sürücüleri ve eşleşmeyi denetler.",
 		$"Checks drivers and pairing again.");
@@ -181,7 +181,7 @@ public static partial class Text
 
 	// Overview by state: the status pill, the one main action, the hero, the live panel and the health chips.
 	public static string OverviewReady(Language? l = null) => Pick(l, $"Hazır", $"Ready");
-	public static string OverviewWaitingController(Language? l = null) => Pick(l, $"Kumanda Bekleniyor", $"Waiting for Controller");
+	public static string OverviewWaitingController(Language? l = null) => Pick(l, $"Kumanda Bekleniyor", $"Waiting For Controller");
 	public static string OverviewPlaying(string game, Language? l = null) => Pick(l, $"Çalışıyor · {game}", $"Running · {game}");
 	public static string PairController(Language? l = null) => Pick(l, $"Kumandayı Eşleştir", $"Pair Controller");
 	public static string FinishSetup(Language? l = null) => Pick(l, $"Kurulumu Tamamla", $"Finish Setup");
@@ -301,7 +301,7 @@ public static partial class Text
 		$"The live preview shows while the virtual controller is running.");
 	public static string DriftCalibration(Language? l = null) => Pick(l, $"Çubuk Kayması Kalibrasyonu", $"Stick Drift Calibration");
 	public static string CalibrateAction(Language? l = null) => Pick(l, $"Kalibre Et", $"Calibrate");
-	public static string ResetToDefault(Language? l = null) => Pick(l, $"Varsayılana Dön", $"Reset to Default");
+	public static string ResetToDefault(Language? l = null) => Pick(l, $"Varsayılana Dön", $"Reset To Default");
 
 	// Power, latency, diagnostics
 	public static string PowerOffWhenIdleHint(Language? l = null) => Pick(l,
@@ -340,7 +340,7 @@ public static partial class Text
 	public static string NotifyBridgeOther(Language? l = null) => Pick(l, $"Ayrıntılar Genel Bakış'ta", $"Details on the Overview page");
 	public static string NotifyHidHideTitle(Language? l = null) => Pick(l, $"Sanal Kumanda Başlamadı", $"Virtual Controller Not Started");
 	public static string NotifyHidHideBody(Language? l = null) => Pick(l, $"Önce HidHide'ı kurun", $"Install HidHide first");
-	public static string NotifyTrayTitle(Language? l = null) => Pick(l, $"Arka Planda Çalışıyor", $"Running in Background");
+	public static string NotifyTrayTitle(Language? l = null) => Pick(l, $"Arka Planda Çalışıyor", $"Running In Background");
 	public static string NotifyTrayBody(Language? l = null) => Pick(l, $"Simgeyi saat yanında bulun", $"Find the icon by the clock");
 	public static string NotifyClose(Language? l = null) => Pick(l, $"Bildirimi Kapat", $"Dismiss");
 	public static string GroupNotifications(Language? l = null) => Pick(l, $"Bildirimler", $"Notifications");
@@ -362,7 +362,7 @@ public static partial class Text
 	public static string NotifyHidHideHint(Language? l = null) => Pick(l, $"Sanal kumanda HidHide kurulu olmadığı için başlayamazsa.", $"If the virtual controller can't start because HidHide isn't installed.");
 	public static string QuietWhilePlaying(Language? l = null) => Pick(l, $"Oyun Sırasında Bildirim Gösterme", $"Don't Notify While Playing");
 	public static string QuietWhilePlayingHint(Language? l = null) => Pick(l, $"Oyunda ve tam ekranda sessiz kalır.", $"Silent in games and full screen apps.");
-	public static string KeepInTray(Language? l = null) => Pick(l, $"Kapatınca Arka Planda Çalış", $"Keep Running in Background");
+	public static string KeepInTray(Language? l = null) => Pick(l, $"Kapatınca Arka Planda Çalış", $"Keep Running In Background");
 	public static string KeepInTrayHint(Language? l = null) => Pick(l, $"Simge, saat yanındaki gizli simgeler bölümünde durur.", $"The icon stays in the hidden icons area next to the clock.");
 	public static string TrayOpen(Language? l = null) => Pick(l, $"Aç", $"Open");
 	public static string TrayNotificationsOff(Language? l = null) => Pick(l, $"Bildirimleri Kapat", $"Turn Off Notifications");

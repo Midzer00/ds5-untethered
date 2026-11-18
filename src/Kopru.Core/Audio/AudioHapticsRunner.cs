@@ -34,8 +34,7 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 	private int failedPid;
 
 	// The current capture run (written on the capture thread, read under gate when it ends).
-	private long frames, pausedFrames;
-	private int peak;
+	private readonly AudioHapticsStats stats = new();
 	private long startedAt;
 	private volatile bool paused;
 	private int pauseLogged;
@@ -137,6 +136,7 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 		}
 		// Input frames per step so the output always fits BlockFrames.
 		int step = Math.Max(1, (int)((long)(BlockFrames - 2) * sampleRate / AudioHapticsDsp.OutputRate)) * channels;
+		stats.AddInput(samples[..(samples.Length - samples.Length % channels)], channels, sampleRate);
 		while (!samples.IsEmpty)
 		{
 			ReadOnlySpan<float> part = samples[..Math.Min(step, samples.Length - samples.Length % channels)];
@@ -151,9 +151,9 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 				continue;
 			}
 			AudioHapticsPush result = output.PushAudioHaptics(left.AsSpan(0, n), right.AsSpan(0, n));
+			stats.AddOutput(left.AsSpan(0, n), right.AsSpan(0, n), result);
 			if (result == AudioHapticsPush.NativeHaptics)
 			{
-				pausedFrames += n;
 				if (!paused)
 				{
 					paused = true;
@@ -170,18 +170,6 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 				paused = false;
 				ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: false);
 			}
-			if (result == AudioHapticsPush.Played)
-			{
-				frames += n;
-				for (int i = 0; i < n; i++)
-				{
-					int a = Math.Max(Math.Abs((int)left[i]), Math.Abs((int)right[i]));
-					if (a > peak)
-					{
-						peak = a;
-					}
-				}
-			}
 		}
 	}
 
@@ -189,8 +177,7 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 	private void StartLocked(ForegroundGame target)
 	{
 		dsp.Reset();
-		frames = pausedFrames = 0;
-		peak = 0;
+		stats.Clear();
 		paused = false;
 		pauseLogged = 0;
 		IAudioCapture? started;
@@ -242,8 +229,9 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 		}
 		TimeSpan active = Stopwatch.GetElapsedTime(startedAt);
 		log($"audio haptics: stopped ({reason})");
-		log(string.Create(CultureInfo.InvariantCulture,
-			$"audio haptics: session summary: {frames} frames played ({frames / (double)AudioHapticsDsp.OutputRate:F1} s), {pausedFrames} paused for native haptics, peak {Math.Min(peak, 127) * 100 / 127} %, active {active.TotalSeconds:F0} s"));
+		// The capture thread has stopped (Dispose waits for it): its numbers are settled.
+		log("audio haptics: " + stats.Summary(active, dsp.PeakEnvelope));
+		log("audio haptics: session verdict: " + stats.Verdict(settings.Strength));
 		paused = false;
 	}
 

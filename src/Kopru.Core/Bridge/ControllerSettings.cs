@@ -26,8 +26,12 @@ public sealed record ControllerSettings(
 		RumbleLevel / 100, RumbleFeel, FallbackTrigger, Math.Clamp(FallbackStrength / 100, 0, 1))
 	{
 		AudioHaptics = new Kopru.Core.Audio.AudioHapticsSettings(AudioHapticsOn, Math.Clamp(AudioHapticsStrength / 100, 0, Kopru.Core.Audio.AudioHapticsDsp.MaxStrength),
-			AudioHapticsBand)
+			AudioHapticsBand),
+		TriggerRumble = TriggerRumble
 	};
+
+	// How the Xbox Series pad's trigger rumble feels (Off, Xbox-like, Soft, Sharp).
+	public TriggerRumbleFeel TriggerRumble { get; init; } = TriggerRumbleFeel.XboxLike;
 
 	// "Turn sound into haptics" (the game's sound felt on the controller; AudioHapticsRunner): on, strength 0-200 %, band.
 	public bool AudioHapticsOn { get; init; }

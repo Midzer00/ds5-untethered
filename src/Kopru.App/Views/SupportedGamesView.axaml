@@ -14,7 +14,8 @@
       <Setter Property="MaxWidth" Value="1240" />
       <Setter Property="Margin" Value="28" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <!-- As tall as its content (centred), up to the page with the margin: no empty sheet under a short panel -->
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <!-- The list update's outcome when it failed -->
     <Style Selector="TextBlock.caption.error">
@@ -73,9 +74,9 @@
             <Border Classes="iconTile"><c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Gamepad}" HorizontalAlignment="Center" /></Border>
             <ListBox Grid.Column="1" Theme="{StaticResource Segmented}" Name="GameViewChoice" ItemsSource="{Binding ViewFilters}" SelectedIndex="{Binding ViewIndex}"
                      ItemTemplate="{StaticResource FilterItem}" VerticalAlignment="Center" AutomationProperties.Name="{Binding ListLabel}" />
-            <TextBlock Grid.Column="3" Name="ListCount" Classes="value" Text="{Binding CountText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3" Name="ListCount" Classes="value" Text="{Binding CountText}" VerticalAlignment="Center" IsVisible="{Binding !HasInstalledList}" />
             <!-- Add a game: one of the running apps, or an exe file -->
-            <Button Grid.Column="4" Name="AddGameButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Content="{Binding AddGameText}" VerticalAlignment="Center">
+            <Button Grid.Column="4" Name="AddGameButton" Theme="{StaticResource QuietButton}" Padding="12,0" Content="{Binding AddGameText}" VerticalAlignment="Center">
               <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedRight">
                   <StackPanel Width="280" Spacing="6">
@@ -85,7 +86,7 @@
                       <ItemsControl ItemsSource="{Binding RunningApps}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:RunningAppItem">
-                            <Button Theme="{StaticResource QuietButton}" Height="32" Padding="10,0" Margin="0,0,0,4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            <Button Theme="{StaticResource QuietButton}" Padding="10,0" Margin="0,0,0,4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                     Command="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).AddRunningCommand}" CommandParameter="{Binding}"
                                     ToolTip.Tip="{Binding Tip}">
                               <TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
@@ -95,7 +96,7 @@
                       </ItemsControl>
                     </ScrollViewer>
                     <Border Classes="divider" />
-                    <Button Theme="{StaticResource QuietButton}" Height="32" Padding="10,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    <Button Theme="{StaticResource QuietButton}" Padding="10,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Command="{Binding AddFromFileCommand}" Content="{Binding AddFromFileText}" />
                   </StackPanel>
                 </Flyout>
@@ -103,14 +104,16 @@
             </Button>
           </Grid>
           <!-- All | Installed (the count in the label; Supported only), then Scan Again and the extra folders searched for games -->
-          <Grid Grid.Row="1" Name="InstalledRow" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,12,12,0" IsVisible="{Binding HasInstalledList}">
+          <Grid Grid.Row="1" Name="InstalledRow" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,12,12,0" IsVisible="{Binding HasInstalledList}">
             <ListBox Theme="{StaticResource Segmented}" Name="InstalledChoice" ItemsSource="{Binding InstalledFilters}" SelectedIndex="{Binding InstalledFilterIndex}"
                      ItemTemplate="{StaticResource FilterItem}" MinWidth="190" VerticalAlignment="Center" AutomationProperties.Name="{Binding InstalledFilterLabel}"
                      IsVisible="{Binding ShowsInstalledChoice}" />
-            <Button Grid.Column="2" Name="ScanAgainButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Command="{Binding ScanAgainCommand}"
+            <!-- The count leads this line (with Scan Again and Folders at its end), so the line is never two lone buttons -->
+            <TextBlock Grid.Column="1" Name="ListCountLine" Classes="value" Text="{Binding CountText}" TextAlignment="Left" MinWidth="0" VerticalAlignment="Center" />
+            <Button Grid.Column="3" Name="ScanAgainButton" Theme="{StaticResource QuietButton}" Padding="12,0" Command="{Binding ScanAgainCommand}"
                     Content="{Binding ScanText}" IsEnabled="{Binding !IsScanning}" VerticalAlignment="Center" />
             <!-- The extra folders: what is searched by itself, the added folders (each removable) and Add Folder -->
-            <Button Grid.Column="3" Name="FoldersButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" Content="{Binding FoldersText}" VerticalAlignment="Center">
+            <Button Grid.Column="4" Name="FoldersButton" Theme="{StaticResource QuietButton}" Padding="12,0" Content="{Binding FoldersText}" VerticalAlignment="Center">
               <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedRight">
                   <StackPanel Width="300" Spacing="6">
@@ -134,7 +137,7 @@
                       </ItemsControl>
                     </ScrollViewer>
                     <Border Classes="divider" />
-                    <Button Theme="{StaticResource QuietButton}" Height="32" Padding="10,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    <Button Theme="{StaticResource QuietButton}" Padding="10,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Command="{Binding AddFolderCommand}" Content="{Binding AddFolderText}" />
                     <!-- Found games hidden from the list, each shown again with Show -->
                     <StackPanel Spacing="6" IsVisible="{Binding HasHiddenGames}">
@@ -146,7 +149,7 @@
                             <DataTemplate x:DataType="gm:HiddenGame">
                               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="4,0,0,4">
                                 <TextBlock Classes="body" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="28" Padding="10,0" VerticalAlignment="Center"
+                                <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" Padding="10,0" VerticalAlignment="Center"
                                         Command="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).ShowHiddenCommand}" CommandParameter="{Binding}"
                                         Content="{Binding $parent[ItemsControl].((vm:SupportedGamesViewModel)DataContext).ShowGameText}" />
                               </Grid>
@@ -160,7 +163,22 @@
               </Button.Flyout>
             </Button>
           </Grid>
-          <TextBox Grid.Row="2" Margin="0,12,12,10" Text="{Binding SearchText}" Watermark="{Binding SearchWatermark}" />
+          <StackPanel Grid.Row="2">
+            <!-- The Xbox view: the experimental Xbox Trigger Rumble switch, the same setting as in Settings > Controllers -->
+            <Grid Classes="settingRow" Name="GamesXboxTriggerRumbleRow" ColumnDefinitions="*,Auto" Margin="0,4,12,0" IsVisible="{Binding ShowXboxTriggers}"
+                  ToolTip.Tip="{Binding XboxTriggerRumbleHint}">
+              <StackPanel Classes="text">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Classes="label" Name="GamesXboxTriggerRumbleTitle" Text="{Binding XboxTriggerRumbleTitle}" />
+                  <TextBlock Classes="caption" Name="GamesXboxTriggerRumbleTag" Text="{Binding ExperimentalTag}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="body" Name="GamesXboxTriggerRumbleLine" Text="{Binding XboxTriggerRumbleShort, Converter={x:Static v:KeepLastWords.Instance}}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" Name="GamesXboxTriggerRumbleSwitch" IsChecked="{Binding Settings.XboxTriggerRumbleOn}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding XboxTriggerRumbleLabel}" AutomationProperties.HelpText="{Binding XboxTriggerRumbleHint}" />
+            </Grid>
+            <TextBox Margin="0,12,12,10" Text="{Binding SearchText}" Watermark="{Binding SearchWatermark}" />
+          </StackPanel>
           <v:GameRowList Grid.Row="3" Items="{Binding Games}" OpenCommand="{Binding OpenGameCommand}" PadChoice="{Binding Settings.PadType}" Pending="{Binding Settings}" PendingLine="{Binding PendingGameLine}">
             <v:GameRowList.Messages>
               <StackPanel>
@@ -168,7 +186,7 @@
                 <!-- "Installed" or "Unsupported" with nothing found: one sentence and Add Folder; while the first scan runs, that it is looking -->
                 <StackPanel Name="InstalledEmpty" Spacing="10" Margin="0,8,12,8" IsVisible="{Binding HasNoInstalled}">
                   <TextBlock Classes="body" Text="{Binding InstalledEmptyText}" TextWrapping="Wrap" />
-                  <Button Name="EmptyAddFolderButton" Theme="{StaticResource QuietButton}" Height="32" Padding="12,0" HorizontalAlignment="Left"
+                  <Button Name="EmptyAddFolderButton" Theme="{StaticResource QuietButton}" Padding="12,0" HorizontalAlignment="Left"
                           Command="{Binding AddFolderCommand}" Content="{Binding AddFolderText}" />
                 </StackPanel>
                 <TextBlock Classes="body" Text="{Binding InstalledSearchingText}" IsVisible="{Binding IsSearchingInstalled}" Margin="0,8,12,8" />
@@ -194,7 +212,7 @@
                 <TextBlock Classes="caption" Text="{Binding DownloadImagesLabel}" TextWrapping="NoWrap" />
               </CheckBox>
             </WrapPanel>
-            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="28" Padding="12,0" Command="{Binding UpdateListCommand}"
+            <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" Padding="12,0" Command="{Binding UpdateListCommand}"
                     Content="{Binding UpdateListText}" IsVisible="{Binding CanUpdateList}" VerticalAlignment="Center" />
           </Grid>
         </Grid>

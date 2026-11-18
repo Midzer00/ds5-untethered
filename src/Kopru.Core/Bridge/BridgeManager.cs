@@ -80,7 +80,8 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		WindowsControllerSource source = new();
 		return new BridgeManager(source, primary, slot => new BridgeHost(source, IdentitySources.Default(), new UsbIpExeAttacher())
 		{
-			StateFile = new BridgeStateFile(Path.Combine(AppPaths.DataDirectory, $"bridge-state-{slot}.json"))
+			StateFile = new BridgeStateFile(Path.Combine(AppPaths.DataDirectory, $"bridge-state-{slot}.json")),
+			SeriesStore = Virtual.XboxSeriesStore.Shared
 		});
 	}
 
@@ -320,6 +321,14 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		}
 	}
 
+	public void GameExited()
+	{
+		foreach (BridgeHost host in hosts)
+		{
+			host.GameExited();
+		}
+	}
+
 	public void SetProfileOverride(int slotNumber, GameProfile? own)
 	{
 		lock (sync)
@@ -333,8 +342,11 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 	{
 		lock (sync)
 		{
-			// The game session is the same for every slot (the fallback trigger rule follows the game, not the profile).
-			return overrides[slotNumber - 1] is { } o ? GameProfiles.For(o, global.GameSession) : global;
+			// The game session and the Xbox Trigger Rumble setting are the same for every slot (the fallback trigger rule follows
+			// the game, not the profile; the setting is the app's).
+			return overrides[slotNumber - 1] is { } o
+				? GameProfiles.For(o, global.GameSession) with { XboxTriggerRumbleOn = global.XboxTriggerRumbleOn }
+				: global;
 		}
 	}
 
@@ -352,8 +364,7 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		GameSignals all = default;
 		foreach (BridgeHost host in hosts)
 		{
-			GameSignals s = host.TakeGameSignals();
-			all = new GameSignals(all.Haptics || s.Haptics, all.Triggers || s.Triggers, all.Rumble || s.Rumble);
+			all = all.Or(host.TakeGameSignals());
 		}
 		return all;
 	}

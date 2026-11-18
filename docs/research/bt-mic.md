@@ -61,7 +61,10 @@ anything else (power cycle only?) stops it, and whether the stereo flag carries 
 
 - `Audio/MicPackets.cs` — hypothesised layout (`IsMicReport`, `TryGetOpus`, `Build` for tests), stream-control bytes,
   `ConcentusMicDecoder` (Concentus, 48 kHz mono, with packet-loss concealment).
-- `Audio/MicPipeline.cs` — `MicJitterBuffer` (30 ms prefill, 120 ms cap, drop-oldest, re-prime after underrun),
+- `Audio/MicJitterBuffer.cs` — adaptive depth (40 ms, +10 ms per underrun up to 120 ms, back down after 30 s clean),
+  pitch-repeat fade-out on underrun, fade-in after, rate trim up to 0.5 % for clock drift, stale audio skipped (2026-11-18).
+- `Audio/MicPipeline.cs` — lost reports (gaps in the byte-2 counter, up to 50 ms) filled by the decoder's PLC; a
+  `mic stats` log line every 60 s, on mic off and on close (packets, lost, concealed, underruns, buffer depth, trim),
   `MonoResampler` (for other rates if the hardware test shows one), `MicPipeline` (decode -> buffer -> gain 0..4 ->
   noise gate (-46 dBFS peak, 200 ms hold) -> mute -> mono copied to both channels of the virtual mic), level meter,
   `TestToneMicSource`, `WavWriter`.

@@ -43,9 +43,9 @@ Questions? Ask in [Discussions](https://github.com/Midzer00/ds5-untethered/discu
 
 ### The problem
 
-On a PC, a DualSense controller's game haptics and adaptive triggers only work when it is connected with a USB cable.
-Over Bluetooth, games see a different device and these features are lost. DS5 Untethered relays them over Bluetooth so that
-games see a wired controller.
+On a PC, a DualSense controller's game haptics only work when it is connected with a USB cable, and in most games the
+adaptive triggers do too. Over Bluetooth, games see a different device: the detailed haptics fall back to plain rumble,
+and most games drop the trigger effects. DS5 Untethered relays them over Bluetooth so that games see a wired controller.
 
 ### How it works
 
@@ -65,6 +65,15 @@ flowchart LR
   APP -.->|"Bluetooth: triggers, lights, haptics"| DS
   HH["HidHide"] -.->|"hides the real controller"| GAME
 ```
+
+### How to use
+
+- **Profiles.** A profile holds the haptics, trigger and rumble settings. A game can have several named profiles: create
+  one with a name from the game's settings (Games page), rename or duplicate it, and switch between them on the Overview
+  or in the game's settings. A switch while the game runs applies at once.
+- **Quick changes without leaving the game.** Press PS briefly: the app comes to the front and Mouse Mode turns on, so
+  the touchpad works as a mouse. Change what you want, then press Back To Game: the game is in front again and Mouse
+  Mode turns off.
 
 ### Download
 
@@ -93,8 +102,16 @@ to be installed for the app itself.
 
 #### Do DualSense haptics and adaptive triggers work over Bluetooth on PC?
 
-Not by themselves: games only send them to a controller connected with a cable. With DS5 Untethered running, games
-see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.
+Not fully by themselves: games send the detailed haptics only to a controller connected with a cable, and most games
+send their trigger effects only then too. Over Bluetooth the haptics fall back to plain rumble. With DS5 Untethered
+running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.
+
+#### Some of my games already vibrate and use the triggers over Bluetooth. Why would I need this?
+
+Some games send adaptive trigger effects and basic rumble over Bluetooth on their own. The detailed, audio-based
+haptics normally go only to a wired controller, so over Bluetooth you get plain rumble. DS5 Untethered makes the game
+see a wired controller, so you get the full haptics wirelessly, also in games that offer no DualSense features over
+Bluetooth.
 
 #### Do I need a dongle or extra hardware?
 
@@ -110,7 +127,8 @@ no loss. The Overview page shows the delay live, so you can check your own setup
 
 Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's
 Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound
-Into Haptics.
+Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with
+the experimental Xbox Trigger Rumble setting (off by default).
 
 #### Is it free?
 
@@ -161,18 +179,24 @@ Done and verified on hardware:
   support so far.
 - Xbox And DS4 Rumble (a game's rumble played as haptics) and Turn Sound Into Haptics: verified in one game without
   native haptics so far (Turn Sound Into Haptics was fixed in 0.1.10).
+- Named profiles and per-game profiles, in daily use.
 
 Done and tested in code, not yet verified on hardware:
+- Xbox Series controller type, and Xbox Trigger Rumble (experimental, off by default): games that use Xbox trigger
+  rumble get an Xbox Series controller, and their trigger rumble plays on the DualSense triggers. On Windows older than
+  10 21H2 the app uses Xbox 360 instead.
+- Stopping rumble that keeps going after a game closes; fewer microphone dropouts (adaptive buffer, lost-packet
+  concealment).
 - The app: setup page, Overview, Games, Haptics And Triggers, one Controller page (Test, Output Tests, Remap and
   Gyro), Light, Settings, the icon next to the clock and notifications; the bridge is shown as the "Virtual
   Controller" and starts by itself (stop it in Settings > General or from the menu of its icon next to the clock).
   The controller pictures show the real colour of the controller's light.
-- Controller Type per game (DualSense, DualShock 4 or Xbox 360): games with DualSense support get their own haptics
-  and triggers straight through; the Xbox And DS4 Rumble settings only apply where the game sends nothing.
+- Controller Type per game (DualSense, DualShock 4, Xbox Series or Xbox 360): games with DualSense support get their
+  own haptics and triggers straight through; the Xbox And DS4 Rumble settings only apply where the game sends nothing.
   Automatic picks per game: DualSense for games with native DualSense support (the app's list, Steam store data shipped
-  with the app, or learned while the game plays), DualShock 4 for games that only support it, otherwise the Default
-  Controller Type, else Xbox 360. It reads Steam's local app info on the PC; nothing about your games is sent.
-- Games page: Supported and Unsupported games found from Steam and Epic, a Play button, a Start File you choose, and
+  with the app, or learned while the game plays), Xbox Series for Xbox trigger rumble games while Xbox Trigger Rumble
+  is on, DualShock 4 for games that only support it, otherwise the Default Controller Type, else Xbox 360. It reads Steam's local app info on the PC; nothing about your games is sent.
+- Games page: Supported, Xbox Trigger Rumble and Unsupported games found from Steam and Epic, a Play button, a Start File you choose, and
   each game's settings in a pop-up. Games are recognised by exe names from Steam's data, also when installed outside
   Steam folders.
 - Hiding the real controller with HidHide; Pause Haptics In Silence; reconnection, battery warning, idle power-off.
@@ -243,9 +267,9 @@ Sorunuz mu var? [Discussions](https://github.com/Midzer00/ds5-untethered/discuss
 
 ### Sorun
 
-PC'de DualSense'in oyun haptiği ve adaptif tetikleri yalnızca kumanda USB kabloyla bağlıyken çalışır. Bluetooth'la
-bağlanınca oyunlar başka bir cihaz görür, bu özellikler de kaybolur. DS5 Untethered oyunlara kabloyla bağlı bir kumanda
-gösterip bu özellikleri Bluetooth üzerinden kumandaya taşır.
+PC'de DualSense'in oyun haptiği yalnızca USB kabloyla bağlıyken çalışır; çoğu oyunda adaptif tetikler de öyle.
+Bluetooth'ta oyunlar farklı bir cihaz görür: detaylı haptik düz titreşime düşer, çoğu oyun da tetik efektlerini bırakır.
+DS5 Untethered oyunlara kabloyla bağlı bir kumanda gösterip bu özellikleri Bluetooth üzerinden kumandaya taşır.
 
 ### Nasıl çalışır
 
@@ -265,6 +289,14 @@ flowchart LR
   APP -.->|"Bluetooth: tetikler, ışıklar, haptik"| DS
   HH["HidHide"] -.->|"gerçek kumandayı gizler"| GAME
 ```
+
+### Nasıl Kullanılır
+
+- **Profiller.** Profil; haptik, tetik ve titreşim ayarlarını tutar. Bir oyunun adlandırılmış birden çok profili
+  olabilir: oyunun ayarlarından (Oyunlar sayfası) adını vererek profil oluşturun, yeniden adlandırın ya da çoğaltın;
+  profiller arasında Genel Bakış'tan ya da oyunun ayarlarından geçin. Oyun açıkken yapılan geçiş hemen etki eder.
+- **Oyundan çıkmadan hızlı ayar.** PS tuşuna kısa basın: uygulama öne gelir ve Fare Modu açılır, dokunmatik yüzey fare
+  gibi çalışır. İstediğinizi değiştirip Oyuna Dön'e basın: oyun yeniden öne gelir, Fare Modu kapanır.
 
 ### İndirme
 
@@ -295,8 +327,16 @@ istemez. Zip'i (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp
 
 #### DualSense'in haptiği ve adaptif tetikleri PC'de Bluetooth'la çalışır mı?
 
-Kendi başına çalışmaz, oyunlar bunları yalnızca kabloyla bağlı kumandaya yollar. DS5 Untethered açıkken oyun kabloyla
+Kendi başına tam çalışmaz: oyunlar detaylı haptiği yalnızca kabloyla bağlı kumandaya yollar, çoğu oyun tetik
+efektlerini de yalnızca o zaman gönderir. Bluetooth'ta haptik düz titreşime düşer. DS5 Untethered açıkken oyun kabloyla
 takılı bir DualSense görür, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
+
+#### Bazı oyunlarımda Bluetooth'ta zaten titreşim ve tetikler çalışıyor. Buna neden ihtiyacım olsun?
+
+Bazı oyunlar Bluetooth'ta da kendiliğinden adaptif tetik efektleri ve basit titreşim gönderir. Detaylı, sese dayalı
+haptik ise normalde yalnızca kabloyla bağlı kumandaya gider; Bluetooth'ta düz titreşim alırsınız. DS5 Untethered oyuna
+kabloyla bağlı bir kumanda gösterir; böylece tam haptiği kablosuz alırsınız, Bluetooth'ta hiçbir DualSense özelliği
+sunmayan oyunlarda da.
 
 #### Dongle ya da ek donanım gerekiyor mu?
 
@@ -312,7 +352,8 @@ aktarıldı. Genel Bakış sayfası gecikmeyi canlı gösteriyor, kendi kurulumu
 
 DualSense'in haptiğini ya da adaptif tetiklerini USB kabloyla destekleyen oyunlarda. Bilinen oyunlar uygulamadaki
 Oyunlar sayfasında, Desteklenen bölümünde listeleniyor. DualSense desteklemeyen oyunlarda Xbox ve DS4 Titreşimi
-ayarları ya da Sesi Titreşime Çevir kullanılabilir.
+ayarları ya da Sesi Titreşime Çevir kullanılabilir. Xbox tetik titreşimi kullanan oyunlar, özellikle yarış oyunları,
+deneysel Xbox Tetik Titreşimi ayarıyla (varsayılan olarak kapalı) bunu DualSense tetiklerinde çalabilir.
 
 #### Ücretli mi?
 
@@ -363,19 +404,26 @@ Tamamlandı, donanımda doğrulandı:
   bir oyunda doğrulandı.
 - Xbox ve DS4 Titreşimi (oyunun titreşiminin haptik olarak çalınması) ve Sesi Titreşime Çevir: şimdilik kendi haptiği
   olmayan bir oyunda doğrulandı (Sesi Titreşime Çevir 0.1.10'da düzeltildi).
+- Adlandırılmış profiller ve oyun başına profiller, günlük kullanımda.
 
 Tamamlandı ve kodda test edildi, donanımda henüz doğrulanmadı:
+- Xbox Series kumanda türü ve Xbox Tetik Titreşimi (deneysel, varsayılan olarak kapalı): Xbox tetik titreşimi kullanan
+  oyunlar Xbox Series kumanda alır, tetik titreşimleri de DualSense tetiklerinde çalınır. Windows 10 21H2'den eski
+  sürümlerde uygulama yerine Xbox 360 kullanır.
+- Oyun kapandıktan sonra süren titreşimin durdurulması; mikrofonun daha az kesilmesi (uyarlanan tampon, kaybolan
+  paketlerin gizlenmesi).
 - Uygulama: kurulum sayfası, Genel Bakış, Oyunlar, Titreşim ve Tetikler, tek bir Kumanda sayfası (Test, Çıkış
   Testleri, Tuş Atama ve Gyro), Işık, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda"
   adıyla görünür ve kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
   Kumanda görselleri kumandanın ışığını gerçek rengiyle gösterir.
-- Oyun başına Kumanda Türü (DualSense, DualShock 4 ya da Xbox 360): DualSense destekleyen oyunların kendi haptiği ve
-  tetikleri olduğu gibi geçer; Xbox ve DS4 Titreşimi ayarları yalnızca oyunun hiçbir şey göndermediği yerde devreye
-  girer. Otomatik oyuna göre seçer: DualSense'i doğrudan destekleyen oyunlara DualSense (uygulamanın listesi,
-  uygulamayla gelen Steam mağaza bilgisi ya da oyun oynanırken öğrenilir), yalnızca DualShock 4'ü destekleyenlere
+- Oyun başına Kumanda Türü (DualSense, DualShock 4, Xbox Series ya da Xbox 360): DualSense destekleyen oyunların kendi
+  haptiği ve tetikleri olduğu gibi geçer; Xbox ve DS4 Titreşimi ayarları yalnızca oyunun hiçbir şey göndermediği yerde
+  devreye girer. Otomatik oyuna göre seçer: DualSense'i doğrudan destekleyen oyunlara DualSense (uygulamanın listesi,
+  uygulamayla gelen Steam mağaza bilgisi ya da oyun oynanırken öğrenilir), Xbox Tetik Titreşimi açıkken Xbox tetik
+  titreşimi olan oyunlara Xbox Series, yalnızca DualShock 4'ü destekleyenlere
   DualShock 4, diğerlerine Varsayılan Kumanda Türü, o da yoksa Xbox 360. Steam'in bilgisayardaki uygulama bilgilerini
   okur; oyunlarınızla ilgili hiçbir bilgi gönderilmez.
-- Oyunlar sayfası: Steam ve Epic'ten bulunan Desteklenen ve Desteklenmeyen oyunlar, Oyna düğmesi, seçilebilen
+- Oyunlar sayfası: Steam ve Epic'ten bulunan Desteklenen, Xbox Tetik Titreşimi ve Desteklenmeyen oyunlar, Oyna düğmesi, seçilebilen
   Başlatma Dosyası ve açılır pencerede her oyunun kendi ayarları. Oyunlar Steam verisindeki exe adlarından, Steam
   klasörleri dışına kuruluysa da tanınır.
 - Gerçek kumandanın HidHide ile gizlenmesi; Sessizlikte Haptiği Durdur; yeniden bağlanma, pil uyarısı, boştayken kapanma.

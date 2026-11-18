@@ -91,7 +91,7 @@ public sealed class GamePanelTests
 		Assert.Equal(Text.GameListed(), panel.SourceText);
 		double sharedRumble = vm.Settings.RumbleLevel;
 
-		panel.UseOwnSettingsCommand.Execute(null);
+		panel.UseOwnSettingsCommand.Execute(null); panel.SaveProfileNameCommand.Execute(null);
 		Assert.True(panel.HasOwnProfile);
 		ControllerProfile own = vm.Settings.Profiles.Profiles.Single(p => p.Name == "Returnal");
 		Assert.Equal(own.Id, vm.Settings.Profiles.ProfileForGame(returnal.Key));
@@ -128,10 +128,13 @@ public sealed class GamePanelTests
 		Assert.True(panel.UsesDefault);
 		Assert.Null(vm.Settings.Profiles.ProfileForGame(returnal.Key));
 		Assert.NotNull(vm.Settings.Profiles.Find(own.Id));
-		// Again: the same profile, not a second one.
+		// Again: a second profile for the game ("Returnal 2"); the first one stays in the picker.
 		panel.UseOwnSettingsCommand.Execute(null);
+		Assert.Equal("Returnal 2", panel.ProfileName);
+		panel.SaveProfileNameCommand.Execute(null);
 		Assert.Single(vm.Settings.Profiles.Profiles, p => p.Name == "Returnal");
-		Assert.Equal(170, panel.Feel.RumbleLevel);
+		Assert.Single(vm.Settings.Profiles.Profiles, p => p.Name == "Returnal 2");
+		Assert.Contains(returnal.Profile!.Options, o => o.Id == own.Id);
 	}
 
 	// For the running game its own profile becomes the active one: the panel's changes apply now (through SettingsState).
@@ -144,7 +147,7 @@ public sealed class GamePanelTests
 		Dispatcher.UIThread.RunJobs();
 		GamePanelViewModel panel = vm.SupportedGames.Panel;
 		vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == "Cyberpunk 2077"));
-		panel.UseOwnSettingsCommand.Execute(null);
+		panel.UseOwnSettingsCommand.Execute(null); panel.SaveProfileNameCommand.Execute(null);
 		Assert.Equal("Cyberpunk 2077", vm.Settings.ActiveProfileName);
 		Assert.True(panel.Feel.IsLive);
 		panel.Feel.RumbleLevel = 140;
@@ -415,7 +418,7 @@ public sealed class GamePanelTests
 		vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == name));
 		if (kind != "supported-default")
 		{
-			vm.SupportedGames.Panel.UseOwnSettingsCommand.Execute(null);
+			vm.SupportedGames.Panel.UseOwnSettingsCommand.Execute(null); vm.SupportedGames.Panel.SaveProfileNameCommand.Execute(null);
 		}
 		var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 		window.Show();

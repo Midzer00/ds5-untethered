@@ -20,11 +20,14 @@ public sealed record UserGame(string Name, string Path)
 // installed (Found). Key identifies the game for the per-game settings: the catalog name, else the found game's key, else
 // the exe file name.
 public sealed record ForegroundGame(string Exe, CatalogGame? Match, int ProcessId = 0, string? Path = null, string? UserName = null,
-	FoundGame? Found = null)
+	FoundGame? Found = null, XboxTriggerGame? Trigger = null)
 {
-	public string Name => UserName ?? Match?.Name ?? Found?.Name ?? DisplayName(Exe);
+	public string Name => UserName ?? Match?.Name ?? Found?.Name ?? Trigger?.Name ?? DisplayName(Exe);
 
-	public string Key => Match == null && UserName == null && Found != null ? Found.Key : KeyOf(Match, Exe);
+	// Trigger: recognised only by the Xbox trigger rumble list (XboxTriggerGame.Key).
+	public string Key => Match == null && UserName == null && Found != null ? Found.Key
+		: Match == null && UserName == null && Trigger != null ? Trigger.Key
+		: KeyOf(Match, Exe);
 
 	public static string KeyOf(CatalogGame? match, string exe) => match?.Name ?? GameCatalog.Normalize(exe);
 
@@ -422,7 +425,7 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		(FoundGame Game, string Signal)? found = FoundByFolder(process.Path);
 		if (!current.HasNamedGames)
 		{
-			return new Entry(found is { } only ? FoundOne(only.Game, only.Signal, process, exe) : null);
+			return new Entry(found is { } only ? FoundOne(only.Game, only.Signal, process, exe) : ByTrigger(process, exe, null, null));
 		}
 		foreach (string folder in Folders(process.Path))
 		{
@@ -436,9 +439,10 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 			}
 		}
 		IProcessDetails? source = Details;
+		string? product = null, description = null;
 		if (source != null && !string.IsNullOrEmpty(process.Path))
 		{
-			(string? product, string? description) = source.VersionInfo(process.Path);
+			(product, description) = source.VersionInfo(process.Path);
 			if (current.FindByName(product) is { } byProduct)
 			{
 				return new Entry(Found(byProduct, "product name", process, exe));
@@ -455,6 +459,10 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 				return new Entry(Found(byTitleFirst, "window title", process, exe));
 			}
 			return new Entry(FoundOne(other.Game, other.Signal, process, exe));
+		}
+		if (ByTrigger(process, exe, product, description) is { } trigger)
+		{
+			return new Entry(trigger);
 		}
 		if (source == null)
 		{
@@ -506,13 +514,72 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 			return null;
 		}
 		entry.Title = title;
-		return current.FindByName(title) is { } byTitle ? Found(byTitle, "window title", process, exe) : null;
+		return current.FindByName(title) is { } byTitle ? Found(byTitle, "window title", process, exe)
+			: triggers.FindByName(title) is { } trigger ? TriggerOne(trigger, "window title", process, exe)
+			: null;
 	}
 
 	private ForegroundGame Found(CatalogGame game, string signal, ProcessInfo process, string exe)
 	{
 		log($"game: {game.Name} recognised by {signal} ({exe})");
 		return new ForegroundGame(exe, game, process.Id, process.Path);
+	}
+
+	// The games that send Xbox trigger rumble (XboxTriggerGames): recognised after every catalog and found-game signal, by
+	// exe name, the Steam library folder's app id, a folder name, the exe's product name or file description, and (in
+	// ByTitle) the window title. Set by GameModeController.
+	public XboxTriggerGames TriggerGames
+	{
+		get
+		{
+			lock (gate)
+			{
+				return triggers;
+			}
+		}
+		set
+		{
+			lock (gate)
+			{
+				triggers = value;
+				cache.Clear();
+			}
+		}
+	}
+
+	private XboxTriggerGames triggers = XboxTriggerGames.Empty;
+
+	// Caller holds the lock.
+	private ForegroundGame? ByTrigger(ProcessInfo process, string exe, string? product, string? description)
+	{
+		if (triggers.Count == 0)
+		{
+			return null;
+		}
+		if (triggers.FindByExe(exe) is { } byExe)
+		{
+			return TriggerOne(byExe, "exe name", process, exe);
+		}
+		if (steam?.AppIdFor(process.Path) is long appId && triggers.FindBySteamAppId(appId) is { } byApp)
+		{
+			return TriggerOne(byApp, "Steam library folder", process, exe);
+		}
+		foreach (string folder in Folders(process.Path))
+		{
+			if (triggers.FindByName(folder) is { } byFolder)
+			{
+				return TriggerOne(byFolder, "folder name", process, exe);
+			}
+		}
+		return triggers.FindByName(product) is { } byProduct ? TriggerOne(byProduct, "product name", process, exe)
+			: triggers.FindByName(description) is { } byDescription ? TriggerOne(byDescription, "file description", process, exe)
+			: null;
+	}
+
+	private ForegroundGame TriggerOne(XboxTriggerGame game, string signal, ProcessInfo process, string exe)
+	{
+		log($"game: {game.Name} recognised from the Xbox trigger rumble list by {signal} ({exe})");
+		return new ForegroundGame(exe, null, process.Id, process.Path, Trigger: game);
 	}
 
 	// The folder names of an exe path, innermost first, without the drive (C:\A\B\x.exe gives B, then A).

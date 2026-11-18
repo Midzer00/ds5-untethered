@@ -48,7 +48,7 @@ public sealed class SupportedGamesLayoutTests
 					// options line (update, pictures) is whole and inside the list card, which ends inside the window.
 					SupportedGamesView view = window.GetVisualDescendants().OfType<SupportedGamesView>().Single();
 					Assert.Empty(view.GetVisualDescendants().OfType<Slider>());
-					Assert.Empty(view.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null));
+					Assert.Empty(view.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null && t.Name != "GamesXboxTriggerRumbleSwitch"));
 					Grid options = view.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "ListOptions");
 					Border listCard = options.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("panel"));
 					Assert.Empty(FitCheck.CutText(options).Concat(FitCheck.Inside(listCard, window)));

@@ -16,11 +16,11 @@
   </UserControl.Styles>
   <DockPanel Classes="card">
     <!-- The title with the card's actions on its right -->
-    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" Margin="0,0,0,8">
-      <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Bottom" />
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}" MinHeight="26" Margin="0,0,0,8">
+      <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
-        <Button Theme="{StaticResource QuietButton}" Command="{Binding ImportCommand}" Content="{Binding ImportText}" />
-        <Button Theme="{StaticResource QuietButton}" Command="{Binding NewCommand}" Content="{Binding NewText}" />
+        <Button Theme="{StaticResource QuietButton}" Classes="titleAction" Command="{Binding ImportCommand}" Content="{Binding ImportText}" />
+        <Button Theme="{StaticResource QuietButton}" Classes="titleAction" Command="{Binding NewCommand}" Content="{Binding NewText}" />
       </StackPanel>
     </Grid>
     <Border Classes="panel" Padding="20,0" Name="ProfilesGroup">

@@ -51,6 +51,7 @@ public sealed partial class SettingsState : ViewModelBase
 			RumbleFeel = saved.RumbleFeel;
 			FallbackTrigger = saved.FallbackTrigger;
 			FallbackStrength = saved.FallbackStrength;
+			TriggerRumble = Enum.IsDefined(saved.TriggerRumble) ? saved.TriggerRumble : TriggerRumbleFeel.XboxLike;
 			LightbarColour = saved.LightbarColour;
 			Brightness = saved.Brightness;
 			PlayerLeds = saved.PlayerLeds;
@@ -270,6 +271,10 @@ public sealed partial class SettingsState : ViewModelBase
 	[NotifyPropertyChangedFor(nameof(FallbackStrengthText))]
 	private double _fallbackStrength = 50;
 
+	// How the Xbox Series pad's trigger rumble feels (Off, Xbox-like, Soft, Sharp).
+	[ObservableProperty]
+	private TriggerRumbleFeel _triggerRumble = TriggerRumbleFeel.XboxLike;
+
 	public string GameHapticsText => Text.PercentValue(Math.Round(GameHapticsLevel));
 	public string RumbleText => Text.PercentValue(Math.Round(RumbleLevel));
 	public string TriggerStrengthText => Text.PercentValue(Math.Round(TriggerStrength));
@@ -330,7 +335,8 @@ public sealed partial class SettingsState : ViewModelBase
 		AudioHapticsStrength = AudioHapticsStrength,
 		AudioHapticsBand = AudioHapticsBand,
 		DsxModSupport = DsxModSupport,
-		PauseHapticsInSilence = PauseHapticsInSilence
+		PauseHapticsInSilence = PauseHapticsInSilence,
+		TriggerRumble = TriggerRumble
 	};
 
 	public AppSettings ToAppSettings() => WithUpdates(WithInstalledGames(WithLight(new AppSettings
@@ -356,6 +362,7 @@ public sealed partial class SettingsState : ViewModelBase
 		RumbleFeel = RumbleFeel,
 		FallbackTrigger = FallbackTrigger,
 		FallbackStrength = FallbackStrength,
+		TriggerRumble = TriggerRumble,
 		NotificationsEnabled = NotificationsEnabled,
 		NotifyConnection = NotifyConnection,
 		NotifyBattery = NotifyBattery,
