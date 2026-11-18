@@ -1,8 +1,8 @@
 {
-  "version": "0.1.10",
-  "published": "2026-11-17",
-  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.10/DS5-Untethered-0.1.10-Update.exe", "sha256": "19E6E8E49AB52830B3341F6CC8C583FD2DBA5ECE4A304CD54956AB72AAAD113B", "size": 40927860 },
-  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.1.10/DS5-Untethered-0.1.10-win-x64.zip", "sha256": "BEA4B6ED3B6ECBDF070F3413C5826D591E87166C2D8534C37BEFBE71D47F6A90", "size": 51461119 },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.1.10",
-  "notes": { "tr": "Otomatik kumanda türü artık her oyun için doğru kumandayı seçiyor; menüye Destek Ol düğmesi geldi.", "en": "Automatic Controller Type now picks the right controller for each game; there's a Support button in the menu." }
+  "version": "0.2.0",
+  "published": "2026-11-18",
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.0/DS5-Untethered-0.2.0-Update.exe", "sha256": "828E3F37FDEFF4B9212212032CB669949A9E6B9C26D1B0F364AC1C8FE5ECDB5E", "size": 40985223 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.0/DS5-Untethered-0.2.0-win-x64.zip", "sha256": "336A907DC86BA1EA19100A8A312E71485DCFA1CDEF60776CB757AE96377A1153", "size": 51529421 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.0",
+  "notes": { "tr": "Yeni Xbox Series kumanda türü, deneysel Xbox tetik titreşimi, yenilenen görünüm ve takılı titreşim düzeltmesi.", "en": "New Xbox Series controller type, experimental Xbox trigger rumble, a refreshed look and a fix for stuck rumble." }
 }
