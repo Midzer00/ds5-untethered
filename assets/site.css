@@ -109,24 +109,17 @@ h2{font-size:40px}h3{font-size:24px}
 .sec h2{font-size:48px}
 .sec-sub{margin:6px 0 2px;font-size:18px;color:var(--mute)}
 
-/* Art, mats, lightbox */
+/* Art, mats */
 .viz{min-width:0;min-height:0;display:grid;place-items:center}
 .js .viz{container-type:size}
 .pad{position:relative;width:100%;aspect-ratio:var(--ar,1.507)}
 .js .viz>.pad{width:min(100cqw,calc(100cqh*var(--ar,1.507)))}
 .pad .art,.ov{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .no-js canvas{display:none}
-.no-js .mat .mat-full{display:none}
 .mat-shot{display:block;width:100%;height:auto;border-radius:6px}
 .mat{margin:0;justify-self:start;max-width:100%;padding:10px;border-radius:10px;background:var(--raven-2);border:1px solid color-mix(in srgb,var(--powder) 28%,transparent)}
 .mat[hidden]{display:none}
 .mat figcaption{display:flex;justify-content:space-between;gap:14px;margin-top:7px;font:500 10.5px/1.3 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
-.mat-full{min-height:24px;margin:-5px 0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--powder);white-space:nowrap}
-.mat-full:hover{color:var(--paper)}
-.lightbox{width:calc(100vw - 2*var(--bezel-w) - 32px);height:calc(100svh - 2*var(--bezel-w) - 32px);max-width:none;max-height:none;padding:0;overflow:auto;background:var(--raven-2);border:1px solid color-mix(in srgb,var(--powder) 28%,transparent);border-radius:10px;color:var(--paper)}
-.lightbox::backdrop{background:color-mix(in srgb,var(--bezel) 82%,transparent)}
-.lightbox img{max-width:none;width:1600px}
-.lb-close{position:sticky;left:calc(100% - 92px);top:8px;z-index:2;float:right;min-height:44px;padding:0 16px;margin:8px;border-radius:999px;background:var(--powder);color:var(--raven);font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
 
 /* Mouse Mode */
 .cine .mouse,.calm .mouse{min-height:min(100svh,900px)}
@@ -145,9 +138,7 @@ h2{font-size:40px}h3{font-size:24px}
 .tv-ring{position:absolute;left:-44px;top:-44px;width:88px;height:88px;border:4px solid var(--powder);border-radius:50%;opacity:0;pointer-events:none}
 .m-ctrl{position:relative;display:flex;flex-direction:column;justify-content:center;gap:10px;min-width:0}
 .m-ctrl .pad{max-width:488px;margin:0 auto}
-.pad-hit{position:absolute;z-index:3;pointer-events:none}
-.pad-hit.live{pointer-events:auto;cursor:crosshair}
-.m-inset{justify-self:center;align-self:center;opacity:0;transition:opacity .25s}
+.m-inset{justify-self:center;align-self:center;opacity:0;transition:opacity .25s;pointer-events:none}
 .m-inset.on{opacity:1}
 .m-link{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .m-link path{fill:none;stroke:var(--powder);stroke-width:1;stroke-dasharray:2 6}
@@ -165,8 +156,6 @@ h2{font-size:40px}h3{font-size:24px}
 .js .m-step h3{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .m-step p{margin:0;font-size:18px;line-height:1.35;max-width:72ch}
 .no-js .m-step{margin-top:12px}
-.fine-only{display:none;color:var(--powder)}
-@media (hover:hover) and (pointer:fine){.js .fine-only{display:inline}}
 
 /* Features: the controller stage */
 .features{min-height:min(100svh,900px)}
@@ -548,7 +537,7 @@ section[id]{scroll-margin-top:72px}
 }
 
 /* v11: the app's own UI, live */
-.tv-app{position:absolute;left:0;top:0;padding:24px;width:max-content;transform-origin:0 0}
+.tv-app{position:absolute;left:0;top:0;padding:24px;width:max-content;transform-origin:0 0;pointer-events:none}
 .tv:not(.app) .tv-app{visibility:hidden}
 .tv-over{background:#16181c}
 .tv:not(.app) .tv-over{background:none}
@@ -558,7 +547,6 @@ section[id]{scroll-margin-top:72px}
 .m-tvcol{display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0}
 .m-tvcol>.m-tv{flex:1;min-height:0}
 .m-tv-cap{display:flex;justify-content:space-between;gap:14px;margin:0;padding:0 4px;font:500 10.5px/1.3 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
-.m-tv-cap .mat-full{min-height:24px;margin:-5px 0}
 .no-js .m-tv-cap{display:none}
 .mat .au-host{min-width:0}
 .st-mats .mat{padding:12px}
@@ -578,7 +566,6 @@ section[id]{scroll-margin-top:72px}
   .st-mats .mat,.m-inset{padding:0;border:0;background:none}
   .st-mats .mat figcaption,.m-inset figcaption{padding:0 4px}
   .m-tvcol{margin-bottom:4px}
-  .m-tv-cap .mat-full,.mat figcaption .mat-full{min-height:44px;margin:-12px 0}
 }
 @media (max-width:860px){.m-tvcol>.m-tv{flex:none}}
 @media (max-width:860px){.js .m-tv{margin:0 -12px;border-radius:14px}}
@@ -669,6 +656,9 @@ section[id]{scroll-margin-top:72px}
 .get>*{max-width:none}
 .hero-title{left:max(var(--inset),calc(50% - 720px));right:max(var(--inset),calc(50% - 720px))}
 @media (min-width:861px){.st-mats{align-self:center;width:min(100%,768px)}.st-mats .mat{margin-inline:auto}}
+/* The real Overview screenshot in What works: the Features mat, 768 px centred; the full column on phones */
+.status>.wk-shot{width:768px;max-width:100%;margin:0 auto 22px}
+@media (max-width:860px){.status>.wk-shot{width:100%;padding:0;border:0;background:none}.wk-shot figcaption{padding:0 4px}}
 @media (max-width:860px){.get{margin-inline:12px}}
 
 /* v22: the Turkish copy's extra lines */
