@@ -657,9 +657,14 @@ section[id]{scroll-margin-top:72px}
 .get>*{max-width:none}
 .hero-title{left:max(var(--inset),calc(50% - 720px));right:max(var(--inset),calc(50% - 720px))}
 @media (min-width:861px){.st-mats{align-self:center;width:min(100%,768px)}.st-mats .mat{margin-inline:auto}}
-/* The real Overview screenshot in What works: the Features mat, 768 px centred; the full column on phones */
+/* The Overview window in What works: 1040 px centred; the full column on phones */
 .status>.wk-shot{width:1040px;max-width:100%;margin:0 auto 22px}
 @media (max-width:860px){.status>.wk-shot{width:100%;padding:0;border:0;background:none}.wk-shot figcaption{padding:0 4px}}
+/* The drawn window at the app's own 1280 x 720 (the TV's whole-view frame size, without the TV's 24 px inset, which would cut the
+   sidebar's device panel), scaled to the figure's width by app-shots.js */
+.wk-host{position:relative;width:100%;aspect-ratio:1280/720;overflow:hidden;border-radius:6px;background:#16181c;contain:layout paint}
+.wk-app{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.no-js .wk-host{display:none}
 @media (max-width:860px){.get{margin-inline:12px}}
 
 /* v22: the Turkish copy's extra lines */

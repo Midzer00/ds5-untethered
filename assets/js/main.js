@@ -3,7 +3,7 @@ import { loadManifest } from './assets.js';
 import { initOsd } from './fx.js';
 import { howScene } from './scenes-intro.js';
 import { heroFilm } from './hero.js';
-import { mountMats } from './app-shots.js';
+import { mountMats, mountOverview } from './app-shots.js';
 import { loadUi } from './app-ui.js';
 import { mountPads } from './stage.js';
 import { mouseScene } from './scene-mouse.js';
@@ -18,6 +18,7 @@ const q = s => document.querySelector(`[data-scene="${s}"]`);
 
 mountPads(M);
 const cards = mountMats();
+mountOverview();
 howScene(engine, q('how'));
 mouseScene(engine, q('mouse'), M, cards);
 featuresScene(engine, q('features'), M, cards);
