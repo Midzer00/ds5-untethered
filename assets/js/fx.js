@@ -11,21 +11,28 @@ export function initOsd() {
   const code = $('timecode');
   let film = '00:00:00';
   const secs = [...document.querySelectorAll('main > section')], home = $('home');
-  let inHero = true;
+  let inHero = true, homeH = 0, tops = [], past, pending = false;
+  // Geometry is read when it changes (ResizeObserver runs after layout), so scrolling itself never forces a layout.
+  const top = e => { let y = 0; for (let n = e; n; n = n.offsetParent) y += n.offsetTop; return y; };
+  const measure = () => { homeH = home.offsetHeight; tops = secs.map(top); };
+  const show = t => { if (code.textContent !== t) code.textContent = t; };
   const where = () => {
-    const y = scrollY, h = home.offsetHeight; inHero = y < h * 0.5;
-    root.classList.toggle('past-hero', y > 4); // the fades cover anything that scrolls under the OSD, from the first pixel
-    if (inHero) { code.textContent = film; return; }
-    let i = 0; secs.forEach((s, n) => { if (s.getBoundingClientRect().top <= innerHeight * 0.45) i = n; });
-    code.textContent = `${two(i + 1)} ${secs[i].dataset.osd}`;
+    pending = false;
+    const y = scrollY; inHero = y < homeH * 0.5;
+    if ((y > 4) !== past) { past = y > 4; root.classList.toggle('past-hero', past); } // the fades cover anything that scrolls under the OSD, from the first pixel
+    if (inHero) { show(film); return; }
+    let i = 0; tops.forEach((t, n) => { if (t - y <= innerHeight * 0.45) i = n; });
+    show(`${two(i + 1)} ${secs[i].dataset.osd}`);
   };
   showFilmTime = t => {
     const s = Math.floor(t);
     film = `${two(Math.floor(s / 3600))}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
-    if (inHero && code.textContent !== film) code.textContent = film;
+    if (inHero) show(film);
   };
-  where();
-  addEventListener('scroll', () => requestAnimationFrame(where), { passive: true }); addEventListener('resize', where);
+  measure(); where();
+  if (window.ResizeObserver) { const ro = new ResizeObserver(() => { measure(); where(); }); [document.body, home, ...secs].forEach(e => ro.observe(e)); }
+  addEventListener('scroll', () => { if (!pending) { pending = true; requestAnimationFrame(where); } }, { passive: true });
+  addEventListener('resize', () => { measure(); where(); });
 
   const fx = $('fx'), word = fx.querySelector('span');
   const paint = () => { const on = fxOn(); fx.setAttribute('aria-pressed', on); word.textContent = fx.dataset[on ? 'on' : 'off']; };

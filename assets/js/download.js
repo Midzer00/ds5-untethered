@@ -45,11 +45,10 @@ export function initDownload() {
   panel.querySelector('.dl-close').addEventListener('click', () => { panel.hidden = true; });
   addEventListener('keydown', e => { if (e.key === 'Escape') panel.hidden = true; });
 
+  // Other systems still get the latest Setup.exe on a click (to copy to a PC); the note says it runs on Windows.
   if (!isWindows()) {
     document.documentElement.classList.add('not-win');
-    buttons.forEach(b => { label(b).textContent = T.other; });
     document.querySelectorAll('.dl-note').forEach(n => { n.hidden = false; });
-    return;
   }
   let busy = false;
   const say = (b, text) => { label(b).textContent = text; live.textContent = text; };

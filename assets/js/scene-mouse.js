@@ -25,6 +25,7 @@ export function mouseScene(engine, el, M, cards) {
   let [tx, ty, tw, th] = S.touchSurface || [S.w * 0.3, S.h * 0.08, S.w * 0.4, S.h * 0.3];
   const placeHit = () => { hit.style.cssText = `left:${tx / S.w * 100}%;top:${ty / S.h * 100}%;width:${tw / S.w * 100}%;height:${th / S.h * 100}%`; };
   const masks = new Masks(S, () => { const b = masks.bbox('touchpad'); if (b) { [tx, ty, tw, th] = b; placeHit(); } });
+  masks.warm([['touchpad', '--powder'], ['strip', '--powder'], ['ps', '--powder'], ['touchpad', '--raven'], ['touchpad', '--powder-deep']]);
   const quad = quadPixels(TV.screenQuad, TV.w, TV.h), qw = quad[1][0] - quad[0][0], H = Math.round(W * (quad[3][1] - quad[0][1]) / qw);
   let curStep = -1, clock = cine ? 0 : START[3] + 0.5, mode = 'auto', hold = 0, narrow = innerWidth <= 860, user = false, rest = 0;
 
@@ -32,7 +33,7 @@ export function mouseScene(engine, el, M, cards) {
   const { el: app, O } = overviewWindow(base);
   app.classList.add('tv-app'); app.setAttribute('aria-label', el.dataset.preview || '');
   const toast = makeToast(base);
-  toast.classList.add('tv-toast');
+  toast.classList.add('tv-toast'); toast.style.right = toast.style.bottom = '0px';
   over.prepend(app); over.append(toast);
   const rc = cards.rightClick?.rc;
 
@@ -174,8 +175,8 @@ export function mouseScene(engine, el, M, cards) {
       const [fx, fy, fw] = user ? G.whole : frameAt(i, t), k = W / fw;
       app.style.transform = `translate3d(${(-fx * k).toFixed(1)}px,${(-fy * k).toFixed(1)}px,0) scale(${k.toFixed(4)})`;
       // The real toast is its own 380 x 132 window drawn at 100 %; beside the app window at 125 % it is 0.8 of the window's scale.
-      toast.style.setProperty('--k', (k * TOAST_SCALE).toFixed(4));
-      toast.style.right = toast.style.bottom = `${(12 * k).toFixed(1)}px`;
+      // One transform (pinned to the corner, then 12 px in at the window's scale) instead of right/bottom and --k: no layout per frame.
+      toast.style.transform = `translate(${(-12 * k).toFixed(1)}px,${(-12 * k).toFixed(1)}px) scale(${(k * TOAST_SCALE).toFixed(4)})`;
       let [x, y] = pointerAt(i, t);
       const toScreen = (a, b) => [(a - fx) * k, (b - fy) * k];
       if (steer.on && i === 2) { steer.x = lerp(steer.x, fx + steer.u * fw, 0.3); steer.y = lerp(steer.y, fy + steer.v * fw * H / W, 0.3); x = steer.x; y = steer.y; } else { steer.x = x; steer.y = y; }

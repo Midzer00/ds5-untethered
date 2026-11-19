@@ -90,7 +90,12 @@ h2{font-size:40px}h3{font-size:24px}
 /* The film's near-black decodes a level or two off the page colour; lighten lets the page colour win there. */
 .hero-video,.hero-still{mix-blend-mode:lighten}
 /* Phones taller than the film: show its full width so the controller is never cut, and let the top and bottom melt into the page. */
-@media (max-aspect-ratio:3/5){.hero-video,.hero-still{object-fit:contain;-webkit-mask-image:linear-gradient(transparent calc(50% - 50vw*14/9),#000 calc(50% - 50vw*14/9 + 56px),#000 calc(50% + 50vw*14/9 - 56px),transparent calc(50% + 50vw*14/9));mask-image:linear-gradient(transparent calc(50% - 50vw*14/9),#000 calc(50% - 50vw*14/9 + 56px),#000 calc(50% + 50vw*14/9 - 56px),transparent calc(50% + 50vw*14/9))}}
+/* The melt is a page-colour veil over the film rather than a mask on it: the same pixels (the backdrop under the film is the
+   page colour), but a masked video costs the phone an extra full-screen pass for every frame. */
+@media (max-aspect-ratio:3/5){
+  .hero-video,.hero-still{object-fit:contain}
+  .js .backdrop::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--raven) calc(50% - 50vw*14/9),transparent calc(50% - 50vw*14/9 + 56px),transparent calc(50% + 50vw*14/9 - 56px),var(--raven) calc(50% + 50vw*14/9))}
+}
 .hero-video[hidden],.hero-still[hidden]{display:none}
 .wash{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen}
 .wash-r{opacity:calc(1 - var(--ig));background:radial-gradient(120% 90% at 10% 100% in oklab,color-mix(in srgb,var(--poppy) 35%,transparent) 0,color-mix(in srgb,var(--poppy-deep) 19%,transparent) 28%,transparent 62%)}
@@ -625,6 +630,8 @@ section[id]{scroll-margin-top:72px}
 @keyframes dp-glow{0%,15%,75%,100%{opacity:0}35%,55%{opacity:1}}
 .tight .dpad{width:44px;height:44px}
 @media (prefers-reduced-motion:reduce){.dpad .dp-down,.dpad .dp-glow{animation:none}}
+/* The press loop repaints every frame, so it rests while the hint is not shown yet or the home screen is off screen. */
+.titles-off .dpad .dp-down,.titles-off .dpad .dp-glow,.home.away .dpad .dp-down,.home.away .dpad .dp-glow{animation-play-state:paused}
 @media (max-width:860px){
   .hero-actions{flex-direction:column;align-items:stretch;gap:10px;width:min(100%,320px);margin:0 auto 2px}
   .hp{height:48px;font-size:15px}

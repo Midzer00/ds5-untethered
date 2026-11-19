@@ -122,6 +122,7 @@ export async function heroFilm(M) {
   video.addEventListener('ended', () => finish(false));
   document.addEventListener('visibilitychange', sync);
   new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); }, { threshold: 0.2 }).observe(home);
+  new IntersectionObserver(([e]) => home.classList.toggle('away', !e.isIntersecting)).observe(home);
   const onScroll = () => { const p = scrollY > innerHeight * 0.5; if (p !== past) { past = p; status(); } };
   addEventListener('scroll', onScroll, { passive: true });
   skip.addEventListener('click', () => { replay.focus({ preventScroll: true }); finish(true); });

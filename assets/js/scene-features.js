@@ -28,6 +28,7 @@ export function featuresScene(engine, el, M, cards = {}) {
   });
   const labels = JSON.parse(hotBox.dataset.labels);
   let cur = 0, time = 0, level = 0, auto = cine, wait = 0, seen = false, held = false, feel = 0, led = presets()[0]?.rgb || '--led-blue', shown = { ...FEEL[0] };
+  masks.warm([['grip-left', '--powder'], ['grip-right', '--powder'], ['triggers', '--powder'], ['strip', led], ['mic', '--powder'], ['speaker', '--powder']]);
   // Values from the app previews under the stage: they drive the lit parts and the illustrations.
   const fx = { haptics: 1, trigger: 1, xbox: false, speaker: true, mic: true, rumble: 1, punchy: false };
   let xboxTouched = false, xboxTimer = 0;
@@ -51,7 +52,6 @@ export function featuresScene(engine, el, M, cards = {}) {
     extras.forEach(x => x.classList.toggle('on', x.dataset.f === names[cur]));
     mats.forEach(m => m.classList.toggle('on', m.dataset.f === names[cur]));
     if (names[cur] === 'xbox') demoXbox();
-    dispatchEvent(new Event('resize')); // the shown crop can now measure itself
     hots.forEach(h => h.classList.toggle('on', h.dataset.f === names[cur]));
     const t = tabs[cur], list = t.parentElement;
     if (list.scrollWidth > list.clientWidth) list.scrollTo({ left: t.offsetLeft - (list.clientWidth - t.offsetWidth) / 2 });

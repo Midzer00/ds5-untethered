@@ -34,29 +34,39 @@ export class Overlay {
 }
 
 // Emission masks, tinted on demand. A mask may cover the whole picture or the box given in `stage.maskBox`.
+// Both stages share the decoded masks, their boxes and their tinted copies, so each is decoded, measured and blurred once.
+const IMG = new Map(), TINT = new Map(), BOX = new Map();
+const idle = f => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2500 }) : setTimeout(f, 200));
 export class Masks {
   constructor(S, onload) {
-    this.S = S; this.img = {}; this.cache = {};
+    this.S = S; this.img = {};
     for (const [name, path] of Object.entries(S.masks || {})) {
-      const i = new Image(); i.onload = () => { this.img[name] = i; onload?.(); }; i.src = base + path;
+      let i = IMG.get(path);
+      if (!i) { i = new Image(); i.src = base + path; IMG.set(path, i); }
+      const done = () => { this.img[name] = i; onload?.(); };
+      if (i.complete && i.naturalWidth) queueMicrotask(done); else i.addEventListener('load', done, { once: true });
     }
   }
   has(name) { return !!this.img[name]; }
   // Bounding box of a mask in picture pixels.
   bbox(name) {
     const m = this.img[name]; if (!m) return null;
+    if (BOX.has(name)) return BOX.get(name);
     const c = document.createElement('canvas'), w = c.width = 250, h = c.height = Math.round(250 * this.S.h / this.S.w), x = c.getContext('2d', { willReadFrequently: true });
     x.drawImage(m, 0, 0, w, h);
     const d = x.getImageData(0, 0, w, h).data; let a = w, b = h, e = 0, f = 0;
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (d[(i + j * w) * 4 + 3] > 128) { a = Math.min(a, i); b = Math.min(b, j); e = Math.max(e, i + 1); f = Math.max(f, j + 1); }
-    const k = this.S.w / w; return e ? [a * k, b * k, (e - a) * k, (f - b) * k] : null;
+    const k = this.S.w / w, box = e ? [a * k, b * k, (e - a) * k, (f - b) * k] : null;
+    BOX.set(name, box);
+    return box;
   }
-  draw(g, name, token, alpha) {
-    const m = this.img[name]; if (!m || alpha <= 0) return;
+  // The tinted, softened copy of a mask; built once (the blur is the costly part).
+  tint(name, token) {
+    const m = this.img[name]; if (!m) return null;
     const key = `${name}|${token}`;
-    let c = this.cache[key];
+    let c = TINT.get(key);
     if (!c) {
-      c = this.cache[key] = document.createElement('canvas');
+      c = document.createElement('canvas'); TINT.set(key, c);
       c.width = 1000; c.height = Math.round(1000 * this.S.h / this.S.w);
       const x = c.getContext('2d');
       x.drawImage(m, 0, 0, c.width, c.height);
@@ -70,7 +80,24 @@ export class Masks {
       }
       x.globalCompositeOperation = 'lighter'; x.filter = 'blur(10px)'; x.drawImage(c, 0, 0); x.filter = 'none';
     }
+    return c;
+  }
+  draw(g, name, token, alpha) {
+    if (!this.img[name] || alpha <= 0) return;
+    const c = this.tint(name, token);
     g.save(); g.globalAlpha = alpha; g.drawImage(c, 0, 0, this.S.w, this.S.h); g.restore();
+  }
+  // Builds the tinted copies a scene will need, one per idle moment and never while the hero film plays,
+  // so the first time a part lights up does not cost a frame.
+  warm(pairs) {
+    let tries = 0;
+    const step = () => {
+      const left = pairs.filter(([n, t]) => this.S.masks?.[n] && !TINT.has(`${n}|${t}`));
+      if (!left.length || ++tries > 60) return;
+      const p = !document.documentElement.classList.contains('intro-on') && left.find(([n]) => this.img[n]);
+      if (p) { tries = 0; this.tint(...p); idle(step); } else setTimeout(() => idle(step), 500);
+    };
+    idle(step);
   }
 }
 
