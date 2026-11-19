@@ -6,7 +6,8 @@ import { filmTime } from './fx.js';
 const DEFAULTS = { release: 0.6, igniteStart: 0.6, igniteEnd: 0.8 };
 // Where the controller rests in the film's frame: centre x, centre y and width as fractions of the frame (manifest: settleBox).
 const SETTLE_BOX = { desktop: [0.5, 0.315, 0.4], mobile: [0.5, 0.27, 0.8] }, CTRL_ASPECT = 0.6;
-const BEAT_MS = 350, LOAD_LIMIT_MS = 3500, SEEN = 'ds5-intro-seen';
+// The film starts only once it can play through; if that takes longer than LOAD_LIMIT_MS it is skipped for the still.
+const BEAT_MS = 350, LOAD_LIMIT_MS = 2500, SEEN = 'ds5-intro-seen';
 
 // Development only: ?proxy=1 plays the proxy film in assets/dev/hero-proxy/ with its events.json; the manifest is not changed.
 async function withProxy(M) {
@@ -109,11 +110,20 @@ export async function heroFilm(M) {
   use(pick());
   const film = root.classList.contains('film'); // decided in the page head, together with the poster preload
   video.muted = true; video.defaultMuted = true; video.playsInline = true;
-  video.addEventListener('loadeddata', () => {
-    if (ready) return;
+  // Ready when the browser expects to play to the end without stalling, or the whole film is already buffered; until then the first frame shows.
+  const buffered = () => {
+    const b = video.buffered, d = video.duration;
+    if (!(d > 0) || video.readyState < 2) return false;
+    for (let i = 0; i < b.length; i++) if (b.start(i) <= 0.1 && b.end(i) >= d - 0.1) return true;
+    return false;
+  };
+  const onReady = () => {
+    if (ready || !video.currentSrc) return;
     ready = true; clearTimeout(timer);
     if (home.classList.contains('intro')) timer = setTimeout(() => { started = true; sync(); }, BEAT_MS);
-  });
+  };
+  video.addEventListener('canplaythrough', onReady);
+  for (const e of ['progress', 'loadeddata']) video.addEventListener(e, () => { if (buffered()) onReady(); });
   video.addEventListener('timeupdate', () => { if (playing && video.duration > 0) { frac = Math.min(1, video.currentTime / video.duration); render(); } });
   video.addEventListener('play', watch);
   video.addEventListener('loadedmetadata', placeTitle);

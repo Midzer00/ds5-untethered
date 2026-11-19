@@ -17,7 +17,7 @@
    },
    "types": {
     "webm": "video/webm; codecs=\"vp9\"",
-    "mp4": "video/mp4; codecs=\"avc1.640032\""
+    "mp4": "video/mp4; codecs=\"avc1.640028\""
    }
   },
   "mobile": {
