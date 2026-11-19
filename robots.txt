@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://midzer00.github.io/ds5-untethered/sitemap.xml
+Sitemap: https://ds5untethered.com/sitemap.xml

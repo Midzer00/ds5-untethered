@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
-  <meta charset="utf-8">
+<meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DS5 Untethered: DualSense haptics and adaptive triggers over Bluetooth on PC</title>
   <meta name="description" content="DS5 Untethered is a free, open-source Windows app that makes a DualSense&#x27;s game haptics and adaptive triggers work over Bluetooth. No USB cable, no special dongle.">
-  <link rel="canonical" href="https://midzer00.github.io/ds5-untethered/">
-  <link rel="alternate" hreflang="en" href="https://midzer00.github.io/ds5-untethered/">
-  <link rel="alternate" hreflang="tr" href="https://midzer00.github.io/ds5-untethered/tr/">
-  <link rel="alternate" hreflang="x-default" href="https://midzer00.github.io/ds5-untethered/">
+  <link rel="canonical" href="https://ds5untethered.com/">
+  <link rel="alternate" hreflang="en" href="https://ds5untethered.com/">
+  <link rel="alternate" hreflang="tr" href="https://ds5untethered.com/tr/">
+  <link rel="alternate" hreflang="x-default" href="https://ds5untethered.com/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="DS5 Untethered">
   <meta property="og:title" content="DS5 Untethered: DualSense haptics and adaptive triggers over Bluetooth on PC">
   <meta property="og:description" content="DS5 Untethered is a free, open-source Windows app that makes a DualSense&#x27;s game haptics and adaptive triggers work over Bluetooth. No USB cable, no special dongle.">
-  <meta property="og:url" content="https://midzer00.github.io/ds5-untethered/">
-  <meta property="og:image" content="https://midzer00.github.io/ds5-untethered/assets/overview-en.jpg">
+  <meta property="og:url" content="https://ds5untethered.com/">
+  <meta property="og:image" content="https://ds5untethered.com/assets/overview-en.jpg">
   <meta property="og:image:width" content="1600">
   <meta property="og:image:height" content="1525">
   <meta property="og:image:alt" content="DS5 Untethered Overview page">
@@ -22,9 +22,6 @@
   <meta property="og:locale:alternate" content="tr_TR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="color-scheme" content="dark">
-  <link rel="icon" href="assets/favicon.ico" sizes="any">
-  <link rel="apple-touch-icon" href="assets/icon.png">
-  <link rel="stylesheet" href="assets/style.css">
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -34,7 +31,7 @@
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Windows 10, Windows 11",
   "description": "DS5 Untethered is a free, open-source Windows app that makes a DualSense's game haptics and adaptive triggers work over Bluetooth. No USB cable, no special dongle.",
-  "url": "https://midzer00.github.io/ds5-untethered/",
+  "url": "https://ds5untethered.com/",
   "downloadUrl": "https://github.com/Midzer00/ds5-untethered/releases/latest",
   "license": "https://www.gnu.org/licenses/gpl-3.0.html",
   "offers": {
@@ -47,7 +44,7 @@
     "name": "Ömer Dursun"
   },
   "sameAs": "https://github.com/Midzer00/ds5-untethered",
-  "image": "https://midzer00.github.io/ds5-untethered/assets/overview-en.jpg"
+  "image": "https://ds5untethered.com/assets/overview-en.jpg"
 }
   </script>
   <script type="application/ld+json">
@@ -92,7 +89,7 @@
       "name": "Which games does it work with?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with the experimental Xbox Trigger Rumble setting (off by default)."
+        "text": "Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with the Xbox Trigger Rumble setting (off by default)."
       }
     },
     {
@@ -100,7 +97,7 @@
       "name": "Can I change settings without leaving the game?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. In a game, a short ø button press brings the app to the front with Mouse Mode on, so the touchpad works as the mouse. Back To Game brings the game back and turns Mouse Mode off."
+        "text": "Yes. In a game, a short ø press brings the app to the front with Mouse Mode on, so the touchpad works as the mouse. Back To Game brings the game back and turns Mouse Mode off."
       }
     },
     {
@@ -114,80 +111,138 @@
   ]
 }
   </script>
+  <link rel="icon" href="assets/brand/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="assets/brand/icon.png">
+  <script>(function(d){var c=d.documentElement.classList;c.remove('no-js');c.add('js');var m=false;try{m=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}c.add(m?'calm':'cine');try{if(localStorage.getItem('ds5-fx')==='off')c.add('fx-off')}catch(e){}var s=false;try{s=sessionStorage.getItem('ds5-intro-seen')==='1'}catch(e){}var n=navigator.connection,f=!m&&!s&&!(n&&n.saveData)&&location.hash.length<2;if(f){c.add('film');c.add('usb')}if(!/[?&]proxy=1/.test(location.search)){var l=d.createElement('link');l.rel='preload';l.as='image';l.href='assets/img/hero-'+(innerWidth<=820||innerWidth/innerHeight<.9?'mobile':'desktop')+'-'+(f?'first':'last')+'.webp';d.head.appendChild(l)}setTimeout(function(){if(!c.contains('ready')){c.remove('film');c.remove('usb');d.querySelectorAll('.rise').forEach(function(e){e.classList.add('in')})}},6000)})(document)</script>
+  <link rel="stylesheet" href="assets/app-ui/tokens.css?v=758b0c5a88">
+  <link rel="stylesheet" href="assets/app-ui/app-ui.css?v=3c502783af">
+  <link rel="stylesheet" href="assets/site.css?v=038ec03011">
+  <script type="importmap">{"imports":{"./assets/js/app-shots.js":"./assets/js/app-shots.js?v=73d4092ed3","./assets/js/app-ui.js":"./assets/js/app-ui.js?v=4d25e20540","./assets/js/assets.js":"./assets/js/assets.js?v=5807851a20","./assets/js/core.js":"./assets/js/core.js?v=bceb24c986","./assets/js/download.js":"./assets/js/download.js?v=dd9d01ad21","./assets/js/fx.js":"./assets/js/fx.js?v=456ef9ffe5","./assets/js/hero.js":"./assets/js/hero.js?v=a6dc89d68f","./assets/js/scene-features.js":"./assets/js/scene-features.js?v=bfa2fefe1e","./assets/js/scene-mouse.js":"./assets/js/scene-mouse.js?v=10fc0725c6","./assets/js/scene-profiles.js":"./assets/js/scene-profiles.js?v=afdcae3f0e","./assets/js/scenes-intro.js":"./assets/js/scenes-intro.js?v=a38ab33539","./assets/js/sequence.js":"./assets/js/sequence.js?v=fb07a30b07","./assets/js/stage.js":"./assets/js/stage.js?v=020f8852af"}}</script>
+  <script type="module" src="assets/js/main.js?v=93cde5722d"></script>
 </head>
-<body>
-  <header class="top wrap">
-    <a class="lang" href="tr/" hreflang="tr" lang="tr">Türkçe</a>
-  </header>
-  <main class="wrap">
-    <section class="hero">
-      <img class="logo" src="assets/logo.png" alt="DS5 Untethered logo" width="320" height="213">
-      <h1>DS5 Untethered<span class="tagline">DualSense haptics and adaptive triggers over Bluetooth on PC</span></h1>
-      <p class="sub">DS5 Untethered is a free, open-source Windows app. Games see a wired controller, you play without the cable.</p>
-      <p class="buttons">
-        <a class="btn primary" href="https://github.com/Midzer00/ds5-untethered/releases/latest">Download DS5 Untethered</a>
-        <a class="btn" href="https://github.com/Midzer00/ds5-untethered">View on GitHub</a>
-      </p>
-      <p class="meta">Windows 10 and 11 · GPL-3.0 · No paid version</p>
-      <a class="shot hero-shot" href="assets/overview-en.jpg"><img src="assets/overview-en.jpg" alt="DS5 Untethered Overview page with the connected controller, live delay graph and input rate" width="1600" height="1525"></a>
-    </section>
+<body data-root="">
+<a class="skip-link" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.500 14.900 9l7.100.700-5.400 4.700 1.600 7L12 17.700 5.800 21.400l1.600-7L2 9.700 9.100 9z"/></symbol><symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3.5v11.2m0 0-4.6-4.6m4.6 4.6 4.6-4.6M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21C6 16 2 12.600 2 8.300 2 5.300 4.300 3 7.200 3c1.900 0 3.700 1 4.800 2.700C13.100 4 14.900 3 16.800 3 19.700 3 22 5.300 22 8.300c0 4.300-4 7.700-10 12.700z"/></symbol></svg>
+<div class="crt" aria-hidden="true"><i class="crt-sheen"></i><i class="crt-glass"></i></div>
+<div class="veil veil-t" aria-hidden="true"></div><div class="veil veil-b" aria-hidden="true"></div>
 
-    <section>
-      <h2>The problem</h2>
-      <p>On a PC, a DualSense controller&#x27;s game haptics only work when it is connected with a USB cable, and in most games the adaptive triggers do too. Over Bluetooth, games see a different device: the detailed haptics fall back to plain rumble, and most games drop the trigger effects.</p>
-    </section>
+<header class="osd osd-top">
+  <p class="osd-l"><a class="osd-brand" href="#home" aria-label="DS5 Untethered"><svg class="oe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-width="3"/><path d="M19.5 2.500 4.500 21.500" stroke-width="2.600"/></svg><span lang="en">DS5 Untethered</span></a></p>
+  <p class="osd-c" id="timecode" aria-hidden="true">00:00:00</p>
+  <div class="osd-r">
+    <button type="button" class="osd-menu" id="menu" aria-expanded="false" aria-controls="osd-nav">Menu</button>
+    <nav class="osd-nav" id="osd-nav" aria-label="Sections"><a class="osd-dl" data-dl href="https://github.com/Midzer00/ds5-untethered/releases/latest"><span class="dl-label">Download</span></a><a href="#how">How it works</a><a href="#mouse-mode">Mouse Mode</a><a href="#features">Features</a><a href="#profiles">Profiles</a><a href="#get-it">Setup</a></nav>
+    <a class="osd-lang" href="tr/" hreflang="tr" lang="tr" aria-label="Türkçe"><span class="cur">EN</span>/<span class="">TR</span></a>
+  </div>
+</header>
+<div class="osd osd-bottom">
+  <p class="osd-input"><i aria-hidden="true"></i><span id="source" data-on="Input: USB" data-off="Input: Bluetooth">Input: Bluetooth</span></p>
+  <p class="osd-r"><button type="button" id="skip">Skip</button><button type="button" id="replay">Replay</button><button type="button" id="fx" aria-pressed="true" aria-label="Screen effects" data-on="On" data-off="Off">FX <span>On</span></button></p>
+</div>
 
-    <section>
-      <h2>How it works</h2>
-      <ol class="cards">
-        <li class="card"><span class="num" aria-hidden="true">1</span><p>The app connects to your controller over Bluetooth.</p></li>
-        <li class="card"><span class="num" aria-hidden="true">2</span><p>It creates a virtual DualSense on the same PC that looks plugged in. Games talk to that one.</p></li>
-        <li class="card"><span class="num" aria-hidden="true">3</span><p>The game&#x27;s haptics, trigger effects and lights are passed on to the real controller over Bluetooth.</p></li>
-      </ol>
-      <p class="note">DS5 Untethered uses two free drivers, <a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>. The Setup page checks for them and walks you through pairing.</p>
-    </section>
+<aside class="dl-panel" id="dl-panel" hidden aria-labelledby="dl-t" data-prep="Preparing..." data-done="Download started" data-other="Windows app">
+  <button type="button" class="dl-close" aria-label="Close">×</button>
+  <h2 id="dl-t" class="dl-file"></h2>
+  <p>Version <span class="dl-ver"></span> · Didn't start? <a class="dl-direct" href="https://github.com/Midzer00/ds5-untethered/releases/latest">Download it here</a></p>
+  <p>Windows may warn because the build is not signed: choose More info, then Run anyway.</p>
+  <p>Two drivers are needed: <a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>. <a href="#quick-start">Quick Start</a></p>
+</aside>
+<p class="vh" id="dl-live" aria-live="polite"></p>
+<dialog class="lightbox" id="lightbox" aria-label="View full screen"><button type="button" class="lb-close">Close</button><img alt=""></dialog>
 
-    <section>
-      <h2>Profiles and quick settings</h2>
-      <div class="cols">
-        <div class="card">
-          <h3>Named profiles</h3>
-          <p>A profile keeps its own rumble, haptics, trigger, light and Turn Sound Into Haptics settings, and one game can have several, for example ones you name &quot;Racing&quot; and &quot;Relaxed&quot;. Create one with a name from the game&#x27;s settings on the Games page, then rename or duplicate it. Switch on the Overview page or in the game&#x27;s settings; a switch while the game runs applies at once. In daily use on a real controller.</p>
-        </div>
-        <div class="card">
-          <h3>Change settings without leaving the game</h3>
-          <p>In a game, a short ø button press brings the app to the front and turns Mouse Mode on: the touchpad is the mouse, a press is a click, Right Click is optional. Change what you need and press Back To Game: the game comes back, Mouse Mode turns off and the controller goes back to the game. No keyboard or mouse needed. Tested on a real controller.</p>
-        </div>
+<main id="main">
+<div class="home intro" id="home">
+  <div class="backdrop">
+    <video class="hero-video" muted playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>
+    <img class="hero-still" alt="" hidden>
+    <noscript><picture><source media="(max-width:820px),(max-aspect-ratio:9/10)" srcset="assets/img/hero-mobile-last.webp"><img class="poster" src="assets/img/hero-desktop-last.webp" alt=""></picture></noscript>
+  </div>
+  <div class="wash wash-r" aria-hidden="true"></div><div class="wash wash-b" aria-hidden="true"></div>
+  <div class="home-fx" aria-hidden="true"><i class="fx-scan"></i><i class="fx-grain"></i></div>
+  <div class="hero-title"><h1 lang="en">DS5 Untethered</h1><div class="hero-actions"><a class="hp hp-dl" data-dl href="https://github.com/Midzer00/ds5-untethered/releases/latest"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-down"/></svg><span class="dl-label">Download</span></a><a class="hp hp-star" href="https://github.com/Midzer00/ds5-untethered" target="_blank" rel="noopener" title="Star on GitHub" aria-label="Star on GitHub"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg>Star</a><a class="hp hp-support" href="https://github.com/sponsors/Midzer00" target="_blank" rel="noopener" title="Support on GitHub Sponsors" aria-label="Support on GitHub Sponsors"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg>Support</a></div><a class="hint" href="#how" aria-label="Scroll to How it works"><svg class="dpad" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="dp-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f5f7"/><stop offset=".55" stop-color="#e6e9ec"/><stop offset="1" stop-color="#c9ced4"/></linearGradient><radialGradient id="dp-glow"><stop offset="0" stop-color="#b6ddf3" stop-opacity=".9"/><stop offset="1" stop-color="#b6ddf3" stop-opacity="0"/></radialGradient></defs><ellipse class="dp-glow" cx="32" cy="58" rx="14" ry="5" fill="url(#dp-glow)"/><path class="dp-k" transform="rotate(0 32 32)" d="M24 2.5h16a3.5 3.5 0 0 1 3.5 3.5v13.6L32 30.5 20.5 19.6V6A3.5 3.5 0 0 1 24 2.5z"/><path class="dp-k" transform="rotate(90 32 32)" d="M24 2.5h16a3.5 3.5 0 0 1 3.5 3.5v13.6L32 30.5 20.5 19.6V6A3.5 3.5 0 0 1 24 2.5z"/><path class="dp-k" transform="rotate(270 32 32)" d="M24 2.5h16a3.5 3.5 0 0 1 3.5 3.5v13.6L32 30.5 20.5 19.6V6A3.5 3.5 0 0 1 24 2.5z"/><g class="dp-down"><path class="dp-k" transform="rotate(180 32 32)" d="M24 2.5h16a3.5 3.5 0 0 1 3.5 3.5v13.6L32 30.5 20.5 19.6V6A3.5 3.5 0 0 1 24 2.5z"/><path class="dp-chev" d="M28.6 50.2 32 53.4l3.4-3.2"/></g></svg><span>Scroll</span></a></div>
+</div>
+
+<section class="flow how rise" id="how" data-scene="how" data-osd="How it works">
+  <div class="how-copy"><div class="how-left"><h2>How it works</h2><p class="how-tag">DualSense haptics and adaptive triggers over Bluetooth on PC</p><p class="lead">DS5 Untethered is a free, open-source Windows app. Games see a wired controller, you play without the cable.</p></div><div class="how-prob"><h3>The problem</h3><p>On a PC, a DualSense controller&#x27;s game haptics only work when it is connected with a USB cable, and in most games the adaptive triggers do too. Over Bluetooth, games see a different device: the detailed haptics fall back to plain rumble, and most games drop the trigger effects.</p></div></div>
+  <div class="how-path"><canvas class="path-cv" aria-hidden="true" data-labels="Haptics|Triggers|Lights"></canvas><ol class="path" aria-label="Signal path"><li class="w"><i aria-hidden="true"></i><span>Game</span></li><li class="w"><i aria-hidden="true"></i><span>Virtual wired DualSense</span></li><li><i aria-hidden="true"></i><span>Bluetooth</span></li><li><i aria-hidden="true"></i><span>Your controller</span></li></ol></div>
+  <ol class="how-steps"><li><span class="pane-n" aria-hidden="true">1</span><p>The app connects to your controller over Bluetooth.</p></li><li><span class="pane-n" aria-hidden="true">2</span><p>It creates a virtual DualSense on the same PC that looks plugged in. Games talk to that one.</p></li><li><span class="pane-n" aria-hidden="true">3</span><p>The game&#x27;s haptics, trigger effects and lights are passed on to the real controller over Bluetooth.</p></li></ol>
+  <p class="note">DS5 Untethered uses two free drivers, <a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>. The Setup page checks for them and walks you through pairing.</p>
+</section>
+
+<section class="sec sec-wash mouse rise" id="mouse-mode" data-scene="mouse" data-preview="Interactive preview of the app: Overview" data-osd="Mouse Mode">
+  <div class="m-head"><h2>Mouse Mode</h2><p class="sec-sub">Change settings without leaving the game</p><div class="m-status"><button type="button" class="m-play" data-pause="Pause" data-play="Play" data-again="Replay">Pause</button></div></div>
+  <div class="m-stage">
+    <svg class="m-link" aria-hidden="true"><path d=""/></svg>
+    <div class="m-tvcol"><div class="m-tv viz"><div class="tv tv-frame" data-tv>
+      <div class="tv-screen" aria-hidden="true"><canvas class="tv-road" width="800" height="600"></canvas></div>
+      <div class="tv-art" data-tv-art aria-hidden="true"></div>
+      <div class="tv-over"><i class="tv-ring" aria-hidden="true"></i><svg class="tv-cur" aria-hidden="true" viewBox="0 0 24 32"><path d="M2 2v24l7-6 5 10 5-2.500-5-10h9z"/></svg></div>
+    </div></div><p class="m-tv-cap"><span>App preview · Overview</span><button type="button" class="mat-full">View full screen</button></p></div>
+    <div class="m-ctrl">
+      <div class="pad" data-pad data-main aria-hidden="true"><div class="pad-hit"></div></div>
+      
+      <figure class="mat m-inset" data-ui="rightClick" data-view="settings-mouse-mode" data-label="Interactive preview of the app: Right Click: Settings &gt; Mouse Mode"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/settings-mouse-mode.webp" alt="Screenshot of the app: Right Click: Settings &gt; Mouse Mode" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Right Click: Settings &gt; Mouse Mode</span><button type="button" class="mat-full">View full screen</button></figcaption></figure>
+    </div>
+  </div>
+  <noscript><img class="mat-shot" src="assets/app/en/overview-mouse.webp" alt="Screenshot of the app: Mouse Mode" width="1600" height="900" loading="lazy"></noscript><div class="m-bar"><ol class="m-row"><li><button type="button" aria-label="1: You are in a game"><span>01 In game</span></button></li><li><button type="button" aria-label="2: Short press on ø"><span>02 Short ø press</span></button></li><li><button type="button" aria-label="3: The touchpad is the mouse"><span>03 Touchpad</span></button></li><li><button type="button" aria-label="4: A press is a click"><span>04 Press is a click</span></button></li><li><button type="button" aria-label="5: Choose a profile"><span>05 Profile</span></button></li><li><button type="button" aria-label="6: Press Back To Game"><span>06 Back To Game</span></button></li><li><button type="button" aria-label="7: Hold ø and press Options"><span>07 ø + Options</span></button></li></ol></div>
+  <ol class="m-says">
+<li class="m-step"><h3>You are in a game</h3><p>The controller is in your hands, the keyboard and mouse are out of reach.</p></li>
+<li class="m-step"><h3>Short press on ø</h3><p>The app comes to the front and Mouse Mode turns on, with a short notification.</p></li>
+<li class="m-step"><h3>The touchpad is the mouse</h3><p>Slide a finger on the touchpad and the pointer follows. <span class="fine-only">Try it: move your mouse over the touchpad.</span></p></li>
+<li class="m-step"><h3>A press is a click</h3><p>Every press is one click. One press opens the Profile picker.</p></li>
+<li class="m-step"><h3>Choose a profile</h3><p>For example Relaxed. A switch while the game runs applies at once. Right Click is optional: Off by default, Right Side or Two Fingers.</p></li>
+<li class="m-step"><h3>Press Back To Game</h3><p>The game comes back, Mouse Mode turns off and the controller goes back to the game. No keyboard or mouse needed.</p></li>
+<li class="m-step"><h3>Or hold ø and press Options</h3><p>Holding ø and pressing Options also turns Mouse Mode on and off.</p></li>
+  </ol>
+</section>
+
+<section class="sec sec-wash features rise" id="features" data-scene="features" data-osd="Features">
+  <h2 class="vh">Features</h2>
+  <div class="f-grid">
+    <div class="f-side">
+      <p class="f-kick f-head" aria-hidden="true">Features</p>
+      <div class="f-tabs" role="tablist" aria-label="Features" aria-orientation="vertical"><button type="button" role="tab" id="t-haptics" aria-controls="p-haptics" aria-selected="false" tabindex="-1">Haptics</button><button type="button" role="tab" id="t-triggers" aria-controls="p-triggers" aria-selected="false" tabindex="-1">Adaptive Triggers</button><button type="button" role="tab" id="t-xbox" aria-controls="p-xbox" aria-selected="false" tabindex="-1">Xbox Trigger Rumble</button><button type="button" role="tab" id="t-light" aria-controls="p-light" aria-selected="false" tabindex="-1">Light</button><button type="button" role="tab" id="t-audio" aria-controls="p-audio" aria-selected="false" tabindex="-1">Microphone And Speaker</button><button type="button" role="tab" id="t-sound" aria-controls="p-sound" aria-selected="false" tabindex="-1">Sound To Haptics</button></div>
+      <div class="f-panels">
+<div class="f-panel" id="p-haptics" data-f="haptics" role="tabpanel" aria-labelledby="t-haptics"><h3>Game haptics</h3><p>The game's own haptics are passed on to the real controller over Bluetooth, so they do not fall back to plain rumble.</p></div>
+<div class="f-panel" id="p-triggers" data-f="triggers" role="tabpanel" aria-labelledby="t-triggers"><h3>Adaptive triggers</h3><p>Most games send their trigger effects only to a wired controller. Here the game sees one, and the effects reach the triggers over Bluetooth.</p><div class="st-x f-ill" data-f="triggers"><div class="st-crop"><canvas class="trig-cv" aria-hidden="true"></canvas></div><div class="st-cv"><span>Resistance, illustration</span><canvas class="st-curve"></canvas></div></div></div>
+<div class="f-panel" id="p-xbox" data-f="xbox" role="tabpanel" aria-labelledby="t-xbox"><h3>Xbox Trigger Rumble</h3><p class="tag ">Off by default</p><p>Some games rumble the triggers of an Xbox controller, racing games especially: throttle, brake, ABS, wheelspin. Turn it on in Settings &gt; Controllers &gt; Triggers or on the Games page.</p><details class="f-more"><summary>More</summary><p>With Xbox Trigger Rumble on, these games get an Xbox Series controller, and their trigger rumble plays on the DualSense&#x27;s own trigger motors, made to feel like the Xbox trigger motors. The feel is set per profile: Xbox-Like, Soft or Sharp. The app knows 87 such games and learns new ones. Xbox Trigger Rumble is off by default.</p></details><div class="st-x f-ill" data-f="xbox"><div class="meters" aria-hidden="true"><div class="meter"><span>Throttle</span><canvas></canvas></div><div class="meter"><span>Brake</span><canvas></canvas></div><div class="meter"><span>ABS</span><canvas></canvas></div><div class="meter"><span>Wheelspin</span><canvas></canvas></div></div><div class="feels" role="group" aria-label="Feel"><span class="feels-l">Feel</span><button type="button" class="chip" aria-pressed="true" data-feel="0">Xbox-Like</button><button type="button" class="chip" aria-pressed="false" data-feel="1">Soft</button><button type="button" class="chip" aria-pressed="false" data-feel="2">Sharp</button><span class="cap" aria-hidden="true">Illustration</span></div></div></div>
+<div class="f-panel" id="p-light" data-f="light" role="tabpanel" aria-labelledby="t-light"><h3>Lights</h3><p>The game's light is passed on to the controller over Bluetooth. Pick a colour to see it on the light strip.</p></div>
+<div class="f-panel" id="p-audio" data-f="audio" role="tabpanel" aria-labelledby="t-audio"><h3>Microphone and speaker</h3><p>Windows records from the controller's microphone over Bluetooth, and the controller's mute button turns it on and off. Sound played to the controller's speaker comes out of the controller.</p></div>
+<div class="f-panel" id="p-sound" data-f="sound" role="tabpanel" aria-labelledby="t-sound"><h3>Turn Sound Into Haptics and Xbox And DS4 Rumble</h3><p>For games without DualSense support. Turn Sound Into Haptics makes haptics from the game's sound, Bass or Full Sound. Xbox And DS4 Rumble plays a game's rumble as haptics.</p><div class="st-x f-ill" data-f="sound"><canvas class="sound-cv" aria-hidden="true" data-labels="Game sound|Haptics"></canvas></div></div>
       </div>
-    </section>
+    </div>
+    <div class="f-stage">
+      <div class="pad st-pad" data-pad><div class="st-hots" data-labels="{&quot;haptics&quot;: &quot;Haptics&quot;, &quot;triggers&quot;: &quot;Adaptive Triggers&quot;, &quot;xbox&quot;: &quot;Xbox Trigger Rumble&quot;, &quot;light&quot;: &quot;Light&quot;, &quot;audio&quot;: &quot;Microphone And Speaker&quot;, &quot;sound&quot;: &quot;Sound To Haptics&quot;, &quot;mouse-mode&quot;: &quot;Mouse Mode&quot;}"></div></div>
+      <div class="st-mats"><figure class="mat " data-ui="effects" data-view="haptics-triggers" data-f="haptics" data-label="Interactive preview of the app: Haptics And Triggers"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/haptics-triggers.webp" alt="Screenshot of the app: Haptics And Triggers" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Haptics And Triggers</span><button type="button" class="mat-full">View full screen</button></figcaption></figure><figure class="mat " data-ui="trigger" data-view="haptics-triggers" data-f="triggers" data-label="Interactive preview of the app: Haptics And Triggers"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/haptics-triggers.webp" alt="Screenshot of the app: Haptics And Triggers" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Haptics And Triggers</span><button type="button" class="mat-full">View full screen</button></figcaption></figure><figure class="mat " data-ui="xbox" data-view="settings-triggers" data-f="xbox" data-label="Interactive preview of the app: Settings &gt; Controllers &gt; Triggers"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/settings-triggers.webp" alt="Screenshot of the app: Settings &gt; Controllers &gt; Triggers" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Settings &gt; Controllers &gt; Triggers</span><button type="button" class="mat-full">View full screen</button></figcaption></figure><figure class="mat " data-ui="light" data-view="light" data-f="light" data-label="Interactive preview of the app: Light"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/light.webp" alt="Screenshot of the app: Light" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Light</span><button type="button" class="mat-full">View full screen</button></figcaption></figure><figure class="mat " data-ui="audio" data-view="overview" data-f="audio" data-label="Interactive preview of the app: Overview"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/overview.webp" alt="Screenshot of the app: Overview" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Overview</span><button type="button" class="mat-full">View full screen</button></figcaption></figure><figure class="mat " data-ui="classic" data-view="haptics-triggers" data-f="sound" data-label="Interactive preview of the app: Haptics And Triggers"><div class="au-host"></div><noscript><img class="mat-shot" src="assets/app/en/haptics-triggers.webp" alt="Screenshot of the app: Haptics And Triggers" width="1600" height="900" loading="lazy"></noscript><figcaption><span>App preview · Haptics And Triggers</span><button type="button" class="mat-full">View full screen</button></figcaption></figure></div>
+    </div>
+  </div>
+</section>
 
-    <section>
-      <h2>Trigger rumble in games without DualSense support</h2>
-      <p>Some games rumble the triggers of an Xbox controller, racing games especially: throttle, brake, ABS, wheelspin. With Xbox Trigger Rumble on, these games get an Xbox Series controller, and their trigger rumble plays on the DualSense&#x27;s own trigger motors, made to feel like the Xbox trigger motors. The feel is set per profile: Xbox-Like, Soft or Sharp. The app knows 87 such games and learns new ones. Xbox Trigger Rumble is experimental and off by default. Turn it on in Settings &gt; Controllers &gt; Triggers or on the Games page.</p>
-    </section>
+<section class="sec profiles rise" id="profiles" data-osd="Profiles">
+  <div class="p-grid">
+    <div class="p-copy"><h2>Profiles</h2><p>A profile keeps its own rumble, haptics, trigger, light and Turn Sound Into Haptics settings, and one game can have several, for example ones you name &quot;Racing&quot; and &quot;Relaxed&quot;. Create one with a name from the game&#x27;s settings on the Games page, then rename or duplicate it. Switch on the Overview page or in the game&#x27;s settings; a switch while the game runs applies at once. In daily use on a real controller.</p><p class="fine">Example names. You name your own.</p></div>
+    <div class="p-rig"><div class="p-stage"><ul class="sleeves" aria-label="Example profiles">
+<li class="sl f-poppy" style="--rz:-0.8deg"><button type="button" class="sl-obj" aria-pressed="false" aria-label="Racing"><span class="face sl-slab"></span><span class="face sl-spine"></span><span class="face sl-side"></span><span class="face sl-front"><span class="cover"><span class="c-strip c-head"><span lang="en">DS5 Untethered</span><span class="c-pills"><i></i><i></i><i></i></span></span><span class="c-title"><span>Racing</span></span><span class="c-set"><i>Haptics · Strong</i><i>Triggers · Strong</i><i>Light · Red</i></span><span class="c-strip c-foot"><span>Example names</span><svg class="oe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-width="3"/><path d="M19.5 2.500 4.500 21.500" stroke-width="2.600"/></svg></span></span></span></button><span class="p-name">Racing</span><dl class="tp-set"><div><dt>Haptics</dt><dd>Strong</dd></div><div><dt>Triggers</dt><dd>Strong</dd></div><div><dt>Light</dt><dd><i class="dot" style="background:var(--led-red)"></i>Red</dd></div></dl></li>
+<li class="sl f-powder" style="--rz:0.5deg"><button type="button" class="sl-obj" aria-pressed="false" aria-label="Relaxed"><span class="face sl-slab"></span><span class="face sl-spine"></span><span class="face sl-side"></span><span class="face sl-front"><span class="cover"><span class="c-strip c-head"><span lang="en">DS5 Untethered</span><span class="c-pills"><i></i><i></i><i></i></span></span><span class="c-title"><span>Relaxed</span></span><span class="c-set"><i>Haptics · Light</i><i>Triggers · Light</i><i>Light · Amber</i></span><span class="c-strip c-foot"><span>Example names</span><svg class="oe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-width="3"/><path d="M19.5 2.500 4.500 21.500" stroke-width="2.600"/></svg></span></span></span></button><span class="p-name">Relaxed</span><dl class="tp-set"><div><dt>Haptics</dt><dd>Light</dd></div><div><dt>Triggers</dt><dd>Light</dd></div><div><dt>Light</dt><dd><i class="dot" style="background:var(--led-amber)"></i>Amber</dd></div></dl></li>
+<li class="sl f-paper" style="--rz:1deg"><button type="button" class="sl-obj" aria-pressed="false" aria-label="Strong Rumble"><span class="face sl-slab"></span><span class="face sl-spine"></span><span class="face sl-side"></span><span class="face sl-front"><span class="cover"><span class="c-strip c-head"><span lang="en">DS5 Untethered</span><span class="c-pills"><i></i><i></i><i></i></span></span><span class="c-title"><span>Strong</span><span>Rumble</span></span><span class="c-set"><i>Haptics · Strong</i><i>Triggers · Medium</i><i>Light · White</i></span><span class="c-strip c-foot"><span>Example names</span><svg class="oe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke-width="3"/><path d="M19.5 2.500 4.500 21.500" stroke-width="2.600"/></svg></span></span></span></button><span class="p-name">Strong Rumble</span><dl class="tp-set"><div><dt>Haptics</dt><dd>Strong</dd></div><div><dt>Triggers</dt><dd>Medium</dd></div><div><dt>Light</dt><dd><i class="dot" style="background:var(--led-white)"></i>White</dd></div></dl></li>
+    </ul></div><div class="p-now" aria-live="polite"></div></div>
+  </div>
+</section>
 
-    <section>
-      <h2>What works</h2>
-      <div class="cols">
-        <div>
-          <h3>Tested on a real controller</h3>
-          <ul>
+<section class="flow status rise" id="what-works" data-osd="What works">
+  <h2>What works</h2><p>Connection and game settings, all in one app.</p>
+  <div class="tc-cols"><div class="tc-col ok"><ul>
           <li>Game haptics</li>
           <li>Adaptive triggers</li>
           <li>Lights</li>
           <li>The controller&#x27;s microphone and speaker</li>
           <li>Bluetooth adapter test</li>
-          <li>DualShock 4 controller type (verified in one game so far)</li>
-          <li>Mouse mode: touchpad pointer, one click per press, Right Click setting, a short ø button press turns it on, Back To Game</li>
+          <li>DualShock 4 controller type</li>
+          <li>Mouse mode: touchpad pointer, one click per press, Right Click setting, a short ø press turns it on, Back To Game</li>
           <li>In-app updates</li>
-          <li>Xbox And DS4 Rumble and Turn Sound Into Haptics (verified in one game without native haptics so far)</li>
+          <li>Xbox And DS4 Rumble and Turn Sound Into Haptics</li>
           <li>Named profiles and per-game profiles, in daily use</li>
-          </ul>
-        </div>
-        <div>
-          <h3>In the app, tested in code, not yet verified on hardware</h3>
-          <ul>
-          <li>Xbox Series controller type, and Xbox Trigger Rumble (experimental, off by default)</li>
+          <li>Xbox Series controller type, and Xbox Trigger Rumble (off by default)</li>
           <li>Stopping rumble that keeps going after a game closes; fewer microphone dropouts</li>
           <li>Trigger and haptics strength</li>
           <li>Button remapping</li>
@@ -201,70 +256,43 @@
           <li>Live link quality</li>
           <li>DualSense Edge, up to four controllers that are remembered and can be named</li>
           <li>Controller type per game: DualSense, DualShock 4, Xbox Series or Xbox 360; Automatic picks it for each game</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+          </ul></div></div>
+</section>
 
-    <section>
-      <h2>Screenshots</h2>
-      <div class="grid">
-        <a class="shot" href="assets/haptics-and-triggers-en.jpg"><img src="assets/haptics-and-triggers-en.jpg" alt="DS5 Untethered Haptics And Triggers page with game haptics, trigger strength and classic rumble settings" width="1600" height="900" loading="lazy"></a>
-        <a class="shot" href="assets/controller-test-en.jpg"><img src="assets/controller-test-en.jpg" alt="Controller test page with sticks, triggers, deadzones and motion sensors" width="1600" height="900" loading="lazy"></a>
-        <a class="shot" href="assets/light-en.jpg"><img src="assets/light-en.jpg" alt="Light page with light mode, light bar colour and player LEDs" width="1600" height="900" loading="lazy"></a>
-        <a class="shot" href="assets/controller-output-tests-en.jpg"><img src="assets/controller-output-tests-en.jpg" alt="Controller output tests for haptics, trigger effects and light colour" width="1600" height="900" loading="lazy"></a>
-        <a class="shot" href="assets/controller-remap-gyro-en.jpg"><img src="assets/controller-remap-gyro-en.jpg" alt="Button remapping and gyro aiming settings" width="1600" height="900" loading="lazy"></a>
-        <a class="shot" href="assets/settings-mouse-mode-en.jpg"><img src="assets/settings-mouse-mode-en.jpg" alt="Mouse mode settings with pointer stick, speeds and button mapping" width="1600" height="900" loading="lazy"></a>
-      </div>
-    </section>
-
-    <section id="download">
-      <h2>Download DS5 Untethered</h2>
-      <p>DS5 Untethered is on the repository&#x27;s Releases page as an installer and as a zip. Both include .NET; nothing else needs to be installed for the app itself.</p>
-      <ol class="steps">
-        <li>Download the installer (<code>DS5-Untethered-&lt;version&gt;-Setup.exe</code>, per-user, no administrator rights) or the zip (<code>DS5-Untethered-&lt;version&gt;-win-x64.zip</code>, unzip anywhere and run <code>Kopru.App.exe</code>).</li>
+<section class="flow get rise" id="get-it" data-osd="Get it">
+  <picture class="get-art" aria-hidden="true"><source media="(max-width:860px)" srcset="assets/img/stage-sm.webp"><img src="assets/img/stage.webp" alt="" width="2000" height="1190" loading="lazy" decoding="async"></picture>
+  <div class="g-head">
+    <h2>Get it</h2>
+    <p class="btns"><a class="btn primary" data-dl href="https://github.com/Midzer00/ds5-untethered/releases/latest"><span class="dl-label">Download</span></a><span class="brk"></span><a class="btn" href="https://github.com/Midzer00/ds5-untethered">Source code on GitHub</a> <a class="btn" href="https://github.com/Midzer00/ds5-untethered/discussions"><span lang="en">Discussions</span></a></p>
+    <p class="dl-note" hidden>Runs on Windows 10 and 11. Download it on your PC.</p>
+    <p class="meta"><span class="meta-os">Windows 10 and 11 · </span>GPL-3.0 · No paid version</p>
+    <p class="get-free">DS5 Untethered is free and stays free. If it is useful to you and you want to support its development, you can <a href="https://github.com/sponsors/Midzer00">sponsor it on GitHub</a>.</p><p class="get-links"><a class="btn" href="https://github.com/Midzer00/ds5-untethered" target="_blank" rel="noopener" title="Star on GitHub" aria-label="Star on GitHub"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg>Star</a><a class="btn" href="https://github.com/sponsors/Midzer00" target="_blank" rel="noopener" title="Support on GitHub Sponsors" aria-label="Support on GitHub Sponsors"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg>Support</a></p>
+  </div>
+  <div class="g-grid"><div><h3 id="quick-start">Quick Start</h3><ol class="num"><li>Download the installer (<code>DS5-Untethered-&lt;version&gt;-Setup.exe</code>) from <a href="https://github.com/Midzer00/ds5-untethered/releases/latest">Releases</a> and run it.</li><li>Install the two drivers, <a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>. Their installers need administrator rights.</li><li>Pair the controller with Windows over Bluetooth.</li><li>Open DS5 Untethered and follow its Setup page: it checks the drivers, guides pairing and tests the Bluetooth adapter.</li><li>Start a game. It sees a wired DualSense, and its haptics and trigger effects reach the controller over Bluetooth.</li></ol><p>Questions? Ask in <a href="https://github.com/Midzer00/ds5-untethered/discussions"><span lang="en">Discussions</span></a>.</p></div><div><h3>Requirements</h3><ul class="dash"><li>Windows 10 or 11</li>
+          <li>A Bluetooth adapter, built-in or USB</li>
+          <li><a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>, both free</li></ul></div></div>
+  <details class="get-more"><summary>Installer or zip</summary><p>DS5 Untethered is on the repository&#x27;s Releases page as an installer and as a zip. Both include .NET; nothing else needs to be installed for the app itself.</p><ol class="num"><li>Download the installer (<code>DS5-Untethered-&lt;version&gt;-Setup.exe</code>, per-user, no administrator rights) or the zip (<code>DS5-Untethered-&lt;version&gt;-win-x64.zip</code>, unzip anywhere and run <code>Kopru.App.exe</code>).</li>
         <li>The build is not signed, so Windows SmartScreen may warn: choose &quot;More info&quot;, then &quot;Run anyway&quot;.</li>
         <li>On start, the Setup page checks for the two drivers, usbip-win2 and HidHide, and opens their official download pages (their installers need administrator rights). Both drivers are required.</li>
-        <li>The Setup page then guides Bluetooth pairing of the controller.</li>
-      </ol>
-      <p class="buttons left">
-        <a class="btn primary" href="https://github.com/Midzer00/ds5-untethered/releases/latest">Download DS5 Untethered</a>
-        <a class="btn" href="https://github.com/Midzer00/ds5-untethered">Source code on GitHub</a>
-      </p>
-    </section>
+        <li>The Setup page then guides Bluetooth pairing of the controller.</li></ol></details>
+  <details class="get-more"><summary>Change settings without leaving the game</summary><p>In a game, a short ø press brings the app to the front and turns Mouse Mode on: the touchpad is the mouse, a press is a click, Right Click is optional. Change what you need and press Back To Game: the game comes back, Mouse Mode turns off and the controller goes back to the game. No keyboard or mouse needed. Tested on a real controller.</p></details>
+  <details class="get-more"><summary>Screenshots</summary><div class="shots"><a class="shot" href="assets/app/en/overview.webp"><img src="assets/app/en/overview.webp" alt="DS5 Untethered Overview page with the connected controller, live delay graph and input rate" width="1600" height="900" loading="lazy"></a><a class="shot" href="assets/app/en/haptics-triggers.webp"><img src="assets/app/en/haptics-triggers.webp" alt="DS5 Untethered Haptics And Triggers page with game haptics, trigger strength and classic rumble settings" width="1600" height="900" loading="lazy"></a><a class="shot" href="assets/app/en/light.webp"><img src="assets/app/en/light.webp" alt="Light page with light mode, light bar colour and player LEDs" width="1600" height="900" loading="lazy"></a><a class="shot" href="assets/app/en/settings-mouse-mode.webp"><img src="assets/app/en/settings-mouse-mode.webp" alt="Mouse mode settings with pointer stick, speeds and button mapping" width="1600" height="900" loading="lazy"></a></div></details>
+  <h3>Questions</h3><div class="faq">
+<details class="qa"><summary>Do DualSense haptics and adaptive triggers work over Bluetooth on PC?</summary><p>Not fully by themselves: games send the detailed haptics only to a controller connected with a cable, and most games send their trigger effects only then too. Over Bluetooth the haptics fall back to plain rumble. With DS5 Untethered running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.</p></details>
+<details class="qa"><summary>Some of my games already vibrate and use the triggers over Bluetooth. Why would I need this?</summary><p>Some games send adaptive trigger effects and basic rumble over Bluetooth on their own. The detailed, audio-based haptics normally go only to a wired controller, so over Bluetooth you get plain rumble. DS5 Untethered makes the game see a wired controller, so you get the full haptics wirelessly, also in games that offer no DualSense features over Bluetooth.</p></details>
+<details class="qa"><summary>Do I need a dongle or extra hardware?</summary><p>No special hardware. The Bluetooth already in your PC or an ordinary USB Bluetooth adapter is enough. The Setup page tests the adapter.</p></details>
+<details class="qa"><summary>Does it add input lag?</summary><p>In a 60 second test with one controller and one adapter, input was relayed at about 750 Hz with low added latency and no loss. The Overview page shows the delay live, so you can check your own setup.</p></details>
+<details class="qa"><summary>Which games does it work with?</summary><p>Games that support the DualSense's haptics or adaptive triggers over a USB cable. Known ones are listed on the app's Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with the Xbox Trigger Rumble setting (off by default).</p></details>
+<details class="qa"><summary>Can I change settings without leaving the game?</summary><p>Yes. In a game, a short ø press brings the app to the front with Mouse Mode on, so the touchpad works as the mouse. Back To Game brings the game back and turns Mouse Mode off.</p></details>
+<details class="qa"><summary>Is it free?</summary><p>Yes. DS5 Untethered is free and open source under GPL-3.0, and there is no paid version.</p></details>
+  </div>
+</section>
+</main>
 
-    <section>
-      <h2>Requirements</h2>
-      <ul>
-          <li>Windows 10 or 11</li>
-          <li>A Bluetooth adapter, built-in or USB</li>
-          <li><a href="https://github.com/vadimgrn/usbip-win2">usbip-win2</a> and <a href="https://github.com/nefarius/HidHide">HidHide</a>, both free</li>
-      </ul>
-    </section>
-
-    <section class="faq">
-      <h2>Questions</h2>
-        <h3>Do DualSense haptics and adaptive triggers work over Bluetooth on PC?</h3>
-        <p>Not fully by themselves: games send the detailed haptics only to a controller connected with a cable, and most games send their trigger effects only then too. Over Bluetooth the haptics fall back to plain rumble. With DS5 Untethered running, games see a wired DualSense, and their haptics and trigger effects reach the controller over Bluetooth.</p>
-        <h3>Some of my games already vibrate and use the triggers over Bluetooth. Why would I need this?</h3>
-        <p>Some games send adaptive trigger effects and basic rumble over Bluetooth on their own. The detailed, audio-based haptics normally go only to a wired controller, so over Bluetooth you get plain rumble. DS5 Untethered makes the game see a wired controller, so you get the full haptics wirelessly, also in games that offer no DualSense features over Bluetooth.</p>
-        <h3>Do I need a dongle or extra hardware?</h3>
-        <p>No special hardware. The Bluetooth already in your PC or an ordinary USB Bluetooth adapter is enough. The Setup page tests the adapter.</p>
-        <h3>Does it add input lag?</h3>
-        <p>In a 60 second test with one controller and one adapter, input was relayed at about 750 Hz with low added latency and no loss. The Overview page shows the delay live, so you can check your own setup.</p>
-        <h3>Which games does it work with?</h3>
-        <p>Games that support the DualSense&#x27;s haptics or adaptive triggers over a USB cable. Known ones are listed on the app&#x27;s Games page, under Supported. Games without DualSense support can use the Xbox And DS4 Rumble settings or Turn Sound Into Haptics. Games that use Xbox trigger rumble, racing games especially, can play it on the DualSense triggers with the experimental Xbox Trigger Rumble setting (off by default).</p>
-        <h3>Can I change settings without leaving the game?</h3>
-        <p>Yes. In a game, a short ø button press brings the app to the front with Mouse Mode on, so the touchpad works as the mouse. Back To Game brings the game back and turns Mouse Mode off.</p>
-        <h3>Is it free?</h3>
-        <p>Yes. DS5 Untethered is free and open source under GPL-3.0, and there is no paid version.</p>
-    </section>
-  </main>
-  <footer class="wrap foot">
-    <p class="legal">DS5 Untethered is an unofficial project. It is not affiliated with, endorsed or sponsored by Sony Interactive Entertainment. &quot;DualSense&quot;, &quot;DualSense Edge&quot;, &quot;PlayStation&quot; and &quot;PS5&quot; are trademarks of Sony Interactive Entertainment Inc. and are used only to describe compatibility.</p>
-    <p class="support">DS5 Untethered is free and stays free. If it is useful to you and you want to support its development, you can <a href="https://github.com/sponsors/Midzer00">sponsor it on GitHub</a>.</p>
-    <p>Made by Ömer Dursun</p>
-    <p class="links"><a href="https://github.com/Midzer00/ds5-untethered">GitHub</a> · <a href="https://github.com/Midzer00/ds5-untethered/releases/latest">Releases</a> · <a href="tr/" hreflang="tr" lang="tr">Türkçe</a></p>
-  </footer>
+<footer class="foot">
+  <img class="foot-logo" src="assets/brand/logo.png" alt="DS5 Untethered logo" width="192" height="128" loading="lazy">
+  <p>DS5 Untethered is an unofficial project. It is not affiliated with, endorsed or sponsored by Sony Interactive Entertainment. &quot;DualSense&quot;, &quot;DualSense Edge&quot;, &quot;PlayStation&quot; and &quot;PS5&quot; are trademarks of Sony Interactive Entertainment Inc. and are used only to describe compatibility.</p><p>Made by Ömer Dursun</p>
+  <p><a href="https://github.com/Midzer00/ds5-untethered">GitHub</a> · <a href="https://github.com/Midzer00/ds5-untethered/releases/latest">Releases</a> · <a href="https://github.com/Midzer00/ds5-untethered/discussions"><span lang="en">Discussions</span></a> · <a href="tr/" hreflang="tr" lang="tr">Türkçe</a></p>
+</footer>
 </body>
 </html>
