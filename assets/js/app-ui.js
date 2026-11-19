@@ -206,7 +206,7 @@ export function card(name) {
   } else if (name === 'xbox') {
     C.xbox = toggle('xboxRumble', T('xboxRumble'), false);
     el = h('div', '', {}, [h('p', 'au-section', {}, T('triggers')),
-      h('div', 'au-panel', { style: 'padding-top:4px;padding-bottom:4px' }, [srow(T('xboxRumble'), T('xboxRumbleNote'), h('div', 'au-ctl', {}, C.xbox), T('experimental'))])]);
+      h('div', 'au-panel', { style: 'padding-top:4px;padding-bottom:4px' }, [srow(T('xboxRumble'), T('xboxRumbleNote'), h('div', 'au-ctl', {}, C.xbox))])]);
   } else if (name === 'classic') {
     C.rumble = slider('rumble', T('rumble'), 100, 200);
     C.feel = chips('rumbleFeel', [T('soft'), T('punchy')], 0, T('rumbleFeel'));

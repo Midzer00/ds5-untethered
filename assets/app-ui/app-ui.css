@@ -145,6 +145,12 @@
   .au-qrow{grid-template-columns:auto minmax(0,1fr);row-gap:8px}
   .au-qrow>:last-child{grid-column:1/-1}
 }
+/* A wide (slider) control needs about 560 px beside its label, or the label shrinks to one word per line */
+@container aupreview (max-width:560px){
+  .au-srow:has(>.au-ctl.wide){grid-template-columns:minmax(0,1fr);row-gap:0}
+  .au-srow:has(>.au-ctl.wide) .au-srow-text{padding-bottom:6px}
+  .au-srow>.au-ctl.wide{width:100%;padding-bottom:12px}
+}
 
 .au-ic.accent{color:var(--au-accent)}
 .au-ctl>.au-combo-wrap{flex:1}

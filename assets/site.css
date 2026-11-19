@@ -448,7 +448,8 @@ section[id]{scroll-margin-top:72px}
 .f-more p{margin:0}
 .f-ill{margin-top:10px;max-width:400px}
 .st-x{position:static;display:none}
-.st-x[data-f=triggers].on{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;height:110px}
+.st-x[data-f=triggers].on{display:grid;grid-template-columns:120px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:14px;height:110px}
+.st-cv{min-height:0}
 .st-x[data-f=sound].on{height:90px}
 .st-x.on{display:block}
 .meters{grid-template-columns:1fr 1fr;gap:2px 12px}
@@ -657,7 +658,7 @@ section[id]{scroll-margin-top:72px}
 .hero-title{left:max(var(--inset),calc(50% - 720px));right:max(var(--inset),calc(50% - 720px))}
 @media (min-width:861px){.st-mats{align-self:center;width:min(100%,768px)}.st-mats .mat{margin-inline:auto}}
 /* The real Overview screenshot in What works: the Features mat, 768 px centred; the full column on phones */
-.status>.wk-shot{width:768px;max-width:100%;margin:0 auto 22px}
+.status>.wk-shot{width:1040px;max-width:100%;margin:0 auto 22px}
 @media (max-width:860px){.status>.wk-shot{width:100%;padding:0;border:0;background:none}.wk-shot figcaption{padding:0 4px}}
 @media (max-width:860px){.get{margin-inline:12px}}
 
@@ -668,3 +669,8 @@ section[id]{scroll-margin-top:72px}
 .js .f-panel h3.f-lead{position:static;width:auto;height:auto;overflow:visible;clip-path:none;margin:0 0 8px;font:600 19px/1.3 var(--disp);font-stretch:100%;font-variation-settings:normal;text-transform:none;letter-spacing:0;max-width:408px}
 .f-panel p.fine{font-size:13px}
 @media (max-width:860px){.hero-line{font-size:16px}.p-sub{font-size:17px}.js .f-panel h3.f-lead{font-size:17px}}
+
+/* v23: below ~1200 px the three profile sleeves (about 3 sleeve widths across) shrink to fit their column instead of covering the copy */
+@media (min-width:861px){.js .p-rig{container-type:inline-size}.js .p-stage{--w:min(200px,33cqw);--h:calc(var(--w) * 1.725)}}
+/* The Get It head keeps clear of the controller art (.get>*{max-width:none} above had undone this) */
+@media (min-width:861px){.get>.g-head{max-width:calc(100% - min(560px,44%));margin-inline:0}}
