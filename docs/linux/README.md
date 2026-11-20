@@ -77,6 +77,21 @@ drivers), the default audio device guard, the game detection by Windows exe path
 
 Later, root-only work (attach and detach, maybe hiding) should move into a tiny separate helper; it stays out of the app.
 
+## Download a ready build
+
+Every push to `linux` publishes a self-contained spike (no .NET needed, only the ICU library desktop distributions
+already have) to the [`linux-spike` pre-release](https://github.com/Midzer00/ds5-untethered/releases/tag/linux-spike):
+
+```sh
+curl -LO https://github.com/Midzer00/ds5-untethered/releases/download/linux-spike/ds5-untethered-linux-spike-x64.tar.gz
+tar -xzf ds5-untethered-linux-spike-x64.tar.gz
+sudo modprobe vhci-hcd
+./ds5-untethered-linux-spike/Kopru.LinuxSpike --list
+sudo ./ds5-untethered-linux-spike/Kopru.LinuxSpike --log spike.log
+```
+
+Each CI run (pushes and pull requests) also keeps the same file as a build artifact for 30 days, on the run's page.
+
 ## Build and run the spike
 
 You need the .NET 8 SDK to build (the published spike is self-contained and needs no .NET on the machine that runs it,
