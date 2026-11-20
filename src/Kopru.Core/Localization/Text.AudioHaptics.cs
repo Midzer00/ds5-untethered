@@ -35,5 +35,5 @@ public static partial class Text
 
 	public static string AudioHapticsStatusNative(Language? l = null) => Pick(l, $"Oyunun Kendi Titreşimi Kullanılıyor", $"The Game's Own Haptics In Use");
 
-	public static string AudioHapticsStatusUnavailable(Language? l = null) => Pick(l, $"Bu Windows'ta Kullanılamıyor", $"Not Available On This Windows");
+	public static string AudioHapticsStatusUnavailable(Language? l = null) => Pick(l, $"Henüz Kullanılamıyor", $"Not Available Yet");
 }

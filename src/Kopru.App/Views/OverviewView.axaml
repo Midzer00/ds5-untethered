@@ -462,6 +462,7 @@
                 </StackPanel>
               </ToggleButton>
               <ToggleButton Grid.Row="1" Theme="{StaticResource QuickTile}" Tag="{x:Static c:IconPaths.Mouse}" IsChecked="{Binding Quick.MouseModeOn}"
+                            IsEnabled="{x:Static vm:AppFeatures.MouseMode}"
                             ToolTip.Tip="{Binding Quick.MouseModeTip}" AutomationProperties.Name="{Binding Quick.MouseModeLabel}">
                 <StackPanel Classes="tileText">
                   <TextBlock Classes="tileLabel" Text="{Binding Quick.MouseModeLabel}" />

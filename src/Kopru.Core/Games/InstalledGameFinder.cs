@@ -500,57 +500,10 @@ public sealed class SystemInstallFileSystem : IInstallFileSystem
 	public string ReadAllText(string path) => File.ReadAllText(path);
 }
 
-// HKLM (64- and 32-bit views) and HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\*": DisplayName and
-// InstallLocation. Read only.
+// Uninstall entries are a Windows idea: none on Linux (the Steam library and the extra folders are what count).
 public sealed class SystemUninstallEntries : IUninstallEntries
 {
-	private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
-
-	public IEnumerable<UninstallEntry> Read()
-	{
-		if (!OperatingSystem.IsWindows())
-		{
-			return [];
-		}
-		var list = new List<UninstallEntry>();
-		foreach ((Microsoft.Win32.RegistryHive hive, Microsoft.Win32.RegistryView view) in new[]
-		{
-			(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64),
-			(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry32),
-			(Microsoft.Win32.RegistryHive.CurrentUser, Microsoft.Win32.RegistryView.Default)
-		})
-		{
-			try
-			{
-				using Microsoft.Win32.RegistryKey root = Microsoft.Win32.RegistryKey.OpenBaseKey(hive, view);
-				using Microsoft.Win32.RegistryKey? uninstall = root.OpenSubKey(UninstallKey);
-				if (uninstall == null)
-				{
-					continue;
-				}
-				foreach (string name in uninstall.GetSubKeyNames())
-				{
-					try
-					{
-						using Microsoft.Win32.RegistryKey? app = uninstall.OpenSubKey(name);
-						if (app?.GetValue("DisplayName") is string display && display.Length > 0)
-						{
-							list.Add(new UninstallEntry(display, app.GetValue("InstallLocation") as string));
-						}
-					}
-					catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
-					{
-						// One unreadable entry: skipped.
-					}
-				}
-			}
-			catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException or ArgumentException)
-			{
-				// This view cannot be read: the others still count.
-			}
-		}
-		return list;
-	}
+	public IEnumerable<UninstallEntry> Read() => [];
 }
 
 // The latest scan and running it off the calling thread; a scan asked for while one runs runs once more after it.

@@ -9,30 +9,11 @@ public static partial class Text
 		$"Uygulamanın dilini seçin. Daha sonra ayarlardan değiştirebilirsiniz.",
 		$"Choose the app language. You can change it later in the settings.");
 
-	public static string SetupDriversTitle(Language? l = null) => Pick(l, $"Sürücüler", $"Drivers");
-	public static string SetupDriversInstructions(Language? l = null) => Pick(l,
-		$"DS5 Untethered iki ücretsiz sürücüye ihtiyaç duyar: sanal kablolu kumanda için usbip-win2, gerçek kumandayı oyunlardan gizlemek için HidHide. İkisini de resmi sayfalarından indirip kurun, ardından yeniden kontrol edin.",
-		$"DS5 Untethered needs two free drivers: usbip-win2 for the virtual wired controller and HidHide to hide the real controller from games. Download both from their official pages, install them, then check again.");
-	public static string SetupUsbIpMissing(Language? l = null) => Pick(l,
-		$"usbip-win2 kurulu değil (ya da sürücüsü eksik).",
-		$"usbip-win2 is not installed (or its driver is missing).");
-	public static string SetupHidHideMissing(Language? l = null) => Pick(l,
-		$"HidHide kurulu değil (ya da sürücüsü eksik).",
-		$"HidHide is not installed (or its driver is missing).");
-	public static string SetupRestartPending(Language? l = null) => Pick(l,
-		$"Sürücülerin çalışması için bilgisayarı yeniden başlatmanız gerekebilir.",
-		$"You may need to restart the computer for the drivers to work.");
 
 	public static string SetupPairTitle(Language? l = null) => Pick(l, $"Kumandayı Eşleştir", $"Pair the Controller");
-	public static string SetupPairInstructions(Language? l = null) => Pick(l,
-		$"Kumanda kapalıyken ø ve Create tuşlarına birlikte basılı tutun; ışık çubuğu hızlı hızlı yanıp sönmeye başlayınca bırakın. Sonra Windows Bluetooth ayarlarında \"Cihaz ekle\" ile kumandayı ekleyin.",
-		$"With the controller off, hold the ø button and Create together until the light bar flashes quickly, then let go. Then add the controller with \"Add device\" in the Windows Bluetooth settings.");
 	public static string SetupRadioMissing(Language? l = null) => Pick(l,
 		$"Bu bilgisayarda Bluetooth adaptörü bulunamadı.",
 		$"No Bluetooth adapter was found on this computer.");
-	public static string SetupRadioOff(Language? l = null) => Pick(l,
-		$"Bluetooth kapalı. Windows ayarlarından açın.",
-		$"Bluetooth is off. Turn it on in the Windows settings.");
 	public static string SetupControllerMissing(Language? l = null) => Pick(l,
 		$"Bluetooth ile bağlı bir DualSense bulunamadı.",
 		$"No DualSense is connected over Bluetooth.");
@@ -57,9 +38,6 @@ public static partial class Text
 		$"Complete the previous steps to finish.");
 
 	public static string SetupActionRecheck(Language? l = null) => Pick(l, $"Yeniden Kontrol Et", $"Check Again");
-	public static string SetupActionDownloadUsbIp(Language? l = null) => Pick(l, $"usbip-win2'yi İndir", $"Download usbip-win2");
-	public static string SetupActionDownloadHidHide(Language? l = null) => Pick(l, $"HidHide'ı İndir", $"Download HidHide");
-	public static string SetupActionOpenBluetooth(Language? l = null) => Pick(l, $"Bluetooth Ayarlarını Aç", $"Open Bluetooth Settings");
 	public static string SetupActionRunAdapterTest(Language? l = null) => Pick(l, $"Testi Başlat", $"Start Test");
 
 	public static string SetupOptional(Language? l = null) => Pick(l, $"İsteğe Bağlı", $"Optional");

@@ -8,6 +8,10 @@ public interface IControllerHiding
 	// False when the platform has no way to hide (the app then warns that games may see two controllers).
 	bool IsInstalled { get; }
 
+	// False when the platform has no hiding yet and the bridge runs without it (Linux, experimental); true: the bridge
+	// does not start while IsInstalled is false.
+	bool IsRequired => true;
+
 	// Undoes what an earlier run left behind (crash). Safe on every start.
 	Task RecoverAsync();
 
@@ -32,6 +36,8 @@ public interface IControllerHiding
 public class NoControllerHiding : IControllerHiding
 {
 	public virtual bool IsInstalled => false;
+
+	public virtual bool IsRequired => true;
 
 	public virtual Task RecoverAsync() => Task.CompletedTask;
 

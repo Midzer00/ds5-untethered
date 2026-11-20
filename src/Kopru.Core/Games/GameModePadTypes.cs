@@ -109,7 +109,8 @@ public sealed partial class GameModeController
 	private readonly XboxTriggerDetector xboxTriggers = new();
 	private PlayStationSupport playStation = PlayStationSupport.LoadEmbedded();
 	private XboxTriggerGames triggerGames = XboxTriggerGames.LoadEmbedded();
-	private bool xboxSeriesOs = XboxSeriesSupport.OsSupported;
+	// No Xbox Series pad on Linux (its GIP pad is not in this build): Xbox Series is always played as Xbox 360.
+	private bool xboxSeriesOs;
 	// The experimental Xbox Trigger Rumble setting (saved with the games, off by default).
 	private bool xboxTriggerRumbleOn;
 	// The Xbox Series pad failed to start on this PC before (saved: RememberAfter failures in a row, the last one when and
@@ -773,7 +774,7 @@ public sealed partial class GameModeController
 		}
 		if (osFallback)
 		{
-			string reason = $"{XboxSeriesSupport.OsText} is older than Windows 10 21H2";
+			const string reason = "this build has no Xbox Series pad";
 			Log($"game: Xbox Series chosen, Xbox 360 used ({reason})");
 			XboxSeriesFellBack?.Invoke(new XboxSeriesFallback(reason, false));
 		}

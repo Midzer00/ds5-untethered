@@ -27,6 +27,9 @@ public sealed class GameImageService
 
 	private readonly GameImageResolver resolver;
 	private readonly Func<string, IconPixels?> readIcon;
+
+	// An exe's icon as BGRA pixels (Linux has no reader for Windows exe icons yet: none).
+	public sealed record IconPixels(int Width, int Height, byte[] Bgra);
 	private readonly SemaphoreSlim decoding = new(MaxDecoding, MaxDecoding);
 	private readonly object gate = new();
 	private readonly LinkedList<(string Key, GameThumb Thumb)> order = new();
@@ -36,7 +39,7 @@ public sealed class GameImageService
 	public GameImageService(GameImageResolver resolver, Func<string, IconPixels?>? readIcon = null)
 	{
 		this.resolver = resolver;
-		this.readIcon = readIcon ?? (path => ExeIcon.Read(path, IconSize));
+		this.readIcon = readIcon ?? (_ => null);
 	}
 
 	public GameImageResolver Resolver => resolver;

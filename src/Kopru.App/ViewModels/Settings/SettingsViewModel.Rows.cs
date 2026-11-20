@@ -15,6 +15,8 @@ public sealed partial class SettingsViewModel
 
 	public string StartWithWindowsShort => Text.StartWithWindowsShort();
 	public string KeepInTrayShort => Text.KeepInTrayShort();
+	// Linux (experimental): what is not there yet, under the version.
+	public string LinuxNote => Text.LinuxExperimentalNote();
 	public string AutoStartBridgeShort => Text.AutoStartBridgeShort();
 	public string BridgeRowShort => Text.BridgeRowShort();
 	public string BridgeRowHint => Text.BridgeRowHint();
@@ -27,7 +29,6 @@ public sealed partial class SettingsViewModel
 	public string MicButtonModeShort => Text.MicButtonModeShort();
 	public string ProtectDefaultAudioShort => Text.ProtectDefaultAudioShort();
 	public string NotifyLinkShort => Text.NotifyLinkShort();
-	public string NotifyHidHideShort => Text.NotifyHidHideShort();
 
 	// The experimental Xbox Trigger Rumble switch (Controllers tab, its own Triggers card in the right column): the title
 	// with a muted Experimental tag; the full name (tag included) is the switch's accessible name.

@@ -5,7 +5,7 @@ using System.Runtime.Versioning;
 
 namespace Kopru.Platform.Linux;
 
-// The few libc calls the Linux platform needs (man pages read(2), write(2), ioctl(2), poll(2), geteuid(2)).
+// The few libc calls the Linux platform needs (man pages read(2), write(2), ioctl(2), poll(2), geteuid(2), access(2)).
 // "libc" is looked up as is first and then as "libc.so.6" (glibc's soname), since some systems have no plain libc.so
 // that dlopen can load.
 [SupportedOSPlatform("linux")]
@@ -62,4 +62,11 @@ internal static unsafe class LibC
 
 	[DllImport(Library, EntryPoint = "geteuid")]
 	public static extern uint GetEffectiveUserId();
+
+	public const int ReadOk = 4;
+	public const int WriteOk = 2;
+
+	// access(2) with the real user id: 0 when allowed.
+	[DllImport(Library, EntryPoint = "access", SetLastError = true)]
+	public static extern int Access([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int mode);
 }

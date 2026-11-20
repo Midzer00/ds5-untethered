@@ -25,7 +25,11 @@ public enum BridgeError
 	AttachFailed,
 	ControllerOpenFailed,
 	ControllerLost,
-	Watchdog
+	Watchdog,
+	// Linux: pkexec (polkit) is missing, so the virtual controller can't be plugged in from the app.
+	PkexecMissing,
+	// Linux: the password dialog was closed or polkit refused the attach.
+	AttachNotAuthorized
 }
 
 // What the UI shows. Battery is null until the first input report.
@@ -98,8 +102,6 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		this.identities = identities;
 		this.attacher = attacher;
 		this.time = time ?? TimeProvider.System;
-		// A test clock drives the Xbox Series start check too; the real one is the awake time (sleep does not count).
-		AwakeTime = time == null || time == TimeProvider.System ? () => AwakeClock.Now : () => TimeSpan.FromTicks(this.time.GetUtcNow().UtcTicks);
 		linkQuality = new Diagnostics.LinkQualityMonitor(line => Diagnostics.AppLog.Write(line + LogSlot));
 	}
 
@@ -121,7 +123,6 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			BatteryProbe = source is IReadOnlyControllerSource readOnly ? new BatteryProbe(readOnly) : null,
 			StateFile = BridgeStateFile.CreateDefault(),
 			InputSink = platform.CreateInputSink(),
-			SeriesStore = XboxSeriesStore.Shared,
 			Power = platform.ControllerPower,
 			PreciseWaitFactory = platform.CreatePreciseWait
 		};
@@ -276,6 +277,8 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		BridgeError.ControllerOpenFailed => Text.BridgeControllerOpenFailed(language),
 		BridgeError.ControllerLost => Text.BridgeControllerLost(language),
 		BridgeError.Watchdog => Text.BridgeWatchdog(language),
+		BridgeError.PkexecMissing => Text.BridgePkexecMissing(language),
+		BridgeError.AttachNotAuthorized => Text.BridgeAttachNotAuthorized(language),
 		_ => null
 	};
 
@@ -441,7 +444,13 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				catch (Exception e)
 				{
 					await connection.CloseAsync().ConfigureAwait(false);
-					Fail(e is FileNotFoundException ? BridgeError.UsbIpMissing : BridgeError.AttachFailed, e.Message);
+					Fail(e switch
+					{
+						FileNotFoundException { FileName: "pkexec" } => BridgeError.PkexecMissing,
+						FileNotFoundException => BridgeError.UsbIpMissing,
+						UnauthorizedAccessException => BridgeError.AttachNotAuthorized,
+						_ => BridgeError.AttachFailed
+					}, e.Message);
 					return;
 				}
 				current = connection;
@@ -454,7 +463,6 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				{
 					while (!token.IsCancellationRequested && !Monitor(connection))
 					{
-						CheckXboxSeriesStart(connection);
 						await SwapPadIfNeededAsync(connection, token).ConfigureAwait(false);
 						await Task.Delay(MonitorInterval, token).ConfigureAwait(false);
 					}
@@ -713,12 +721,6 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 
 		public long RateInputs, RateHaptics;
 
-		// When the current virtual pad was plugged in (BridgeHost.AwakeTime), and whether the Xbox Series start check is done
-		// for it.
-		public TimeSpan? PadAttachedAt;
-
-		public bool XboxSeriesJudged;
-
 		public async Task AttachAsync(CancellationToken token)
 		{
 			await host.CleanupStaleAsync(token).ConfigureAwait(false);
@@ -759,9 +761,6 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				host.NotifyPadAudio(a => a.PadAttached(host.Slot, attached));
 				host.RecordAttached(attached, server.Port);
 			}
-			// The Xbox Series pad must be started by Windows within XboxSeriesStartTimeout (BridgeHostPads).
-			PadAttachedAt = host.AwakeTime();
-			XboxSeriesJudged = false;
 			// Games see the pad from now on: their first reports to it are no new use of the controller.
 			Bridge.QuietGameUse(ControllerBridge.GameUseSettle);
 		}

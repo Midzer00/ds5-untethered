@@ -1,8 +1,8 @@
 # Built-in DualSense identity
 
 `dualsense.json` (embedded in Kopru.Core) is what the virtual controller reports about itself when the user has no
-capture of their own in `%LOCALAPPDATA%\Untethered\captures`. It was taken from a cabled DualSense (`Kopru.Probe
-capture`) and stripped of everything unit specific.
+capture of their own in `~/.config/ds5-untethered/captures` (`$XDG_CONFIG_HOME/ds5-untethered/captures`). It was taken
+from a cabled DualSense (with the capture tool of the Windows app on `main`) and stripped of everything unit specific.
 
 Kept as captured (identical on every DualSense of this model):
 

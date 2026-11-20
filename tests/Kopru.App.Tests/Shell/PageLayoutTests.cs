@@ -200,7 +200,7 @@ public class PageLayoutTests
 		var probes = new RealServiceTests.Probes(drivers: false);
 		var fake = new FakeControllerService(animate: false);
 		var vm = new MainWindowViewModel(fake, new AppEnvironment(new MemorySettingsStore(new AppSettings()), null,
-			() => new Kopru.Core.Setup.SetupWizard(new Kopru.Core.Setup.SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+			() => new Kopru.Core.Setup.SetupWizard(probes.Status, new RealServiceTests.Links())));
 		vm.OpenController(ControllerPageViewModel.TestTab);
 		Assert.NotNull(fake.LiveHandler);
 		vm.ShowSetup();

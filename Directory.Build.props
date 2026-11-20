@@ -1,6 +1,6 @@
 <Project>
 
-  <!-- The app version and product name, in one place. The publish script (tools/publish.ps1) names the download from it. -->
+  <!-- The app version and product name, in one place. -->
   <PropertyGroup>
     <Version>0.2.0</Version>
     <InformationalVersion>$(Version)</InformationalVersion>

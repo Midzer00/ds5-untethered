@@ -8,6 +8,7 @@ using Kopru.Core.Hiding;
 using Kopru.Core.Input;
 using Kopru.Core.Platform;
 using Kopru.Core.Setup;
+using Kopru.Platform.Linux.Bluetooth;
 using Kopru.Platform.Linux.Hidraw;
 using Kopru.Platform.Linux.Hiding;
 using Kopru.Platform.Linux.UsbIp;
@@ -27,10 +28,10 @@ public sealed record LinuxPlatformOptions
 	public string SysClassHidraw { get; init; } = HidrawFinder.SysClassHidraw;
 }
 
-// EXPERIMENTAL, community-maintained. What works: finding and opening the Bluetooth DualSense through hidraw, and
-// attaching our USB/IP server's virtual pad with the usbip client (vhci_hcd). Not done yet: hiding the real pad
-// (LinuxHiding), audio capture for audio-to-haptics, desktop mode input (uinput), turning the pad off (BlueZ), a
-// timerfd-based precise wait (the portable fallback is used). See docs/linux/README.md.
+// EXPERIMENTAL, community-maintained. What works: finding and opening the Bluetooth DualSense through hidraw, attaching
+// our USB/IP server's virtual pad with the usbip client (vhci_hcd; the desktop app goes through pkexec) and turning the
+// pad off through bluetoothctl. Not done yet: hiding the real pad (LinuxHiding), audio capture for audio-to-haptics,
+// desktop mode input (uinput), a timerfd-based precise wait (the portable fallback is used). See docs/linux/README.md.
 [SupportedOSPlatform("linux")]
 public sealed class LinuxPlatform(LinuxPlatformOptions? options = null) : IPlatform
 {
@@ -87,8 +88,8 @@ public sealed class LinuxPlatform(LinuxPlatformOptions? options = null) : IPlatf
 
 	public IControllerHiding CreateHiding() => new LinuxHiding(AppLog.Write);
 
-	// TODO(linux): disconnect through BlueZ (org.bluez.Device1.Disconnect over D-Bus); no root needed.
-	public IControllerPower ControllerPower => NoControllerPower.Instance;
+	// BlueZ drops the link ("bluetoothctl disconnect"); no root needed. TODO(linux): org.bluez.Device1.Disconnect over D-Bus.
+	public IControllerPower ControllerPower { get; } = new BluezControllerPower(new ProcessCommandRunner(), RealLinuxHost.Instance);
 
 	// TODO(linux): a timerfd wait. The fallback sleeps and spins the last 1.5 ms, which is accurate on Linux.
 	public IPreciseWait CreatePreciseWait() => PreciseWait.CreateFallback();

@@ -87,14 +87,21 @@ public sealed record AdapterSummary(AdapterVerdict? Verdict, DateTimeOffset? Tim
 	}
 }
 
-// Slow, system-wide facts (registry, radio, paired list, files): read off the UI thread.
+// Slow, system-wide facts (radio, paired list, the Linux checks, files): read off the UI thread. The driver chip and the
+// blocking issue follow the first missing requirement (none: nothing missing); hiding is shown as not available yet.
 public sealed record HealthEnvironment(
 	ComponentInfo UsbIp,
 	ComponentInfo HidHide,
 	RadioState Radio,
 	IReadOnlyList<PairedController> Paired,
 	bool? RestartPending,
-	AdapterSummary? Adapter);
+	AdapterSummary? Adapter,
+	IReadOnlyList<SetupRequirement>? Requirements = null)
+{
+	// The first missing Linux requirement that keeps the virtual controller from being plugged in, then any missing one.
+	public SetupRequirement? FirstBlockingMissing => Requirements?.FirstOrDefault(r => !r.Ready && r.BlocksBridge);
+	public SetupRequirement? FirstMissing => FirstBlockingMissing ?? Requirements?.FirstOrDefault(r => !r.Ready);
+}
 
 // What the running app knows. HidHideAppAllowed / ControllerHidden: null = not tried in this run.
 public sealed record HealthRuntime(
@@ -110,22 +117,19 @@ public sealed record HealthRuntime(
 }
 
 // Reads HealthEnvironment from small fakeable probes. The radio and the paired list change any time and are read on every
-// call; the slow facts (installed drivers and their services, a pending restart, the adapter test file) are read on a
-// full read and otherwise reused for up to StaticInterval.
-public sealed class HealthProbe(IInstallRegistry registry, IBluetoothRadio radio, IPairedControllers paired, IRestartProbe? restart, string? adapterResultPath,
-	Func<long>? clockMs = null)
+// call; the slow facts (the Linux requirements, a pending restart, the adapter test file) are read on a full read and
+// otherwise reused for up to StaticInterval.
+public sealed class HealthProbe(IBluetoothRadio radio, IPairedControllers paired, IRestartProbe? restart, string? adapterResultPath,
+	Func<long>? clockMs = null, Func<IReadOnlyList<SetupRequirement>>? requirements = null)
 {
 	public static readonly TimeSpan StaticInterval = TimeSpan.FromMinutes(1);
 
-	private sealed record StaticFacts(ComponentInfo UsbIp, ComponentInfo HidHide, bool? RestartPending, AdapterSummary? Adapter, long ReadAt);
+	private sealed record StaticFacts(ComponentInfo UsbIp, ComponentInfo HidHide, bool? RestartPending, AdapterSummary? Adapter, long ReadAt,
+		IReadOnlyList<SetupRequirement>? Requirements = null);
 
 	private readonly Func<long> clock = clockMs ?? (() => Environment.TickCount64);
 	private readonly object gate = new();
 	private StaticFacts? facts;
-
-	[SupportedOSPlatform("windows")]
-	public static HealthProbe CreateDefault() => new(new WindowsInstallRegistry(), new WindowsBluetoothRadio(), new WindowsPairedControllers(),
-		new WindowsRestartProbe(), Path.Combine(AppPaths.DataDirectory, DiagnosticsExport.AdapterResultFileName));
 
 	// How many times the slow facts were read (tests).
 	public int StaticReads { get; private set; }
@@ -143,16 +147,23 @@ public sealed class HealthProbe(IInstallRegistry registry, IBluetoothRadio radio
 			readStatic = full || facts == null || now - facts.ReadAt >= (long)StaticInterval.TotalMilliseconds;
 			if (readStatic)
 			{
-				SystemCheck check = new(registry, radio, new NoControllers(), restart ?? new NoRestart());
-				facts = new StaticFacts(Safe(check.CheckUsbIp, ComponentInfo.Missing), Safe(check.CheckHidHide, ComponentInfo.Missing),
-					restart == null ? null : Safe(restart.IsRestartPending, null), AdapterSummary.Load(adapterResultPath), now);
+				IReadOnlyList<SetupRequirement> linux = requirements == null ? [] : Safe(requirements, []);
+				facts = new StaticFacts(LinuxUsbIp(linux), ComponentInfo.Missing, restart == null ? null : Safe(restart.IsRestartPending, null),
+					AdapterSummary.Load(adapterResultPath), now, linux);
 				StaticReads++;
 			}
 			current = facts!;
 		}
 		RadioState state = Safe(radio.Query, RadioState.Missing);
 		IReadOnlyList<PairedController> list = state == RadioState.On ? Safe(paired.Find, []) : [];
-		return new HealthEnvironment(current.UsbIp, current.HidHide, state, list, current.RestartPending, current.Adapter);
+		return new HealthEnvironment(current.UsbIp, current.HidHide, state, list, current.RestartPending, current.Adapter, current.Requirements);
+	}
+
+	// Linux: the USB/IP client counts as installed with usbip and pkexec, its driver with vhci_hcd loaded.
+	public static ComponentInfo LinuxUsbIp(IReadOnlyList<SetupRequirement> requirements)
+	{
+		bool Ready(SetupRequirementId id) => requirements.FirstOrDefault(r => r.Id == id)?.Ready != false;
+		return new ComponentInfo(Ready(SetupRequirementId.UsbIpTool) && Ready(SetupRequirementId.Pkexec), null, null, Ready(SetupRequirementId.VhciModule));
 	}
 
 	private static T Safe<T>(Func<T> read, T fallback)
@@ -165,16 +176,6 @@ public sealed class HealthProbe(IInstallRegistry registry, IBluetoothRadio radio
 		{
 			return fallback;
 		}
-	}
-
-	private sealed class NoControllers : IControllerFinder
-	{
-		public IReadOnlyList<HidDevice> Find() => [];
-	}
-
-	private sealed class NoRestart : IRestartProbe
-	{
-		public bool? IsRestartPending() => null;
 	}
 }
 
@@ -219,17 +220,13 @@ public sealed record HealthReport(
 		return new HealthReport(connection, chips, blocking, blocking?.Reason ?? string.Empty, testReason);
 	}
 
-	// Priority: usbip-win2 missing > HidHide missing > no radio > Bluetooth off > never paired > on a cable. A paired
-	// controller that is off or asleep does not block: the bridge starts and waits for it.
+	// Priority: a missing USB/IP part (vhci_hcd, usbip, pkexec) > no radio > Bluetooth off > never paired > on a cable. A
+	// paired controller that is off or asleep does not block: the bridge starts and waits for it. Hiding never blocks.
 	public static BlockingIssue? Blocking(HealthEnvironment env, ConnectionState connection, Language? l = null)
 	{
-		if (!env.UsbIp.Ready)
+		if (env.FirstBlockingMissing is { } missing)
 		{
-			return new(BlockingKind.DriverMissing, HealthLevel.Error, Text.HealthChipDriver(l), Text.CannotStartDriver(l), FixAction.InstallDriver);
-		}
-		if (!env.HidHide.Ready)
-		{
-			return new(BlockingKind.HidHideMissing, HealthLevel.Error, Text.HealthChipHiding(l), Text.CannotStartHidHide(l), FixAction.InstallHidHide);
+			return new(BlockingKind.DriverMissing, HealthLevel.Error, Text.HealthChipDriver(l), missing.Problem(l), FixAction.InstallDriver);
 		}
 		return connection.Kind switch
 		{
@@ -244,48 +241,14 @@ public sealed record HealthReport(
 	public static HealthChip DriverChip(HealthEnvironment env, Language? l = null)
 	{
 		string label = Text.HealthChipDriver(l);
-		ComponentInfo usbIp = env.UsbIp;
-		if (!usbIp.Installed)
-		{
-			return new(HealthChipKind.Driver, HealthLevel.Error, label, Text.HealthDriverMissing(l), FixAction.InstallDriver);
-		}
-		if (!usbIp.DriverPresent)
-		{
-			return new(HealthChipKind.Driver, HealthLevel.Error, label, Text.HealthDriverServiceMissing(l), FixAction.InstallDriver);
-		}
-		if (env.RestartPending == true)
-		{
-			return new(HealthChipKind.Driver, HealthLevel.Warning, label, Text.HealthRestartPending(l), FixAction.None);
-		}
-		return new(HealthChipKind.Driver, HealthLevel.Ok, label, Text.HealthDriverOk(usbIp.Version ?? Text.VersionUnknown(l), l), FixAction.None);
+		return env.FirstMissing is { } missing
+			? new(HealthChipKind.Driver, missing.BlocksBridge ? HealthLevel.Error : HealthLevel.Warning, label, missing.Problem(l), FixAction.InstallDriver)
+			: new(HealthChipKind.Driver, HealthLevel.Ok, label, Text.HealthLinuxSystemOk(l), FixAction.None);
 	}
 
-	public static HealthChip HidHideChip(HealthEnvironment env, HealthRuntime run, Language? l = null)
-	{
-		string label = Text.HealthChipHiding(l);
-		HealthChip Chip(HealthLevel level, string reason, FixAction fix) => new(HealthChipKind.HidHide, level, label, reason, fix);
-		if (!env.HidHide.Installed)
-		{
-			return Chip(HealthLevel.Error, Text.HealthHidingMissing(l), FixAction.InstallHidHide);
-		}
-		if (!env.HidHide.DriverPresent)
-		{
-			return Chip(HealthLevel.Error, Text.HealthHidingDriverMissing(l), FixAction.InstallHidHide);
-		}
-		if (!run.BridgeStarted)
-		{
-			return Chip(HealthLevel.Ok, Text.HealthHidingReady(l), FixAction.None);
-		}
-		if (run.HidHideAppAllowed == false)
-		{
-			return Chip(HealthLevel.Warning, Text.HealthHidingAppNotAllowed(l), FixAction.RestartBridge);
-		}
-		if (run.ControllerHidden == false)
-		{
-			return Chip(HealthLevel.Warning, Text.HealthHidingNotHidden(l), FixAction.RestartBridge);
-		}
-		return Chip(HealthLevel.Ok, run.ControllerHidden == true ? Text.HealthHidingActive(l) : Text.HealthHidingReady(l), FixAction.None);
-	}
+	// The real controller is not hidden on Linux yet (LinuxHiding): always says so.
+	public static HealthChip HidHideChip(HealthEnvironment env, HealthRuntime run, Language? l = null) =>
+		new(HealthChipKind.HidHide, HealthLevel.Unknown, Text.HealthChipHiding(l), Text.HealthHidingLinux(l), FixAction.None);
 
 	public static HealthChip SteamChip(SteamInputResult? steam, Language? l = null)
 	{
@@ -335,7 +298,7 @@ public sealed record HealthReport(
 		if (run.BridgeState == BridgeState.Error || (run.LastError != BridgeError.None && run.BridgeStarted))
 		{
 			string reason = BridgeHost.Describe(run.LastError, l) ?? Text.HealthBridgeStopped(l);
-			FixAction fix = run.LastError == BridgeError.UsbIpMissing ? FixAction.InstallDriver : FixAction.RestartBridge;
+			FixAction fix = run.LastError is BridgeError.UsbIpMissing or BridgeError.PkexecMissing ? FixAction.InstallDriver : FixAction.RestartBridge;
 			return Chip(run.BridgeState == BridgeState.Error ? HealthLevel.Error : HealthLevel.Warning, Text.HealthBridgeLastError(reason, l), fix);
 		}
 		return run.BridgeState switch

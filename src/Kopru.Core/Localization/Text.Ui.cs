@@ -89,7 +89,7 @@ public static partial class Text
 	// Settings
 	public static string LanguageLabel(Language? l = null) => Pick(l, $"Dil", $"Language");
 	public static string LanguageFollowSystem(Language? l = null) => Pick(l, $"Sistemi İzle", $"Follow System");
-	public static string StartWithWindows(Language? l = null) => Pick(l, $"Windows ile Başlat", $"Start With Windows");
+	public static string StartWithWindows(Language? l = null) => Pick(l, $"Oturum Açınca Başlat", $"Start When I Sign In");
 	public static string StartWithWindowsHint(Language? l = null) => Pick(l, $"Oturum açınca pencere açmadan arka planda başlar.", $"Starts in the background when you sign in, without opening the window.");
 	public static string IdlePowerOff(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");
 	public static string IdlePowerOffHint(Language? l = null) => Pick(l,
@@ -212,7 +212,7 @@ public static partial class Text
 	public static string LiveOnVolume(double percent, Language? l = null) => Pick(l, $"Açık · %{percent:F0}", $"On · {percent:F0}%");
 	public static string ControlsNeedController(Language? l = null) => Pick(l, $"Kumanda bağlanınca kullanılabilir", $"Available once the controller connects");
 	public static string TryAction(Language? l = null) => Pick(l, $"Dene", $"Try");
-	public static string HealthDriver(Language? l = null) => Pick(l, $"Sürücü", $"Driver");
+	public static string HealthDriver(Language? l = null) => Pick(l, $"Sistem", $"System");
 	public static string HealthAdapter(Language? l = null) => Pick(l, $"Adaptör", $"Adapter");
 	public static string HealthInstalled(Language? l = null) => Pick(l, $"Kurulu", $"Installed");
 	public static string HealthMissing(Language? l = null) => Pick(l, $"Kurulu Değil", $"Not Installed");
@@ -333,7 +333,9 @@ public static partial class Text
 	// Short reasons for the bridge error toast (the full text is on the Overview page).
 	public static string NotifyBridgeNoIdentity(Language? l = null) => Pick(l, $"Kumanda kimliği yok", $"No controller identity");
 	public static string NotifyBridgeIdentityUnreadable(Language? l = null) => Pick(l, $"Kimlik dosyası okunamadı", $"Identity file unreadable");
-	public static string NotifyBridgeUsbIpMissing(Language? l = null) => Pick(l, $"usbip-win2 kurulu değil", $"usbip-win2 not installed");
+	public static string NotifyBridgeUsbIpMissing(Language? l = null) => Pick(l, $"usbip kurulu değil", $"usbip not installed");
+	public static string NotifyBridgePkexecMissing(Language? l = null) => Pick(l, $"pkexec kurulu değil", $"pkexec not installed");
+	public static string NotifyBridgeNotAuthorized(Language? l = null) => Pick(l, $"Şifre penceresi kapatıldı", $"Password prompt closed");
 	public static string NotifyBridgeAttachFailed(Language? l = null) => Pick(l, $"Sanal kumanda takılamadı", $"Virtual controller not attached");
 	public static string NotifyBridgeOpenFailed(Language? l = null) => Pick(l, $"Kumanda açılamadı", $"Controller won't open");
 	public static string NotifyBridgeLost(Language? l = null) => Pick(l, $"Kumanda bağlantısı koptu", $"Controller connection lost");
@@ -341,7 +343,7 @@ public static partial class Text
 	public static string NotifyHidHideTitle(Language? l = null) => Pick(l, $"Sanal Kumanda Başlamadı", $"Virtual Controller Not Started");
 	public static string NotifyHidHideBody(Language? l = null) => Pick(l, $"Önce HidHide'ı kurun", $"Install HidHide first");
 	public static string NotifyTrayTitle(Language? l = null) => Pick(l, $"Arka Planda Çalışıyor", $"Running In Background");
-	public static string NotifyTrayBody(Language? l = null) => Pick(l, $"Simgeyi saat yanında bulun", $"Find the icon by the clock");
+	public static string NotifyTrayBody(Language? l = null) => Pick(l, $"Simgeyi paneldeki durum simgelerinde bulun", $"Find the icon among the panel's status icons");
 	public static string NotifyClose(Language? l = null) => Pick(l, $"Bildirimi Kapat", $"Dismiss");
 	public static string GroupNotifications(Language? l = null) => Pick(l, $"Bildirimler", $"Notifications");
 	public static string NotificationsShow(Language? l = null) => Pick(l, $"Bildirimleri Göster", $"Show Notifications");
@@ -358,12 +360,10 @@ public static partial class Text
 	public static string NotifyPowerOffHint(Language? l = null) => Pick(l, $"Kumanda kullanılmadığı için kapatılınca.", $"When it turns off for being idle.");
 	public static string NotifyErrorsSetting(Language? l = null) => Pick(l, $"Sanal Kumanda Hataları", $"Virtual Controller Errors");
 	public static string NotifyErrorsHint(Language? l = null) => Pick(l, $"Bir sorunla durunca, nedeniyle birlikte.", $"When it stops on a problem, with the reason.");
-	public static string NotifyHidHideSetting(Language? l = null) => Pick(l, $"HidHide Eksik", $"HidHide Missing");
-	public static string NotifyHidHideHint(Language? l = null) => Pick(l, $"Sanal kumanda HidHide kurulu olmadığı için başlayamazsa.", $"If the virtual controller can't start because HidHide isn't installed.");
 	public static string QuietWhilePlaying(Language? l = null) => Pick(l, $"Oyun Sırasında Bildirim Gösterme", $"Don't Notify While Playing");
 	public static string QuietWhilePlayingHint(Language? l = null) => Pick(l, $"Oyunda ve tam ekranda sessiz kalır.", $"Silent in games and full screen apps.");
 	public static string KeepInTray(Language? l = null) => Pick(l, $"Kapatınca Arka Planda Çalış", $"Keep Running In Background");
-	public static string KeepInTrayHint(Language? l = null) => Pick(l, $"Simge, saat yanındaki gizli simgeler bölümünde durur.", $"The icon stays in the hidden icons area next to the clock.");
+	public static string KeepInTrayHint(Language? l = null) => Pick(l, $"Masaüstü destekliyorsa simge paneldeki durum simgelerinde durur.", $"The icon stays among the panel's status icons when the desktop supports them.");
 	public static string TrayOpen(Language? l = null) => Pick(l, $"Aç", $"Open");
 	public static string TrayNotificationsOff(Language? l = null) => Pick(l, $"Bildirimleri Kapat", $"Turn Off Notifications");
 	public static string TrayNotificationsOn(Language? l = null) => Pick(l, $"Bildirimleri Aç", $"Turn On Notifications");

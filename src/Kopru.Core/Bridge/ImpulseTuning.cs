@@ -22,8 +22,7 @@ public sealed record ImpulseTuning
 	// %LOCALAPPDATA%\Untethered\impulse-tuning.json (the app's data folder, AppPaths.DataDirectory).
 	public const string FileName = "impulse-tuning.json";
 
-	public static string DefaultPath { get; } =
-		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Untethered", FileName);
+	public static string DefaultPath { get; } = Path.Combine(AppPaths.DataDirectory, FileName);
 
 	// Frequency moves in eighths of its range, like the amplitude's eight steps: a level change inside a step writes
 	// nothing new to the controller.

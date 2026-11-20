@@ -25,6 +25,9 @@ public sealed class LinuxHiding(Action<string>? log = null) : NoControllerHiding
 
 	private int logged;
 
+	// The bridge runs without hiding on Linux for now (the app shows a note).
+	public override bool IsRequired => false;
+
 	public override Task BeginAsync() => Log();
 
 	public override Task HideAsync(string instanceId) => Log();

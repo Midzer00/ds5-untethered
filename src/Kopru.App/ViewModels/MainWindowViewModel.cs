@@ -18,12 +18,11 @@ public sealed class NavItem(PageViewModel page, string iconData) : ViewModelBase
 // FullScreen: whether a full-screen app is in front (for "don't notify while playing"). GameList: downloads the supported
 // games list (null: no update button); Now: the wall clock for its weekly automatic check. GameImages: the pictures of the
 // supported games list (null: placeholders only). InstalledGames: finds the supported games installed on this PC (null:
-// nothing counts as installed). Updates: the in-app update check, download and install (null: the Updates block only
-// shows the version). Links: opens web pages in the browser (the support link; null: the shell's default browser).
+// nothing counts as installed). Links: opens web pages in the browser (the support link; null: the shell's default browser).
 public sealed record AppEnvironment(ISettingsStore? Store = null, IStartupRegistration? Startup = null, Func<SetupWizard>? Wizard = null,
 	Func<bool>? FullScreen = null, Func<long>? Clock = null, Kopru.Core.Games.GameCatalogUpdater? GameList = null,
-	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null, RestartServices? Restart = null,
-	Kopru.Core.Games.InstalledGames? InstalledGames = null, UpdateServices? Updates = null, IUrlLauncher? Links = null);
+	Func<DateTimeOffset>? Now = null, GameImageService? GameImages = null,
+	Kopru.Core.Games.InstalledGames? InstalledGames = null, IUrlLauncher? Links = null);
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -86,8 +85,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 			Navigate(SupportedGames);
 		};
 		AutoUpdateTask = SupportedGames.AutoUpdateAsync();
-		Updates = new UpdatesViewModel(service, Settings, Notifications, _environment.Updates, _environment.Now, _environment.FullScreen);
-		SettingsPage.Updates = Updates;
 		_shown = new ShownProperties(name => OnPropertyChanged(name),
 			(nameof(IsEdge), () => IsEdge), (nameof(DeviceName), () => DeviceName), (nameof(DeviceConnection), () => DeviceConnection),
 			(nameof(DeviceBattery), () => DeviceBattery), (nameof(IsConnected), () => IsConnected), (nameof(BatteryPercent), () => BatteryPercent),
@@ -126,7 +123,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 			return;
 		}
 		Kopru.Core.Setup.SystemStatus status = setup.Wizard.Status;
-		bool olderFileWithDrivers = Settings.SetupCompleted == null && status.UsbIp.Ready && status.HidHide.Ready;
+		bool olderFileWithDrivers = Settings.SetupCompleted == null && status.UsbIp.Ready && status.Requirements?.All(r => r.Ready) == true;
 		if (setup.Wizard.FirstIncomplete == null || olderFileWithDrivers)
 		{
 			Settings.MarkSetupCompleted();
@@ -150,10 +147,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	{
 		if (_environment.Wizard is { } create)
 		{
-			SetupRestart? restart = _environment.Restart is { } services
-				? new SetupRestart(services, () => Settings.StartWithWindows, Settings.SaveNow, () => ExitApp?.Invoke())
-				: null;
-			var setup = new SetupViewModel(create(), _service, CloseSetup, autoFinish, restart: restart) { FocusStep = focus };
+			var setup = new SetupViewModel(create(), _service, CloseSetup, autoFinish) { FocusStep = focus };
 			// Finishing the required steps (here or opened from Settings) completes setup for good.
 			setup.PropertyChanged += (_, e) =>
 			{
@@ -323,8 +317,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
 	public NotificationCenter Notifications { get; }
 
-	// In-app updates (Settings > General).
-	public UpdatesViewModel Updates { get; }
 	public SupportLinkViewModel Support { get; }
 
 	// The automatic game list check started with the window (tests await it).

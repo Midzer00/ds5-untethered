@@ -1,6 +1,6 @@
 # Contributing to DS5 Untethered
 
-Thank you for helping. A few rules keep the project open, legally clean and stable for its Windows users.
+Thank you for helping. A few rules keep the project open, legally clean and stable for its users.
 
 ## License
 
@@ -34,32 +34,31 @@ Allowed: public documentation and specifications (the USB and HID specifications
 `Documentation/` pages, man pages, public header constants such as ioctl numbers), your own measurements and captures of
 your own hardware, and this repository's code. When you rely on a document, name it in a comment.
 
-## Linux work
+## This branch: the Linux app
 
-- Linux support is experimental and community-maintained. Pull requests for Linux target the **`linux`** branch.
+- The `linux` branch is the Linux app (experimental, community-maintained). It is built and released separately from
+  the Windows app, which lives on `main`, and the two are never merged. Pull requests for Linux target `linux`.
+- The Windows-only code (the Windows platform, HidHide, usbip-win2, WASAPI, the registry, the updater and installer) is
+  not on this branch. The shared parts keep the same files and names as on `main` (the bridge, the virtual pads, the
+  USB/IP server, protocol, haptics, lighting, profiles, localization, the games catalog and the view models), so fixes
+  can be carried over between the branches by hand. Do not rename or move them.
 - Linux code goes in `src/Kopru.Platform.Linux` behind `IPlatform` (see [docs/linux/README.md](docs/linux/README.md)).
   Shared code in `Kopru.Core` must not name an OS-specific class; add a member to `IPlatform` instead.
-- Keep anything that needs root out of the app: put it in a tiny, separate helper that does one thing, and document why.
-- Keep parsing pure (strings and bytes in, values out) and cover it with unit tests that run on every OS.
+- Keep anything that needs root out of the app. Today that is only `usbip attach` and `usbip detach`, which go through
+  `pkexec`; anything more belongs in a tiny, separate helper that does one thing, and document why.
+- Keep parsing pure (strings and bytes in, values out) and cover it with unit tests.
 
-## Windows behaviour must not change
-
-The Windows app is what people use. A change for Linux (or anything else) must leave Windows behaviour exactly as it
-is, unless the pull request is about changing it on purpose.
+## Checks before a pull request
 
 - `dotnet build Kopru.sln` passes with no warnings.
-- The tests pass: `powershell -ExecutionPolicy Bypass -File tools\test.ps1` on Windows runs all of them.
-- A test that only works on Windows (Windows APIs, the registry, Windows paths) gets `[Trait("Category", "Windows")]`,
-  so the Linux CI job skips it. Making such a test portable instead is welcome.
+- The tests pass: `dotnet test tests/Kopru.Core.Tests --filter "Category!=RealTime"` and `dotnet test
+  tests/Kopru.App.Tests` (the App tests run headless). `tools/test.ps1` runs both in parallel shards where PowerShell is
+  available.
+- `dotnet publish src/Kopru.App -c Release -r linux-x64 --self-contained` succeeds.
 
-What CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main` and `linux`:
-
-- Windows: builds `Kopru.sln` and runs the Core tests except the timer pacing ones (`Category=RealTime`); these must
-  pass. Then the timer pacing tests alone and the App tests run, but are allowed to fail (shared runners are too noisy
-  for the timing checks, and the App tests are slow there); look at their results anyway, and run `tools\test.ps1`
-  locally before asking for a merge.
-- Linux: builds Kopru.Core, Kopru.Platform.Linux, the Linux spike and the Core tests, and runs the Core tests except
-  `Category=Windows` and `Category=RealTime`; these must pass. The App tests do not run on Linux.
+What CI (`.github/workflows/ci.yml`) runs on every push and pull request to `linux`, on Ubuntu: builds `Kopru.sln`,
+runs the Core tests except the timer pacing ones (`Category=RealTime`) and the App tests (still allowed to fail while the
+Linux app settles), and publishes the app and the headless spike. On pushes it refreshes the `linux-spike` pre-release.
 
 ## Style
 

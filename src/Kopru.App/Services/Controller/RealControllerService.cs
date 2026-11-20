@@ -67,17 +67,15 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		this.steamCheck = steamCheck;
 		this.adapterResultPath = adapterResultPath;
 		GameCatalog catalog = games?.Catalog ?? GameCatalog.Load(Kopru.Core.AppPaths.GameList);
-		Games = games ?? new GameModeController(catalog, new GameWatcher(catalog, steam: SteamLibrary.CreateDefault()), host)
-		{
-			PadIsDefaultOutput = Kopru.Core.Audio.DefaultOutputCheck.IsVirtualPad
-		};
+		Games = games ?? new GameModeController(catalog, new GameWatcher(catalog), host);
 		Games.StateChanged += _ => Raise();
 		Games.MemoryChanged += Raise;
 		this.host = host;
 		this.hiding = hiding;
 		this.finder = finder;
 		this.post = post ?? (a => Dispatcher.UIThread.Post(a));
-		this.instanceId = instanceId ?? (d => DeviceInstance.FromInterfacePath(d.Path));
+		// The id hiding knows a controller by: its node path (Linux has no hiding yet).
+		this.instanceId = instanceId ?? (d => d.Path);
 		this.healthProbe = healthProbe;
 		this.batteryStore = batteryStore;
 		this.launcher = launcher ?? new ShellUrlLauncher();
@@ -124,14 +122,6 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 		Localizer.LanguageChanged += OnLanguageChanged;
 	}
-
-	[System.Runtime.Versioning.SupportedOSPlatform("windows")]
-	public static RealControllerService CreateDefault() =>
-		new(BridgeHost.CreateDefault(), Kopru.Core.Platform.PlatformServices.Current.CreateHiding(),
-			Kopru.Core.Platform.PlatformServices.Current.CreateControllerFinder(),
-			steamCheck: SteamInputCheck.CreateDefault().Check,
-			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, DiagnosticsExport.AdapterResultFileName),
-			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault());
 
 	private BridgeStatus Status => Selected.Status;
 
@@ -247,7 +237,7 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 		}
 		// HidHide is required (HealthReport.Blocking): without it games would see the real and the virtual controller. Every
 		// start path ends here (Overview, sidebar, tray, shortcuts, the app's own restarts), so none of them gets past it.
-		if (!hiding.IsInstalled || health.BlockingIssue?.Kind == Kopru.Core.Health.BlockingKind.HidHideMissing)
+		if ((!hiding.IsInstalled && hiding.IsRequired) || health.BlockingIssue?.Kind == Kopru.Core.Health.BlockingKind.HidHideMissing)
 		{
 			AppLog.Write("virtual controller start refused (HidHide is not installed): " + reason);
 			SetHidingWarning(Text.HidingUnavailable());

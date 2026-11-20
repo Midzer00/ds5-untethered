@@ -149,6 +149,11 @@
 
       <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="600"
                Name="SettingsTabs">
+        <ListBox.Styles>
+          <Style Selector="ListBoxItem" x:DataType="vm:TabOption">
+            <Setter Property="IsVisible" Value="{Binding IsShown}" />
+          </Style>
+        </ListBox.Styles>
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TabOption">
             <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" Margin="6,0" />
@@ -300,44 +305,24 @@
             </Border>
           </DockPanel>
 
-          <!-- Updates (the former About card): the version with the update state and its one button (Check Now, Update or
-               Open Download Page), and the automatic check switch. What the app does is the version's tooltip; the
-               release notes are the row's (the General tab has no room for them as a line). The quiet GitHub Sponsors
-               link sits on the card's title line, at its right end (no row of its own: the tab has no room for one). -->
+          <!-- About: the version (what the app does is its tooltip) and what the Linux build does not have yet. The quiet
+               GitHub Sponsors link sits on the card's title line, at its right end. -->
           <DockPanel Classes="card">
             <Grid DockPanel.Dock="Top" Margin="0,0,0,8" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Name="SupportRow">
-              <TextBlock Classes="section" Text="{Binding Updates.GroupLabel, FallbackValue=''}" VerticalAlignment="Center" />
+              <TextBlock Classes="section" Text="{Binding AboutLabel}" VerticalAlignment="Center" />
               <Button Grid.Column="1" Classes="link" Name="SupportLink" Command="{Binding Support.OpenCommand, FallbackValue={x:Null}}"
                       IsVisible="{Binding Support, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding Support.Tip, FallbackValue={x:Null}}"
                       AutomationProperties.Name="{Binding Support.LinkText, FallbackValue=''}" AutomationProperties.HelpText="{Binding Support.Tip, FallbackValue=''}">
                 <TextBlock Text="{Binding Support.LinkText, FallbackValue=''}" />
               </Button>
             </Grid>
-            <Border Classes="panel" Padding="20,0" Name="UpdatesPanel">
+            <Border Classes="panel" Padding="20,0" Name="AboutPanel">
               <StackPanel>
-                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="UpdateRow" ToolTip.Tip="{Binding Updates.NotesTip, FallbackValue={x:Null}}">
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="VersionRow">
                   <StackPanel Classes="text">
-                    <TextBlock Classes="label" Name="UpdateVersion" Text="{Binding VersionText}" ToolTip.Tip="{Binding AboutTagline}" />
-                    <TextBlock Classes="body" Name="UpdateState" Text="{Binding Updates.StateText, FallbackValue='', Converter={x:Static v:KeepLastWords.Instance}}"
-                               IsVisible="{Binding !Updates.HasError, FallbackValue=True}" />
-                    <TextBlock Classes="body" Name="UpdateError" Foreground="{StaticResource DangerBrush}"
-                               Text="{Binding Updates.StateText, FallbackValue='', Converter={x:Static v:KeepLastWords.Instance}}"
-                               IsVisible="{Binding Updates.HasError, FallbackValue=False}" />
+                    <TextBlock Classes="label" Name="AppVersion" Text="{Binding VersionText}" ToolTip.Tip="{Binding AboutTagline}" />
+                    <TextBlock Classes="body" Name="LinuxNote" Text="{Binding LinuxNote, Converter={x:Static v:KeepLastWords.Instance}}" TextWrapping="Wrap" />
                   </StackPanel>
-                  <Button Grid.Column="1" Theme="{StaticResource QuietButton}" Name="UpdateCheckButton" Content="{Binding Updates.ActionText, FallbackValue=''}"
-                          Command="{Binding Updates.ActCommand, FallbackValue={x:Null}}" IsVisible="{Binding !Updates.IsPrimaryAction, FallbackValue=True}"
-                          AutomationProperties.Name="{Binding Updates.ActionText, FallbackValue=''}" />
-                  <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Name="UpdateButton" Content="{Binding Updates.ActionText, FallbackValue=''}"
-                          Command="{Binding Updates.ActCommand, FallbackValue={x:Null}}" IsVisible="{Binding Updates.IsPrimaryAction, FallbackValue=False}"
-                          AutomationProperties.Name="{Binding Updates.ActionText, FallbackValue=''}" />
-                </Grid>
-                <Border Classes="divider" />
-                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Updates.AutoCheckHint, FallbackValue={x:Null}}">
-                  <StackPanel Classes="text">
-                    <TextBlock Classes="label" Text="{Binding Updates.AutoCheckLabel, FallbackValue='', Converter={x:Static v:KeepLastWords.Instance}}" />
-                  </StackPanel>
-                  <ToggleSwitch Grid.Column="1" Name="UpdateAutoSwitch" IsChecked="{Binding Settings.AutoCheckUpdates}" OnContent="{x:Null}" OffContent="{x:Null}"
-                                AutomationProperties.Name="{Binding Updates.AutoCheckLabel, FallbackValue=''}" AutomationProperties.HelpText="{Binding Updates.AutoCheckHint, FallbackValue=''}" />
                 </Grid>
               </StackPanel>
             </Border>
@@ -371,7 +356,7 @@
           </DockPanel>
           <!-- Triggers: the experimental Xbox Trigger Rumble switch (off by default: Automatic gives Xbox Series only while it
                is on), its title with a muted Experimental tag; the feel row is on the Haptics And Triggers page while it is on -->
-          <DockPanel Classes="card" c:SettingsLayout.Column="1">
+          <DockPanel Classes="card" c:SettingsLayout.Column="1" IsVisible="{x:Static vm:AppFeatures.XboxSeries}">
             <TextBlock Classes="section" Text="{Binding TriggersGroupLabel}" />
             <Border Classes="panel" Padding="20,0" Name="XboxTriggerRumblePanel">
               <StackPanel>
@@ -415,7 +400,7 @@
             <TextBlock Classes="section" Text="{Binding SpeakerGroupLabel}" />
             <Border Classes="panel" Padding="20,0" Name="SpeakerPanel">
               <StackPanel>
-                <Grid Classes="settingRow stack below" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding Settings.Audio.OutputHint}">
+                <Grid Classes="settingRow stack below" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding Settings.Audio.OutputHint}" IsVisible="{x:Static vm:AppFeatures.SystemAudio}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding Settings.Audio.OutputLabel}" />
                     <TextBlock Classes="body" Text="{Binding AudioOutputShort, Converter={x:Static v:KeepLastWords.Instance}}" />
@@ -432,8 +417,8 @@
                     </ComboBox.ItemTemplate>
                   </ComboBox>
                 </Grid>
-                <Border Classes="divider" />
-                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding ProtectDefaultAudioHint}">
+                <Border Classes="divider" IsVisible="{x:Static vm:AppFeatures.SystemAudio}" />
+                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding ProtectDefaultAudioHint}" IsVisible="{x:Static vm:AppFeatures.SystemAudio}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding ProtectDefaultAudioLabel}" />
                     <TextBlock Classes="body" Text="{Binding ProtectDefaultAudioShort, Converter={x:Static v:KeepLastWords.Instance}}" />
@@ -441,7 +426,7 @@
                   <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.ProtectDefaultAudio}" OnContent="{x:Null}" OffContent="{x:Null}"
                                 AutomationProperties.Name="{Binding ProtectDefaultAudioLabel}" AutomationProperties.HelpText="{Binding ProtectDefaultAudioHint}" />
                 </Grid>
-                <Border Classes="divider" />
+                <Border Classes="divider" IsVisible="{x:Static vm:AppFeatures.SystemAudio}" />
                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding SpeakerSwitchTip}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding SpeakerSwitchLabel}" />
@@ -482,7 +467,7 @@
             <TextBlock Classes="section" Text="{Binding MicGroupLabel}" />
             <Border Classes="panel" Padding="20,0" Name="MicPanel">
               <StackPanel>
-                <Grid Classes="settingRow stack below" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding Settings.Audio.InputHint}">
+                <Grid Classes="settingRow stack below" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding Settings.Audio.InputHint}" IsVisible="{x:Static vm:AppFeatures.SystemAudio}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding Settings.Audio.InputLabel}" />
                     <TextBlock Classes="body" Text="{Binding AudioInputShort, Converter={x:Static v:KeepLastWords.Instance}}" />
@@ -499,7 +484,7 @@
                     </ComboBox.ItemTemplate>
                   </ComboBox>
                 </Grid>
-                <Border Classes="divider" />
+                <Border Classes="divider" IsVisible="{x:Static vm:AppFeatures.SystemAudio}" />
                 <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding MicSendHint}">
                   <StackPanel Classes="text">
                     <TextBlock Classes="label" Text="{Binding MicSendLabel}" />
@@ -667,15 +652,6 @@
                   </StackPanel>
                   <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyErrors}" OnContent="{x:Null}" OffContent="{x:Null}"
                                 AutomationProperties.Name="{Binding NotifyErrorsLabel}" />
-                </Grid>
-                <Border Classes="divider" />
-                <Grid Classes="settingRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding NotifyHidHideHint}">
-                  <StackPanel Classes="text">
-                    <TextBlock Classes="label" Text="{Binding NotifyHidHideLabel}" />
-                    <TextBlock Classes="body" Text="{Binding NotifyHidHideShort, Converter={x:Static v:KeepLastWords.Instance}}" />
-                  </StackPanel>
-                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding Settings.NotifyHidHide}" OnContent="{x:Null}" OffContent="{x:Null}"
-                                AutomationProperties.Name="{Binding NotifyHidHideLabel}" AutomationProperties.HelpText="{Binding NotifyHidHideHint}" />
                 </Grid>
               </StackPanel>
             </Border>

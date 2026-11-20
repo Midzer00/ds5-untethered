@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=DS5 Untethered
+GenericName=Controller Bridge
+Comment=Bluetooth DualSense as a wired controller, with the game's haptics and adaptive triggers (experimental)
+Exec=Kopru.App
+TryExec=Kopru.App
+Icon=ds5-untethered
+Terminal=false
+Categories=Game;Utility;
+Keywords=DualSense;PS5;controller;gamepad;haptics;
+StartupWMClass=Kopru.App

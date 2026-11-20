@@ -21,7 +21,7 @@ public sealed partial class SettingsViewModel
 	public IReadOnlyList<TabOption> Tabs { get; } =
 	[
 		new(() => Text.General()), new(() => Text.ControllersSection()), new(() => Text.SettingsTabAudio()),
-		new(() => Text.SettingsTabShortcuts()), new(() => Text.DesktopModeSection()), new(() => Text.GroupNotifications()),
+		new(() => Text.SettingsTabShortcuts()), new(() => Text.DesktopModeSection(), AppFeatures.MouseMode), new(() => Text.GroupNotifications()),
 	];
 
 	// The shown tab; out of range values (-1: nothing selected) are ignored.

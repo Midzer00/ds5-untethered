@@ -156,11 +156,6 @@ public sealed class DsxListener : IDisposable
 					throw new SocketException((int)SocketError.AddressAlreadyInUse);
 				}
 				s.ExclusiveAddressUse = true;
-				if (OperatingSystem.IsWindows())
-				{
-					// A reply to a mod that closed its socket must not end the receive loop (SIO_UDP_CONNRESET off).
-					s.IOControl(unchecked((int)0x9800000C), [0, 0, 0, 0], null);
-				}
 				s.Bind(new IPEndPoint(IPAddress.Loopback, Port));
 			}
 			catch (SocketException e)

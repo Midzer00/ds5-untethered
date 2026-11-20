@@ -98,7 +98,8 @@ public partial class SupportedGamesView : UserControl
 		}
 	}
 
-	// The system open dialog for an exe; null when cancelled or when there is no local path.
+	// The system open dialog for a game's program: a Linux executable (any file; they have no extension) or a Windows exe
+	// run through Proton. Null when cancelled or when there is no local path.
 	private async Task<string?> PickExeAsync()
 	{
 		if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage)
@@ -109,12 +110,13 @@ public partial class SupportedGamesView : UserControl
 		{
 			Title = Text.AddGame(),
 			AllowMultiple = false,
-			FileTypeFilter = [new FilePickerFileType("exe") { Patterns = ["*.exe"] }]
+			FileTypeFilter = [new FilePickerFileType(Text.AllFilesType()) { Patterns = ["*"] }, new FilePickerFileType("exe") { Patterns = ["*.exe"] }]
 		});
 		return files.Count > 0 ? files[0].TryGetLocalPath() : null;
 	}
 
-	// The system open dialog for a game's start file (an exe or a shortcut); null when cancelled or without a local path.
+	// The system open dialog for a game's start file (a Linux executable or script, a desktop entry, or a Windows exe or
+	// shortcut); null when cancelled or without a local path.
 	private async Task<string?> PickStartFileAsync()
 	{
 		if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage)
@@ -125,7 +127,11 @@ public partial class SupportedGamesView : UserControl
 		{
 			Title = Text.StartFileChoose().TrimEnd('…'),
 			AllowMultiple = false,
-			FileTypeFilter = [new FilePickerFileType(Text.StartFileTypes()) { Patterns = ["*.exe", "*.lnk", "*.url"] }]
+			FileTypeFilter =
+			[
+				new FilePickerFileType(Text.AllFilesType()) { Patterns = ["*"] },
+				new FilePickerFileType(Text.StartFileTypes()) { Patterns = ["*.desktop", "*.sh", "*.x86_64", "*.AppImage", "*.exe", "*.lnk", "*.url"] }
+			]
 		});
 		return files.Count > 0 ? files[0].TryGetLocalPath() : null;
 	}

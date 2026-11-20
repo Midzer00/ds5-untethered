@@ -1,14 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <RootNamespace>Kopru.App</RootNamespace>
-    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <AssemblyTitle>DS5 Untethered</AssemblyTitle>
     <Description>Relays a Bluetooth DualSense to games as a wired controller, with the game's haptics and adaptive triggers.</Description>
   </PropertyGroup>

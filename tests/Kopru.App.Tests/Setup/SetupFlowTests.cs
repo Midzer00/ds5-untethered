@@ -14,17 +14,25 @@ namespace Kopru.App.Tests;
 public sealed class SetupFlowTests
 {
 	// Drivers can be "installed" mid-test so a recheck completes the setup.
-	internal sealed class MutableProbes : IInstallRegistry, IBluetoothRadio, IControllerFinder, IRestartProbe
+	internal sealed class MutableProbes : IBluetoothRadio, IControllerFinder, IRestartProbe
 	{
 		public bool Drivers { get; set; }
 		// The controller is connected over Bluetooth (off = paired before but switched off now).
 		public bool ControllerOn { get; set; } = true;
-		public (string? Version, string? Location)? FindProgram(string displayNamePrefix) => Drivers ? ("1.0", @"C:\x") : null;
-		public bool ServiceExists(string serviceName) => Drivers;
-		public bool FileExists(string path) => Drivers;
 		public RadioState Query() => RadioState.On;
 		public IReadOnlyList<HidDevice> Find() => ControllerOn ? [new HidDevice(TestLink.BtPath, 0x054C, 0x0CE6, 78, 547, 64)] : [];
 		public bool? IsRestartPending() => false;
+
+		// The Linux checks: vhci_hcd and usbip as "drivers", pkexec and hidraw access always fine.
+		public IReadOnlyList<SetupRequirement> Requirements() =>
+		[
+			new(SetupRequirementId.VhciModule, Drivers, _ => "vhci_hcd is not loaded", "sudo modprobe vhci-hcd"),
+			new(SetupRequirementId.UsbIpTool, Drivers, _ => "usbip is not installed"),
+			new(SetupRequirementId.Pkexec, true, _ => "pkexec is not installed"),
+			new(SetupRequirementId.HidrawAccess, true, _ => "no hidraw access"),
+		];
+
+		public SystemStatus Status() => new(Kopru.Core.Health.HealthProbe.LinuxUsbIp(Requirements()), ComponentInfo.Missing, Query(), Find(), IsRestartPending(), Requirements());
 	}
 
 	internal sealed class FakeClock : IElapsedClock
@@ -38,7 +46,7 @@ public sealed class SetupFlowTests
 		}
 	}
 
-	private static SetupWizard Wizard(MutableProbes p) => new(new SystemCheck(p, p, p, p), new RealServiceTests.Links());
+	private static SetupWizard Wizard(MutableProbes p) => new(p.Status, new RealServiceTests.Links());
 
 	private static MainWindowViewModel OpenMain(MutableProbes p, FakeControllerService? service = null) =>
 		new(service ?? new FakeControllerService(animate: false), new AppEnvironment(new MemorySettingsStore(), null, () => Wizard(p)));

@@ -28,7 +28,8 @@ public class OverviewHealthTests
 		AdapterSummary? adapter = null) =>
 		HealthReport.Build(
 			new HealthEnvironment(driver ? new ComponentInfo(true, "1.0", null, true) : ComponentInfo.Missing, new ComponentInfo(true, "1.6", null, true),
-				radio, paired ? [new PairedController("DualSense Wireless Controller", 1, !noPad, false)] : [], null, adapter),
+				radio, paired ? [new PairedController("DualSense Wireless Controller", 1, !noPad, false)] : [], null, adapter,
+				[new SetupRequirement(SetupRequirementId.VhciModule, driver, _ => "vhci_hcd is not loaded", "sudo modprobe vhci-hcd")]),
 			new HealthRuntime(noPad ? [] : [pad ?? BluetoothPad], bridge != BridgeState.Stopped, bridge, error, steam), Now);
 
 	private static void Disconnect(FakeControllerService fake, HealthReport report)
@@ -43,7 +44,7 @@ public class OverviewHealthTests
 		var fake = new FakeControllerService(animate: false);
 		var probes = new RealServiceTests.Probes(drivers: true);
 		var vm = new MainWindowViewModel(fake, new AppEnvironment(new MemorySettingsStore(new AppSettings()),
-			Wizard: wizard ? () => new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links()) : null, Now: () => Now));
+			Wizard: wizard ? () => new SetupWizard(probes.Status, new RealServiceTests.Links()) : null, Now: () => Now));
 		vm.Setup = null;
 		return (vm, fake);
 	}

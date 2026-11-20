@@ -22,7 +22,7 @@ public interface IUsbIpDevice
 }
 
 // Serves one device on the loopback interface (only this computer can connect): answers the device list and the import,
-// then relays URBs between the client (usbip-win2's driver) and the device.
+// then relays URBs between the client (the usbip tools and the vhci_hcd driver) and the device.
 public sealed class UsbIpServer : IAsyncDisposable
 {
 	private readonly IUsbIpDevice device;

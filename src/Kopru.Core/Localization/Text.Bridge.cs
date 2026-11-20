@@ -21,10 +21,16 @@ public static partial class Text
 		Pick(l, $"Kumanda kimliği dosyası okunamadı", $"The controller identity file could not be read");
 
 	public static string BridgeUsbIpMissing(Language? l = null) =>
-		Pick(l, $"usbip.exe bulunamadı: usbip-win2'yi kurun", $"usbip.exe not found: install usbip-win2");
+		Pick(l, $"usbip bulunamadı: dağıtımının usbip paketini kur (Kurulum sayfasına bak)", $"usbip not found: install your distribution's usbip package (see the Setup page)");
+
+	public static string BridgePkexecMissing(Language? l = null) =>
+		Pick(l, $"pkexec bulunamadı: sanal kumandayı takmak için polkit'i kur", $"pkexec not found: install polkit to plug in the virtual controller");
+
+	public static string BridgeAttachNotAuthorized(Language? l = null) =>
+		Pick(l, $"Şifre penceresi kapatıldı; sanal kumanda takılmadı. Yeniden başlatınca tekrar sorulur.", $"The password prompt was closed; the virtual controller was not plugged in. Start it again to be asked again.");
 
 	public static string BridgeAttachFailed(Language? l = null) =>
-		Pick(l, $"Sanal kumanda Windows'a takılamadı", $"The virtual controller could not be plugged into Windows");
+		Pick(l, $"Sanal kumanda takılamadı (usbip attach)", $"The virtual controller could not be plugged in (usbip attach)");
 
 	public static string BridgeControllerOpenFailed(Language? l = null) =>
 		Pick(l, $"Kumanda açılamadı", $"The controller could not be opened");

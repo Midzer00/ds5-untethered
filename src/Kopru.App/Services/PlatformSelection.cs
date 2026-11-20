@@ -4,21 +4,11 @@ using Kopru.Core.Platform;
 
 namespace Kopru.App.Services;
 
-// Picks the platform the app runs on, once at start (Program.Main), and makes it PlatformServices.Current.
+// Picks the platform the app runs on, once at start (Program.Main), and makes it PlatformServices.Current: Linux, else the
+// unsupported platform (nothing found, nothing attached), so the app and its tests still start elsewhere.
 public static class PlatformSelection
 {
-	public static IPlatform ForThisSystem()
-	{
-		if (OperatingSystem.IsWindows())
-		{
-			return WindowsPlatform.Instance;
-		}
-		if (OperatingSystem.IsLinux())
-		{
-			return Linux();
-		}
-		return UnsupportedPlatform.Instance;
-	}
+	public static IPlatform ForThisSystem() => OperatingSystem.IsLinux() ? Linux() : UnsupportedPlatform.Instance;
 
 	public static IPlatform Apply()
 	{
@@ -27,12 +17,8 @@ public static class PlatformSelection
 		return platform;
 	}
 
-	// Kept out of ForThisSystem so that only this method names a Kopru.Platform.Linux type: the JIT loads that assembly when
-	// it compiles this method, which happens only on Linux. On Windows Kopru.Platform.Linux.dll is never loaded
-	// (PlatformSelectionTests checks it).
-	// Experimental: the desktop app itself does not start on Linux yet (App.OnFrameworkInitializationCompleted);
-	// tools/Kopru.LinuxSpike runs the bridge headless. See docs/linux/README.md.
+	// Only Linux code paths name a Kopru.Platform.Linux type (LinuxAppServices). Experimental: see docs/linux/README.md.
 	[MethodImpl(MethodImplOptions.NoInlining)]
 	[System.Runtime.Versioning.SupportedOSPlatform("linux")]
-	private static IPlatform Linux() => new Kopru.Platform.Linux.LinuxPlatform();
+	private static IPlatform Linux() => LinuxAppServices.CreatePlatform();
 }

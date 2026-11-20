@@ -611,8 +611,6 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string AboutTagline => Text.AboutTagline();
 	// The compact controller line under the version.
 	public ControllerInfoViewModel Info { get; }
-	// The Updates block (set by the main window's view model; null when the page is built on its own in tests).
-	public UpdatesViewModel? Updates { get; set; }
 	// The support link row under the updates (set by the main window's view model; null when the page is built on its own).
 	public SupportLinkViewModel? Support { get; set; }
 	public string RunWizardText => Text.RunSetupWizard();
@@ -651,8 +649,6 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string NotifyPowerOffHint => Text.NotifyPowerOffHint();
 	public string NotifyErrorsLabel => Text.NotifyErrorsSetting();
 	public string NotifyErrorsHint => Text.NotifyErrorsHint();
-	public string NotifyHidHideLabel => Text.NotifyHidHideSetting();
-	public string NotifyHidHideHint => Text.NotifyHidHideHint();
 	public string NotifyLinkLabel => Text.NotifyLinkSetting();
 	public string NotifyLinkHint => Text.NotifyLinkHint();
 	public string SpeakerGroupLabel => Text.GroupControllerSpeaker();

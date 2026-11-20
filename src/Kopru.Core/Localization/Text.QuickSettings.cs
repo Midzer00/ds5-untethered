@@ -74,8 +74,8 @@ public static partial class Text
 	public static string QuickSpeakerOffLowPower(Language? l = null) => Pick(l, $"Düşük Güç Açık", $"Low Power On");
 
 	public static string QuickMouseModeTip(Language? l = null) => Pick(l,
-		$"Kumandayla Windows'ta fare imlecini oynatır ve tıklarsın; bu sırada oyunlar kumandadan giriş almaz.",
-		$"Move and click the Windows mouse pointer with the controller; games get no input from it meanwhile.");
+		$"Kumandayla fare imlecini oynatır ve tıklarsın; bu sırada oyunlar kumandadan giriş almaz.",
+		$"Move and click the mouse pointer with the controller; games get no input from it meanwhile.");
 
 	public static string QuickSpeakerTip(Language? l = null) => Pick(l,
 		$"Oyunun kumanda hoparlörüne gönderdiği sesleri çalar; sadece DualSense türünde çalışır.",

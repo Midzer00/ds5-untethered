@@ -37,6 +37,9 @@ public sealed partial class RealControllerService
 
 	public event EventHandler<FixAction>? FixRequested;
 
+	// Turns the Bluetooth radio on ("Turn On Bluetooth"); null: the fix does nothing (tests).
+	public Func<Task>? TurnOnBluetooth { get; set; }
+
 	public async Task ExecuteFix(FixAction fix)
 	{
 		switch (fix)
@@ -51,13 +54,12 @@ public sealed partial class RealControllerService
 				await ReconnectAsync().ConfigureAwait(false);
 				return;
 			case FixAction.OpenBluetoothSettings:
-				try
+				// Linux: "bluetoothctl power on" (set by the app; desktops differ in how their Bluetooth settings open). A radio
+				// blocked by rfkill stays off; the reason text says how to unblock it.
+				if (TurnOnBluetooth is { } turnOn)
 				{
-					launcher.Open(SetupLinks.BluetoothSettings);
-				}
-				catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
-				{
-					// Nothing else to do; the reason text says where the setting is.
+					await turnOn().ConfigureAwait(false);
+					RequestHealthRefresh();
 				}
 				return;
 			default:

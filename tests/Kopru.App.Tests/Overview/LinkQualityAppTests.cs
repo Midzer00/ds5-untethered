@@ -270,10 +270,10 @@ public class LinkQualityAppTests
 						var probes = new RealServiceTests.Probes(drivers: true);
 						var fake = new FakeControllerService(animate: false);
 						var vm = new MainWindowViewModel(fake, new AppEnvironment(new MemorySettingsStore(), null,
-							() => new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+							() => new SetupWizard(probes.Status, new RealServiceTests.Links())));
 						var window = new MainWindow { DataContext = vm, Width = w, Height = h };
 						window.Show();
-						var setup = new SetupViewModel(new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links()), fake, vm.CloseSetup,
+						var setup = new SetupViewModel(new SetupWizard(probes.Status, new RealServiceTests.Links()), fake, vm.CloseSetup,
 							clock: new SetupFlowTests.FakeClock(), tick: _ => Task.Delay(Timeout.Infinite));
 						vm.Setup = setup;
 						setup.ShowAdapterResult(result);
@@ -309,7 +309,7 @@ public class LinkQualityAppTests
 			Localizer.Chosen = Language.Turkish;
 			var probes = new RealServiceTests.Probes(drivers: true);
 			var fake = new FakeControllerService(animate: false);
-			var setup = new SetupViewModel(new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links()), fake, () => { },
+			var setup = new SetupViewModel(new SetupWizard(probes.Status, new RealServiceTests.Links()), fake, () => { },
 				clock: new SetupFlowTests.FakeClock(), tick: _ => Task.Delay(Timeout.Infinite));
 			SetupStepItem step = setup.Steps.Single(s => s.Id == SetupStepId.AdapterTest);
 			Assert.Same(setup, step.AdapterTest);

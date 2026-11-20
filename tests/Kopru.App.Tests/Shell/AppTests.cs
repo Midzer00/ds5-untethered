@@ -379,7 +379,7 @@ public class AppTests
 				// Setup page (first run with the drivers missing).
 				var probes = new RealServiceTests.Probes(drivers: false);
 				var setupVm = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(new MemorySettingsStore(), null,
-					() => new Kopru.Core.Setup.SetupWizard(new Kopru.Core.Setup.SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+					() => new Kopru.Core.Setup.SetupWizard(probes.Status, new RealServiceTests.Links())));
 				var setupWindow = new MainWindow { DataContext = setupVm, Width = 1100, Height = 700 };
 				setupWindow.Show();
 				Settle();
@@ -396,7 +396,7 @@ public class AppTests
 				var doneProbes = new RealServiceTests.Probes(drivers: true);
 				var setupService = (FakeControllerService)ServiceOf(setupVm);
 				var setupClock = new SetupFlowTests.FakeClock();
-				var complete = new SetupViewModel(new Kopru.Core.Setup.SetupWizard(new Kopru.Core.Setup.SystemCheck(doneProbes, doneProbes, doneProbes, doneProbes),
+				var complete = new SetupViewModel(new Kopru.Core.Setup.SetupWizard(doneProbes.Status,
 					new RealServiceTests.Links()), setupService, setupVm.CloseSetup, clock: setupClock, tick: _ => Task.Delay(Timeout.Infinite));
 				setupVm.Setup = complete;
 				Settle();

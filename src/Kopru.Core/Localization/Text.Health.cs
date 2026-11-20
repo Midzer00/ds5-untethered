@@ -5,7 +5,7 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 	// Chip names (Title Case).
-	public static string HealthChipDriver(Language? l = null) => Pick(l, $"Sürücü", $"Driver");
+	public static string HealthChipDriver(Language? l = null) => Pick(l, $"Sistem", $"System");
 	public static string HealthChipHiding(Language? l = null) => Pick(l, $"Gizleme", $"Hiding");
 	public static string HealthChipSteamInput(Language? l = null) => Pick(l, $"Steam Girişi", $"Steam Input");
 	public static string HealthChipAdapter(Language? l = null) => Pick(l, $"Adaptör", $"Adapter");
@@ -21,16 +21,16 @@ public static partial class Text
 
 	// Connection explanations (sentence case).
 	public static string ConnectionBluetoothOffReason(Language? l = null) => Pick(l,
-		$"Bluetooth kapalı. Windows ayarlarından aç.",
-		$"Bluetooth is off. Turn it on in Windows settings.");
+		$"Bluetooth kapalı. Bluetooth'u Aç düğmesine bas ya da masaüstünün Bluetooth ayarlarından aç. Terminalde: bluetoothctl power on (engelliyse önce rfkill unblock bluetooth).",
+		$"Bluetooth is off. Press Turn On Bluetooth or use your desktop's Bluetooth settings. In a terminal: bluetoothctl power on (if it is blocked, first rfkill unblock bluetooth).");
 
 	public static string ConnectionNoRadioReason(Language? l = null) => Pick(l,
 		$"Bu bilgisayarda Bluetooth adaptörü bulunamadı.",
 		$"No Bluetooth adapter was found on this PC.");
 
 	public static string ConnectionNeverPairedReason(Language? l = null) => Pick(l,
-		$"Windows'ta eşleşmiş bir DualSense yok. Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştir.",
-		$"No DualSense is paired with Windows. Hold Create and the ø button until the light blinks, then pair it.");
+		$"Eşleşmiş bir DualSense yok. Create ve ø tuşlarını ışık yanıp sönene kadar basılı tut, sonra masaüstünün Bluetooth ayarlarından ya da bluetoothctl ile eşleştir.",
+		$"No DualSense is paired. Hold Create and the ø button until the light blinks, then pair it in your desktop's Bluetooth settings or with bluetoothctl.");
 
 	public static string ConnectionPairedNotConnectedReason(Language? l = null) => Pick(l,
 		$"Kumanda eşleşmiş ama kapalı ya da uykuda. Açmak için ø tuşuna bas.",
@@ -44,49 +44,17 @@ public static partial class Text
 		$"Kumanda kabloyla bağlı; oyunlar onu zaten kablolu görüyor, sanal kumandaya gerek yok. Kablosuz oynamak için kabloyu çıkar.",
 		$"The controller is connected by cable; games already see it as wired, so the virtual controller isn't needed. Unplug it to play wirelessly.");
 
-	// Driver chip.
-	public static string HealthDriverOk(string version, Language? l = null) => Pick(l,
-		$"usbip-win2 {version} kurulu.",
-		$"usbip-win2 {version} is installed.");
 
-	public static string HealthDriverMissing(Language? l = null) => Pick(l,
-		$"usbip-win2 kurulu değil; sanal kumanda onsuz çalışamaz.",
-		$"usbip-win2 isn't installed; the virtual controller can't run without it.");
 
-	public static string HealthDriverServiceMissing(Language? l = null) => Pick(l,
-		$"usbip-win2 kurulu ama sürücü hizmeti yok. Yeniden kur.",
-		$"usbip-win2 is installed but its driver service is missing. Reinstall it.");
 
-	public static string HealthRestartPending(Language? l = null) => Pick(l,
-		$"Kurulumu bitirmek için bilgisayarı yeniden başlat.",
-		$"Restart the PC to finish the installation.");
 
 	public static string VersionUnknown(Language? l = null) => Pick(l, $"(sürüm bilinmiyor)", $"(version unknown)");
 
-	// Hiding chip.
-	public static string HealthHidingMissing(Language? l = null) => Pick(l,
-		$"HidHide kurulu değil; sanal kumanda onsuz başlamaz, yoksa oyunlar iki kumanda görürdü.",
-		$"HidHide isn't installed; the virtual controller won't start without it, or games would see two controllers.");
 
-	public static string HealthHidingDriverMissing(Language? l = null) => Pick(l,
-		$"HidHide kurulu ama sürücüsü yok. Yeniden kur.",
-		$"HidHide is installed but its driver is missing. Reinstall it.");
 
-	public static string HealthHidingReady(Language? l = null) => Pick(l,
-		$"HidHide hazır; sanal kumanda çalışınca gerçek kumanda gizlenir.",
-		$"HidHide is ready; the real controller is hidden while the virtual controller runs.");
 
-	public static string HealthHidingActive(Language? l = null) => Pick(l,
-		$"Gerçek kumanda diğer uygulamalardan gizli.",
-		$"The real controller is hidden from other apps.");
 
-	public static string HealthHidingAppNotAllowed(Language? l = null) => Pick(l,
-		$"Uygulama HidHide izin listesine eklenemedi. Sanal kumandayı yeniden başlat.",
-		$"The app couldn't be added to the HidHide allow list. Restart the virtual controller.");
 
-	public static string HealthHidingNotHidden(Language? l = null) => Pick(l,
-		$"Gerçek kumanda gizlenemedi; oyunlar iki kumanda görebilir.",
-		$"The real controller couldn't be hidden; games may see two controllers.");
 
 	// Steam Input chip.
 	public static string HealthSteamUnknown(Language? l = null) => Pick(l,
@@ -147,14 +115,7 @@ public static partial class Text
 		$"Son hata: {reason}",
 		$"Last error: {reason}");
 
-	// "Why disabled".
-	public static string CannotStartDriver(Language? l = null) => Pick(l,
-		$"Önce usbip-win2 sürücüsünü kur.",
-		$"Install the usbip-win2 driver first.");
 
-	public static string CannotStartHidHide(Language? l = null) => Pick(l,
-		$"Önce HidHide'ı kur; o olmadan oyunlar iki kumanda görür.",
-		$"Install HidHide first; without it games see two controllers.");
 
 	public static string CannotStartNoRadio(Language? l = null) => Pick(l,
 		$"Sanal kumanda için bir Bluetooth adaptörü gerekli.",
@@ -165,8 +126,8 @@ public static partial class Text
 		$"Turn on Bluetooth first.");
 
 	public static string CannotStartNotPaired(Language? l = null) => Pick(l,
-		$"Önce kumandayı Windows'ta eşleştir.",
-		$"Pair the controller with Windows first.");
+		$"Önce kumandayı Bluetooth ile eşleştir.",
+		$"Pair the controller over Bluetooth first.");
 
 	public static string CannotStartUsb(Language? l = null) => Pick(l,
 		$"Kumanda kabloyla bağlıyken sanal kumandaya gerek yok.",
@@ -190,7 +151,7 @@ public static partial class Text
 		$"Last: {percent}% (was charging) · {when}");
 
 	// Fix buttons (Title Case) and short chip states.
-	public static string FixInstallDriver(Language? l = null) => Pick(l, $"Sürücüyü Kur", $"Install Driver");
+	public static string FixInstallDriver(Language? l = null) => Pick(l, $"Kurulumu Aç", $"Open Setup");
 	public static string FixInstallHidHide(Language? l = null) => Pick(l, $"HidHide'ı Kur", $"Install HidHide");
 	public static string FixSteamInputHelp(Language? l = null) => Pick(l, $"Steam Girişi Yardımı", $"Steam Input Help");
 	public static string FixRunAdapterTest(Language? l = null) => Pick(l, $"Adaptörü Test Et", $"Test Adapter");

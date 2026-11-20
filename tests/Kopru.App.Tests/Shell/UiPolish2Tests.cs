@@ -168,46 +168,6 @@ public sealed class UiPolish2Tests
 	}
 
 	[AvaloniaFact]
-	public async Task GamePopUp_SoundToHaptics_IsOneRowNamedAfterTheSetting()
-	{
-		await ForEachLanguage(async code =>
-		{
-			(MainWindowViewModel vm, MainWindow window) = await AuditRenderTests.OpenGames(code, 1152, 700);
-			vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == AuditRenderTests.MadeUpGame));
-			vm.SupportedGames.Panel.UseOwnSettingsCommand.Execute(null); vm.SupportedGames.Panel.SaveProfileNameCommand.Execute(null);
-			Settle(window);
-			GamePanelView panel = window.GetVisualDescendants().OfType<GamePanelView>().Single();
-			StackPanel audio = panel.GetVisualDescendants().OfType<StackPanel>().Single(s => s.Name == "PanelAudio");
-			Grid row = audio.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "PanelAudioRow");
-			ToggleSwitch toggle = row.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "PanelAudioSwitch");
-			TextBlock label = row.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "PanelAudioLabel");
-			TextBlock status = row.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "PanelAudioStatus");
-			Assert.Equal(Text.AudioHapticsLabel(), label.Text);
-			// No section title repeating the name above the row: the row is the first thing of its group.
-			Assert.DoesNotContain(audio.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Classes.Contains("section"));
-			Assert.Same(row, audio.Children.First(c => c.IsVisible));
-			// Off: the switch shows it, no status line.
-			Assert.False(toggle.IsChecked);
-			Assert.False(status.IsEffectivelyVisible);
-			// The hint comes right after the row, then Strength and Sound Range.
-			List<string> order = audio.GetVisualDescendants().OfType<TextBlock>()
-				.Where(t => t.IsEffectivelyVisible && (t.Classes.Contains("label") || t.Classes.Contains("caption")))
-				.Select(t => t.Text ?? string.Empty).ToList();
-			Assert.Equal([Text.AudioHapticsLabel(), Text.AudioHapticsRumbleNote(), Text.AudioHapticsStrengthLabel(), Text.AudioHapticsBandLabel()], order);
-			// On: what it is doing is a caption under the name, never the row's label.
-			toggle.IsChecked = true;
-			Settle(window);
-			Assert.True(status.IsEffectivelyVisible);
-			Assert.Equal(vm.SupportedGames.Panel.AudioHaptics.Status, status.Text);
-			Assert.Equal(Text.AudioHapticsLabel(), label.Text);
-			// Nowhere in the pop-up is a row's label a switch state.
-			string[] states = [Text.AudioHapticsStatusOff(), Text.AudioHapticsStatusWaiting(), vm.SupportedGames.Panel.AudioHaptics.Status];
-			Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Classes.Contains("label") && states.Contains(t.Text));
-			window.Close();
-		});
-	}
-
-	[AvaloniaFact]
 	public async Task LightPage_YourLightCard_FitsWithoutScrolling()
 	{
 		List<string> problems = [];

@@ -41,7 +41,11 @@ public sealed class PadTypeChoiceViewModel : ViewModelBase
 
 	// The four types with what each one means, in the pickers' order (product names, the same in every language; Xbox
 	// Series is an ordinary type, only its trigger rumble is experimental, behind the Xbox Trigger Rumble switch).
+	// Xbox Series is left out where its driver is missing (AppFeatures.XboxSeries).
 	public static IEnumerable<(VirtualPadType Type, Func<string> Name, Func<string> Line)> TypeOptions() =>
+		AllTypeOptions().Where(o => o.Type != VirtualPadType.XboxSeries || AppFeatures.XboxSeries);
+
+	private static IEnumerable<(VirtualPadType Type, Func<string> Name, Func<string> Line)> AllTypeOptions() =>
 	[
 		(VirtualPadType.DualSense, () => "DualSense", () => Text.PadTypeDualSenseLine()),
 		(VirtualPadType.DualShock4, () => "DualShock 4", () => Text.PadTypeDualShock4Line()),

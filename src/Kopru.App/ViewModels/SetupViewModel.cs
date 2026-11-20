@@ -20,8 +20,6 @@ public sealed class SetupStepItem(SetupStep step, IReadOnlyList<SetupActionItem>
 {
 	// The page, on the adapter test row only: its progress shows inside the row while the test runs.
 	public SetupViewModel? AdapterTest { get; } = step.Id == SetupStepId.AdapterTest ? adapterTest : null;
-	// The page, on the drivers row only: the restart button and its inline question show there.
-	public SetupViewModel? RestartHost { get; } = step.Id == SetupStepId.Drivers ? adapterTest : null;
 	// Optional steps (the adapter test) never block finishing and are never the current step.
 	public bool IsOptional => step.IsOptional;
 	public string OptionalText { get; } = optionalText;
@@ -84,10 +82,9 @@ public sealed partial class SetupViewModel : PageViewModel
 	// close: leaves the page for the Overview. autoFinish: go there by itself when the required steps become done
 	// (first run). clock / tick: progress timing (tick waits between progress refreshes).
 	public SetupViewModel(SetupWizard wizard, IControllerService service, Action close, bool autoFinish = false,
-		IElapsedClock? clock = null, Func<CancellationToken, Task>? tick = null, SetupRestart? restart = null)
+		IElapsedClock? clock = null, Func<CancellationToken, Task>? tick = null)
 	{
 		_wizard = wizard;
-		Restart = restart;
 		_service = service;
 		_close = close;
 		_clock = clock ?? new StopwatchClock();
@@ -141,58 +138,6 @@ public sealed partial class SetupViewModel : PageViewModel
 
 	[ObservableProperty]
 	private string _testRemaining = string.Empty;
-
-	// "Restart The Computer" on the drivers step while Windows reports a pending restart: asks inline first.
-	public SetupRestart? Restart { get; }
-	public bool IsRestartPending => Restart != null && _wizard.Status.RestartPending == true;
-	// The drivers row's buttons hide while the restart question shows in their place.
-	public bool ShowsActions => !IsConfirmingRestart;
-	public string RestartText => Text.SetupRestartButton();
-	public string RestartQuestion => Text.SetupRestartQuestion();
-	public string RestartConfirmText => Text.SetupRestartConfirm();
-	public string RestartCancelText => Text.SetupRestartCancel();
-	public bool HasRestartError => !string.IsNullOrEmpty(RestartError);
-
-	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(ShowsActions))]
-	private bool _isConfirmingRestart;
-
-	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(HasRestartError))]
-	private string _restartError = string.Empty;
-
-	[RelayCommand]
-	private void AskRestart()
-	{
-		RestartError = string.Empty;
-		IsConfirmingRestart = IsRestartPending;
-	}
-
-	[RelayCommand]
-	private void CancelRestart() => IsConfirmingRestart = false;
-
-	[RelayCommand]
-	private void ConfirmRestart()
-	{
-		if (!IsConfirmingRestart || Restart == null)
-		{
-			return;
-		}
-		IsConfirmingRestart = false;
-		if (!Restart.Run())
-		{
-			RestartError = Text.SetupRestartFailed();
-		}
-	}
-
-	partial void OnStepsChanged(IReadOnlyList<SetupStepItem> value)
-	{
-		OnPropertyChanged(nameof(IsRestartPending));
-		if (!IsRestartPending)
-		{
-			IsConfirmingRestart = false;
-		}
-	}
 
 	[RelayCommand]
 	private void Close() => _close();
@@ -269,17 +214,8 @@ public sealed partial class SetupViewModel : PageViewModel
 		TestRemaining = left > 0 ? Text.AdapterTestSecondsLeft(left) : string.Empty;
 	}
 
-	// The drivers row gets "Restart The Computer" after its own buttons while a restart is pending.
 	private IReadOnlyList<SetupStepItem> Build() => BuildItems(_wizard.Steps,
-		s => s.Actions.Select(a => new SetupActionItem(a.Label(null), new AsyncRelayCommand(() => RunAsync(a), () => !IsBusy)))
-			.Concat(s.Id == SetupStepId.Drivers && IsRestartPending
-				? [new SetupActionItem(RestartText, new AsyncRelayCommand(() =>
-				{
-					AskRestart();
-					return Task.CompletedTask;
-				}, () => !IsBusy))]
-				: Array.Empty<SetupActionItem>())
-			.ToList(),
+		s => s.Actions.Select(a => new SetupActionItem(a.Label(null), new AsyncRelayCommand(() => RunAsync(a), () => !IsBusy))).ToList(),
 		OptionalText, this);
 
 	// Numbers the steps and marks the current one: the first pending required step, none when nothing is pending.
@@ -298,11 +234,23 @@ public sealed partial class SetupViewModel : PageViewModel
 		return steps.Select((s, i) => new SetupStepItem(s, actions(s), i + 1, i == current, i == steps.Count - 1, optionalText, owner)).ToList();
 	}
 
+	// Puts text on the clipboard ("Copy Commands" on Linux); set by the app (the main window's clipboard).
+	public static Func<string, Task>? CopyText { get; set; }
+
 	// Runs a step button; the adapter test reports progress while it runs and can be cancelled.
 	public async Task RunAsync(SetupAction action)
 	{
 		if (IsBusy)
 		{
+			return;
+		}
+		if (action.Kind == SetupActionKind.CopyText)
+		{
+			// Linux: the fix commands go to the clipboard for a terminal.
+			if (CopyText is { } copy && action.Target is { } text)
+			{
+				await copy(text);
+			}
 			return;
 		}
 		bool wasComplete = IsComplete;

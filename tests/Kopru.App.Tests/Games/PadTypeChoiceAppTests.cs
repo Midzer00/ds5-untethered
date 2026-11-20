@@ -58,12 +58,12 @@ public sealed class PadTypeChoiceAppTests : IDisposable
 		NoGame(fake);
 		PadTypeChoiceViewModel choice = vm.Overview.Quick.PadType;
 		Assert.Same(vm.Settings.PadType, choice);
-		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.XboxSeries, VirtualPadType.Xbox360], choice.Options.Select(o => o.Type));
+		Assert.Equal([null, VirtualPadType.DualSense, VirtualPadType.DualShock4, VirtualPadType.Xbox360], choice.Options.Select(o => o.Type));
 		WithLanguage(Language.Turkish, () =>
-			Assert.Equal(["Otomatik (Oyuna Göre)", "DualSense", "DualShock 4", "Xbox Series", "Xbox 360"], choice.Options.Select(o => o.Name)));
-		WithLanguage(Language.English, () => Assert.Equal("Xbox Series", choice.Options[3].Name));
+			Assert.Equal(["Otomatik (Oyuna Göre)", "DualSense", "DualShock 4", "Xbox 360"], choice.Options.Select(o => o.Name)));
+		WithLanguage(Language.English, () => Assert.Equal("Xbox 360", choice.Options[3].Name));
 		// Every option says what it means (its tooltip).
-		Assert.Equal([Text.PadChoiceAutoLine(), Text.PadTypeDualSenseLine(), Text.PadTypeDualShock4Line(), Text.PadTypeXboxSeriesLine(), Text.PadTypeXboxLine()], choice.Options.Select(o => o.Line));
+		Assert.Equal([Text.PadChoiceAutoLine(), Text.PadTypeDualSenseLine(), Text.PadTypeDualShock4Line(), Text.PadTypeXboxLine()], choice.Options.Select(o => o.Line));
 		Assert.Null(choice.Selected!.Type);
 
 		choice.Selected = choice.Options[2];

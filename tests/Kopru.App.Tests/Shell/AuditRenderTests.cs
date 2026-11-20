@@ -81,7 +81,7 @@ public sealed class AuditRenderTests
 					// The setup page with the drivers missing.
 					var probes = new RealServiceTests.Probes(drivers: false);
 					var setupVm = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(new MemorySettingsStore(new AppSettings { Language = code }), null,
-						() => new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+						() => new SetupWizard(probes.Status, new RealServiceTests.Links())));
 					var setupWindow = new MainWindow { DataContext = setupVm, Width = width, Height = height };
 					setupWindow.Show();
 					Save(setupWindow, outDir, $"setup-{size}-{code}.png");

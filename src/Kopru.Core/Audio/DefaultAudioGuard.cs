@@ -134,9 +134,8 @@ public sealed class DefaultAudioGuard : IPadAudioEvents, IAudioDefaultsListener
 		this.log = log ?? Diagnostics.AppLog.Write;
 	}
 
-	// The Windows guard, or null off Windows.
-	public static DefaultAudioGuard? CreateDefault(IAudioDefaultsSystem? system = null) =>
-		OperatingSystem.IsWindows() ? new DefaultAudioGuard(system ?? new WindowsAudioDefaults()) : null;
+	// Over a system's audio device access; null without one (Linux has none yet).
+	public static DefaultAudioGuard? CreateDefault(IAudioDefaultsSystem? system = null) => system == null ? null : new DefaultAudioGuard(system);
 
 	// The "protect my default audio device" setting (on by default).
 	public bool Enabled
@@ -515,10 +514,6 @@ internal sealed class SerialWorker
 	public SerialWorker(string name)
 	{
 		var thread = new Thread(Run) { IsBackground = true, Name = name };
-		if (OperatingSystem.IsWindows())
-		{
-			thread.SetApartmentState(ApartmentState.MTA);
-		}
 		thread.Start();
 	}
 

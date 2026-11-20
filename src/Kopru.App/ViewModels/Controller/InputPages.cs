@@ -8,7 +8,11 @@ using Kopru.Core.Localization;
 namespace Kopru.App.ViewModels;
 
 // One tab of a segmented switch; the name follows the language.
-public sealed class TabOption(Func<string> name) : LabelledChoice(name);
+// IsShown: false hides the tab's switch segment (a feature this system does not have).
+public sealed class TabOption(Func<string> name, bool isShown = true) : LabelledChoice(name)
+{
+	public bool IsShown { get; } = isShown;
+}
 
 public sealed class CurveOption(ResponseCurve curve) : LabelledChoice(() => Text.CurveName(curve))
 {

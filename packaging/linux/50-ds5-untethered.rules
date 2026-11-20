@@ -1,0 +1,37 @@
+// OPTIONAL polkit rule for DS5 Untethered (experimental Linux build). Everything below is COMMENTED OUT on purpose.
+//
+// What it would do: let a logged-in, active, local user in the "sudo" or "wheel" group run exactly the two usbip commands
+// the app runs through pkexec, without a password prompt:
+//   /usr/bin/usbip --tcp-port <port> attach -r 127.0.0.1 -b 1-1
+//   /usr/bin/usbip detach -p <port>
+// (or the same under /usr/sbin).
+//
+// WARNING: even narrowed like this, any program you run can use it. Any local program can serve its own USB device on
+// 127.0.0.1 and have it attached as root without asking, for example a fake keyboard that types commands. Only enable it
+// if you accept that. Without it the app simply asks for your password each time.
+//
+// Not yet confirmed on a real system: that polkit hands pkexec's "command_line" detail to rules in exactly this form on
+// your distribution. After enabling it, start the virtual controller once: if a password is still asked, the rule did not
+// match and nothing changed.
+//
+// To enable: remove the leading "// " from the lines of the rule below, then
+//   sudo cp 50-ds5-untethered.rules /etc/polkit-1/rules.d/
+// To remove: sudo rm /etc/polkit-1/rules.d/50-ds5-untethered.rules
+//
+// polkit.addRule(function (action, subject) {
+// 	if (action.id != "org.freedesktop.policykit.exec" || !subject.local || !subject.active ||
+// 		!(subject.isInGroup("sudo") || subject.isInGroup("wheel"))) {
+// 		return polkit.Result.NOT_HANDLED;
+// 	}
+// 	var program = action.lookup("program");
+// 	if (program != "/usr/bin/usbip" && program != "/usr/sbin/usbip") {
+// 		return polkit.Result.NOT_HANDLED;
+// 	}
+// 	var line = action.lookup("command_line");
+// 	var attach = /^\/usr\/s?bin\/usbip --tcp-port [0-9]{1,5} attach -r 127\.0\.0\.1 -b 1-1$/;
+// 	var detach = /^\/usr\/s?bin\/usbip detach -p [0-9]{1,3}$/;
+// 	if (attach.test(line) || detach.test(line)) {
+// 		return polkit.Result.YES;
+// 	}
+// 	return polkit.Result.NOT_HANDLED;
+// });

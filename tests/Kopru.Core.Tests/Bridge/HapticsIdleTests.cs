@@ -640,41 +640,10 @@ public class PreciseWaitTests
 	private const double PreciseBoundMs = 2;
 
 	[Fact]
-	public void HighResolutionTimer_IsAvailable_AndNeverWakesEarly()
-	{
-		using IPreciseWait wait = PreciseWait.Create();
-		Assert.True(wait.HighResolution);
-		AssertPaces(wait);
-		Assert.True(wait.HighResolution);
-	}
-
-	[Fact]
 	public void Fallback_NeverWakesEarly()
 	{
 		using IPreciseWait wait = PreciseWait.CreateFallback();
 		AssertPaces(wait);
-		wait.Idle();
-	}
-
-	[Fact]
-	public void HighResolution_WhenArmingFails_WaitsWithTheFallback_NeverEarly()
-	{
-		int armed = 0;
-		using IPreciseWait wait = PreciseWait.CreateHighResolution(_ =>
-		{
-			Interlocked.Increment(ref armed);
-			return false;
-		})!;
-		Assert.True(wait.HighResolution);
-
-		Stopwatch clock = Stopwatch.StartNew();
-		int waited = AssertPaces(wait);
-
-		// Every deadline (10.67 ms apart) was really waited for (falling through would take ~0 ms), and the timer was
-		// tried only once before switching for good.
-		Assert.True(clock.Elapsed.TotalMilliseconds >= waited * BluetoothReports.HapticsInterval.TotalMilliseconds - 1);
-		Assert.False(wait.HighResolution);
-		Assert.Equal(1, armed);
 		wait.Idle();
 	}
 

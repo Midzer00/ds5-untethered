@@ -6,7 +6,7 @@
         x:Class="Kopru.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding AppName}"
-        Icon="/Assets/icon.ico"
+        Icon="/Assets/icon-256.png"
         Width="1100" Height="700" MinWidth="960" MinHeight="640"
         Background="Transparent"
         ExtendClientAreaToDecorationsHint="True"
@@ -57,13 +57,10 @@
       <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
     </Style>
   </Window.Styles>
-  <!-- No system title bar band: the sidebar and the content run up to the top edge, Windows draws only its caption buttons
-       (top right) over the content. The chrome hint is SystemChrome alone: Avalonia's default (PreferSystemChrome) hides
-       the native buttons and shows its own managed set (with a full-screen button) instead, and the system acrylic's
-       frame (SystemBackdrop) brings the native ones back, so both sets would show. The top band is a drag handle (see
-       MainWindow.axaml.cs). Maximized, the root is kept inside the screen by the window's off-screen margin. -->
+  <!-- The desktop's own title bar sits above the window's content (MainWindow.axaml.cs turns the extended client area
+       off); the drag band below is hidden. Maximized, the root is kept inside the screen by the window's off-screen margin. -->
   <Panel x:Name="Root">
-    <!-- Backdrop: a flat translucent tint over the system acrylic (see SystemBackdrop), or opaque graphite without it -->
+    <!-- Backdrop: opaque graphite -->
     <Border Classes="backdrop" />
 
     <!-- The whole content grows with the window by one factor (UiScale). Popups open in the window's own overlay layer (outside

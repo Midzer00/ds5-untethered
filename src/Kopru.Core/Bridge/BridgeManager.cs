@@ -84,7 +84,6 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		return new BridgeManager(source, primary, slot => new BridgeHost(source, IdentitySources.Default(), platform.CreateUsbIpAttacher())
 		{
 			StateFile = new BridgeStateFile(Path.Combine(AppPaths.DataDirectory, $"bridge-state-{slot}.json")),
-			SeriesStore = Virtual.XboxSeriesStore.Shared,
 			Power = platform.ControllerPower,
 			PreciseWaitFactory = platform.CreatePreciseWait
 		});

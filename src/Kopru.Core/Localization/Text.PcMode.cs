@@ -3,7 +3,7 @@ using Kopru.Core.Input;
 
 namespace Kopru.Core.Localization;
 
-// User-facing texts of desktop mode (the controller drives Windows) and gyro to mouse.
+// User-facing texts of desktop mode (the controller drives the desktop) and gyro to mouse.
 public static partial class Text
 {
 	public static string DesktopModeSection(Language? l = null) => Pick(l, $"Fare Modu", $"Mouse Mode");
@@ -11,8 +11,8 @@ public static partial class Text
 	public static string DesktopModeSwitch(Language? l = null) => Pick(l, $"Fare Modu", $"Mouse Mode");
 
 	public static string DesktopModeHint(Language? l = null) => Pick(l,
-		$"Açıkken kumanda Windows'ta fare ve klavye olur; bu sırada oyunlar kumandadan giriş almaz. ø + Seçenekler ile de açılıp kapanır; ø tuşuyla uygulamayı açınca ya da uygulama öndeyken touchpad'e iki kez basınca da açılır.",
-		$"While on, the controller is a mouse and keyboard in Windows; games get no input from it meanwhile. ø + Options turns it on and off too; opening the app with the ø button or pressing the touchpad twice while the app is in front turns it on.");
+		$"Açıkken kumanda fare ve klavye olur; bu sırada oyunlar kumandadan giriş almaz. ø + Seçenekler ile de açılıp kapanır; ø tuşuyla uygulamayı açınca ya da uygulama öndeyken touchpad'e iki kez basınca da açılır.",
+		$"While on, the controller is a mouse and keyboard; games get no input from it meanwhile. ø + Options turns it on and off too; opening the app with the ø button or pressing the touchpad twice while the app is in front turns it on.");
 
 	public static string DesktopAutoOff(Language? l = null) => Pick(l, $"Oyun Açılınca Kapat", $"Turn Off When a Game Starts");
 
@@ -64,8 +64,8 @@ public static partial class Text
 	public static string GyroTargetLabel(Language? l = null) => Pick(l, $"Gyro Çıkışı", $"Gyro Output");
 
 	public static string GyroTargetHint(Language? l = null) => Pick(l,
-		$"Fare seçilince gyro Windows imlecini taşır, sağ çubuğa dokunmaz; fare ve kumandayı birlikte kabul eden oyunlar için.",
-		$"With Mouse, the gyro moves the Windows pointer and leaves the right stick alone; for games that take mouse and controller together.");
+		$"Fare seçilince gyro fare imlecini taşır, sağ çubuğa dokunmaz; fare ve kumandayı birlikte kabul eden oyunlar için.",
+		$"With Mouse, the gyro moves the mouse pointer and leaves the right stick alone; for games that take mouse and controller together.");
 
 	public static string GyroTargetName(GyroTarget target, Language? l = null) => target switch
 	{

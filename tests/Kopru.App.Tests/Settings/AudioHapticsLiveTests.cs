@@ -40,21 +40,6 @@ public sealed class AudioHapticsLiveServiceTests
 
 	private static void WaitUntil(Func<bool> condition, string what) => Assert.True(SpinWait.SpinUntil(condition, 5000), what);
 
-	// The app's own construction (App.StartDesktop) once gave no capture at all: the runner then logged "no sound capture
-	// in this build" for every game. Made without one, the service now captures with WASAPI.
-	[Fact]
-	public void MadeWithoutACaptureFactory_TheServiceCapturesWithWasapi()
-	{
-		if (!OperatingSystem.IsWindows())
-		{
-			return;
-		}
-		var controllers = new TestControllers();
-		using var service = new RealControllerService(new BridgeHost(controllers, new TestIdentity(true), new TestAttacher()), new TestHiding(),
-			controllers, a => a(), _ => null, timers: false);
-		Assert.IsType<WasapiCaptureFactory>(service.AudioCapture);
-	}
-
 	[Fact]
 	public void TheGivenCaptureFactory_IsTheOneUsed()
 	{
@@ -126,34 +111,6 @@ public sealed class AudioHapticsLiveServiceTests
 // pop-up's changes reach the game at once.
 public sealed class AudioHapticsLivePanelTests
 {
-	[AvaloniaFact]
-	public void TheSwitch_StaysUsable_WhenTheCaptureFailed()
-	{
-		var fake = new FakeControllerService(animate: false);
-		var vm = new MainWindowViewModel(fake);
-		fake.Games.Tick();
-		Dispatcher.UIThread.RunJobs();
-		var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
-		window.Show();
-		vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.SupportedGames);
-		GamePanelViewModel panel = vm.SupportedGames.Panel;
-		vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == "Cyberpunk 2077"));
-		panel.UseOwnSettingsCommand.Execute(null); panel.SaveProfileNameCommand.Execute(null);
-		panel.AudioHaptics.On = true;
-		fake.AudioHapticsStatus = new AudioHapticsStatus(AudioHapticsStatusKind.Unavailable, "Cyberpunk 2077");
-		FitCheck.Settle(window);
-
-		ToggleSwitch toggle = window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "PanelAudioSwitch");
-		Assert.True(toggle.IsEffectivelyEnabled);
-		Assert.True(toggle.IsChecked);
-		Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Text.AudioHapticsRumbleNote() && t.IsEffectivelyVisible);
-
-		toggle.IsChecked = false;
-		Assert.False(vm.Settings.AudioHapticsOn);
-		Assert.False(fake.Settings.Game.AudioHaptics.On);
-		Assert.False(vm.Settings.Profiles.Active.Values.AudioHaptics);
-		window.Close();
-	}
 
 	[AvaloniaFact]
 	public void AProfilePickedForTheRunningGame_BecomesActive_AndThePanelEditsItLive()

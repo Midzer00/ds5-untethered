@@ -84,9 +84,9 @@ internal sealed class FakePlatform : IPlatform
 public class PlatformTests
 {
 	[Fact]
-	public void Default_IsWindowsOnWindows_ElseUnsupported()
+	public void Default_IsUnsupported_UntilTheAppPicksLinux()
 	{
-		Assert.Equal(OperatingSystem.IsWindows() ? "windows" : "unsupported", PlatformServices.Default.Name);
+		Assert.Equal("unsupported", PlatformServices.Default.Name);
 	}
 
 	[Fact]

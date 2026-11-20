@@ -4,6 +4,15 @@
 
 Downloads and full notes for each version are on the [Releases](https://github.com/Midzer00/ds5-untethered/releases) page.
 
+> **Linux branch (experimental).** This is the `linux` branch: the Linux app, built from the shared code of the versions
+> below and released separately (the [`linux-spike` pre-release](https://github.com/Midzer00/ds5-untethered/releases/tag/linux-spike)).
+> The entries below describe the Windows app on `main`; Windows-only features (HidHide, usbip-win2, the updater, the Xbox
+> Series pad, sound to haptics, Mouse Mode) are not in the Linux build. What the Linux build does is in
+> [docs/linux/README.md](docs/linux/README.md).
+>
+> - Linux: the desktop app (experimental): pkexec attach, setup checks, XDG autostart and folders, tray icon, Steam game
+>   detection, power off through bluetoothctl.
+
 ## English
 
 ### 0.2.0 — 2026-11-18
@@ -85,6 +94,9 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 - Installer for the current user and a zip; the Setup page checks for usbip-win2 and HidHide and guides pairing.
 
 ## Türkçe
+
+> **Linux dalı (deneysel).** Bu, ayrı yayımlanan Linux uygulamasının dalıdır. Aşağıdaki notlar `main` dalındaki Windows
+> uygulaması içindir; Windows'a özel özellikler Linux sürümünde yoktur. Ayrıntılar: [docs/linux/README.md](docs/linux/README.md).
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
 

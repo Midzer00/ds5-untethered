@@ -30,7 +30,6 @@ public sealed class LanguageSwitchAppTests
 		new("Settings Controllers", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.ControllersTab); }),
 		new("Settings Audio", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.AudioTab); }),
 		new("Settings Shortcuts", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.ShortcutsTab); }),
-		new("Settings Mouse Mode", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.MouseTab); }),
 		new("Controller Remap", vm => { vm.Navigate(vm.Controller); vm.Controller.ShowTab(ControllerPageViewModel.RemapTab); }),
 		new("Light", vm => vm.Navigate(vm.Light)),
 	];
@@ -135,7 +134,7 @@ public sealed class LanguageSwitchAppTests
 			Assert.Contains(Text.General(now), Visible(settings));
 			ComboBox language = settings.GetVisualDescendants().OfType<ComboBox>().Single(c => c.ItemsSource is IEnumerable<LanguageOption>);
 			Assert.Equal(to, Assert.IsType<LanguageOption>(language.SelectedItem).Language);
-			Stops[7].Open(vm);
+			Stops[6].Open(vm);
 			FitCheck.Settle(window);
 			RemapView remap = window.GetVisualDescendants().OfType<RemapView>().Single();
 			Assert.Contains(Text.ButtonName(DsButton.Circle, now), Visible(remap));
@@ -177,7 +176,7 @@ public sealed class LanguageSwitchAppTests
 				foreach (object o in items)
 				{
 					string name = NameOf(o);
-					if (name.Length > 0 && o is not ColourPreset)
+					if (name.Length > 0 && o is not ColourPreset && o is not TabOption { IsShown: false })
 					{
 						Assert.True(texts.Contains(name), $"{where}: shows [{string.Join(", ", texts)}], not \"{name}\"");
 					}

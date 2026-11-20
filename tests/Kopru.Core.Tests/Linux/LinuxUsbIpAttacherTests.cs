@@ -41,8 +41,9 @@ public class LinuxUsbIpAttacherTests
 
 		public Func<string, string, CommandResult> Answer { get; set; } = (_, _) => new CommandResult(0, "", "");
 
-		public Task<CommandResult> RunAsync(string fileName, string arguments, CancellationToken cancellationToken = default)
+		public Task<CommandResult> RunAsync(string fileName, IReadOnlyList<string> argumentList, CancellationToken cancellationToken = default)
 		{
+			string arguments = string.Join(" ", argumentList);
 			cancellationToken.ThrowIfCancellationRequested();
 			Calls.Enqueue(fileName + " " + arguments);
 			return Task.FromResult(Answer(fileName, arguments));

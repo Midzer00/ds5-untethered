@@ -33,13 +33,6 @@ public class BridgeButtonTests
 
 	private static readonly HidDevice BluetoothPad = new(@"\?\hid#{00001124-0000-1000-8000-00805f9b34fb}_fake", 0x054C, 0x0CE6, 78, 547, 64);
 
-	// A report with HidHide missing (everything else ready, controller on Bluetooth, bridge off).
-	private static HealthReport HidHideMissing() =>
-		HealthReport.Build(
-			new HealthEnvironment(new ComponentInfo(true, "1.0", null, true), ComponentInfo.Missing, RadioState.On,
-				[new PairedController("DualSense Wireless Controller", 1, true, false)], null, null),
-			new HealthRuntime([BluetoothPad], false, BridgeState.Stopped, BridgeError.None, null), OverviewHealthTests.Now);
-
 	private static void SetHealth(FakeControllerService fake, HealthReport report, bool connected)
 	{
 		fake.IsConnected = connected;
@@ -98,7 +91,6 @@ public class BridgeButtonTests
 		{
 			("stopped", OverviewHealthTests.Report(), true, Text.BridgeStart(), true, FixAction.None),
 			("driver", OverviewHealthTests.Report(driver: false), true, Text.FixInstallDriver(), true, FixAction.InstallDriver),
-			("hidhide", HidHideMissing(), true, Text.FixInstallHidHide(), true, FixAction.InstallHidHide),
 			("bluetooth off", OverviewHealthTests.Report(radio: RadioState.Off, noPad: true), false, Text.FixOpenBluetooth(), true, FixAction.OpenBluetoothSettings),
 			("not paired", OverviewHealthTests.Report(paired: false, noPad: true), false, Text.PairController(), true, FixAction.PairController),
 			("no radio", OverviewHealthTests.Report(radio: RadioState.Missing, noPad: true), false, Text.BridgeStart(), false, FixAction.None),
@@ -241,7 +233,7 @@ public class BridgeButtonTests
 								fake.Tick();
 								break;
 							case "blocked":
-								SetHealth(fake, HidHideMissing(), true);
+								SetHealth(fake, OverviewHealthTests.Report(driver: false), true);
 								break;
 						}
 						var window = new MainWindow { DataContext = vm, Width = width, Height = height };

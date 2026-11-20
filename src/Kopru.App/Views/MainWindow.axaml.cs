@@ -9,13 +9,13 @@ namespace Kopru.App.Views;
 
 public partial class MainWindow : Window
 {
-	private bool _systemBackdrop;
-
 	public MainWindow()
 	{
 		InitializeComponent();
-		// A transparent surface for the system acrylic where Windows can draw it; opaque graphite elsewhere.
-		TransparencyLevelHint = SystemBackdrop.IsSupported ? [WindowTransparencyLevel.Transparent] : [WindowTransparencyLevel.None];
+		// The desktop's own title bar and buttons; no band is kept free for caption buttons. Opaque graphite background.
+		ExtendClientAreaToDecorationsHint = false;
+		DragBand.IsVisible = false;
+		TransparencyLevelHint = [WindowTransparencyLevel.None];
 		DragBand.PointerPressed += OnDragBandPressed;
 		Activated += (_, _) => (DataContext as ViewModels.MainWindowViewModel)?.BackToGame.SetWindowActive(true);
 		Deactivated += (_, _) => (DataContext as ViewModels.MainWindowViewModel)?.BackToGame.SetWindowActive(false);
@@ -50,7 +50,8 @@ public partial class MainWindow : Window
 		Root.Margin = OffScreenMargin;
 	}
 
-	private const double CaptionHeight = 32;
+	// The system title bar sits above the content: no inset.
+	private const double CaptionHeight = 0;
 
 	// The sidebar's width and its hairline (MainWindow.axaml, before scaling).
 	public const double SidebarWidth = 273;
@@ -83,17 +84,9 @@ public partial class MainWindow : Window
 	protected override void OnOpened(EventArgs e)
 	{
 		base.OnOpened(e);
-		_systemBackdrop = TryGetPlatformHandle() is { } handle && SystemBackdrop.TryApply(handle.Handle);
-		if (!_systemBackdrop)
-		{
-			TransparencyLevelHint = [WindowTransparencyLevel.None];
-		}
-		UpdateGlass();
 		ApplyLayoutState(force: true);
 	}
 
-	// The "glass" class switches to a translucent tint when the system acrylic is behind the window; without it the
-	// window keeps its opaque graphite background.
 	protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
 	{
 		base.OnPropertyChanged(change);
@@ -105,25 +98,10 @@ public partial class MainWindow : Window
 		{
 			ReportShown();
 		}
-		if (change.Property == ActualTransparencyLevelProperty)
-		{
-			UpdateGlass();
-		}
-		else if (change.Property == OffScreenMarginProperty)
+		if (change.Property == OffScreenMarginProperty)
 		{
 			// Maximized, Windows places the window's edges off the screen; the layout stays inside the visible part.
 			ApplyLayoutState();
-		}
-		else if (change.Property == WindowStateProperty && _systemBackdrop)
-		{
-			// After the window has applied its own frame for the new state.
-			Dispatcher.UIThread.Post(() =>
-			{
-				if (TryGetPlatformHandle() is { } handle)
-				{
-					SystemBackdrop.ExtendFrame(handle.Handle);
-				}
-			}, DispatcherPriority.Background);
 		}
 	}
 
@@ -137,8 +115,6 @@ public partial class MainWindow : Window
 		base.OnDataContextChanged(e);
 		ReportShown();
 	}
-
-	private void UpdateGlass() => Classes.Set("glass", _systemBackdrop && ActualTransparencyLevel == WindowTransparencyLevel.Transparent);
 
 	// Sizes the window to a share of the screen it opens on, so larger and high-resolution screens get a
 	// larger window instead of a small one surrounded by empty desktop.

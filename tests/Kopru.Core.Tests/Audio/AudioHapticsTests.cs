@@ -622,60 +622,6 @@ public class AudioHapticsRunnerTests
 		Assert.Equal(0, AudioHapticsDspTests.SteadyStateAllocation(() => sink.OnAudio(tone, 2, 48000), warmup: 300, rounds: 10, perRound: 5));
 	}
 
-	// The real WASAPI capture: process loopback of this test process (silent), then the system loopback. Nothing is played
-	// and no setting is changed. Skipped (returns) on machines without an audio output.
-	[Fact]
-	public void Wasapi_SmokeTest_StartsAndStops()
-	{
-		if (!OperatingSystem.IsWindows() || !HasRenderDevice())
-		{
-			return;
-		}
-		List<string> log = [];
-		FakeOutput output = new();
-		using (AudioHapticsRunner runner = new(new WasapiCaptureFactory(), output, log.Add))
-		{
-			runner.Update(new ForegroundGame("testhost.exe", null, Environment.ProcessId), On);
-			Assert.True(runner.IsCapturing || runner.Status.Kind == AudioHapticsStatusKind.Unavailable, string.Join(" | ", log));
-			if (WasapiCaptureFactory.ProcessLoopbackSupported)
-			{
-				// Windows 10 2004 and later: the game's own process tree, not the fallback.
-				Assert.True(runner.Status.Mode == AudioCaptureMode.ProcessLoopback, string.Join(" | ", log));
-			}
-			Thread.Sleep(200);
-			runner.Update(null, On);
-			Assert.False(runner.IsCapturing);
-		}
-		if (OperatingSystem.IsWindows())
-		{
-			IAudioCapture? system = new WasapiCaptureFactory { UseProcessLoopback = false }.Start(0, new NullSink(), log.Add);
-			Thread.Sleep(100);
-			system?.Dispose();
-		}
-	}
-
-	private sealed class NullSink : IAudioCaptureSink
-	{
-		public void OnAudio(ReadOnlySpan<float> samples, int channels, int sampleRate)
-		{
-		}
-	}
-
-	private static bool HasRenderDevice()
-	{
-		if (!OperatingSystem.IsWindows())
-		{
-			return false;
-		}
-		try
-		{
-			return new WindowsAudioDefaults().GetDefault(AudioFlow.Render, AudioRole.Console) != null;
-		}
-		catch (Exception)
-		{
-			return false;
-		}
-	}
 }
 
 // Mixing rules in the bridge: native haptics win, classic rumble is mixed in, the game's own audio stream carries the

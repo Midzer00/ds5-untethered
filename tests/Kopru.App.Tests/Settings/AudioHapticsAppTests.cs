@@ -113,11 +113,11 @@ public class AudioHapticsAppTests
 			fake.AudioHapticsStatus = new AudioHapticsStatus(AudioHapticsStatusKind.NativeHaptics, "Forza");
 			Assert.Equal("The Game's Own Haptics In Use", state.AudioHapticsStatus);
 			fake.AudioHapticsStatus = new AudioHapticsStatus(AudioHapticsStatusKind.Unavailable, "Forza");
-			Assert.Equal("Not Available On This Windows", state.AudioHapticsStatus);
+			Assert.Equal("Not Available Yet", state.AudioHapticsStatus);
 			Assert.False(state.AudioHapticsAvailable);
 
 			Localizer.Chosen = Language.Turkish;
-			Assert.Equal("Bu Windows'ta Kullanılamıyor", state.AudioHapticsStatus);
+			Assert.Equal("Henüz Kullanılamıyor", state.AudioHapticsStatus);
 		}
 		finally
 		{

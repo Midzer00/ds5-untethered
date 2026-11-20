@@ -7,7 +7,8 @@ using Kopru.Core.Steam;
 namespace Kopru.Core.Games;
 
 // A running process: its id, exe file name and, when readable, the full exe path.
-public sealed record ProcessInfo(int Id, string Exe, string? Path = null);
+// SteamAppId: the Steam app id the process runs under when the platform can tell (Linux: Steam's environment variables).
+public sealed record ProcessInfo(int Id, string Exe, string? Path = null, long? SteamAppId = null);
 
 // A game the user added by hand: a display name and the exe (full path, or just the file name).
 public sealed record UserGame(string Name, string Path)
@@ -104,7 +105,7 @@ public interface IGameWatcher
 // (the window title is checked once before a found game is reported). Lookups are cached
 // per process (id and path): version info is read once per process; only the window title of an unknown process is read
 // again (games often set it after the window opens). Ignores this app and common desktop apps. details defaults to
-// processes when that implements IProcessDetails (SystemProcessSource does). Each recognition is logged once per process
+// processes when that implements IProcessDetails. Each recognition is logged once per process
 // ("game: <name> recognised by <signal> (<exe file name>)", never a path).
 public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes = null, SteamLibrary? steam = null,
 	IProcessDetails? details = null, Action<string>? log = null) : IGameWatcher
@@ -124,7 +125,7 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 
 	private const int CacheLimit = 256;
 
-	private readonly IProcessSource processes = processes ?? new SystemProcessSource();
+	private readonly IProcessSource processes = processes ?? NoProcessSource.Instance;
 	private readonly string ownExe = GameCatalog.Normalize(Environment.ProcessPath);
 	private readonly object gate = new();
 	private readonly Action<string> log = log ?? Diagnostics.AppLog.Write;
@@ -345,8 +346,8 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		try
 		{
 			exes = Directory.Exists(folder)
-				? Directory.EnumerateFiles(folder, "*.exe", new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 3, IgnoreInaccessible = true })
-					.Take(200).Select(GameCatalog.Normalize).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+				? Directory.EnumerateFiles(folder, "*", new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 3, IgnoreInaccessible = true })
+					.Where(IsProgramFile).Take(200).Select(GameCatalog.Normalize).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
 				: [];
 		}
 		catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
@@ -377,6 +378,11 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		}
 	}
 
+	// A game's program file in an install folder: a Windows exe (Proton) or a native Linux build's usual names.
+	public static bool IsProgramFile(string path) =>
+		path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".x86_64", StringComparison.OrdinalIgnoreCase) ||
+		path.EndsWith(".x86", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".AppImage", StringComparison.OrdinalIgnoreCase);
+
 	// Caller holds the lock.
 	private Entry Lookup(ProcessInfo process, string exe)
 	{
@@ -395,6 +401,10 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 		if (current.Find(exe) is { } match)
 		{
 			return new Entry(Found(match, "exe name", process, exe));
+		}
+		if (process.SteamAppId is long envAppId && current.FindBySteamAppId(envAppId) is { } byEnvironment)
+		{
+			return new Entry(Found(byEnvironment, "Steam app id", process, exe));
 		}
 		if (steam?.AppIdFor(process.Path) is long appId && current.FindBySteamAppId(appId) is { } byApp)
 		{
@@ -634,190 +644,14 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 	}
 }
 
-// Windows: GetForegroundWindow, GetWindowThreadProcessId, then the process (name and, with limited query rights, the path).
-public sealed class SystemProcessSource : IProcessSource, IProcessDetails
+// No process source given: nothing is in front and nothing runs (the app passes the Linux one, LinuxProcessSource).
+public sealed class NoProcessSource : IProcessSource
 {
-	private const uint QueryLimitedInformation = 0x1000;
-	private const uint StillActive = 259;
+	public static NoProcessSource Instance { get; } = new();
 
-	public ProcessInfo? Foreground()
-	{
-		if (!OperatingSystem.IsWindows())
-		{
-			return null;
-		}
-		IntPtr window = GetForegroundWindow();
-		if (window == IntPtr.Zero || GetWindowThreadProcessId(window, out uint pid) == 0 || pid == 0
-			|| pid == (uint)Environment.ProcessId)
-		{
-			return null;
-		}
-		using Process process = Process.GetProcessById((int)pid);
-		return new ProcessInfo((int)pid, process.ProcessName + ".exe", PathOf((int)pid));
-	}
+	public ProcessInfo? Foreground() => null;
 
-	public bool IsRunning(ProcessInfo process)
-	{
-		if (!OperatingSystem.IsWindows() || process.Id <= 0)
-		{
-			return false;
-		}
-		IntPtr handle = OpenProcess(QueryLimitedInformation, false, (uint)process.Id);
-		if (handle == IntPtr.Zero)
-		{
-			return false;
-		}
-		try
-		{
-			if (!GetExitCodeProcess(handle, out uint code) || code != StillActive)
-			{
-				return false;
-			}
-			// A reused process id belongs to another exe.
-			string? path = Read(handle);
-			return path == null || process.Path == null || string.Equals(path, process.Path, StringComparison.OrdinalIgnoreCase);
-		}
-		finally
-		{
-			CloseHandle(handle);
-		}
-	}
+	public bool IsRunning(ProcessInfo process) => false;
 
-	public IReadOnlyList<ProcessInfo> WindowedApps()
-	{
-		var list = new List<ProcessInfo>();
-		foreach (Process p in Process.GetProcesses())
-		{
-			using (p)
-			{
-				try
-				{
-					if (p.Id != Environment.ProcessId && p.MainWindowHandle != IntPtr.Zero)
-					{
-						list.Add(new ProcessInfo(p.Id, p.ProcessName + ".exe", PathOf(p.Id)));
-					}
-				}
-				catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
-				{
-					// Exited meanwhile or not readable.
-				}
-			}
-		}
-		return list;
-	}
-
-	public IReadOnlyList<ProcessInfo> AllProcesses()
-	{
-		var list = new List<ProcessInfo>();
-		foreach (Process p in Process.GetProcesses())
-		{
-			using (p)
-			{
-				try
-				{
-					if (p.Id != Environment.ProcessId && p.Id > 4)
-					{
-						list.Add(new ProcessInfo(p.Id, p.ProcessName + ".exe"));
-					}
-				}
-				catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
-				{
-					// Exited meanwhile.
-				}
-			}
-		}
-		return list;
-	}
-
-	public ProcessInfo WithPath(ProcessInfo process) => process with { Path = PathOf(process.Id) };
-
-	public string? WindowTitle(ProcessInfo process)
-	{
-		if (!OperatingSystem.IsWindows() || process.Id <= 0)
-		{
-			return null;
-		}
-		IntPtr window = GetForegroundWindow();
-		if (window != IntPtr.Zero && GetWindowThreadProcessId(window, out uint pid) != 0 && pid == (uint)process.Id)
-		{
-			var buffer = new StringBuilder(512);
-			int length = GetWindowText(window, buffer, buffer.Capacity);
-			return length > 0 ? buffer.ToString(0, length) : null;
-		}
-		try
-		{
-			using Process p = Process.GetProcessById(process.Id);
-			return string.IsNullOrEmpty(p.MainWindowTitle) ? null : p.MainWindowTitle;
-		}
-		catch (Exception e) when (e is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
-		{
-			return null;
-		}
-	}
-
-	public (string? Product, string? Description) VersionInfo(string path)
-	{
-		try
-		{
-			FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
-			return (info.ProductName, info.FileDescription);
-		}
-		catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
-		{
-			return (null, null);
-		}
-	}
-
-	// The full exe path, or null when the process can't be queried.
-	public static string? PathOf(int pid)
-	{
-		if (!OperatingSystem.IsWindows())
-		{
-			return null;
-		}
-		IntPtr handle = OpenProcess(QueryLimitedInformation, false, (uint)pid);
-		if (handle == IntPtr.Zero)
-		{
-			return null;
-		}
-		try
-		{
-			return Read(handle);
-		}
-		finally
-		{
-			CloseHandle(handle);
-		}
-	}
-
-	private static string? Read(IntPtr handle)
-	{
-		var buffer = new StringBuilder(1024);
-		int size = buffer.Capacity;
-		return QueryFullProcessImageName(handle, 0, buffer, ref size) ? buffer.ToString(0, size) : null;
-	}
-
-	[DllImport("user32.dll")]
-	private static extern IntPtr GetForegroundWindow();
-
-	[DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetWindowTextW")]
-	private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
-
-	[DllImport("user32.dll")]
-	private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
-
-	[DllImport("kernel32.dll", SetLastError = true)]
-	private static extern IntPtr OpenProcess(uint access, bool inherit, uint processId);
-
-	[DllImport("kernel32.dll", SetLastError = true)]
-	[return: MarshalAs(UnmanagedType.Bool)]
-	private static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
-
-	[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "QueryFullProcessImageNameW")]
-	[return: MarshalAs(UnmanagedType.Bool)]
-	private static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder name, ref int size);
-
-	[DllImport("kernel32.dll")]
-	[return: MarshalAs(UnmanagedType.Bool)]
-	private static extern bool CloseHandle(IntPtr handle);
+	public IReadOnlyList<ProcessInfo> WindowedApps() => [];
 }

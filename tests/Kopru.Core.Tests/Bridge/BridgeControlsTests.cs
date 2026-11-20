@@ -123,6 +123,6 @@ public class BridgeControlsTests
 	[Fact]
 	public void CaptureIdentitySource_LooksInTheAppDataFolderFirst()
 	{
-		Assert.EndsWith(Path.Combine("Untethered", "captures"), AppPaths.Captures);
+		Assert.EndsWith(Path.Combine("ds5-untethered", "captures"), AppPaths.Captures);
 	}
 }

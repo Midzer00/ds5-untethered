@@ -465,13 +465,3 @@ public class InputActivityTests
 		Assert.True(InputActivity.Changed(remembered, body));
 	}
 }
-
-public class UsbIpExeAttacherTests
-{
-	[Theory]
-	[InlineData("3\r\n", 3)]
-	[InlineData("  12  ", 12)]
-	[InlineData("", null)]
-	[InlineData("error: no free port\n", null)]
-	public void Port_IsParsed(string output, int? port) => Assert.Equal(port, UsbIpExeAttacher.ParsePort(output));
-}

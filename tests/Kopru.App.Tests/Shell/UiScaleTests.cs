@@ -77,10 +77,10 @@ public sealed class UiScaleTests
 			Point right = sidebar.TranslatePoint(new Point(sidebar.Bounds.Width, 0), window)!.Value;
 			Assert.InRange(right.X, 272 * scale - 1, 272 * scale + 1);
 
-			// The page content still starts 32 on screen below the top (the caption buttons do not scale).
+			// The page content starts at the top (the system title bar is outside the window's content).
 			PageHost pages = window.GetVisualDescendants().OfType<PageHost>().Single();
 			Point top = pages.TranslatePoint(new Point(0, 0), window)!.Value;
-			Assert.InRange(top.Y, 31, 33);
+			Assert.InRange(top.Y, -1, 1);
 		}
 		window.Close();
 	}

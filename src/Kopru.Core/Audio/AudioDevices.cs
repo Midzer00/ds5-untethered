@@ -48,9 +48,8 @@ public sealed class AudioDevices : IAudioDefaultsListener
 		this.log = log ?? Diagnostics.AppLog.Write;
 	}
 
-	// The Windows devices, or null off Windows.
-	public static AudioDevices? CreateDefault(IAudioDefaultsSystem? system = null) =>
-		OperatingSystem.IsWindows() ? new AudioDevices(system ?? new WindowsAudioDefaults()) : null;
+	// Over a system's audio device access; null without one (Linux has none yet: no device pickers).
+	public static AudioDevices? CreateDefault(IAudioDefaultsSystem? system = null) => system == null ? null : new AudioDevices(system);
 
 	// Told about choices made here (they are deliberate for it).
 	public DefaultAudioGuard? Guard { get; set; }

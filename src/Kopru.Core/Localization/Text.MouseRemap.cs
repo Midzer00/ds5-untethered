@@ -66,7 +66,7 @@ public static partial class Text
 		MouseAction.ArrowRight => Pick(l, $"Sağ Ok", $"Arrow Right"),
 		MouseAction.PageUp => "Page Up",
 		MouseAction.PageDown => "Page Down",
-		MouseAction.WindowsKey => Pick(l, $"Windows Tuşu", $"Windows Key"),
+		MouseAction.WindowsKey => Pick(l, $"Super Tuşu", $"Super Key"),
 		MouseAction.OnScreenKeyboard => Pick(l, $"Ekran Klavyesi", $"Screen Keyboard"),
 		MouseAction.NextWindow => Pick(l, $"Sonraki Pencere", $"Next Window"),
 		MouseAction.PreviousWindow => Pick(l, $"Önceki Pencere", $"Previous Window"),

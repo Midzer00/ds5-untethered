@@ -743,8 +743,8 @@ public class NotificationTests
 	}
 
 	[Fact]
-	public void StartWithWindows_StartsInTheTray() =>
-		Assert.Equal("\"C:\\Apps\\DS5 Untethered.exe\" --minimized", RunKeyStartupRegistration.CommandLine(@"C:\Apps\DS5 Untethered.exe"));
+	public void StartWhenISignIn_StartsInTheBackground() =>
+		Assert.Contains("Exec=\"/opt/ds5/Kopru.App\" --minimized", XdgAutostartRegistration.Entry("/opt/ds5/Kopru.App"));
 
 	// Toast rendering
 

@@ -1,7 +1,8 @@
 # Third-party notices
 
-DS5 Untethered is licensed under GPL-3.0-or-later (see `LICENSE`). A published build of DS5 Untethered includes the following
-third-party components. License types were taken from each package's NuGet metadata (`.nuspec`) and bundled
+DS5 Untethered is licensed under GPL-3.0-or-later (see `LICENSE`). This file is for the `linux` branch (the experimental
+Linux build, `ds5-untethered-linux-app-x64.tar.gz`). A published Linux build includes the following third-party
+components. License types were taken from each package's NuGet metadata (`.nuspec`) and bundled
 license files.
 
 ## NuGet packages shipped with the application
@@ -19,10 +20,9 @@ Transitive packages pulled in by Avalonia and shipped with it:
 
 | Component | Version | License | Copyright | Project |
 |---|---|---|---|---|
-| Avalonia.Win32, Avalonia.Win32.Automation, Avalonia.Skia, Avalonia.Remote.Protocol, Avalonia.FreeDesktop, Avalonia.X11, Avalonia.Native, Avalonia.Metal, Avalonia.Vulkan, Avalonia.OpenGL, Avalonia.DesignerSupport and the other Avalonia.* assemblies | 11.3.22 | MIT | The AvaloniaUI Project | https://github.com/AvaloniaUI/Avalonia |
-| Avalonia.Angle.Windows.Natives (ANGLE, `av_libglesv2.dll`) | 2.1.25547.20250602 | BSD-3-Clause style (ANGLE license; full text in `licenses/ANGLE-LICENSE.txt`) | Copyright 2018 The ANGLE Project Authors | https://chromium.googlesource.com/angle/angle |
-| SkiaSharp, SkiaSharp.NativeAssets.Win32 (`libSkiaSharp.dll`) | 2.88.9 | MIT (Skia and its dependencies: `licenses/SkiaSharp-THIRD-PARTY-NOTICES.txt`) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
-| HarfBuzzSharp, HarfBuzzSharp.NativeAssets.Win32 (`libHarfBuzzSharp.dll`) | 8.3.1.1 | MIT (HarfBuzz: `licenses/HarfBuzzSharp-THIRD-PARTY-NOTICES.txt`) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
+| Avalonia.X11, Avalonia.FreeDesktop, Avalonia.Skia, Avalonia.Remote.Protocol, Avalonia.OpenGL, Avalonia.Vulkan, Avalonia.DesignerSupport and the other Avalonia.* assemblies (the managed Win32 and Native ones ship too but are not used on Linux) | 11.3.22 | MIT | The AvaloniaUI Project | https://github.com/AvaloniaUI/Avalonia |
+| SkiaSharp, SkiaSharp.NativeAssets.Linux (`libSkiaSharp.so`) | 2.88.9 | MIT (Skia and its dependencies are listed in the SkiaSharp package's THIRD-PARTY-NOTICES) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
+| HarfBuzzSharp, HarfBuzzSharp.NativeAssets.Linux (`libHarfBuzzSharp.so`) | 8.3.1.1 | MIT (HarfBuzz: listed in the HarfBuzzSharp package's THIRD-PARTY-NOTICES) | © Microsoft Corporation | https://github.com/mono/SkiaSharp |
 | MicroCom.Runtime | 0.11.0 | MIT | Copyright 2021 © Nikita Tsukanov | https://github.com/kekekeks/MicroCom |
 | Tmds.DBus.Protocol | 0.21.3 | MIT | Tom Deseyn | https://github.com/tmds/Tmds.DBus |
 | Irihi.Avalonia.Shared (pulled in by Semi.Avalonia) | 0.3.1 | MIT | IRIHI Technology Co., Ltd. | https://github.com/irihitech/Ursa.Avalonia |
@@ -30,32 +30,31 @@ Transitive packages pulled in by Avalonia and shipped with it:
 
 ## .NET runtime
 
-The published build (installer and zip) is self-contained: it includes the .NET 8 runtime (the files of the
-`Microsoft.NETCore.App.Runtime.win-x64` pack, 8.0.30 at the time of writing, among them `coreclr.dll`, the `System.*` and
-`Microsoft.*` assemblies, `msquic.dll` and `Microsoft.DiaSymReader.Native.amd64.dll`). It is licensed under MIT,
-Copyright (c) .NET Foundation and Contributors (https://github.com/dotnet/runtime). The runtime's own licence and its
-third-party notices ship next to the app as `licenses/dotnet-runtime-LICENSE.TXT` and
-`licenses/dotnet-runtime-THIRD-PARTY-NOTICES.TXT`; they apply to the runtime files.
+The Linux build is self-contained: it includes the .NET 8 runtime (the files of the
+`Microsoft.NETCore.App.Runtime.linux-x64` pack, 8.0.30 at the time of writing, among them `libcoreclr.so`, `libclrjit.so`
+and the `System.*` and `Microsoft.*` assemblies). It is licensed under MIT, Copyright (c) .NET Foundation and Contributors
+(https://github.com/dotnet/runtime); its third-party notices are in that repository's `THIRD-PARTY-NOTICES.TXT`.
 
 ## Licence files shipped with a build
 
-The `licenses` folder of a published build holds the licence and notice files that come with the shipped packages
-(copied unchanged by `tools/publish.ps1`): the .NET runtime licence and third-party notices, the SkiaSharp and
-HarfBuzzSharp third-party notices and the ANGLE licence.
+The Linux tarball holds `LICENSE` and this file next to the app.
 
 ## Development-only packages (not shipped)
 
 xunit, xunit.runner.visualstudio, coverlet.collector, Microsoft.NET.Test.Sdk and Avalonia.Headless.XUnit are used only
 to build and run the tests and are not part of a published build.
 
-## External tools (not bundled)
+## External system tools (not bundled)
 
-DS5 Untethered does not include these tools. It only calls them after the user has installed them from their official pages.
+The Linux build does not include these. It runs them from the system (`/usr/sbin`, `/usr/bin`, `/sbin`, `/bin`) after
+the user has installed them from their distribution.
 
-| Tool | License | Copyright | Project |
+| Tool | What the app uses it for | License | Project |
 |---|---|---|---|
-| usbip-win2 | BSD-2-Clause (repository `LICENSE.txt`) | Copyright (c) 2021-2026, Vadym Hrynchyshyn | https://github.com/vadimgrn/usbip-win2 |
-| HidHide | MIT | Nefarius Software Solutions e.U. | https://github.com/nefarius/HidHide |
+| usbip (Linux USB/IP user-space tools) | `usbip attach`, `detach` and `port`: plugging the virtual controller in | GPL-2.0-or-later | https://www.kernel.org (tools/usb/usbip) |
+| vhci_hcd (Linux kernel module) | the USB/IP client's virtual host controller | GPL-2.0 | https://www.kernel.org |
+| polkit (`pkexec`) | asking for the password to run usbip as root | LGPL-2.0-or-later | https://github.com/polkit-org/polkit |
+| BlueZ (`bluetoothctl`) | turning Bluetooth on and the controller off | GPL-2.0-or-later | https://www.bluez.org |
 
 ## Xbox trigger rumble game list
 
@@ -215,7 +214,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Optional, not shipped
 
-- libopus (`opus.dll`), BSD-3-Clause, Copyright Xiph.Org Foundation and contributors, https://opus-codec.org - a native
-  alternative to Concentus for the experimental controller speaker, used only when `KOPRU_OPUS=native` is set and the
-  user put an `opus.dll` next to the program (`NativeOpusEncoder`). No build ships it.
-
+- libopus, BSD-3-Clause, Copyright Xiph.Org Foundation and contributors, https://opus-codec.org - a native alternative to
+  Concentus for the experimental controller speaker, used only when `KOPRU_OPUS=native` is set and the system has libopus.
+  No build ships it.

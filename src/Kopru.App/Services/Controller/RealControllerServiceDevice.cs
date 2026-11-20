@@ -25,7 +25,8 @@ public sealed partial class RealControllerService
 	private ulong? lastBluetoothAddress;
 
 	// Opens a USB DualSense for feature reads only (tests swap it).
-	public Func<HidDevice, IHidLink?> OpenUsbReadOnly { get; set; } = d => WindowsHid.OpenReadOnly(d);
+	// TODO(linux): read a USB DualSense's details through hidraw; none for now.
+	public Func<HidDevice, IHidLink?> OpenUsbReadOnly { get; set; } = _ => null;
 
 	public bool IsPausedForCable => cable.PausedForCable;
 

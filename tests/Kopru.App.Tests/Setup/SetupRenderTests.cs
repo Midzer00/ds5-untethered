@@ -34,7 +34,7 @@ public sealed class SetupRenderTests
 				{
 					var probes = new RealServiceTests.Probes(drivers: false);
 					var vm = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(new MemorySettingsStore(), null,
-						() => new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+						() => new SetupWizard(probes.Status, new RealServiceTests.Links())));
 					var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 					window.Show();
 					Settle();
@@ -43,7 +43,7 @@ public sealed class SetupRenderTests
 
 					var done = new RealServiceTests.Probes(drivers: true);
 					var service = (IControllerService)typeof(MainWindowViewModel).GetField("_service", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(vm)!;
-					vm.Setup = new SetupViewModel(new SetupWizard(new SystemCheck(done, done, done, done), new RealServiceTests.Links()), service, vm.CloseSetup,
+					vm.Setup = new SetupViewModel(new SetupWizard(done.Status, new RealServiceTests.Links()), service, vm.CloseSetup,
 						clock: new SetupFlowTests.FakeClock(), tick: _ => Task.Delay(Timeout.Infinite));
 					Settle();
 					Capture(window, outDir, $"setup-done-{size}-{code}.png");

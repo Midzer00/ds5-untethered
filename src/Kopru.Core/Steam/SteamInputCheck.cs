@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Diagnostics;
-using Microsoft.Win32;
 
 namespace Kopru.Core.Steam;
 
@@ -96,25 +95,9 @@ public sealed class SystemSteamEnvironment : ISteamEnvironment
 {
 	private readonly ProcessPresence steam = new(FindSteam);
 
-	public string? SteamPath
-	{
-		get
-		{
-			if (!OperatingSystem.IsWindows())
-			{
-				return null;
-			}
-			try
-			{
-				using RegistryKey? key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
-				return key?.GetValue("SteamPath") is string path && path.Length > 0 ? path.Replace('/', '\\') : null;
-			}
-			catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
-			{
-				return null;
-			}
-		}
-	}
+	// TODO(linux): Steam's folder on Linux (~/.steam/steam) and its config there; unknown for now, so the check says "not
+	// installed" and the app does not show it.
+	public string? SteamPath => null;
 
 	public bool IsSteamRunning => steam.IsRunning;
 

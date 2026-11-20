@@ -21,9 +21,7 @@ public static partial class Text
 		$"Oturum açınca arka planda başlar.",
 		$"Starts in the background when you sign in.");
 
-	public static string KeepInTrayShort(Language? l = null) => Pick(l,
-		$"Simgesi saatin yanında kalır.",
-		$"Its icon stays next to the clock.");
+	public static string KeepInTrayShort(Language? l = null) => Pick(l, $"Simgesi panelde kalır.", $"Its icon stays in the panel.");
 
 	public static string AutoStartBridgeShort(Language? l = null) => Pick(l,
 		$"Açılışta ve kumanda bağlanınca başlar.",
@@ -90,8 +88,4 @@ public static partial class Text
 	public static string NotifyLinkShort(Language? l = null) => Pick(l,
 		$"Bağlantı uzun süre zayıf kalırsa.",
 		$"When the link stays weak for a while.");
-
-	public static string NotifyHidHideShort(Language? l = null) => Pick(l,
-		$"HidHide eksik diye sanal kumanda başlamazsa.",
-		$"When it can't start without HidHide.");
 }

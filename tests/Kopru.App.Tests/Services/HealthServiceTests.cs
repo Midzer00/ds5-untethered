@@ -35,7 +35,7 @@ public class HealthServiceTests : IDisposable
 			NoInputTimeout = Timeout.InfiniteTimeSpan,
 			BatteryProbe = new BatteryProbe(readOnly)
 		}, new TestHiding(), controllers, a => a(), _ => null, timers: false, time: time,
-			healthProbe: new HealthProbe(system, system, system, null, Path.Combine(dir, "adapter-check.json")),
+			healthProbe: new HealthProbe(system, system, null, Path.Combine(dir, "adapter-check.json"), requirements: system.Requirements),
 			batteryStore: store, launcher: urls);
 
 	private void Pair() => controllers.Paired.Add(new HidDevice(TestLink.BtPath, 0x054C, HidDevice.DualSenseProductId, 78, 547, 64));
@@ -48,7 +48,7 @@ public class HealthServiceTests : IDisposable
 		HealthReport r = await service.RefreshHealthAsync();
 		Assert.False(service.CanStartBridge);
 		Assert.Equal(BlockingKind.DriverMissing, r.BlockingIssue?.Kind);
-		Assert.Equal(Text.CannotStartDriver(), service.CanStartBridgeReason);
+		Assert.Equal("vhci_hcd is not loaded", service.CanStartBridgeReason);
 
 		system.UsbIp = true;
 		system.Radio = RadioState.Off;
@@ -79,6 +79,7 @@ public class HealthServiceTests : IDisposable
 		using RealControllerService service = Service();
 		int raised = 0;
 		service.StateChanged += (_, _) => raised++;
+		system.UsbIp = false;
 		await service.RefreshHealthAsync();
 		int after = raised;
 		Assert.True(after > 0);
@@ -94,7 +95,8 @@ public class HealthServiceTests : IDisposable
 		using RealControllerService service = Service();
 		await service.StartBridgeAsync();
 		await service.RefreshHealthAsync();
-		Assert.Equal(HealthLevel.Ok, service.Health.Chip(HealthChipKind.HidHide).Level);
+		// Linux has no hiding yet: the chip says so (not a problem, not fine).
+		Assert.Equal(HealthLevel.Unknown, service.Health.Chip(HealthChipKind.HidHide).Level);
 		await service.StopBridgeAsync();
 	}
 
@@ -133,14 +135,14 @@ public class HealthServiceTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Fix_BluetoothSettings_OpensSettings_AndNoneDoesNothing()
+	public async Task Fix_BluetoothSettings_AndNone_DoNothingOnLinux()
 	{
 		using RealControllerService service = Service();
 		List<FixAction> seen = [];
 		service.FixRequested += (_, f) => seen.Add(f);
 		await service.ExecuteFix(FixAction.OpenBluetoothSettings);
 		await service.ExecuteFix(FixAction.None);
-		Assert.Equal([SetupLinks.BluetoothSettings], urls.Opened);
+		Assert.Empty(urls.Opened);
 		Assert.Empty(seen);
 	}
 
@@ -168,21 +170,18 @@ public class HealthServiceTests : IDisposable
 		Assert.Equal(ConnectionKind.ConnectedBluetooth, fake.Connection.Kind);
 	}
 
-	private sealed class FakeSystem : IInstallRegistry, IBluetoothRadio, IPairedControllers
+	private sealed class FakeSystem : IBluetoothRadio, IPairedControllers
 	{
 		public bool UsbIp { get; set; } = true;
 		public RadioState Radio { get; set; } = RadioState.On;
 		public IReadOnlyList<PairedController> Paired { get; set; } = [];
 
-		public (string? Version, string? Location)? FindProgram(string prefix) => prefix switch
-		{
-			SystemCheck.UsbIpProgramPrefix when UsbIp => ("0.9.8.1", @"C:\USBip\"),
-			SystemCheck.HidHideProgramPrefix => ("1.5", null),
-			_ => null
-		};
+		public IReadOnlyList<SetupRequirement> Requirements() =>
+		[
+			new(SetupRequirementId.VhciModule, UsbIp, _ => "vhci_hcd is not loaded", "sudo modprobe vhci-hcd"),
+			new(SetupRequirementId.UsbIpTool, UsbIp, _ => "usbip is not installed"),
+		];
 
-		public bool ServiceExists(string serviceName) => serviceName != "usbip2_ude" || UsbIp;
-		public bool FileExists(string path) => UsbIp;
 		public RadioState Query() => Radio;
 		public IReadOnlyList<PairedController> Find() => Paired;
 	}

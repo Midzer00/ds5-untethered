@@ -16,14 +16,13 @@ namespace Kopru.App.Tests;
 public class WindowChromeTests
 {
 	[AvaloniaFact]
-	public void MainWindow_UsesTheSystemCaptionButtonsOnly()
+	public void MainWindow_UsesTheDesktopsOwnTitleBar()
 	{
 		var vm = new MainWindowViewModel(new FakeControllerService(animate: false));
 		var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 
-		Assert.True(window.ExtendClientAreaToDecorationsHint);
-		Assert.Equal(ExtendClientAreaChromeHints.SystemChrome, window.ExtendClientAreaChromeHints);
-		Assert.False(window.ExtendClientAreaChromeHints.HasFlag(ExtendClientAreaChromeHints.PreferSystemChrome));
+		// Linux: the window manager draws the title bar and its buttons; the content does not reach under them.
+		Assert.False(window.ExtendClientAreaToDecorationsHint);
 
 		window.Show();
 		Dispatcher.UIThread.RunJobs();
@@ -32,11 +31,9 @@ public class WindowChromeTests
 		// so this guards the tree; the hint above is what keeps them off on Windows).
 		Assert.DoesNotContain(window.GetVisualDescendants(), v => v is TitleBar or CaptionButtons && v.IsEffectivelyVisible);
 
-		// The drag band spans the top edge above both the sidebar and the content.
+		// No drag band of our own: the system title bar moves the window.
 		Border band = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "DragBand");
-		Assert.True(band.IsEffectivelyVisible && band.IsHitTestVisible);
-		Assert.Equal(window.Bounds.Width, band.Bounds.Width);
-		Assert.Equal(0, band.Bounds.Top);
+		Assert.False(band.IsEffectivelyVisible);
 		window.Close();
 	}
 }

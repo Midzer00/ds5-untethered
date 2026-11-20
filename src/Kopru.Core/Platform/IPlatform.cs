@@ -10,7 +10,7 @@ namespace Kopru.Core.Platform;
 
 // Everything the bridge needs from the operating system, in one place. The shared code (USB/IP server, virtual pads,
 // protocol, haptics, profiles) never names an OS class; it gets these from the platform the app picked at start
-// (PlatformServices.Current). Windows: WindowsPlatform. Linux: Kopru.Platform.Linux (experimental).
+// (PlatformServices.Current): LinuxPlatform in Kopru.Platform.Linux (experimental).
 public interface IPlatform
 {
 	// Shown in logs ("windows", "linux").
@@ -45,8 +45,8 @@ public interface IPlatform
 	string PrepareProcess();
 }
 
-// The platform the app runs on. The app sets it once at start (Program.Main); until then it is Windows on Windows and
-// the unsupported platform (nothing found, nothing attached) elsewhere.
+// The platform the app runs on. The app sets it once at start (Program.Main, LinuxPlatform); until then it is the
+// unsupported platform (nothing found, nothing attached).
 public static class PlatformServices
 {
 	private static IPlatform? current;
@@ -57,5 +57,5 @@ public static class PlatformServices
 		set => Volatile.Write(ref current, value ?? throw new ArgumentNullException(nameof(value)));
 	}
 
-	public static IPlatform Default => OperatingSystem.IsWindows() ? WindowsPlatform.Instance : UnsupportedPlatform.Instance;
+	public static IPlatform Default => UnsupportedPlatform.Instance;
 }

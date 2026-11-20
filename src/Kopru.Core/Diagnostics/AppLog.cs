@@ -12,7 +12,7 @@ public static class AppLog
 
 	public const string PreviousFileName = "app.1.log";
 
-	public static readonly string DefaultDirectory = Path.Combine(AppPaths.DataDirectory, "logs");
+	public static readonly string DefaultDirectory = AppPaths.LogDirectory;
 
 	private static readonly object Gate = new();
 

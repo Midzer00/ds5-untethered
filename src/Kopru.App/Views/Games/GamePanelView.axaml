@@ -15,7 +15,7 @@
          doing now is a caption under the name), the note that the game's own rumble is separate, then the strength (with its
          value) and Bass | All Sound (greyed out while the engine cannot capture the sound) -->
     <DataTemplate x:Key="AudioSection" x:DataType="vm:GamePanelViewModel">
-      <StackPanel Classes="group" Name="PanelAudio">
+      <StackPanel Classes="group" Name="PanelAudio" IsVisible="{x:Static vm:AppFeatures.AudioHaptics}">
         <!-- The switch is never greyed out (it can always be turned off, and on again to try once more) -->
         <Grid Classes="panelRow" Name="PanelAudioRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding AudioHint}">
           <StackPanel Spacing="2" VerticalAlignment="Center">

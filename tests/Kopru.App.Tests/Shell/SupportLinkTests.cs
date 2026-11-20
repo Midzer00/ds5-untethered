@@ -95,11 +95,11 @@ public sealed class SupportLinkTests
 				Settle();
 				SettingsView view = window.GetVisualDescendants().OfType<SettingsView>().Single();
 				Grid row = view.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "SupportRow");
-				Border updates = view.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "UpdatesPanel");
-				// The Updates card's title line: the title, the link at its right end.
+				Border updates = view.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "AboutPanel");
+				// The About card's title line: the title, the link at its right end.
 				DockPanel card = row.GetVisualAncestors().OfType<DockPanel>().First(p => p.Classes.Contains("card"));
 				Assert.Contains(updates, card.Children);
-				Assert.Equal(vm.Updates.GroupLabel, row.Children.OfType<TextBlock>().Single(t => t.Classes.Contains("section")).Text);
+				Assert.Equal(vm.SettingsPage.AboutLabel, row.Children.OfType<TextBlock>().Single(t => t.Classes.Contains("section")).Text);
 				Button link = row.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "SupportLink");
 				Assert.True(link.IsEffectivelyVisible, $"{code}: no sponsors link");
 				Assert.Equal("GitHub Sponsors", link.GetVisualDescendants().OfType<TextBlock>().Single().Text);

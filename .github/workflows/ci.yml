@@ -1,24 +1,21 @@
-# Builds and tests every push and pull request on main and linux.
-# Windows: the whole solution and every Core test; then, allowed to fail (shared runners are noisy and slow), the timer
-# pacing tests alone and the App tests.
-# Linux: Core, the experimental Linux platform, the Linux spike and the Core tests that do not need Windows
-# (tests marked [Trait("Category", "Windows")] use Windows APIs or Windows paths; [Trait("Category", "RealTime")]
-# measure Windows timer pacing).
+# The linux branch is the Linux app (experimental; the Windows app is on main and released separately). Every push and
+# pull request on linux builds the solution on Ubuntu, runs the Core tests (except the timer pacing measurements,
+# [Trait("Category", "RealTime")]) and the App tests (Avalonia.Headless), and publishes the app and the headless spike.
 name: CI
 
 on:
   push:
-    branches: [main, linux]
+    branches: [linux]
   pull_request:
-    branches: [main, linux]
+    branches: [linux]
 
 permissions:
   contents: read
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    timeout-minutes: 20
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -32,40 +29,33 @@ jobs:
       - name: Core tests
         run: dotnet test tests/Kopru.Core.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m --filter "Category!=RealTime"
 
-      - name: Core timer pacing tests (allowed to fail)
-        continue-on-error: true
-        run: dotnet test tests/Kopru.Core.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m --filter "Category=RealTime"
-
+      # Allowed to fail for now, while the Linux app settles.
       - name: App tests (allowed to fail)
         continue-on-error: true
-        timeout-minutes: 12
+        timeout-minutes: 15
         run: dotnet test tests/Kopru.App.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m
 
-  linux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Build Core, the Linux platform and the spike
+      # Ready-to-run builds (no .NET needed). tar keeps the executable bit.
+      - name: Publish the Linux app
         run: |
-          dotnet build src/Kopru.Core -c Release
-          dotnet build src/Kopru.Platform.Linux -c Release
-          dotnet build tools/Kopru.LinuxSpike -c Release
-          dotnet build tests/Kopru.Core.Tests -c Release
+          dotnet publish src/Kopru.App -c Release -r linux-x64 --self-contained -o out/ds5-untethered-linux-app
+          cp packaging/linux/ds5-untethered.desktop packaging/linux/install.sh packaging/linux/50-ds5-untethered.rules out/ds5-untethered-linux-app/
+          cp src/Kopru.App/Assets/icon-256.png out/ds5-untethered-linux-app/ds5-untethered.png
+          cp LICENSE THIRD-PARTY-NOTICES.md out/ds5-untethered-linux-app/
+          chmod +x out/ds5-untethered-linux-app/Kopru.App out/ds5-untethered-linux-app/install.sh
+          tar -czf ds5-untethered-linux-app-x64.tar.gz -C out ds5-untethered-linux-app
 
-      - name: Core tests (without the Windows-only ones)
-        run: dotnet test tests/Kopru.Core.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m --filter "Category!=Windows&Category!=RealTime"
-
-      # A ready-to-run spike (no .NET SDK needed). tar keeps the executable bit.
       - name: Publish the Linux spike
         run: |
           dotnet publish tools/Kopru.LinuxSpike -c Release -r linux-x64 --self-contained -o out/ds5-untethered-linux-spike
           tar -czf ds5-untethered-linux-spike-x64.tar.gz -C out ds5-untethered-linux-spike
+
+      - name: Upload the app as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds5-untethered-linux-app-x64
+          path: ds5-untethered-linux-app-x64.tar.gz
+          retention-days: 30
 
       - name: Upload the spike as a build artifact
         uses: actions/upload-artifact@v4
@@ -75,7 +65,8 @@ jobs:
           retention-days: 30
 
   # On every push to linux (not on pull requests): refresh the "linux-spike" pre-release, so testers get a stable
-  # download link without signing in. It is a pre-release, so it never becomes the app's latest release.
+  # download link without signing in. The tag itself stays fixed (made once); only the files and the notes (with the
+  # commit's short SHA) are replaced. It is a pre-release, so it never becomes the Windows app's latest release.
   linux-spike-release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/linux'
     needs: linux
@@ -88,15 +79,19 @@ jobs:
         with:
           name: ds5-untethered-linux-spike-x64
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: ds5-untethered-linux-app-x64
+
       - name: Create or update the linux-spike pre-release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          notes="Experimental Linux spike, built from the linux branch at ${GITHUB_SHA::7}. Unpack, then see docs/linux/README.md on the linux branch."
+          notes="Experimental Linux app and headless spike, built from the linux branch at ${GITHUB_SHA::7}. The linux-spike tag stays where it was first created; each push replaces the files and this note names the commit they were built from. Unpack, then see docs/linux/README.md on the linux branch."
           if gh release view linux-spike >/dev/null 2>&1; then
             gh release edit linux-spike --prerelease --notes "$notes"
           else
-            gh release create linux-spike --target linux --prerelease --title "Linux spike (experimental)" --notes "$notes"
+            gh release create linux-spike --target linux --prerelease --title "Linux (experimental)" --notes "$notes"
           fi
-          gh release upload linux-spike ds5-untethered-linux-spike-x64.tar.gz --clobber
+          gh release upload linux-spike ds5-untethered-linux-app-x64.tar.gz ds5-untethered-linux-spike-x64.tar.gz --clobber

@@ -36,16 +36,11 @@ public sealed record DiagnosticsSources
 
 	public static DiagnosticsSources Default(ControllerInfo? controller = null) => new()
 	{
-		SystemCheck = OperatingSystem.IsWindows() ? RunSystemCheck : null,
 		SettingsPath = AppPaths.Settings,
-		HidingStatePath = Path.Combine(AppPaths.DataDirectory, Hiding.HidingStateStore.FileName),
 		LogDirectory = AppLog.Directory,
 		AdapterResultPath = Path.Combine(AppPaths.DataDirectory, DiagnosticsExport.AdapterResultFileName),
 		Controller = controller
 	};
-
-	private static SystemStatus? RunSystemCheck() =>
-		OperatingSystem.IsWindows() ? Setup.SystemCheck.CreateDefault().Run() : null;
 }
 
 // One zip for bug reports. Every text is scrubbed: Bluetooth addresses and the user name in paths are masked.

@@ -109,7 +109,7 @@ internal sealed class TestHiding(bool installed = true) : IHidingService
 
 internal sealed class NoRunner : Kopru.Core.Hiding.ICommandRunner
 {
-	public Task<Kopru.Core.Hiding.CommandResult> RunAsync(string fileName, string arguments, CancellationToken cancellationToken = default) =>
+	public Task<Kopru.Core.Hiding.CommandResult> RunAsync(string fileName, IReadOnlyList<string> argumentList, CancellationToken cancellationToken = default) =>
 		Task.FromResult(new Kopru.Core.Hiding.CommandResult(0, string.Empty, string.Empty));
 }
 
@@ -193,20 +193,6 @@ public class RealServiceTests
 			}
 		});
 		await service.ShutdownAsync();
-	}
-
-	[Fact]
-	public void HidHideInstalledLater_IsUsedWithoutARestart()
-	{
-		// Nothing is written: the store's file is only touched by hiding calls, and none is made here.
-		string ledger = Path.Combine(Path.GetTempPath(), "kopru-hiding-" + Guid.NewGuid().ToString("N"), "ledger.json");
-		Kopru.Core.Hiding.HidHideControl? found = null;
-		var service = new Kopru.Core.Hiding.HidHideHidingService(new Kopru.Core.Hiding.HidHideControl(new NoRunner(), null),
-			new Kopru.Core.Hiding.HidingStateStore(ledger), null, () => found ?? new Kopru.Core.Hiding.HidHideControl(new NoRunner(), null));
-		Assert.False(service.IsInstalled);
-		found = new Kopru.Core.Hiding.HidHideControl(new NoRunner(), @"C:\HidHide\x64\HidHideCLI.exe");
-		Assert.True(service.IsInstalled);
-		Assert.False(File.Exists(ledger));
 	}
 
 	[Fact]
@@ -315,16 +301,24 @@ public class RealServiceTests
 		Directory.Delete(dir, true);
 	}
 
-	internal sealed class Probes(bool drivers, bool restart = false) : IInstallRegistry, IBluetoothRadio, IControllerFinder, IRestartProbe
+	internal sealed class Probes(bool drivers, bool restart = false) : IBluetoothRadio, IControllerFinder, IRestartProbe
 	{
-		// What Windows reports about a pending restart (changed by tests between checks).
+		// A pending restart (changed by tests between checks; Linux never reports one).
 		public bool Restart { get; set; } = restart;
-		public (string? Version, string? Location)? FindProgram(string displayNamePrefix) => drivers ? ("1.0", @"C:\x") : null;
-		public bool ServiceExists(string serviceName) => drivers;
-		public bool FileExists(string path) => drivers;
 		public RadioState Query() => RadioState.On;
 		public IReadOnlyList<HidDevice> Find() => [new HidDevice(TestLink.BtPath, 0x054C, 0x0CE6, 78, 547, 64)];
 		public bool? IsRestartPending() => Restart;
+
+		// The Linux checks: vhci_hcd and usbip as "drivers", pkexec and hidraw access always fine.
+		public IReadOnlyList<SetupRequirement> Requirements() =>
+		[
+			new(SetupRequirementId.VhciModule, drivers, _ => "vhci_hcd is not loaded", "sudo modprobe vhci-hcd"),
+			new(SetupRequirementId.UsbIpTool, drivers, _ => "usbip is not installed"),
+			new(SetupRequirementId.Pkexec, true, _ => "pkexec is not installed"),
+			new(SetupRequirementId.HidrawAccess, true, _ => "no hidraw access"),
+		];
+
+		public SystemStatus Status() => new(Kopru.Core.Health.HealthProbe.LinuxUsbIp(Requirements()), ComponentInfo.Missing, Query(), Find(), IsRestartPending(), Requirements());
 	}
 
 	internal sealed class Links : IUrlLauncher
@@ -339,14 +333,29 @@ public class RealServiceTests
 		var links = new Links();
 		var probes = new Probes(drivers: false);
 		var vm = new MainWindowViewModel(new FakeControllerService(animate: false),
-			new AppEnvironment(new MemorySettingsStore(), new TestStartup(), () => new SetupWizard(new SystemCheck(probes, probes, probes, probes), links)));
+			new AppEnvironment(new MemorySettingsStore(), new TestStartup(), () => new SetupWizard(probes.Status, links)));
 
 		SetupViewModel setup = Assert.IsType<SetupViewModel>(vm.CurrentPage);
 		SetupStepItem drivers = setup.Steps.Single(s => s.Id == SetupStepId.Drivers);
 		Assert.Equal(StepStatus.Needed, drivers.Status);
 		Assert.True(drivers.HasNotes);
-		await drivers.Actions[0].Command.ExecuteAsync(null);
-		Assert.Equal([SetupLinks.UsbIpReleases], links.Opened);
+		// "Copy Commands" puts the fix on the clipboard (no web page to open on Linux).
+		string? copied = null;
+		SetupViewModel.CopyText = text =>
+		{
+			copied = text;
+			return Task.CompletedTask;
+		};
+		try
+		{
+			await drivers.Actions[0].Command.ExecuteAsync(null);
+		}
+		finally
+		{
+			SetupViewModel.CopyText = null;
+		}
+		Assert.Contains("modprobe vhci-hcd", copied);
+		Assert.Empty(links.Opened);
 
 		SetupStepItem adapter = setup.Steps.Single(s => s.Id == SetupStepId.AdapterTest);
 		await adapter.Actions[0].Command.ExecuteAsync(null);
@@ -369,7 +378,7 @@ public class RealServiceTests
 		var probes = new Probes(drivers: true);
 		var vm = new MainWindowViewModel(new FakeControllerService(animate: false),
 			new AppEnvironment(new MemorySettingsStore(), null, () =>
-				new SetupWizard(new SystemCheck(probes, probes, probes, probes), new Links()) { AdapterVerdict = Kopru.Core.Diagnostics.AdapterVerdict.Suitable }));
+				new SetupWizard(probes.Status, new Links()) { AdapterVerdict = Kopru.Core.Diagnostics.AdapterVerdict.Suitable }));
 		Assert.Same(vm.Overview, vm.CurrentPage);
 	}
 }

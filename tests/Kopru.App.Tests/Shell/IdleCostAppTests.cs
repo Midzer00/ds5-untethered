@@ -412,7 +412,7 @@ public class IdleCostAppTests
 		var service = new HealthCountingService();
 		var probes = new RealServiceTests.Probes(drivers: true);
 		var vm = new MainWindowViewModel(service, new AppEnvironment(null, null,
-			() => new SetupWizard(new SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+			() => new SetupWizard(probes.Status, new RealServiceTests.Links())));
 		int before = service.HealthRefreshes;
 		vm.ShowSetup();
 		Assert.Equal(before + 1, service.HealthRefreshes);

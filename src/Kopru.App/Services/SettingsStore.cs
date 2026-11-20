@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using Kopru.Core.Bridge;
 using Kopru.Core.Games;
 using Kopru.Core;
-using Microsoft.Win32;
 
 namespace Kopru.App.Services;
 
@@ -331,36 +330,8 @@ public sealed class MemorySettingsStore(AppSettings? initial = null) : ISettings
 	}
 }
 
-// "Start with Windows".
+// "Start When I Sign In" (XdgAutostartRegistration).
 public interface IStartupRegistration
 {
 	void Set(bool enabled);
-}
-
-// HKCU\Software\Microsoft\Windows\CurrentVersion\Run, value "Untethered" = the current exe with --minimized (starts in
-// the tray).
-public sealed class RunKeyStartupRegistration : IStartupRegistration
-{
-	public const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-	public const string ValueName = "Untethered";
-	public const string MinimizedArgument = "--minimized";
-
-	public static string CommandLine(string exe) => "\"" + exe + "\" " + MinimizedArgument;
-
-	public void Set(bool enabled)
-	{
-		if (!OperatingSystem.IsWindows())
-		{
-			return;
-		}
-		using RegistryKey key = Registry.CurrentUser.CreateSubKey(RunKey);
-		if (enabled && Environment.ProcessPath is { } exe)
-		{
-			key.SetValue(ValueName, CommandLine(exe));
-		}
-		else
-		{
-			key.DeleteValue(ValueName, throwOnMissingValue: false);
-		}
-	}
 }

@@ -11,8 +11,8 @@ public sealed class ImpulseTuningFile : IDisposable
 {
 	public const int PollMs = 100;
 
-	private static readonly Lazy<ImpulseTuningFile?> shared = new(() =>
-		ExperimentalPads.XboxOne != null ? new ImpulseTuningFile(ImpulseTuning.DefaultPath) : null);
+	// The Xbox One developer pad is not in this build: no shared watcher.
+	private static readonly Lazy<ImpulseTuningFile?> shared = new(() => null);
 
 	private readonly string path;
 	private readonly Timer? timer;

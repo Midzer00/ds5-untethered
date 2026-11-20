@@ -115,7 +115,7 @@ public class NavigationTests
 	{
 		var probes = new RealServiceTests.Probes(drivers: false);
 		(MainWindowViewModel vm, MainWindow window, PageHost host) = Open(new FakeControllerService(animate: false), new AppEnvironment(new MemorySettingsStore(), null,
-			() => new Kopru.Core.Setup.SetupWizard(new Kopru.Core.Setup.SystemCheck(probes, probes, probes, probes), new RealServiceTests.Links())));
+			() => new Kopru.Core.Setup.SetupWizard(probes.Status, new RealServiceTests.Links())));
 		Assert.IsType<SetupView>(Shown(host));
 		Go(vm, window, vm.NavItems[1]);
 		Assert.DoesNotContain(host.Children, c => c is SetupView);

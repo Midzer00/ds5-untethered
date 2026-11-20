@@ -377,6 +377,8 @@ public sealed partial class NotificationCenter
 		BridgeError.CaptureInvalid => Text.NotifyBridgeIdentityUnreadable(),
 		BridgeError.UsbIpMissing => Text.NotifyBridgeUsbIpMissing(),
 		BridgeError.AttachFailed => Text.NotifyBridgeAttachFailed(),
+		BridgeError.PkexecMissing => Text.NotifyBridgePkexecMissing(),
+		BridgeError.AttachNotAuthorized => Text.NotifyBridgeNotAuthorized(),
 		BridgeError.ControllerOpenFailed => Text.NotifyBridgeOpenFailed(),
 		BridgeError.ControllerLost => Text.NotifyBridgeLost(),
 		_ => Text.NotifyBridgeOther()

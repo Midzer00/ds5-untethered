@@ -100,7 +100,6 @@ public sealed class ToastHost
 		_entries.Add(entry);
 		// Shown fully transparent first, so the size is known before it is placed and faded in.
 		window.Show();
-		NoActivate(window);
 		entry.Width = window.ClientSize.Width;
 		entry.Height = window.ClientSize.Height;
 		Layout();
@@ -111,27 +110,6 @@ public sealed class ToastHost
 		}, DispatcherPriority.Background);
 		entry.Start();
 	}
-
-	// Clicks on the toast don't activate it (and so don't take the focus from a game).
-	private static void NoActivate(Window window)
-	{
-		if (!OperatingSystem.IsWindows() || window.TryGetPlatformHandle() is not { } handle || handle.Handle == IntPtr.Zero)
-		{
-			return;
-		}
-		long style = GetWindowLongPtr(handle.Handle, ExStyle).ToInt64();
-		SetWindowLongPtr(handle.Handle, ExStyle, new IntPtr(style | NoActivateStyle | ToolWindowStyle));
-	}
-
-	private const int ExStyle = -20;
-	private const long NoActivateStyle = 0x08000000;
-	private const long ToolWindowStyle = 0x00000080;
-
-	[System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
-	private static extern IntPtr GetWindowLongPtr(IntPtr window, int index);
-
-	[System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
-	private static extern IntPtr SetWindowLongPtr(IntPtr window, int index, IntPtr value);
 
 	private void Close(ToastEntry entry)
 	{

@@ -57,7 +57,7 @@ public sealed class GameImagesAppTests : IDisposable
 	}
 
 	// A made-up 48x48 icon: a rounded square.
-	private static IconPixels GeneratedIcon()
+	private static GameImageService.IconPixels GeneratedIcon()
 	{
 		const int size = 48;
 		byte[] bgra = new byte[size * size * 4];
@@ -70,7 +70,7 @@ public sealed class GameImagesAppTests : IDisposable
 				(bgra[i], bgra[i + 1], bgra[i + 2], bgra[i + 3]) = inside ? ((byte)0xC8, (byte)0x8A, (byte)0x3A, (byte)255) : ((byte)0, (byte)0, (byte)0, (byte)0);
 			}
 		}
-		return new IconPixels(size, size, bgra);
+		return new GameImageService.IconPixels(size, size, bgra);
 	}
 
 	private static List<GameThumbnail> Thumbnails(Window window) => window.GetVisualDescendants().OfType<GameThumbnail>().Where(t => t.IsEffectivelyVisible).ToList();
