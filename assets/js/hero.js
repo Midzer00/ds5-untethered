@@ -110,6 +110,8 @@ export async function heroFilm(M) {
   use(pick());
   const film = root.classList.contains('film'); // decided in the page head, together with the poster preload
   video.muted = true; video.defaultMuted = true; video.playsInline = true;
+  // A backdrop, not a player: no picture-in-picture, casting or full-screen overlays from the browser.
+  video.disablePictureInPicture = true; video.disableRemotePlayback = true; video.controls = false;
   // Ready when the browser expects to play to the end without stalling, or the whole film is already buffered; until then the first frame shows.
   const buffered = () => {
     const b = video.buffered, d = video.duration;

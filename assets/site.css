@@ -79,6 +79,7 @@ h2{font-size:40px}h3{font-size:24px}
 .osd-input i{width:6px;height:6px;border-radius:50%;background:var(--powder)}
 .usb .osd-input i{background:var(--poppy)}
 #skip{display:none}
+#snd.was-on{color:var(--powder)}
 .intro-on #skip{display:inline-flex}.intro-on #replay,.calm #replay{display:none}
 .no-js .osd{position:absolute}.no-js .osd-bottom,.no-js .crt,.no-js .osd-c,.no-js .home-fx{display:none}
 
@@ -679,3 +680,10 @@ section[id]{scroll-margin-top:72px}
 @media (min-width:861px){.js .p-rig{container-type:inline-size}.js .p-stage{--w:min(200px,33cqw);--h:calc(var(--w) * 1.725)}}
 /* The Get It head keeps clear of the controller art (.get>*{max-width:none} above had undone this) */
 @media (min-width:861px){.get>.g-head{max-width:calc(100% - min(560px,44%));margin-inline:0}}
+/* Phones: the bottom readouts stack label over value, so the input status, the film control and both toggles keep one row */
+@media (max-width:480px){
+  .osd-bottom{line-height:1.2}
+  .osd-input{align-items:flex-start}.osd-input i{margin-top:3px}
+  #source,.osd-bottom button{width:min-content}
+  .osd-bottom button{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;text-align:left}
+}
