@@ -58,6 +58,10 @@ public sealed class UpdateAssetTests
 			RedirectStandardOutput = true,
 			RedirectStandardError = true
 		};
+		// Started from PowerShell 7 (pwsh, e.g. the shell of a GitHub Actions step), Windows PowerShell would inherit pwsh's
+		// PSModulePath, fail to load its own Microsoft.PowerShell.Utility and not know Get-FileHash. Without the variable it
+		// builds its default module path, as when tools\publish.ps1 is run from Windows PowerShell.
+		start.Environment.Remove("PSModulePath");
 		foreach (string a in new[]
 		{
 			"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script,

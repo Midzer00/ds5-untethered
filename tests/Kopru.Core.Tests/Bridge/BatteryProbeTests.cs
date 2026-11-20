@@ -173,7 +173,8 @@ public class BridgeHostBatteryProbeTests
 
 	private readonly ProbeSource source = new();
 
-	private static void WaitUntil(Func<bool> condition) => Assert.True(SpinWait.SpinUntil(condition, 5000), "timed out");
+	// Generous: on a busy shared CI runner the thread pool can take seconds to run the bridge's continuations.
+	private static void WaitUntil(Func<bool> condition) => Assert.True(SpinWait.SpinUntil(condition, 30_000), "timed out");
 
 	private BridgeHost Host(double probeSeconds = 1) =>
 		new(controllers, new FakeIdentity(DeviceIdentity()), new FakeAttacher(log))
@@ -238,7 +239,9 @@ public class BridgeHostBatteryProbeTests
 	[Fact]
 	public async Task Start_CancelsAProbeInProgress_AndWaitsForIt()
 	{
-		await using BridgeHost host = Host(probeSeconds: 30);
+		// The probe would read for 120 s if nothing stopped it; the start must not wait for that (but may wait for a busy
+		// thread pool: on a shared CI runner that alone has taken over 5 s).
+		await using BridgeHost host = Host(probeSeconds: 120);
 		ProbeLink silent = new(); // never sends anything
 		source.Links.Enqueue(silent);
 		Task<BatteryStatus?> probe = host.ProbeBatteryAsync();
@@ -249,7 +252,7 @@ public class BridgeHostBatteryProbeTests
 
 		Assert.True(silent.Disposed, "StartAsync returned before the probe closed the controller");
 		Assert.Null(await probe);
-		Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5));
+		Assert.True(clock.Elapsed < TimeSpan.FromSeconds(60), $"StartAsync waited {clock.Elapsed.TotalSeconds:F1} s for the probe");
 		Assert.Empty(silent.Writes);
 		// The supervisor sets its first state on a pool thread, so StartAsync can return a moment before it.
 		WaitUntil(() => host.State != BridgeState.Stopped);

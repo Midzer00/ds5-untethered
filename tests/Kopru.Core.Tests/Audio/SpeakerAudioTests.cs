@@ -7,13 +7,30 @@ using Xunit;
 
 namespace Kopru.Core.Tests;
 
+// Records what it is given. Encode runs on the session's stream thread while a test reads Frames: Frames is a copy taken
+// under a lock, never the live list.
 internal sealed class FakeOpusEncoder : IOpusEncoder
 {
-	public List<short[]> Frames { get; } = [];
+	private readonly List<short[]> frames = [];
+
+	public IReadOnlyList<short[]> Frames
+	{
+		get
+		{
+			lock (frames)
+			{
+				return [.. frames];
+			}
+		}
+	}
 
 	public int Encode(ReadOnlySpan<short> pcm, Span<byte> output)
 	{
-		Frames.Add(pcm.ToArray());
+		short[] frame = pcm.ToArray();
+		lock (frames)
+		{
+			frames.Add(frame);
+		}
 		output.Fill(0xAB);
 		return output.Length;
 	}
