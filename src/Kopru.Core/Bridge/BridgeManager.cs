@@ -75,13 +75,18 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		}
 	}
 
-	public static BridgeManager CreateDefault(BridgeHost primary)
+	public static BridgeManager CreateDefault(BridgeHost primary) => Create(Platform.PlatformServices.Current, primary);
+
+	// Slots 2-4 get their controllers, USB/IP client, power and timing from the platform.
+	public static BridgeManager Create(Platform.IPlatform platform, BridgeHost primary)
 	{
-		WindowsControllerSource source = new();
-		return new BridgeManager(source, primary, slot => new BridgeHost(source, IdentitySources.Default(), new UsbIpExeAttacher())
+		IControllerSource source = platform.CreateControllerSource();
+		return new BridgeManager(source, primary, slot => new BridgeHost(source, IdentitySources.Default(), platform.CreateUsbIpAttacher())
 		{
 			StateFile = new BridgeStateFile(Path.Combine(AppPaths.DataDirectory, $"bridge-state-{slot}.json")),
-			SeriesStore = Virtual.XboxSeriesStore.Shared
+			SeriesStore = Virtual.XboxSeriesStore.Shared,
+			Power = platform.ControllerPower,
+			PreciseWaitFactory = platform.CreatePreciseWait
 		});
 	}
 

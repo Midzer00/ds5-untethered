@@ -29,7 +29,7 @@ This build is not signed.
      installed. The app does not require a specific
      version; it looks for the installed program and its driver. If Windows reports a pending restart, the app tells
      you; restart the PC if a driver installer asks you to.
-   - Pair the controller: with the controller off, hold PS and Create until the light bar flashes quickly, then add it
+   - Pair the controller: with the controller off, hold the ø button and Create until the light bar flashes quickly, then add it
      in Windows Settings > Bluetooth & devices > Add device. Use Bluetooth, not the USB cable.
    - Bluetooth adapter test (optional): measures whether your adapter is fast enough for haptics.
    When the required steps are done, the virtual controller starts by itself whenever the controller connects, and
@@ -84,7 +84,7 @@ Bu derleme imzalı değildir.
      bir sürüm istemez; kurulu
      programı ve sürücüsünü arar. Windows yeniden başlatma bekliyorsa uygulama bunu söyler; bir sürücü kurulumu
      isterse bilgisayarı yeniden başlatın.
-   - Kumandayı eşleştirin: kumanda kapalıyken PS ve Create tuşlarını ışık çubuğu hızlı yanıp sönene kadar basılı
+   - Kumandayı eşleştirin: kumanda kapalıyken ø ve Create tuşlarını ışık çubuğu hızlı yanıp sönene kadar basılı
      tutun, sonra Windows Ayarlar > Bluetooth ve cihazlar > Cihaz ekle ile ekleyin. USB kablosu değil, Bluetooth
      kullanın.
    - Bluetooth adaptör testi (isteğe bağlı): adaptörünüzün titreşim için yeterince hızlı olup olmadığını ölçer.

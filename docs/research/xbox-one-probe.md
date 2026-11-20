@@ -17,10 +17,10 @@ Everything is built from Microsoft's open specification **[MS-GIPUSB] 1.0** only
 | USB descriptors, Microsoft OS descriptors, endpoints | `src/Kopru.Core/Virtual/VirtualXboxOne.cs` |
 | GIP state machine (Hello, metadata, START, status, input, guide) | `src/Kopru.Core/Virtual/GipDevice.cs` |
 | Framing, metadata blob, input mapping, motor command parsing and timing | `src/Kopru.Core/Virtual/GipProtocol.cs` |
-| Trigger rumble on the DualSense's adaptive triggers | `src/Kopru.Core/Bridge/ImpulseTriggers.cs` (mapping), `src/Kopru.Core/Bridge/ControllerBridgeImpulse.cs` (layering, writes) |
-| Developer switch | `src/Kopru.Core/Virtual/ExperimentalPads.cs`, used in `src/Kopru.Core/Bridge/BridgeHostPads.cs` |
+| Trigger rumble on the DualSense's adaptive triggers | `src/Kopru.Core/Bridge/ImpulseTriggers.cs` (mapping), `src/Kopru.Core/Bridge/ControllerBridge/ControllerBridgeImpulse.cs` (layering, writes) |
+| Developer switch | `src/Kopru.Core/Virtual/ExperimentalPads.cs`, used in `src/Kopru.Core/Bridge/BridgeHost/BridgeHostPads.cs` |
 | WGI / XInput test tool | `tools/Kopru.WgiProbe` (not in `Kopru.sln`) |
-| Tests | `tests/Kopru.Core.Tests/XboxOneProbeTests.cs`, `tests/Kopru.Core.Tests/BridgeTriggerRumbleTests.cs` |
+| Tests | `tests/Kopru.Core.Tests/Virtual/XboxOneProbeTests.cs`, `tests/Kopru.Core.Tests/Bridge/BridgeTriggerRumbleTests.cs` |
 
 Without the switch nothing changes: the bridge makes the selected pad type exactly as before.
 

@@ -71,7 +71,7 @@ flowchart LR
 - **Profiles.** A profile holds the haptics, trigger and rumble settings. A game can have several named profiles: create
   one with a name from the game's settings (Games page), rename or duplicate it, and switch between them on the Overview
   or in the game's settings. A switch while the game runs applies at once.
-- **Quick changes without leaving the game.** Press PS briefly: the app comes to the front and Mouse Mode turns on, so
+- **Quick changes without leaving the game.** Press the ø button briefly: the app comes to the front and Mouse Mode turns on, so
   the touchpad works as a mouse. Change what you want, then press Back To Game: the game is in front again and Mouse
   Mode turns off.
 
@@ -147,8 +147,8 @@ DS5 Untethered is free and stays free. If it is useful to you, you can support i
 - **The Bluetooth Adapter Test says "Borderline" or "Not suitable".** Move the adapter to a front USB 2.0 port or onto a
   short USB extension cable on the desk, away from USB 3.0 (blue) ports and 2.4 GHz receivers. Keep the controller
   within a few metres; if nothing changes, try a Bluetooth 5 or newer adapter.
-- **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the PS button.
-  If the app shows "Not Paired", hold Create and PS until the light blinks, then pair it.
+- **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the ø button.
+  If the app shows "Not Paired", hold Create and the ø button until the light blinks, then pair it.
 - **The controller is plugged in with a USB cable.** Games already see it as wired, so the app stops the virtual
   controller ("Cable Connected"). Unplug the cable to play wirelessly; the virtual controller starts again by itself
   over Bluetooth.
@@ -173,7 +173,7 @@ Done and verified on hardware:
   controller; the controller's mute button turns the microphone on and off.
 - Controller speaker: sound played to the controller's speaker is heard by its own microphone.
 - Mouse Mode: touchpad pointer, one click per press, Right Click setting (Off by default, Right Side or Two
-  Fingers), a short PS press that opens the app also turns it on, and Back To Game.
+  Fingers), a short ø button press that opens the app also turns it on, and Back To Game.
 - In-app updates from this repository's Releases (0.1.8 updated itself to 0.1.9).
 - DualShock 4 type: it presents itself like a real wired DualShock 4; verified in one game with native DualShock 4
   support so far.
@@ -215,6 +215,13 @@ Not done yet:
 - A Bluetooth adapter
 - [usbip-win2](https://github.com/vadimgrn/usbip-win2)
 - [HidHide](https://github.com/nefarius/HidHide)
+
+### Linux (experimental)
+
+Linux support is experimental and community-maintained, and lives on the `linux` branch. Today it is a headless test
+tool that runs the same bridge on Linux (hidraw for the controller, the `usbip` client and `vhci_hcd` for the virtual
+pad); the desktop app still runs on Windows only. How it works, how to build and run it, and what to test:
+[docs/linux/README.md](docs/linux/README.md). Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Building
 
@@ -303,7 +310,7 @@ flowchart LR
   oluşturabilir, mevcut profilleri yeniden adlandırabilir veya çoğaltabilirsiniz. Her profil kendi haptik titreşim,
   tetik ve standart titreşim ayarlarını saklar. Genel Bakış'tan veya oyunun ayarlarından profil seçebilirsiniz;
   oyun açıkken profil değiştirdiğinizde yeni ayarlar hemen uygulanır.
-- **Kumandayı bırakmadan ayar değiştirme.** Oyundayken PS tuşuna kısa basınca uygulama öne gelir ve Fare Modu açılır.
+- **Kumandayı bırakmadan ayar değiştirme.** Oyundayken ø tuşuna kısa basınca uygulama öne gelir ve Fare Modu açılır.
   Dokunmatik yüzeyi fare olarak kullanıp ayarlarınızı değiştirebilirsiniz. Oyuna Dön'e bastığınızda oyun yeniden
   öne gelir ve Fare Modu kapanır.
 - **Xbox oyunlarında tetik titreşimi.** 0.2.0 ile gelen Xbox Series kumanda türü, Xbox'ın Impulse Triggers
@@ -390,8 +397,8 @@ Hata bildirimleri, öneriler ve kod katkıları da projenin gelişmesine yardım
 - **Bluetooth Adaptör Testi "Sınırda" ya da "Uygun değil" diyor.** Adaptörü öndeki bir USB 2.0 girişine ya da kısa bir
   USB uzatma kablosuyla masanın üstüne alın; USB 3.0 (mavi) girişlerden ve 2,4 GHz alıcılardan uzak tutun. Kumandayı
   birkaç metre içinde tutun; sonuç değişmezse Bluetooth 5 ya da daha yeni bir adaptör deneyin.
-- **Kumanda Windows'ta eşleşmiş ama uygulama "Bağlı Değil" gösteriyor.** Kumanda kapalı ya da uykuda: PS tuşuna basın.
-  Uygulama "Eşleşmemiş" gösteriyorsa Create ve PS tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
+- **Kumanda Windows'ta eşleşmiş ama uygulama "Bağlı Değil" gösteriyor.** Kumanda kapalı ya da uykuda: ø tuşuna basın.
+  Uygulama "Eşleşmemiş" gösteriyorsa Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
 - **Kumanda USB kablosuyla takılı.** Oyunlar onu zaten kablolu gördüğü için uygulama sanal kumandayı durdurur ("Kablo
   Bağlandı"). Kablosuz oynamak için kabloyu çıkarın; sanal kumanda Bluetooth'ta kendiliğinden yeniden başlar.
 - **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Uygulamada kod imzası yok: "Ek bilgi"ye, ardından "Yine de
@@ -416,7 +423,7 @@ Gerçek kumandayla doğrulananlar:
   Kumandadaki mikrofon tuşu mikrofonu açıp kapatıyor.
 - Kumanda hoparlörü: kumandanın hoparlöründen çalınan sesi kumandanın kendi mikrofonu duyuyor.
 - Fare Modu: dokunmatik yüzeyle imleç, her basışa tek tık, Sağ Tık ayarı (varsayılan Kapalı, Sağ Taraf ya da İki
-  Parmak), uygulamayı açan kısa PS basışıyla açılması ve Oyuna Dön düğmesi.
+  Parmak), uygulamayı açan kısa ø tuşu basışıyla açılması ve Oyuna Dön düğmesi.
 - Bu deponun Releases sayfasından uygulama içi güncelleme (0.1.8 kendini 0.1.9'a güncelledi).
 - DualShock 4 türü: kendini gerçek bir kablolu DualShock 4 gibi tanıtıyor; şimdilik DualShock 4'ü doğrudan destekleyen
   bir oyunda doğrulandı.
@@ -461,6 +468,14 @@ Henüz yapılmadı:
 - Bluetooth adaptörü
 - [usbip-win2](https://github.com/vadimgrn/usbip-win2)
 - [HidHide](https://github.com/nefarius/HidHide)
+
+### Linux (deneysel)
+
+Linux desteği deneysel, topluluk tarafından geliştiriliyor ve `linux` dalında duruyor. Şu an aynı köprüyü Linux
+üzerinde çalıştıran, arayüzü olmayan bir test aracı (kumanda için hidraw, sanal kumanda için `usbip` istemcisi ve
+`vhci_hcd` kullanılıyor); masaüstü uygulaması hâlâ yalnızca Windows'ta çalışıyor. Nasıl çalıştığı, nasıl derlenip
+çalıştırılacağı ve nelerin test edileceği için: [docs/linux/README.md](docs/linux/README.md) (İngilizce).
+Katkılarınızı bekliyoruz; bkz. [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Derleme
 

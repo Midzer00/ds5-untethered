@@ -374,12 +374,12 @@
                 <Grid Grid.Row="4" Name="LiveMeters" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2,0,0">
                   <StackPanel Classes="meterGroup" ToolTip.Tip="{Binding Live.TriggersTip}">
                     <TextBlock Classes="caption groupTitle" Text="{Binding Live.TriggersLabel}" />
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38">
+                    <Grid Classes="meterRow" ColumnDefinitions="36,*,38">
                       <TextBlock Classes="caption" Text="{Binding Live.L2Label}" />
                       <ProgressBar Grid.Column="1" Classes="meter level" Classes.active="{Binding Live.IsL2Active}" Value="{Binding Live.L2}" />
                       <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsL2Active}" Text="{Binding Live.L2Text}" />
                     </Grid>
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38">
+                    <Grid Classes="meterRow" ColumnDefinitions="36,*,38">
                       <TextBlock Classes="caption" Text="{Binding Live.R2Label}" />
                       <ProgressBar Grid.Column="1" Classes="meter level" Classes.active="{Binding Live.IsR2Active}" Value="{Binding Live.R2}" />
                       <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsR2Active}" Text="{Binding Live.R2Text}" />
@@ -387,12 +387,12 @@
                   </StackPanel>
                   <StackPanel Grid.Column="1" Classes="meterGroup">
                     <TextBlock Classes="caption groupTitle" Text="{Binding Live.HapticsLabel}" />
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38" ToolTip.Tip="{Binding Live.LeftHapticsTip}">
+                    <Grid Classes="meterRow" ColumnDefinitions="36,*,38" ToolTip.Tip="{Binding Live.LeftHapticsTip}">
                       <TextBlock Classes="caption" Text="{Binding Live.LeftLabel}" />
                       <ProgressBar Grid.Column="1" Classes="meter level haptic" Classes.active="{Binding Live.IsHapticsLeftActive}" Value="{Binding Live.HapticsLeft}" />
                       <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsHapticsLeftActive}" Text="{Binding Live.HapticsLeftText}" />
                     </Grid>
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38" ToolTip.Tip="{Binding Live.RightHapticsTip}">
+                    <Grid Classes="meterRow" ColumnDefinitions="36,*,38" ToolTip.Tip="{Binding Live.RightHapticsTip}">
                       <TextBlock Classes="caption" Text="{Binding Live.RightLabel}" />
                       <ProgressBar Grid.Column="1" Classes="meter level haptic" Classes.active="{Binding Live.IsHapticsRightActive}" Value="{Binding Live.HapticsRight}" />
                       <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsHapticsRightActive}" Text="{Binding Live.HapticsRightText}" />

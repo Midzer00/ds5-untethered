@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Kopru.Core\Kopru.Core.csproj" />
     <ProjectReference Include="..\..\tools\Kopru.GameList\Kopru.GameList.csproj" />
+    <ProjectReference Include="..\..\src\Kopru.Platform.Linux\Kopru.Platform.Linux.csproj" />
   </ItemGroup>
 
 </Project>

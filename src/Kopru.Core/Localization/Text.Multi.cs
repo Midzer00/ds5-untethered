@@ -10,7 +10,7 @@ public static partial class Text
 
 	public static string ControllerCount(int count, Language? l = null) => Pick(l,
 		$"{count} Kumanda",
-		$"{count} Controllers");
+		$"{count} {En(count, "Controller", "Controllers")}");
 
 	public static string ControllerSelectorLabel(Language? l = null) => Pick(l,
 		$"Kumanda Seç",

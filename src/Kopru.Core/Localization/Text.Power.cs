@@ -9,12 +9,12 @@ public static partial class Text
 		$"The controller was turned off.");
 
 	public static string PowerOffFailed(Language? l = null) => Pick(l,
-		$"Kumanda kapatılamadı. PS tuşunu 10 saniye basılı tutarak kapatabilirsin.",
-		$"Could not turn off the controller. Hold the PS button for 10 seconds to turn it off.");
+		$"Kumanda kapatılamadı. ø tuşunu 10 saniye basılı tutarak kapatabilirsin.",
+		$"Could not turn off the controller. Hold the ø button for 10 seconds to turn it off.");
 
 	public static string PowerOffIdle(double minutes, Language? l = null) => Pick(l,
 		$"Kumanda {minutes:F0} dakika kullanılmadığı için kapatıldı.",
-		$"The controller was turned off after {minutes:F0} minutes without use.");
+		$"The controller was turned off after {minutes:F0} {En(minutes, "minute", "minutes")} without use.");
 
 	public static string PowerOffWhenIdleSetting(Language? l = null) => Pick(l,
 		$"Kullanılmadığında Kumandayı Kapat",

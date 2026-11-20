@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kopru.Core\Kopru.Core.csproj" />
+    <ProjectReference Include="..\Kopru.Platform.Linux\Kopru.Platform.Linux.csproj" />
   </ItemGroup>
 
   <ItemGroup>

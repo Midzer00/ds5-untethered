@@ -11,8 +11,8 @@ public static partial class Text
 	public static string DesktopModeSwitch(Language? l = null) => Pick(l, $"Fare Modu", $"Mouse Mode");
 
 	public static string DesktopModeHint(Language? l = null) => Pick(l,
-		$"Açıkken kumanda Windows'ta fare ve klavye olur; bu sırada oyunlar kumandadan giriş almaz. PS + Seçenekler ile de açılıp kapanır; PS ile uygulamayı açınca ya da uygulama öndeyken touchpad'e iki kez basınca da açılır.",
-		$"While on, the controller is a mouse and keyboard in Windows; games get no input from it meanwhile. PS + Options turns it on and off too; opening the app with PS or pressing the touchpad twice while the app is in front turns it on.");
+		$"Açıkken kumanda Windows'ta fare ve klavye olur; bu sırada oyunlar kumandadan giriş almaz. ø + Seçenekler ile de açılıp kapanır; ø tuşuyla uygulamayı açınca ya da uygulama öndeyken touchpad'e iki kez basınca da açılır.",
+		$"While on, the controller is a mouse and keyboard in Windows; games get no input from it meanwhile. ø + Options turns it on and off too; opening the app with the ø button or pressing the touchpad twice while the app is in front turns it on.");
 
 	public static string DesktopAutoOff(Language? l = null) => Pick(l, $"Oyun Açılınca Kapat", $"Turn Off When a Game Starts");
 
@@ -55,7 +55,7 @@ public static partial class Text
 
 	public static string TrayDesktopMode(Language? l = null) => Pick(l, $"Fare Modu", $"Mouse Mode");
 
-	public static string ShortcutKeysDesktop(Language? l = null) => Pick(l, $"PS + Seçenekler", $"PS + Options");
+	public static string ShortcutKeysDesktop(Language? l = null) => Pick(l, $"ø + Seçenekler", $"ø + Options");
 
 	public static string ShortcutDoesDesktop(Language? l = null) => Pick(l,
 		$"Fare modunu aç / kapat",

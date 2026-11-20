@@ -31,13 +31,14 @@ public partial class App : Application
 	{
 		// One line of background work counts every ten minutes and one at exit (see BackgroundWork).
 		Kopru.Core.Diagnostics.BackgroundWork.StartReporting();
-		HidHideHidingService hiding = HidHideHidingService.CreateDefault();
+		Kopru.Core.Platform.IPlatform platform = Kopru.Core.Platform.PlatformServices.Current;
+		Kopru.Core.Hiding.IControllerHiding hiding = platform.CreateHiding();
 		// Undo HidHide changes a crashed run left behind, then allow our exe early (a controller hidden by another
 		// tool stays visible to us). Undone in the reverse order on exit (RealControllerService.ShutdownAsync).
 		_ = Task.Run(() => HidingLifecycle.StartAsync(hiding));
-		var host = Kopru.Core.Bridge.BridgeHost.CreateDefault();
+		var host = Kopru.Core.Bridge.BridgeHost.Create(platform);
 		// Up to four controllers: host is slot 1, the manager adds the others and is the game mode's bridge.
-		var manager = Kopru.Core.Bridge.BridgeManager.CreateDefault(host);
+		var manager = Kopru.Core.Bridge.BridgeManager.Create(platform, host);
 		// Keeps Windows from making a virtual controller the default speaker or microphone (every slot, every attach); the
 		// sound device pickers and the mic button on a PC microphone use the same Windows audio access.
 		var windowsAudio = new Kopru.Core.Audio.WindowsAudioDefaults();
@@ -63,11 +64,11 @@ public partial class App : Application
 		{
 			_ = new Kopru.Core.Bridge.BridgeSleepGuard(powerEvents, host);
 		}
-		var service = new RealControllerService(host, hiding, new HidControllerFinder(), games: games,
+		var service = new RealControllerService(host, hiding, platform.CreateControllerFinder(), games: games,
 			steamCheck: Kopru.Core.Steam.SteamInputCheck.CreateDefault().Check,
 			adapterResultPath: Path.Combine(Kopru.Core.AppPaths.DataDirectory, Kopru.Core.Diagnostics.DiagnosticsExport.AdapterResultFileName),
 			healthProbe: Kopru.Core.Health.HealthProbe.CreateDefault(), batteryStore: Kopru.Core.Health.LastBatteryStore.CreateDefault(),
-			audioCapture: new Kopru.Core.Audio.WasapiCaptureFactory());
+			audioCapture: platform.CreateAudioCapture());
 		service.UseManager(manager);
 		service.AudioDevices = audioDevices;
 		var startup = new RunKeyStartupRegistration();

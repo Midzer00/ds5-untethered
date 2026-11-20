@@ -1,0 +1,62 @@
+# Builds and tests every push and pull request on main and linux.
+# Windows: the whole solution and every Core test; then, allowed to fail (shared runners are noisy and slow), the timer
+# pacing tests alone and the App tests.
+# Linux: Core, the experimental Linux platform, the Linux spike and the Core tests that do not need Windows
+# (tests marked [Trait("Category", "Windows")] use Windows APIs or Windows paths; [Trait("Category", "RealTime")]
+# measure Windows timer pacing).
+name: CI
+
+on:
+  push:
+    branches: [main, linux]
+  pull_request:
+    branches: [main, linux]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build the solution
+        run: dotnet build Kopru.sln -c Release
+
+      - name: Core tests
+        run: dotnet test tests/Kopru.Core.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m --filter "Category!=RealTime"
+
+      - name: Core timer pacing tests (allowed to fail)
+        continue-on-error: true
+        run: dotnet test tests/Kopru.Core.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m --filter "Category=RealTime"
+
+      - name: App tests (allowed to fail)
+        continue-on-error: true
+        timeout-minutes: 12
+        run: dotnet test tests/Kopru.App.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m
+
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build Core, the Linux platform and the spike
+        run: |
+          dotnet build src/Kopru.Core -c Release
+          dotnet build src/Kopru.Platform.Linux -c Release
+          dotnet build tools/Kopru.LinuxSpike -c Release
+          dotnet build tests/Kopru.Core.Tests -c Release
+
+      - name: Core tests (without the Windows-only ones)
+        run: dotnet test tests/Kopru.Core.Tests -c Release --no-build --blame-hang --blame-hang-timeout 3m --filter "Category!=Windows&Category!=RealTime"

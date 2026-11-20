@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Experimental Linux platform (community-maintained): hidraw, the usbip command line client, and stubs for the parts
+       not done yet. Plain net8.0 so it builds on any OS; the parsing code is unit-tested in Kopru.Core.Tests. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyTitle>DS5 Untethered Linux platform (experimental)</AssemblyTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kopru.Core\Kopru.Core.csproj" />
+  </ItemGroup>
+
+</Project>

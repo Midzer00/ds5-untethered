@@ -20,7 +20,12 @@ public sealed record HidDevice(string Path, int VendorId, int ProductId, int Inp
 
 	private const string BluetoothHidService = "{00001124-0000-1000-8000-00805f9b34fb}";
 
-	public Transport Transport => Path.Contains(BluetoothHidService, StringComparison.OrdinalIgnoreCase) ? Transport.Bluetooth : Transport.Usb;
+	// Set by finders that learn the bus elsewhere (Linux hidraw: the uevent's HID_ID); null on Windows, where the
+	// interface path tells it.
+	public Transport? KnownTransport { get; init; }
+
+	public Transport Transport => KnownTransport ??
+		(Path.Contains(BluetoothHidService, StringComparison.OrdinalIgnoreCase) ? Transport.Bluetooth : Transport.Usb);
 
 	public bool IsEdge => ProductId == DualSenseEdgeProductId;
 }

@@ -29,7 +29,11 @@ public interface IControllerSource
 // Plugs the USB/IP device served on the loopback into Windows and unplugs it.
 public interface IUsbIpAttacher
 {
-	// Returns the virtual hub port. Throws FileNotFoundException when the USB/IP client is not installed.
+	// Returned by AttachAsync when the device was plugged in but the client did not say on which port. Ports start at 0
+	// on Linux, so 0 is a real port.
+	public const int UnknownPort = -1;
+
+	// Returns the virtual hub port, or UnknownPort. Throws FileNotFoundException when the USB/IP client is not installed.
 	Task<int> AttachAsync(int tcpPort, string busId, CancellationToken cancel);
 
 	Task DetachAsync(int port);

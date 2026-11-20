@@ -19,8 +19,8 @@ public static partial class Text
 	public static string DesktopButtonsTitle(Language? l = null) => Pick(l, $"Tuş Atamaları", $"Button Mapping");
 
 	public static string DesktopButtonsNote(Language? l = null) => Pick(l,
-		$"Dokunmatik yüzey, PS ve mikrofon tuşu değişmez.",
-		$"Touchpad, PS and Mute stay as they are.");
+		$"Dokunmatik yüzey, ø tuşu ve mikrofon tuşu değişmez.",
+		$"Touchpad, the ø button and Mute stay as they are.");
 
 	public static string DesktopRightClick(Language? l = null) => Pick(l, $"Sağ Tık", $"Right Click");
 
@@ -45,8 +45,8 @@ public static partial class Text
 			_ => Pick(l, $"dokunmak ya da basmak sol tık", $"tap or press to left click")
 		};
 		return Pick(l,
-			$"Dokunmatik yüzey: tek parmak imleci taşır, iki parmak yukarı/aşağı kaydırır; {clicks}. PS + Seçenekler fare modunu açıp kapatır.",
-			$"Touchpad: one finger moves the pointer, two fingers up/down scroll; {clicks}. PS + Options turns mouse mode on and off.");
+			$"Dokunmatik yüzey: tek parmak imleci taşır, iki parmak yukarı/aşağı kaydırır; {clicks}. ø + Seçenekler fare modunu açıp kapatır.",
+			$"Touchpad: one finger moves the pointer, two fingers up/down scroll; {clicks}. ø + Options turns mouse mode on and off.");
 	}
 
 	public static string DesktopActionName(MouseAction action, Language? l = null) => action switch

@@ -192,7 +192,7 @@ public static partial class Text
 	public static string ReasonRadioMissing(Language? l = null) => Pick(l, $"Bluetooth adaptörü bulunamadı.", $"No Bluetooth adapter found.");
 	public static string ReasonUsbOnly(Language? l = null) => Pick(l, $"Kumanda USB kablosuyla bağlı.", $"The controller is on a USB cable.");
 	public static string ReasonControllerOff(Language? l = null) => Pick(l, $"Kumanda kapalı ya da eşleşmemiş.", $"The controller is off or not paired.");
-	public static string HintPressPs(Language? l = null) => Pick(l, $"PS tuşuna basın; ilk kez bağlıyorsanız eşleştirin.", $"Press the PS button, or pair it if this is the first time.");
+	public static string HintPressPs(Language? l = null) => Pick(l, $"ø tuşuna basın; ilk kez bağlıyorsanız eşleştirin.", $"Press the ø button, or pair it if this is the first time.");
 	public static string LiveTitle(Language? l = null) => Pick(l, $"Canlı", $"Live");
 	public static string LiveIdle(Language? l = null) => Pick(l, $"Sanal kumanda çalışırken burada görünür.", $"Shows here while the virtual controller runs.");
 	public static string LiveLast30s(Language? l = null) => Pick(l, $"Son 30 sn", $"Last 30 s");
@@ -239,14 +239,14 @@ public static partial class Text
 	public static string SupportedGameList(Language? l = null) => Pick(l, $"Desteklenen Oyun Listesi", $"Supported Games List");
 	// The "Installed" view's list title: everything on this PC, supported or not.
 	public static string SearchGames(Language? l = null) => Pick(l, $"Oyun Ara", $"Search Games");
-	public static string GameCount(double count, Language? l = null) => Pick(l, $"{count:F0} oyun", $"{count:F0} games");
+	public static string GameCount(double count, Language? l = null) => Pick(l, $"{count:F0} oyun", $"{count:F0} {En(count, "game", "games")}");
 	public static string NoMatchingGames(Language? l = null) => Pick(l, $"Eşleşen oyun yok.", $"No matching games.");
 
 	// Online update of the supported games list.
 	public static string UpdateGameList(Language? l = null) => Pick(l, $"Listeyi Güncelle", $"Update List");
 	public static string UpdatingGameList(Language? l = null) => Pick(l, $"Güncelleniyor…", $"Updating…");
 	public static string GameListUpToDate(Language? l = null) => Pick(l, $"Zaten güncel", $"Already up to date");
-	public static string GameListAdded(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new games added");
+	public static string GameListAdded(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new {En(added, "game", "games")} added");
 	public static string GameListFailed(string reason, Language? l = null) => Pick(l, $"Güncellenemedi: {reason}", $"Couldn't update: {reason}");
 	public static string GameListOffline(Language? l = null) => Pick(l, $"sunucuya ulaşılamadı, internet bağlantını kontrol et.", $"the server couldn't be reached, check your internet connection.");
 	public static string GameListTimeout(Language? l = null) => Pick(l, $"sunucu zamanında yanıt vermedi.", $"the server didn't answer in time.");
@@ -255,13 +255,13 @@ public static partial class Text
 	public static string GameListSaveFailed(Language? l = null) => Pick(l, $"liste kaydedilemedi.", $"the list couldn't be saved.");
 	public static string AutoUpdateGameList(Language? l = null) => Pick(l, $"Oyun Listesini Otomatik Güncelle", $"Update Game List Automatically");
 	public static string NotifyGameListTitle(Language? l = null) => Pick(l, $"Liste Güncellendi", $"Game List Updated");
-	public static string NotifyGameListBody(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new games added");
+	public static string NotifyGameListBody(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new {En(added, "game", "games")} added");
 
 	// "72 oyun · güncellendi 9 Kas 2026"; without the date when updated is not an ISO date.
 	public static string GameListInfo(double count, string updated, Language? l = null) =>
 		DateTime.TryParseExact(updated, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime date)
-			? Pick(l, $"{count:F0} oyun · güncellendi {date:d MMM yyyy}", $"{count:F0} games · updated {date:d MMM yyyy}")
-			: Pick(l, $"{count:F0} oyun", $"{count:F0} games");
+			? Pick(l, $"{count:F0} oyun · güncellendi {date:d MMM yyyy}", $"{count:F0} {En(count, "game", "games")} · updated {date:d MMM yyyy}")
+			: Pick(l, $"{count:F0} oyun", $"{count:F0} {En(count, "game", "games")}");
 	public static string BadgeHaptics(Language? l = null) => Pick(l, $"Haptik", $"Haptics");
 	public static string BadgeTriggers(Language? l = null) => Pick(l, $"Tetik", $"Triggers");
 	public static string MarkUserAdded(Language? l = null) => Pick(l, $"Eklendi", $"Added");

@@ -15,8 +15,8 @@ public static partial class Text
 	public static string ButtonRemapping(Language? l = null) => Pick(l, $"Tuş Atama", $"Button Remapping");
 
 	public static string ButtonRemappingHint(Language? l = null) => Pick(l,
-		$"Her fiziksel tuşun oyuna hangi tuş olarak gideceğini seçin. PS tuşu değiştirilemez.",
-		$"Choose which button each physical button sends to the game. The PS button can't be remapped.");
+		$"Her fiziksel tuşun oyuna hangi tuş olarak gideceğini seçin. ø tuşu değiştirilemez.",
+		$"Choose which button each physical button sends to the game. The ø button can't be remapped.");
 
 	public static string PhysicalButton(Language? l = null) => Pick(l, $"Fiziksel Tuş", $"Physical Button");
 

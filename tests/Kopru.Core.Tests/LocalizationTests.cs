@@ -187,4 +187,44 @@ public class LocalizationTests
 		Assert.Equal(Language.English, Localizer.FromCode("EN"));
 		Assert.Null(Localizer.FromCode("fr"));
 	}
+
+	// English counts read "1 game" but "2 games"; Turkish has one form.
+	[Fact]
+	public void Counts_SingularAndPluralInEnglish()
+	{
+		Assert.Equal("1 game", Text.GameCount(1, Language.English));
+		Assert.Equal("2 games", Text.GameCount(2, Language.English));
+		Assert.Equal("0 games", Text.GameCount(0, Language.English));
+		Assert.Equal("1 oyun", Text.GameCount(1, Language.Turkish));
+		Assert.Equal("1 new game added", Text.GameListAdded(1, Language.English));
+		Assert.Equal("3 new games added", Text.NotifyGameListBody(3, Language.English));
+		Assert.Equal("1 game · updated 9 Nov 2026", Text.GameListInfo(1, "2026-11-09", Language.English));
+		Assert.Equal("1 Controller", Text.ControllerCount(1, Language.English));
+		Assert.Equal("2 Controllers", Text.ControllerCount(2, Language.English));
+		Assert.Equal("1 day ago", Text.AgoDays(1, Language.English));
+		Assert.Equal("1 day ago", Text.TimeDaysAgo(1, Language.English));
+		Assert.Equal("4 days ago", Text.TimeDaysAgo(4, Language.English));
+		Assert.Contains("1 minute without use", Text.PowerOffIdle(1, Language.English));
+		Assert.EndsWith("used for 1 minute", Text.IdleTimeout(1, Language.English));
+		Assert.EndsWith("used for 10 minutes", Text.IdleTimeout(10, Language.English));
+		Assert.StartsWith("1 gap longer", Text.AdapterMeasuredGaps(1, 100, Language.English));
+		Assert.EndsWith("1 time.", Text.AdapterLongGaps(1, Language.English));
+		Assert.EndsWith("5 times.", Text.AdapterLongGaps(5, Language.English));
+	}
+
+	// The PlayStation button is called the "ø button" / "ø tuşu" in every text, in both languages.
+	[Fact]
+	public void Texts_NeverNameThePsButton()
+	{
+		var ps = new System.Text.RegularExpressions.Regex(@"\bPS\b");
+		foreach ((string name, Func<Language, string> get) in AllTexts())
+		{
+			foreach (Language language in new[] { Language.Turkish, Language.English })
+			{
+				string text = get(language);
+				Assert.False(ps.IsMatch(text), $"{name} ({language}): {text}");
+			}
+		}
+		Assert.Contains("ø tuşu", Text.ButtonRemappingHint(Language.Turkish));
+	}
 }

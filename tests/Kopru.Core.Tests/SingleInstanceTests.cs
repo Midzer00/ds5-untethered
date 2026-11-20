@@ -3,6 +3,7 @@ using Kopru.Core.Instance;
 
 namespace Kopru.Core.Tests;
 
+[Trait("Category", "Windows")]
 public class SingleInstanceTests
 {
 	// A fresh name per test: the real kernel objects are used, never the app's own name.

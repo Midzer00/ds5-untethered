@@ -85,14 +85,14 @@ public static partial class Text
 	public static string ShortcutsSection(Language? l = null) => Pick(l, $"Kumanda Kısayolları", $"Controller Shortcuts");
 
 	public static string ShortcutsHint(Language? l = null) => Pick(l,
-		$"PS tuşunu basılı tutup aşağıdaki tuşlara bas. Kısayol sırasında PS ve kullanılan tuş oyuna gitmez; oyun açıkken PS'ye tek başına kısa basmak oyuna her zamanki gibi ulaşır.",
-		$"Hold the PS button and press one of the buttons below. During a shortcut the game doesn't see PS or the button used; in a game, a plain short PS press still reaches the game.");
+		$"ø tuşunu basılı tutup aşağıdaki tuşlara bas. Kısayol sırasında ø tuşu ve kullanılan tuş oyuna gitmez; oyun açıkken ø tuşuna tek başına kısa basmak oyuna her zamanki gibi ulaşır.",
+		$"Hold the ø button and press one of the buttons below. During a shortcut the game doesn't see the ø button or the button used; in a game, a plain short ø button press still reaches the game.");
 
-	public static string ShortcutKeysProfile(Language? l = null) => Pick(l, $"PS + Yön Sol / Sağ", $"PS + D-pad Left / Right");
+	public static string ShortcutKeysProfile(Language? l = null) => Pick(l, $"ø + Yön Sol / Sağ", $"ø + D-pad Left / Right");
 
-	public static string ShortcutKeysHaptics(Language? l = null) => Pick(l, $"PS + Yön Yukarı / Aşağı", $"PS + D-pad Up / Down");
+	public static string ShortcutKeysHaptics(Language? l = null) => Pick(l, $"ø + Yön Yukarı / Aşağı", $"ø + D-pad Up / Down");
 
-	public static string ShortcutKeysPower(Language? l = null) => Pick(l, $"PS + Üçgen (1 sn basılı)", $"PS + Triangle (hold 1 s)");
+	public static string ShortcutKeysPower(Language? l = null) => Pick(l, $"ø + Üçgen (1 sn basılı)", $"ø + Triangle (hold 1 s)");
 
 	public static string ShortcutDoesProfile(Language? l = null) => Pick(l,
 		$"Önceki / sonraki profil (oyuncu ışıkları profil numarasını gösterir)",
