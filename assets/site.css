@@ -79,7 +79,6 @@ h2{font-size:40px}h3{font-size:24px}
 .osd-input i{width:6px;height:6px;border-radius:50%;background:var(--powder)}
 .usb .osd-input i{background:var(--poppy)}
 #skip{display:none}
-#snd.was-on{color:var(--powder)}
 .intro-on #skip{display:inline-flex}.intro-on #replay,.calm #replay{display:none}
 .no-js .osd{position:absolute}.no-js .osd-bottom,.no-js .crt,.no-js .osd-c,.no-js .home-fx{display:none}
 
@@ -687,3 +686,12 @@ section[id]{scroll-margin-top:72px}
   #source,.osd-bottom button{width:min-content}
   .osd-bottom button{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;text-align:left}
 }
+
+/* Features on phones: a picked feature fits one screen (scene-features.js sizes it) */
+@media (max-width:767px){
+  .f-panel.f-tight>.f-ill{display:none!important}
+  .f-tabs{margin-bottom:6px}
+  .st-mats{margin-top:8px}
+  .st-mats .mat figcaption{margin-top:10px}
+}
+@media (max-width:767px) and (max-height:700px){.f-panel p:not(.tag):not(.fine){font-size:15px;line-height:1.42}}

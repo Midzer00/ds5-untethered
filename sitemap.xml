@@ -7,10 +7,10 @@
     <xhtml:link rel="alternate" hreflang="tr" href="https://ds5untethered.com/tr/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://ds5untethered.com/"/>
     <image:image>
-      <image:loc>https://ds5untethered.com/assets/share-en.jpg</image:loc>
+      <image:loc>https://ds5untethered.com/assets/share2-en.jpg</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://ds5untethered.com/assets/overview-full-en.jpg</image:loc>
+      <image:loc>https://ds5untethered.com/assets/overview-full-en-ds5.jpg</image:loc>
     </image:image>
   </url>
   <url>
@@ -20,10 +20,10 @@
     <xhtml:link rel="alternate" hreflang="tr" href="https://ds5untethered.com/tr/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://ds5untethered.com/"/>
     <image:image>
-      <image:loc>https://ds5untethered.com/assets/share-tr.jpg</image:loc>
+      <image:loc>https://ds5untethered.com/assets/share2-tr.jpg</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://ds5untethered.com/assets/overview-full-tr.jpg</image:loc>
+      <image:loc>https://ds5untethered.com/assets/overview-full-tr-ds5.jpg</image:loc>
     </image:image>
   </url>
 </urlset>

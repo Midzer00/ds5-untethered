@@ -56,9 +56,69 @@ export function featuresScene(engine, el, M, cards = {}) {
     const t = tabs[cur], list = t.parentElement;
     if (list.scrollWidth > list.clientWidth) list.scrollTo({ left: t.offsetLeft - (list.clientWidth - t.offsetWidth) / 2 });
     if (focus) t.focus({ preventScroll: true });
+    fitPhone();
     engine.refresh(scene);
   };
-  const pick = (i, focus) => { auto = false; show(i, focus); };
+  const pick = (i, focus) => { auto = false; show(i, focus); bringPhone(); };
+
+  // Phones: a picked feature fits one screen from its tab row (just under the top OSD) to above the bottom bar. Where it
+  // would not, the illustration goes first, then the app preview is laid out wider and scaled down (like the What works
+  // window) to no less than 80%; the text is never cut. Each tab keeps its own height.
+  const phone = matchMedia('(max-width:767px)'), calm = matchMedia('(prefers-reduced-motion:reduce)');
+  const list = tabs[0].parentElement, matBox = $('.st-mats'), osdLow = document.querySelector('.osd-bottom');
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;top:0;left:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
+  el.append(probe);
+  const lines = () => {
+    const top = parseFloat(getComputedStyle(el).scrollMarginTop) || 64;
+    const low = osdLow ? innerHeight - osdLow.getBoundingClientRect().top : 50;
+    return [top, (probe.offsetHeight || innerHeight) - low - 16]; // the small viewport: the URL bar may be showing
+  };
+  const unfit = () => {
+    panels.forEach(p => p.classList.remove('f-tight'));
+    mats.forEach(m => { const h = m.querySelector('.au-host'); h?.removeAttribute('style'); });
+  };
+  function fitPhone() {
+    unfit();
+    if (!phone.matches) return;
+    const panel = panels[cur], mat = mats.find(m => m.dataset.f === names[cur]), host = mat?.querySelector('.au-host');
+    if (!mat || !host) return;
+    const [top, bottom] = lines(), room = () => bottom - top - (matBox.getBoundingClientRect().top - list.getBoundingClientRect().top);
+    const cap = mat.offsetHeight - host.offsetHeight, W = host.clientWidth;
+    const size = k => {
+      if (k >= 1) { host.removeAttribute('style'); return host.offsetHeight; }
+      host.style.cssText = `width:${W / k}px;transform:scale(${k});transform-origin:0 0;margin-right:${W - W / k}px`;
+      const h = host.offsetHeight;
+      host.style.marginBottom = `${h * k - h}px`;
+      return h * k;
+    };
+    // The largest scale that fits, 80% at least (heights fall as the preview widens, so a short search finds it).
+    const solve = () => {
+      const r = room() - cap;
+      if (size(1) <= r) return 1;
+      let lo = 0.8, hi = 1;
+      for (let n = 0; n < 6; n++) { const k = (lo + hi) / 2; if (size(k) <= r) lo = k; else hi = k; }
+      size(lo);
+      return lo;
+    };
+    if (solve() < 0.85 && panel.querySelector('.f-ill')) { panel.classList.add('f-tight'); solve(); }
+  }
+  // After a tap, the page scrolls down only as far as the content needs, so a short tab keeps the controller in view;
+  // it never goes past the tab row sitting under the OSD. A tab row hidden under the OSD is brought back down.
+  function bringPhone() {
+    if (!phone.matches) return;
+    const [top, bottom] = lines(), mat = mats.find(m => m.dataset.f === names[cur]);
+    const y = list.getBoundingClientRect().top, end = mat ? mat.getBoundingClientRect().bottom : y;
+    if (y >= top && end <= bottom) return;
+    const d = y < top ? y - top : Math.min(end - bottom, y - top);
+    if (Math.abs(d) < 2) return;
+    scrollTo({ top: scrollY + d, behavior: calm.matches ? 'auto' : 'smooth' });
+  }
+  let fitW = innerWidth, fitH = 0;
+  const refit = () => { const h = probe.offsetHeight; if (innerWidth === fitW && h === fitH) return; fitW = innerWidth; fitH = h; fitPhone(); };
+  addEventListener('resize', refit);
+  phone.addEventListener?.('change', fitPhone);
+  document.fonts?.ready.then(fitPhone);
 
   const drawOverlay = (t, a) => {
     const g = ov.begin(); if (!g) return;

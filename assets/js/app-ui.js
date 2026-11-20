@@ -275,7 +275,7 @@ export function overviewWindow(base) {
       h('div', 'au-pills', {}, [still(h('span', 'au-pill support', {}, [icon('Heart'), T('support')])), still(h('span', 'au-pill star', {}, [icon('Star'), T('star')]))]),
       h('div', 'au-panel au-dev', {}, [
         h('div', 'au-dev-top', {}, [h('img', 'au-dev-art', { src: `${base}app-ui/img/controller.webp`, alt: '' }),
-          h('div', '', {}, [h('div', 'au-dev-name', {}, ['DualSense', icon('Pencil', 'sm')]), h('div', 'au-caption', {}, T('viaBluetooth'))])]),
+          h('div', '', {}, [h('div', 'au-dev-name', {}, ['DS5', icon('Pencil', 'sm')]), h('div', 'au-caption', {}, T('viaBluetooth'))])]),
         h('div', 'au-divider'),
         h('div', 'au-dev-row', {}, [battery(), h('span', '', {}, fmtPct(78))]),
         h('div', 'au-dev-row sp', {}, [h('span', '', {}, T('virtualController')), h('span', 'on', {}, T('on'))]),

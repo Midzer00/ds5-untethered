@@ -55,17 +55,22 @@ export function initOsd() {
   document.querySelectorAll('.rise').forEach(s => io.observe(s));
 }
 
-// Background music: off by default, and nothing is downloaded until the visitor turns it on. A visitor who left it on
-// is not played at on the next visit (browsers block that anyway); the toggle only gets a hint colour.
+// Background music: on by default. Browsers never let a page start sound by itself, so the music starts, with a fade-in,
+// on the visitor's first click, tap or key press anywhere on the page, and nothing is downloaded before that. Until then
+// the toggle already reads On, because that is the setting; a first click on the toggle itself turns it off instead.
+// Turning it off is remembered ('off') and later visits stay silent; turning it on again stores 'on'. With Data Saver
+// on, the music waits for the toggle.
 const SOUND_KEY = 'ds5-sound';
+const GESTURES = ['pointerdown', 'click', 'keydown', 'touchend'];
 function initSound() {
   const btn = $('snd');
   if (!btn) return;
   const word = btn.querySelector('span');
-  let audio = null, on = false, raf = 0;
+  let stored = null;
+  try { stored = localStorage.getItem(SOUND_KEY); } catch { /* storage may be blocked */ }
+  let audio = null, on = stored !== 'off' && !navigator.connection?.saveData, raf = 0, armed = false;
   const paint = () => { btn.setAttribute('aria-pressed', on); word.textContent = btn.dataset[on ? 'on' : 'off']; };
   const save = () => { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch { /* storage may be blocked */ } };
-  try { if (localStorage.getItem(SOUND_KEY) === 'on') btn.classList.add('was-on'); } catch { /* storage may be blocked */ }
   // Volume ramps run on animation frames; iOS ignores element volume, so there the music simply starts and stops.
   const ramp = (to, ms, done) => {
     cancelAnimationFrame(raf);
@@ -86,19 +91,31 @@ function initSound() {
       audio.appendChild(s);
     }
   };
+  // A refused start leaves the setting on and waits for the next gesture.
   const play = ms => {
+    if (!audio) create();
     const p = audio.play();
     ramp(1, ms);
-    if (p) p.catch(() => { if (on && !document.hidden) { on = false; cancelAnimationFrame(raf); paint(); save(); } });
+    if (p) p.catch(() => { if (on && audio.paused && !document.hidden) { cancelAnimationFrame(raf); audio.volume = 0; arm(); } });
   };
+  // The first activation anywhere starts the music. The toggle's own events are left to its click handler, and a
+  // touch that only scrolls (no activation yet) keeps the listeners waiting.
+  const onGesture = e => {
+    if (e.target instanceof Element && e.target.closest('#snd')) return;
+    if (!on || document.hidden || (navigator.userActivation && !navigator.userActivation.isActive)) return;
+    disarm(); play(1500);
+  };
+  const arm = () => { if (armed || !on) return; armed = true; GESTURES.forEach(t => addEventListener(t, onGesture, { capture: true, passive: true })); };
+  const disarm = () => { if (!armed) return; armed = false; GESTURES.forEach(t => removeEventListener(t, onGesture, { capture: true })); };
+  paint(); arm();
   btn.addEventListener('click', () => {
-    on = !on; btn.classList.remove('was-on'); paint(); save();
-    if (on) { if (!audio) create(); play(1500); }
+    on = !on; paint(); save(); disarm();
+    if (on) play(1500);
     else if (audio) ramp(0, 500, () => audio.pause());
   });
   document.addEventListener('visibilitychange', () => {
     if (!audio) return;
     if (document.hidden) { cancelAnimationFrame(raf); audio.pause(); audio.volume = 0; }
-    else if (on) play(800);
+    else if (on && !armed) play(800);
   });
 }
