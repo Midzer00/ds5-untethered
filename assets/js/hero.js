@@ -53,8 +53,8 @@ export async function heroFilm(M) {
   // Stops a film that will not be shown from downloading further.
   const unload = () => { ready = false; video.removeAttribute('poster'); video.replaceChildren(); video.load(); };
   const status = () => {
-    const usb = !past && frac < E.release, t = source.dataset[usb ? 'on' : 'off'];
-    if (source.textContent !== t) source.textContent = t;
+    const usb = !past && frac < E.release;
+    if (source) { const t = source.dataset[usb ? 'on' : 'off']; if (source.textContent !== t) source.textContent = t; }
     root.classList.toggle('usb', usb);
   };
   const render = () => {
