@@ -1,8 +1,8 @@
 {
-  "version": "0.2.0",
-  "published": "2026-11-18",
-  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.0/DS5-Untethered-0.2.0-Update.exe", "sha256": "828E3F37FDEFF4B9212212032CB669949A9E6B9C26D1B0F364AC1C8FE5ECDB5E", "size": 40985223 },
-  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.0/DS5-Untethered-0.2.0-win-x64.zip", "sha256": "336A907DC86BA1EA19100A8A312E71485DCFA1CDEF60776CB757AE96377A1153", "size": 51529421 },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.0",
-  "notes": { "tr": "Yeni Xbox Series kumanda türü, deneysel Xbox tetik titreşimi, yenilenen görünüm ve takılı titreşim düzeltmesi.", "en": "New Xbox Series controller type, experimental Xbox trigger rumble, a refreshed look and a fix for stuck rumble." }
+  "version": "0.2.1",
+  "published": "2026-11-22",
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.1/DS5-Untethered-0.2.1-Update.exe", "sha256": "18A3C7B3F88C6E91DC1D483AAD09335A7BDC3BDCAFCBBE8F7C4738BC13F81427", "size": 43985864 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.1/DS5-Untethered-0.2.1-win-x64-Portable.zip", "sha256": "B24AA42842496D94E8FD780E1773C0D779068FACF1B5979A6C24F7A3E562F9CC", "size": 55320782 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.1",
+  "notes": { "tr": "USB kablosuyla şarj etmek artık sanal kumandayı durdurmuyor. Kumandayı kablo üzerinden çalıştıran deneysel mod, \"Kumanda Rengi\", \"Özel Tetik\" ve yeni \"Canlı\" kartı eklendi.", "en": "Charging over the USB cable no longer stops the virtual controller, plus an experimental mode that runs the controller over the cable. Controller colours, Custom Trigger and a new Live card." }
 }
