@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/brand/ds5-untethered-still.png">
-    <img src="docs/brand/ds5-untethered.gif" alt="A USB cable pulls away from a DualSense, revealing the DS5 Untethered logo" width="480">
+    <img src="docs/brand/unplug-to-logo.gif" alt="A USB cable pulls away from a DualSense, revealing the DS5 Untethered logo" width="480">
   </picture>
 </p>
 
