@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/brand/logo.png">
-    <img src="docs/brand/ds5-untethered.gif" alt="A USB cable pulls away from a DualSense, revealing the DS5 Untethered logo" width="520">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/brand/ds5-untethered-still.png">
+    <img src="docs/brand/ds5-untethered.gif" alt="A USB cable pulls away from a DualSense, revealing the DS5 Untethered logo" width="480">
   </picture>
 </p>
 
@@ -475,7 +475,7 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 
 ### Ekran görüntüleri
 
-![Genel Bakış](docs/screens/v0.2.0/overview-tr.jpg)
+<p align="center"><img src="docs/screens/v0.2.0/overview-tr.jpg" alt="DS5 Untethered Genel Bakış ekranı" width="820"></p>
 
 | Oyuna özel profiller | Titreşim ve tetikler |
 |---|---|
