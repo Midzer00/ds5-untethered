@@ -71,7 +71,7 @@ public sealed class WasapiCaptureFactory : IAudioCaptureFactory
 }
 
 [SupportedOSPlatform("windows")]
-internal sealed class WasapiCapture : IAudioCapture
+internal sealed class WasapiCapture : IAudioCapture, IWiredMicCapture
 {
 	private const string ProcessLoopbackDevice = "VAD\\Process_Loopback";
 	private static readonly Guid AudioClientIid = new("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2");
@@ -103,8 +103,12 @@ internal sealed class WasapiCapture : IAudioCapture
 	private readonly bool isFloat;
 	private float[] buffer;
 	private volatile bool stopping;
+	private volatile bool gaveUp;
 
 	public AudioCaptureMode Mode { get; }
+
+	// The capture thread gave up after repeated failures (endpoint captures only; IWiredMicCapture).
+	public bool Stopped => gaveUp;
 
 	private WasapiCapture(AudioCaptureMode mode, IAudioClient client, IntPtr format, IAudioCaptureSink sink)
 	{
@@ -120,7 +124,11 @@ internal sealed class WasapiCapture : IAudioCapture
 		{
 			throw new NotSupportedException($"capture format {f.Tag:X4} {channels} ch {rate} Hz {bits} bit");
 		}
-		uint flags = StreamFlagsLoopback | StreamFlagsEventCallback;
+		uint flags = StreamFlagsEventCallback;
+		if (mode != AudioCaptureMode.Endpoint)
+		{
+			flags |= StreamFlagsLoopback;
+		}
 		if (mode == AudioCaptureMode.ProcessLoopback)
 		{
 			flags |= StreamFlagsAutoConvertPcm | StreamFlagsSrcDefaultQuality;
@@ -133,7 +141,12 @@ internal sealed class WasapiCapture : IAudioCapture
 		// Process loopback reports no buffer size until started on some builds: a second of audio is plenty either way.
 		buffer = new float[Math.Max(rate, client.GetBufferSize(out uint size) == 0 ? (int)size : 0) * channels];
 		Marshal.ThrowExceptionForHR(client.Start());
-		thread = new Thread(Run) { Name = "Audio haptics capture", IsBackground = true, Priority = ThreadPriority.AboveNormal };
+		thread = new Thread(Run)
+		{
+			Name = mode == AudioCaptureMode.Endpoint ? "Controller microphone (USB)" : "Audio haptics capture",
+			IsBackground = true,
+			Priority = ThreadPriority.AboveNormal,
+		};
 		thread.SetApartmentState(ApartmentState.MTA);
 		thread.Start();
 	}
@@ -189,6 +202,31 @@ internal sealed class WasapiCapture : IAudioCapture
 		}
 	}
 
+	// One capture endpoint by id on its mix format, without loopback (the controller's USB microphone while wired).
+	public static WasapiCapture OpenEndpoint(string endpointId, IAudioCaptureSink sink)
+	{
+		IAudioClient? client = null;
+		IntPtr format = IntPtr.Zero;
+		try
+		{
+			client = ActivateEndpoint(endpointId);
+			Marshal.ThrowExceptionForHR(client.GetMixFormat(out format));
+			return new WasapiCapture(AudioCaptureMode.Endpoint, client, format, sink);
+		}
+		catch
+		{
+			Release(client);
+			throw;
+		}
+		finally
+		{
+			if (format != IntPtr.Zero)
+			{
+				Marshal.FreeCoTaskMem(format);
+			}
+		}
+	}
+
 	// Null when the default render endpoint may be captured; otherwise why not.
 	public static string? DefaultRenderIsController()
 	{
@@ -238,16 +276,25 @@ internal sealed class WasapiCapture : IAudioCapture
 
 	private void Run()
 	{
+		int failures = 0;
 		while (!stopping)
 		{
 			ready.WaitOne(10);
 			try
 			{
 				Drain();
+				failures = 0;
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
 				// The device went away (or the game's audio ended): wait for the runner to stop the capture.
+				// Endpoint only: a microphone that keeps failing is given up on after 20 in a row.
+				if (Mode == AudioCaptureMode.Endpoint && ++failures >= 20)
+				{
+					Diagnostics.AppLog.Write($"wired: USB microphone stopped ({(e is System.Runtime.InteropServices.COMException c ? $"0x{c.HResult:X8}" : e.GetType().Name)})");
+					gaveUp = true;
+					return;
+				}
 				Thread.Sleep(50);
 			}
 		}
@@ -333,6 +380,25 @@ internal sealed class WasapiCapture : IAudioCapture
 		try
 		{
 			Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint((int)AudioFlow.Render, (int)AudioRole.Console, out device));
+			Guid iid = AudioClientIid;
+			Marshal.ThrowExceptionForHR(device!.Activate(ref iid, ClsctxAll, IntPtr.Zero, out object o));
+			return (IAudioClient)o;
+		}
+		finally
+		{
+			Release(device);
+			Release(enumerator);
+		}
+	}
+
+	private static IAudioClient ActivateEndpoint(string endpointId)
+	{
+		IMMDeviceEnumerator? enumerator = null;
+		IMMDevice? device = null;
+		try
+		{
+			enumerator = (IMMDeviceEnumerator)Activator.CreateInstance(Type.GetTypeFromCLSID(EnumeratorClsid, true)!)!;
+			Marshal.ThrowExceptionForHR(enumerator.GetDevice(endpointId, out device));
 			Guid iid = AudioClientIid;
 			Marshal.ThrowExceptionForHR(device!.Activate(ref iid, ClsctxAll, IntPtr.Zero, out object o));
 			return (IAudioClient)o;
@@ -538,6 +604,9 @@ internal sealed class WasapiCapture : IAudioCapture
 
 		[PreserveSig]
 		int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice? device);
+
+		[PreserveSig]
+		int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, out IMMDevice? device);
 	}
 
 	[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

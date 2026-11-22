@@ -8,19 +8,23 @@ namespace Kopru.App.Controls;
 // What a region looks like on the art; the overlay draws each kind slightly differently.
 public enum RegionKind { Button, Bumper, Trigger, Stick, Touchpad }
 
-// One control on the controller art: its outline (a closed polygon in the art's own pixels) and how it is drawn.
-public sealed class ControllerRegion(PadButtons button, RegionKind kind, IReadOnlyList<Point> outline, bool edgeOnly = false)
+// One control on the controller art: its outline (a closed polygon in the art's own pixels) and how it is drawn. edge: null
+// on both arts, true on the Edge's only, false on the DualSense's only (where a control sits differently on the two).
+public sealed class ControllerRegion(PadButtons button, RegionKind kind, IReadOnlyList<Point> outline, bool? edge = null)
 {
 	private Geometry? _geometry;
 
 	public PadButtons Button { get; } = button;
 	public RegionKind Kind { get; } = kind;
 	public IReadOnlyList<Point> Outline { get; } = outline;
-	public bool IsEdgeOnly { get; } = edgeOnly;
+	public bool IsEdgeOnly { get; } = edge == true;
+	public bool? Edge { get; } = edge;
 	public Rect Bounds { get; } = BoundsOf(outline);
 
 	// Built on first use (needs the render platform), then shared by every overlay.
 	public Geometry Geometry => _geometry ??= ControllerLayout.Polygon(Outline);
+
+	public bool ShowsOn(bool edge) => Edge is null || Edge == edge;
 
 	public bool Contains(Point p)
 	{
@@ -93,6 +97,8 @@ public static class ControllerLayout
 
 	public static ControllerRegion? Find(PadButtons button) => Regions.FirstOrDefault(r => r.Button == button);
 
+	public static ControllerRegion? Find(PadButtons button, bool edge) => Regions.FirstOrDefault(r => r.Button == button && r.ShowsOn(edge));
+
 	private static List<ControllerRegion> Build()
 	{
 		List<ControllerRegion> list =
@@ -118,8 +124,11 @@ public static class ControllerLayout
 			// Sticks: the area the cap can cover.
 			new(PadButtons.L3, RegionKind.Stick, Circle(LeftStick.Centre.X, LeftStick.Centre.Y, LeftStick.CapRadius + LeftStick.Travel)),
 			new(PadButtons.R3, RegionKind.Stick, Circle(RightStick.Centre.X, RightStick.Centre.Y, RightStick.CapRadius + RightStick.Travel)),
-			// The art has no PS logo: a round button between the sticks, where it sits on the controller.
-			new(PadButtons.PS, RegionKind.Button, Circle(1144, 770, 55)),
+			// PS: on the DualSense art the app's emblem (ring + slash) is the centre button, its ring 57 px in radius and
+			// 42 px above where the PS button sits (the slash's ends reach a little past the ring); on the Edge art a plain
+			// round button.
+			new(PadButtons.PS, RegionKind.Button, Circle(1144, 728, 58), false),
+			new(PadButtons.PS, RegionKind.Button, Circle(1144, 770, 55), true),
 			new(PadButtons.Mute, RegionKind.Button, Pill(1143.5, 871, 15, 56, 90)),
 			new(PadButtons.Touchpad, RegionKind.Touchpad, RoundedRect(TouchSurface.Inflate(new Thickness(14, 8, 14, 10)), 40)),
 			// Edge only: Fn buttons under the sticks (in the Edge render); back paddles are not visible from the front, so

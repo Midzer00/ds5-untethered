@@ -25,8 +25,8 @@ public static partial class Text
 
 	public static string SetupPairTitle(Language? l = null) => Pick(l, $"Kumandayı Eşleştir", $"Pair the Controller");
 	public static string SetupPairInstructions(Language? l = null) => Pick(l,
-		$"Kumanda kapalıyken PS ve Create tuşlarına birlikte basılı tutun; ışık çubuğu hızlı hızlı yanıp sönmeye başlayınca bırakın. Sonra Windows Bluetooth ayarlarında \"Cihaz ekle\" ile kumandayı ekleyin.",
-		$"With the controller off, hold PS and Create together until the light bar flashes quickly, then let go. Then add the controller with \"Add device\" in the Windows Bluetooth settings.");
+		$"Kumanda kapalıyken ø ve Create tuşlarına birlikte basılı tutun; ışık çubuğu hızlı hızlı yanıp sönmeye başlayınca bırakın. Sonra Windows Bluetooth ayarlarında \"Cihaz ekle\" ile kumandayı ekleyin.",
+		$"With the controller off, hold the ø button and Create together until the light bar flashes quickly, then let go. Then add the controller with \"Add device\" in the Windows Bluetooth settings.");
 	public static string SetupRadioMissing(Language? l = null) => Pick(l,
 		$"Bu bilgisayarda Bluetooth adaptörü bulunamadı.",
 		$"No Bluetooth adapter was found on this computer.");

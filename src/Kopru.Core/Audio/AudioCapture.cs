@@ -6,7 +6,10 @@ namespace Kopru.Core.Audio;
 public enum AudioCaptureMode
 {
 	ProcessLoopback,
-	SystemLoopback
+	SystemLoopback,
+
+	// One capture endpoint opened by id (the controller's USB microphone while wired): its mix format, no loopback.
+	Endpoint
 }
 
 // Receives captured sound on the capture thread: interleaved float samples (-1..1) of `channels` channels at
@@ -72,8 +75,9 @@ public sealed record AudioHapticsStatus(AudioHapticsStatusKind Kind, string? Gam
 	public static AudioHapticsStatus Off { get; } = new(AudioHapticsStatusKind.Off);
 }
 
-// The audio haptics part of a game profile: on, strength 0..2 (0-200 %), band.
-public sealed record AudioHapticsSettings(bool On = false, double Strength = 1, AudioHapticsBand Band = AudioHapticsBand.Bass)
+// The audio haptics part of a game profile: on, strength 0..2 (0-200 %), band, sensitivity in percent (0-100, sets the gate).
+public sealed record AudioHapticsSettings(bool On = false, double Strength = 1, AudioHapticsBand Band = AudioHapticsBand.Bass,
+	double Sensitivity = AudioHapticsDsp.DefaultSensitivity)
 {
 	public static AudioHapticsSettings Default { get; } = new();
 }

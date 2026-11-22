@@ -13,6 +13,8 @@ namespace Kopru.App.Controls;
 // with their pressure; stick caps (rendered sprites) move in their wells and point where they are pushed, and sink on
 // L3/R3; touchpad fingers show as soft glowing spots. Shapes and positions come from ControllerLayout (the art's pixels).
 // Frames are requested from the render loop only while a fade runs; an idle or hidden overlay costs nothing.
+// Look is the art's look (PadArt): a pack variant's own pixels and stick sprites are used the same way; on the user's own
+// picture nothing is drawn (its parts are not where the shapes are).
 public sealed class ControllerInputOverlay : Control
 {
 	public static readonly StyledProperty<PadButtons> PressedProperty = AvaloniaProperty.Register<ControllerInputOverlay, PadButtons>(nameof(Pressed));
@@ -20,6 +22,7 @@ public sealed class ControllerInputOverlay : Control
 	public static readonly StyledProperty<TouchPoint> Touch2Property = AvaloniaProperty.Register<ControllerInputOverlay, TouchPoint>(nameof(Touch2));
 	public static readonly StyledProperty<bool> IsEdgeProperty = AvaloniaProperty.Register<ControllerInputOverlay, bool>(nameof(IsEdge));
 	public static readonly StyledProperty<IBrush?> AccentProperty = AvaloniaProperty.Register<ControllerInputOverlay, IBrush?>(nameof(Accent));
+	public static readonly StyledProperty<PadLook?> LookProperty = AvaloniaProperty.Register<ControllerInputOverlay, PadLook?>(nameof(Look));
 	// Stick deflection -1..1 (Y down, as reported); 0 = at rest.
 	public static readonly StyledProperty<double> LeftStickXProperty = AvaloniaProperty.Register<ControllerInputOverlay, double>(nameof(LeftStickX));
 	public static readonly StyledProperty<double> LeftStickYProperty = AvaloniaProperty.Register<ControllerInputOverlay, double>(nameof(LeftStickY));
@@ -65,7 +68,7 @@ public sealed class ControllerInputOverlay : Control
 
 	static ControllerInputOverlay()
 	{
-		AffectsRender<ControllerInputOverlay>(PressedProperty, Touch1Property, Touch2Property, IsEdgeProperty, AccentProperty,
+		AffectsRender<ControllerInputOverlay>(PressedProperty, Touch1Property, Touch2Property, IsEdgeProperty, AccentProperty, LookProperty,
 			LeftStickXProperty, LeftStickYProperty, RightStickXProperty, RightStickYProperty, L2LevelProperty, R2LevelProperty);
 	}
 
@@ -81,6 +84,7 @@ public sealed class ControllerInputOverlay : Control
 	public TouchPoint Touch2 { get => GetValue(Touch2Property); set => SetValue(Touch2Property, value); }
 	public bool IsEdge { get => GetValue(IsEdgeProperty); set => SetValue(IsEdgeProperty, value); }
 	public IBrush? Accent { get => GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
+	public PadLook? Look { get => GetValue(LookProperty); set => SetValue(LookProperty, value); }
 	public double LeftStickX { get => GetValue(LeftStickXProperty); set => SetValue(LeftStickXProperty, value); }
 	public double LeftStickY { get => GetValue(LeftStickYProperty); set => SetValue(LeftStickYProperty, value); }
 	public double RightStickX { get => GetValue(RightStickXProperty); set => SetValue(RightStickXProperty, value); }
@@ -123,16 +127,21 @@ public sealed class ControllerInputOverlay : Control
 		// Exactly ControllerArt's fit, so the shapes sit on the bitmap.
 		double ox = (Bounds.Width - ControllerLayout.ArtWidth * scale) / 2;
 		double oy = (Bounds.Height - ControllerLayout.ArtHeight * scale) / 2;
+		bool edge = IsEdge;
+		PadArtSet look = PadArt.Resolve(Look, edge);
+		if (look.IsOwn)
+		{
+			return;
+		}
 		EnsureResources(scale);
 		TimeSpan now = Clock();
 		PadButtons pressed = Pressed;
-		bool edge = IsEdge;
-		Bitmap art = ControllerArt.ArtBitmap(edge);
+		Bitmap art = look.Body;
 
 		using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(ox, oy)))
 		{
-			DrawStick(context, ControllerLayout.LeftStick, LeftStickX, LeftStickY, now, scale);
-			DrawStick(context, ControllerLayout.RightStick, RightStickX, RightStickY, now, scale);
+			DrawStick(context, look, ControllerLayout.LeftStick, LeftStickX, LeftStickY, now, scale);
+			DrawStick(context, look, ControllerLayout.RightStick, RightStickX, RightStickY, now, scale);
 
 			double pad = _animator.Level(PadButtons.Touchpad, now);
 			if (pad > 0)
@@ -150,7 +159,7 @@ public sealed class ControllerInputOverlay : Control
 
 			foreach (ControllerRegion region in ControllerLayout.Regions)
 			{
-				if (region.IsEdgeOnly && !edge)
+				if (!region.ShowsOn(edge))
 				{
 					continue;
 				}
@@ -201,13 +210,16 @@ public sealed class ControllerInputOverlay : Control
 	}
 
 	// A part pressed in: the art's own pixels of it, sunk a few pixels and a little darker, tinted in the accent (its shading
-	// still shows through).
+	// still shows through). The art may have fewer pixels than the art space (a pack variant: half): its source rectangle is
+	// scaled to the bitmap.
 	private void DrawPressed(DrawingContext context, Bitmap art, Geometry shape, Rect bounds, double sink, IBrush tint)
 	{
 		Rect source = bounds.Inflate(sink + 2).Intersect(new Rect(0, 0, ControllerLayout.ArtWidth, ControllerLayout.ArtHeight));
+		double density = art.Size.Width / ControllerLayout.ArtWidth;
 		using (context.PushGeometryClip(shape))
 		{
-			context.DrawImage(art, source, source.Translate(new Vector(0, sink)));
+			context.DrawImage(art, new Rect(source.X * density, source.Y * density, source.Width * density, source.Height * density),
+				source.Translate(new Vector(0, sink)));
 			context.FillRectangle(Shade, source);
 			context.FillRectangle(tint, source);
 		}
@@ -248,7 +260,7 @@ public sealed class ControllerInputOverlay : Control
 	// At rest the art's own cap shows untouched. Pushed or clicked: the stick's surroundings without the cap are drawn over
 	// it, then the rendered cap (with its shadow) where it is pushed, with a pointer from its centre towards there (longer
 	// the further). L3/R3 sinks the cap a little (drawn slightly smaller), darkens and tints it, and rings it in a glow.
-	private void DrawStick(DrawingContext context, StickWell stick, double x, double y, TimeSpan now, double scale)
+	private void DrawStick(DrawingContext context, PadArtSet look, StickWell stick, double x, double y, TimeSpan now, double scale)
 	{
 		Vector offset = InputAnimator.StickOffset(x, y, stick.Travel);
 		double length = offset.Length;
@@ -261,10 +273,9 @@ public sealed class ControllerInputOverlay : Control
 		Point cap = stick.Centre + offset;
 		double half = ControllerLayout.StickSpriteHalf;
 		double sunk = 1 - StickSink * click;
-		bool edge = IsEdge;
-		context.DrawImage(ControllerArt.StickWellSprite(edge, stick.Button == PadButtons.L3),
+		context.DrawImage(stick.Button == PadButtons.L3 ? look.WellLeft : look.WellRight,
 			new Rect(stick.Centre.X - half, stick.Centre.Y - half, 2 * half, 2 * half));
-		context.DrawImage(ControllerArt.StickCapSprite(edge), new Rect(cap.X - half * sunk, cap.Y - half * sunk, 2 * half * sunk, 2 * half * sunk));
+		context.DrawImage(look.Cap, new Rect(cap.X - half * sunk, cap.Y - half * sunk, 2 * half * sunk, 2 * half * sunk));
 		double radius = stick.CapRadius * sunk;
 		if (click > 0)
 		{

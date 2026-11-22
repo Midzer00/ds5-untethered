@@ -5,8 +5,8 @@
 # The download URL of each file is built from its file name. tools\publish.ps1 passes the Update.exe (the byte-identical
 # copy of the Setup.exe that only the in-app updater downloads, docs\RELEASING.md) as -Setup. It can also be run on its own:
 #
-#   powershell -ExecutionPolicy Bypass -File tools\release\make-update-json.ps1 -Version 0.1.9 `
-#     -Setup artifacts\DS5-Untethered-0.1.9-Update.exe -Zip artifacts\DS5-Untethered-0.1.9-win-x64.zip -Out artifacts\update.json
+#   powershell -ExecutionPolicy Bypass -File tools\release\make-update-json.ps1 -Version 0.2.1 `
+#     -Setup artifacts\DS5-Untethered-0.2.1-Update.exe -Zip artifacts\DS5-Untethered-0.2.1-win-x64-Portable.zip -Out artifacts\update.json
 
 [CmdletBinding()]
 param(

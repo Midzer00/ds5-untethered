@@ -1,0 +1,317 @@
+[
+ {
+  "id": "jet-black",
+  "group": "standard",
+  "nameEn": "Jet Black",
+  "nameTr": "Simsiyah",
+  "swatch": "#1D1E1F"
+ },
+ {
+  "id": "crimson-red",
+  "group": "standard",
+  "nameEn": "Crimson Red",
+  "nameTr": "Kızıl Kırmızı",
+  "swatch": "#A51D44"
+ },
+ {
+  "id": "sky-blue",
+  "group": "standard",
+  "nameEn": "Sky Blue",
+  "nameTr": "Gök Mavisi",
+  "swatch": "#84BFE9"
+ },
+ {
+  "id": "bright-pink",
+  "group": "standard",
+  "nameEn": "Bright Pink",
+  "nameTr": "Canlı Pembe",
+  "swatch": "#E1AEC0"
+ },
+ {
+  "id": "deep-violet",
+  "group": "standard",
+  "nameEn": "Deep Violet",
+  "nameTr": "Koyu Menekşe",
+  "swatch": "#4D349E"
+ },
+ {
+  "id": "grey-camo",
+  "group": "standard",
+  "nameEn": "Grey Camo",
+  "nameTr": "Gri Kamuflaj",
+  "swatch": "#38393C"
+ },
+ {
+  "id": "metallic-red",
+  "group": "standard",
+  "nameEn": "Metallic Red",
+  "nameTr": "Metalik Kırmızı",
+  "swatch": "#A3192B"
+ },
+ {
+  "id": "metallic-blue",
+  "group": "standard",
+  "nameEn": "Metallic Blue",
+  "nameTr": "Metalik Mavi",
+  "swatch": "#013196"
+ },
+ {
+  "id": "metallic-silver",
+  "group": "standard",
+  "nameEn": "Metallic Silver",
+  "nameTr": "Metalik Gümüş",
+  "swatch": "#B3B6BA"
+ },
+ {
+  "id": "pearl-iridescent",
+  "group": "standard",
+  "nameEn": "Pearl Iridescent",
+  "nameTr": "Yanardöner İnci",
+  "swatch": "#DEDCD9"
+ },
+ {
+  "id": "indigo-iridescent",
+  "group": "standard",
+  "nameEn": "Indigo Iridescent",
+  "nameTr": "Yanardöner Çivit",
+  "swatch": "#3546AD"
+ },
+ {
+  "id": "teal-iridescent",
+  "group": "standard",
+  "nameEn": "Teal Iridescent",
+  "nameTr": "Yanardöner Turkuaz",
+  "swatch": "#2A8589"
+ },
+ {
+  "id": "fade-red",
+  "group": "standard",
+  "nameEn": "Black-to-Red Fade",
+  "nameTr": "Siyah-Kırmızı Geçiş",
+  "swatch": "#AC0918"
+ },
+ {
+  "id": "fade-green",
+  "group": "standard",
+  "nameEn": "Black-to-Green Fade",
+  "nameTr": "Siyah-Yeşil Geçiş",
+  "swatch": "#7EAD22"
+ },
+ {
+  "id": "fade-blue",
+  "group": "standard",
+  "nameEn": "Black-to-Blue Fade",
+  "nameTr": "Siyah-Mavi Geçiş",
+  "swatch": "#3C9BC6"
+ },
+ {
+  "id": "clear-orange",
+  "group": "standard",
+  "nameEn": "Clear Orange",
+  "nameTr": "Şeffaf Turuncu",
+  "swatch": "#D25301"
+ },
+ {
+  "id": "clear-smoke",
+  "group": "standard",
+  "nameEn": "Clear Smoke",
+  "nameTr": "Şeffaf Füme",
+  "swatch": "#192334"
+ },
+ {
+  "id": "clear-emerald",
+  "group": "standard",
+  "nameEn": "Clear Emerald",
+  "nameTr": "Şeffaf Zümrüt Yeşili",
+  "swatch": "#006451"
+ },
+ {
+  "id": "retro-grey",
+  "group": "special",
+  "nameEn": "Retro Grey",
+  "nameTr": "Klasik Gri",
+  "swatch": "#B4B8BE"
+ },
+ {
+  "id": "layered-blue",
+  "group": "special",
+  "nameEn": "Layered Royal Blue",
+  "nameTr": "Katmanlı Saks Mavisi",
+  "swatch": "#1156CE"
+ },
+ {
+  "id": "emerald-white",
+  "group": "special",
+  "nameEn": "Emerald and White",
+  "nameTr": "Zümrüt ve Beyaz",
+  "swatch": "#0D8558"
+ },
+ {
+  "id": "navy-ice",
+  "group": "special",
+  "nameEn": "Navy and Ice",
+  "nameTr": "Lacivert-Buz Mavisi",
+  "swatch": "#174098"
+ },
+ {
+  "id": "black-gold",
+  "group": "special",
+  "nameEn": "Black and Gold",
+  "nameTr": "Siyah ve Altın",
+  "swatch": "#22221F"
+ },
+ {
+  "id": "black-crystal",
+  "group": "special",
+  "nameEn": "Black, Blue and Gold",
+  "nameTr": "Siyah-Kristal-Altın",
+  "swatch": "#1D1F20"
+ },
+ {
+  "id": "black-paint",
+  "group": "special",
+  "nameEn": "Black Paint Strokes",
+  "nameTr": "Fırça İzli Siyah",
+  "swatch": "#1E1F20"
+ },
+ {
+  "id": "black-over-red",
+  "group": "special",
+  "nameEn": "Black over Red",
+  "nameTr": "Kırmızı Üstüne Siyah",
+  "swatch": "#2C1619"
+ },
+ {
+  "id": "black-speedlines",
+  "group": "special",
+  "nameEn": "Black Speed Lines",
+  "nameTr": "Hız Çizgili Siyah",
+  "swatch": "#1F2021"
+ },
+ {
+  "id": "white-blue-panels",
+  "group": "special",
+  "nameEn": "White and Metal Blue",
+  "nameTr": "Beyaz-Metalik Mavi",
+  "swatch": "#C7C8D0"
+ },
+ {
+  "id": "sky-doodle",
+  "group": "special",
+  "nameEn": "Sky Blue Doodle",
+  "nameTr": "Karalamalı Mavi",
+  "swatch": "#93C0DF"
+ },
+ {
+  "id": "black-hazard",
+  "group": "special",
+  "nameEn": "Black Hazard Yellow",
+  "nameTr": "Siyah-Uyarı Sarısı",
+  "swatch": "#202122"
+ },
+ {
+  "id": "red-silver",
+  "group": "special",
+  "nameEn": "Red with Silver",
+  "nameTr": "Kırmızı ve Gümüş",
+  "swatch": "#96000A"
+ },
+ {
+  "id": "reverse-black-white",
+  "group": "special",
+  "nameEn": "Reverse Two-Tone",
+  "nameTr": "Ters Siyah ve Beyaz",
+  "swatch": "#1A1A1B"
+ },
+ {
+  "id": "black-signal-orange",
+  "group": "special",
+  "nameEn": "Black Signal Orange",
+  "nameTr": "Siyah-Sinyal Turuncu",
+  "swatch": "#1F2124"
+ },
+ {
+  "id": "gold-brush-ivory",
+  "group": "special",
+  "nameEn": "Ivory Gold Brush",
+  "nameTr": "Altın Fırça Fildişi",
+  "swatch": "#DBD8D4"
+ },
+ {
+  "id": "ink-ivory",
+  "group": "special",
+  "nameEn": "Ivory Ink Brush",
+  "nameTr": "Mürekkepli Fildişi",
+  "swatch": "#D5D3D1"
+ },
+ {
+  "id": "ash-red-band",
+  "group": "special",
+  "nameEn": "Ash Grey Red Stripe",
+  "nameTr": "Kırmızı Şeritli Gri",
+  "swatch": "#D4D6D7"
+ },
+ {
+  "id": "ivory-teal",
+  "group": "special",
+  "nameEn": "Ivory and Deep Teal",
+  "nameTr": "Fildişi-Koyu Turkuaz",
+  "swatch": "#DDDBD8"
+ },
+ {
+  "id": "white-lime",
+  "group": "special",
+  "nameEn": "White with Neon Lime",
+  "nameTr": "Beyaz ve Neon Yeşil",
+  "swatch": "#DCDDDE"
+ },
+ {
+  "id": "gold-rays",
+  "group": "special",
+  "nameEn": "Gold and Black",
+  "nameTr": "Altın ve Siyah",
+  "swatch": "#A68243"
+ },
+ {
+  "id": "black-yellow",
+  "group": "special",
+  "nameEn": "Black and Yellow",
+  "nameTr": "Siyah ve Sarı",
+  "swatch": "#202120"
+ },
+ {
+  "id": "brushed-silver",
+  "group": "special",
+  "nameEn": "Brushed Silver",
+  "nameTr": "Fırçalanmış Gümüş",
+  "swatch": "#A7AAAC"
+ },
+ {
+  "id": "pearl-sparkle",
+  "group": "special",
+  "nameEn": "Pearl with Sparkles",
+  "nameTr": "Simli İnci Beyazı",
+  "swatch": "#DEDCD9"
+ },
+ {
+  "id": "black-shift",
+  "group": "special",
+  "nameEn": "Black Blue-Violet",
+  "nameTr": "Simli Siyah/Mavi-Mor",
+  "swatch": "#212223"
+ },
+ {
+  "id": "white-shift",
+  "group": "special",
+  "nameEn": "White Blue-Violet",
+  "nameTr": "Beyaz ve Mavi-Mor",
+  "swatch": "#DFE0E0"
+ },
+ {
+  "id": "racing-carbon",
+  "group": "special",
+  "nameEn": "Racing White Carbon",
+  "nameTr": "Yarış Beyazı-Karbon",
+  "swatch": "#D9DADA"
+ }
+]

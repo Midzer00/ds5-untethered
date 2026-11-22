@@ -11,7 +11,7 @@
    `tools/release/notes.json`, a few short plain lines per language:
    `{ "tr": "Kumanda hoparlörü daha temiz.", "en": "Cleaner controller speaker." }`. Without the file the notes are empty.
 4. Run `powershell -ExecutionPolicy Bypass -File tools\publish.ps1` (Inno Setup 6 installed). It writes to `artifacts\`:
-   `DS5-Untethered-<version>-Setup.exe`, `DS5-Untethered-<version>-win-x64.zip`, `DS5-Untethered-<version>-Update.exe`
+   `DS5-Untethered-<version>-Setup.exe`, `DS5-Untethered-<version>-win-x64-Portable.zip`, `DS5-Untethered-<version>-Update.exe`
    (a byte-identical copy of the Setup.exe, see "Download counts" below) and `update.json` (the update manifest for this
    release: version, the `v<version>` download URLs of the Update.exe and the zip, their sizes and SHA-256, the release
    page, the notes). `tools\release\make-update-json.ps1` makes the manifest and can be run on its own.
@@ -39,9 +39,9 @@ in Steam's own cache on the PC (`appcache\appinfo.vdf`, read only).
 
 ## Publish (in this order)
 
-1. Create the GitHub release with the tag `v<version>` and upload all three files (Setup.exe, zip, Update.exe), under
-   exactly these names. In the release notes link only the Setup.exe and the zip, and add a line such as:
-   "`DS5-Untethered-<version>-Update.exe` is used by in-app updates; download the Setup.exe or the zip instead."
+1. Create the GitHub release with the tag `v<version>` and upload all three files (Setup.exe, portable zip, Update.exe), under
+   exactly these names. In the release notes link only the Setup.exe and the portable zip, and add a line such as:
+   "`DS5-Untethered-<version>-Update.exe` is used by in-app updates; download the Setup.exe or the portable zip instead."
 2. Check that all three download links work.
 3. Only then copy `artifacts\update.json` over `update.json` at the repository root, commit and push it to `main`.
 

@@ -54,4 +54,9 @@ public static partial class Text
 	public static string GameLightOffXbox(Language? l = null) => Pick(l,
 		$"Xbox 360 türünde oyunlar ışığı değiştiremez.",
 		$"With the Xbox 360 type, games can't change the light.");
+
+	// The seventh colour swatch: a colour of the user's own, picked on a colour disc or typed as a hex code.
+	public static string ColourCustom(Language? l = null) => Pick(l, $"Özel", $"Custom");
+	public static string ColourWheelLabel(Language? l = null) => Pick(l, $"Renk Diski", $"Colour Wheel");
+	public static string CustomColourHex(Language? l = null) => Pick(l, $"Renk Kodu", $"Colour Code");
 }

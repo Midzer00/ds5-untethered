@@ -192,17 +192,20 @@ public static partial class Text
 	public static string ReasonRadioMissing(Language? l = null) => Pick(l, $"Bluetooth adaptörü bulunamadı.", $"No Bluetooth adapter found.");
 	public static string ReasonUsbOnly(Language? l = null) => Pick(l, $"Kumanda USB kablosuyla bağlı.", $"The controller is on a USB cable.");
 	public static string ReasonControllerOff(Language? l = null) => Pick(l, $"Kumanda kapalı ya da eşleşmemiş.", $"The controller is off or not paired.");
-	public static string HintPressPs(Language? l = null) => Pick(l, $"PS tuşuna basın; ilk kez bağlıyorsanız eşleştirin.", $"Press the PS button, or pair it if this is the first time.");
+	public static string HintPressPs(Language? l = null) => Pick(l, $"ø tuşuna basın; ilk kez bağlıyorsanız eşleştirin.", $"Press the ø button, or pair it if this is the first time.");
 	public static string LiveTitle(Language? l = null) => Pick(l, $"Canlı", $"Live");
 	public static string LiveIdle(Language? l = null) => Pick(l, $"Sanal kumanda çalışırken burada görünür.", $"Shows here while the virtual controller runs.");
-	public static string LiveLast30s(Language? l = null) => Pick(l, $"Son 30 sn", $"Last 30 s");
-	// The live card: the input rate's low of the last 30 s, the delay headline's second line, the chart's note (all under
-	// the "you can feel it" limit, or what its dashed line means), and the triggers group.
-	public static string LiveRateMin(double min, Language? l = null) => Pick(l, $"en düşük {min:F0}", $"min {min:F0}");
+	// The live card's two views (the header's switch), the delay headline's caption and the chart's span.
+	public static string LiveViewLink(Language? l = null) => Pick(l, $"Bağlantı", $"Link");
+	public static string LiveViewSignals(Language? l = null) => Pick(l, $"Sinyaller", $"Signals");
+	public static string LiveTypicalDelay(Language? l = null) => Pick(l, $"Tipik Gecikme", $"Typical Delay");
+	public static string LiveLast60s(Language? l = null) => Pick(l, $"Son 60 sn", $"Last 60 s");
+	public static string LiveLast10s(Language? l = null) => Pick(l, $"Son 10 sn", $"Last 10 s");
+	public static string LiveMicShort(Language? l = null) => Pick(l, $"Mikrofon", $"Mic");
+	public static string LiveSignalsTip(Language? l = null) => Pick(l,
+		$"Son 10 saniyede kumandanın tetiklerine ne kadar basıldığı, haptik motorlara gönderilen titreşim ve mikrofon seviyesi.",
+		$"The last 10 seconds: how far the triggers are pressed, the vibration going to the haptic motors and the microphone level.");
 	public static string DelayMs(double ms, Language? l = null) => Pick(l, $"{ms:F1} ms", $"{ms:F1} ms");
-	public static string LiveDelayWorst(double ms, Language? l = null) => Pick(l, $"Gecikme · en kötü {ms:F1} ms", $"Delay · worst {ms:F1} ms");
-	public static string LiveUnderLimit(double ms, Language? l = null) => Pick(l, $"{ms:F0} ms'nin altında", $"Under {ms:F0} ms");
-	public static string LiveOverLimit(double ms, Language? l = null) => Pick(l, $"{ms:F0} ms üstü hissedilir", $"Above {ms:F0} ms you can feel it");
 	public static string LiveTriggers(Language? l = null) => Pick(l, $"Tetikler", $"Triggers");
 	public static string LiveBridgeUptime(string duration, Language? l = null) => Pick(l, $"Sanal kumanda açık · {duration}", $"Virtual controller on · {duration}");
 	public static string LiveConnectedFor(string duration, Language? l = null) => Pick(l, $"Bağlı · {duration}", $"Connected · {duration}");
@@ -239,14 +242,14 @@ public static partial class Text
 	public static string SupportedGameList(Language? l = null) => Pick(l, $"Desteklenen Oyun Listesi", $"Supported Games List");
 	// The "Installed" view's list title: everything on this PC, supported or not.
 	public static string SearchGames(Language? l = null) => Pick(l, $"Oyun Ara", $"Search Games");
-	public static string GameCount(double count, Language? l = null) => Pick(l, $"{count:F0} oyun", $"{count:F0} games");
+	public static string GameCount(double count, Language? l = null) => Pick(l, $"{count:F0} oyun", $"{count:F0} {En(count, "game", "games")}");
 	public static string NoMatchingGames(Language? l = null) => Pick(l, $"Eşleşen oyun yok.", $"No matching games.");
 
 	// Online update of the supported games list.
 	public static string UpdateGameList(Language? l = null) => Pick(l, $"Listeyi Güncelle", $"Update List");
 	public static string UpdatingGameList(Language? l = null) => Pick(l, $"Güncelleniyor…", $"Updating…");
 	public static string GameListUpToDate(Language? l = null) => Pick(l, $"Zaten güncel", $"Already up to date");
-	public static string GameListAdded(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new games added");
+	public static string GameListAdded(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new {En(added, "game", "games")} added");
 	public static string GameListFailed(string reason, Language? l = null) => Pick(l, $"Güncellenemedi: {reason}", $"Couldn't update: {reason}");
 	public static string GameListOffline(Language? l = null) => Pick(l, $"sunucuya ulaşılamadı, internet bağlantını kontrol et.", $"the server couldn't be reached, check your internet connection.");
 	public static string GameListTimeout(Language? l = null) => Pick(l, $"sunucu zamanında yanıt vermedi.", $"the server didn't answer in time.");
@@ -255,13 +258,13 @@ public static partial class Text
 	public static string GameListSaveFailed(Language? l = null) => Pick(l, $"liste kaydedilemedi.", $"the list couldn't be saved.");
 	public static string AutoUpdateGameList(Language? l = null) => Pick(l, $"Oyun Listesini Otomatik Güncelle", $"Update Game List Automatically");
 	public static string NotifyGameListTitle(Language? l = null) => Pick(l, $"Liste Güncellendi", $"Game List Updated");
-	public static string NotifyGameListBody(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new games added");
+	public static string NotifyGameListBody(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new {En(added, "game", "games")} added");
 
 	// "72 oyun · güncellendi 9 Kas 2026"; without the date when updated is not an ISO date.
 	public static string GameListInfo(double count, string updated, Language? l = null) =>
 		DateTime.TryParseExact(updated, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime date)
-			? Pick(l, $"{count:F0} oyun · güncellendi {date:d MMM yyyy}", $"{count:F0} games · updated {date:d MMM yyyy}")
-			: Pick(l, $"{count:F0} oyun", $"{count:F0} games");
+			? Pick(l, $"{count:F0} oyun · güncellendi {date:d MMM yyyy}", $"{count:F0} {En(count, "game", "games")} · updated {date:d MMM yyyy}")
+			: Pick(l, $"{count:F0} oyun", $"{count:F0} {En(count, "game", "games")}");
 	public static string BadgeHaptics(Language? l = null) => Pick(l, $"Haptik", $"Haptics");
 	public static string BadgeTriggers(Language? l = null) => Pick(l, $"Tetik", $"Triggers");
 	public static string MarkUserAdded(Language? l = null) => Pick(l, $"Eklendi", $"Added");

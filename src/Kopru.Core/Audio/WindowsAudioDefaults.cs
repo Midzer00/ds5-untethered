@@ -190,7 +190,11 @@ public sealed class WindowsAudioDefaults : IAudioDefaultsSystem
 				Release(store);
 			}
 		}
-		return new AudioEndpointInfo(id, (AudioFlow)flow, (state & DeviceStateActive) != 0, name, Identify(adapter, name));
+		// The same chain classifies the endpoint (as Identify does) and names its plain USB device for wired mode.
+		IReadOnlyList<DeviceNodeInfo>? chain = adapter is { Length: > 0 }
+			? DeviceTree.Chain(PadAudioIdentity.StripPrefix(adapter)) : null;
+		PadAudioMatch pad = chain is { Count: > 0 } ? PadAudioIdentity.Classify(chain) : PadAudioIdentity.NameMatch(name);
+		return new AudioEndpointInfo(id, (AudioFlow)flow, (state & DeviceStateActive) != 0, name, pad, WiredAudioEndpoints.UsbDeviceOf(chain ?? []));
 	}
 
 	// The same identification for the guard and "Kopru.Probe audiodefaults".

@@ -8,8 +8,8 @@ public static partial class Text
 	public static string QuickShortcuts(Language? l = null) => Pick(l, $"Kumanda Kısayolları", $"Controller Shortcuts");
 
 	public static string QuickShortcutsTip(Language? l = null) => Pick(l,
-		$"PS tuşunu basılı tutup başka bir tuşa basarak profil, haptik gücü ve DualSense Modu gibi şeyleri kumandadan değiştirirsin.",
-		$"Hold PS and press another button to change the profile, haptics strength, DualSense Mode and more from the controller.");
+		$"ø tuşunu basılı tutup başka bir tuşa basarak profil, haptik gücü ve DualSense Modu gibi şeyleri kumandadan değiştirirsin.",
+		$"Hold the ø button and press another button to change the profile, haptics strength, DualSense Mode and more from the controller.");
 
 	public static string QuickEditShortcuts(Language? l = null) => Pick(l, $"Kısayolları Düzenle", $"Edit Shortcuts");
 
@@ -40,7 +40,7 @@ public static partial class Text
 
 	public static string AgoHours(double hours, Language? l = null) => Pick(l, $"{hours:F0} sa önce", $"{hours:F0} h ago");
 
-	public static string AgoDays(double days, Language? l = null) => Pick(l, $"{days:F0} gün önce", $"{days:F0} days ago");
+	public static string AgoDays(double days, Language? l = null) => Pick(l, $"{days:F0} gün önce", $"{days:F0} {En(days, "day", "days")} ago");
 
 	public static string ControllerLastBattery(double percent, Language? l = null) => Pick(l, $"Son Pil: %{percent:F0}", $"Last Battery: {percent:F0}%");
 

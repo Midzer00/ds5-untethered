@@ -42,7 +42,7 @@ public static partial class Text
 		Pick(l, $"Kumandanın pili azaldı (%{percent:F0})", $"The controller's battery is low ({percent:F0}%)");
 
 	public static string IdleTimeout(double minutes, Language? l = null) =>
-		Pick(l, $"Kumanda {minutes:F0} dakikadır kullanılmıyor", $"The controller has not been used for {minutes:F0} minutes");
+		Pick(l, $"Kumanda {minutes:F0} dakikadır kullanılmıyor", $"The controller has not been used for {minutes:F0} {En(minutes, "minute", "minutes")}");
 
 	public static string HidingUnavailable(Language? l = null) => Pick(l,
 		$"Sanal kumanda başlamadı: HidHide kurulu değil. Kurulum sayfasından kur.",

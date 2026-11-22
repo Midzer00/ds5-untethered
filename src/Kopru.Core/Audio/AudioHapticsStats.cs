@@ -126,23 +126,25 @@ public sealed class AudioHapticsStats
 	}
 
 	// The summary line (without the "audio haptics: " prefix). bandPeak: the DSP's loudest envelope (0..1 of full scale)
-	// of the band it keeps, which is what the gate compares with.
-	public string Summary(TimeSpan active, double bandPeak)
+	// of the band it keeps, which is what the gate compares with; gateOpenDb: where the gate opened (dBFS, from Sensitivity).
+	public string Summary(TimeSpan active, double bandPeak, double? gateOpenDb = null)
 	{
+		double gate = gateOpenDb ?? AudioHapticsDsp.DefaultGateOpenDb;
 		CultureInfo inv = CultureInfo.InvariantCulture;
 		double inSeconds = InputRate > 0 ? InputFrames / (double)InputRate : 0;
 		string format = InputRate > 0 ? string.Create(inv, $"{InputRate} Hz {InputChannels} ch") : "no format";
 		return string.Create(inv,
 			$"session summary: active {active.TotalSeconds:F0} s; " +
 			$"sound in: {InputFrames} frames ({inSeconds:F1} s, {format}), peak {Db(InputPeak)} dBFS, rms {Db(InputRms)} dBFS, silent {Percent(SilentInputFrames, InputFrames)} %; " +
-			$"band peak {Db(bandPeak)} dBFS (gate opens at {AudioHapticsDsp.GateOpenDb:0}); " +
+			$"band peak {Db(bandPeak)} dBFS (gate opens at {gate:0}); " +
 			$"haptics out: {OutputFrames} frames ({OutputFrames / (double)AudioHapticsDsp.OutputRate:F1} s), peak {Math.Min(OutputPeak, 127) * 100 / 127} %, non-zero {NonZeroFrames} ({Percent(NonZeroFrames, OutputFrames)} %); " +
 			$"{PlayedFrames} frames played ({NonZeroPlayedFrames} non-zero), {PausedFrames} paused for native haptics, {NoControllerFrames} without a controller");
 	}
 
 	// One plain sentence on what the numbers mean: where the sound stopped on its way to the controller, if it did.
-	public string Verdict(double strength)
+	public string Verdict(double strength, double? gateOpenDb = null)
 	{
+		double gate = gateOpenDb ?? AudioHapticsDsp.DefaultGateOpenDb;
 		if (InputFrames == 0)
 		{
 			return "no sound arrived from the capture at all";
@@ -155,7 +157,7 @@ public sealed class AudioHapticsStats
 		{
 			return strength <= 0
 				? "nothing was felt: strength is 0 %"
-				: string.Create(CultureInfo.InvariantCulture, $"the sound never got over the gate ({AudioHapticsDsp.GateOpenDb:0} dBFS in the band): too quiet, or nothing in the band");
+				: string.Create(CultureInfo.InvariantCulture, $"the sound never got over the gate ({gate:0} dBFS in the band): too quiet, or nothing in the band");
 		}
 		if (NonZeroPlayedFrames == 0)
 		{

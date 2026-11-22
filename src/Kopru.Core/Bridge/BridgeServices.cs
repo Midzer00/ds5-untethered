@@ -82,8 +82,16 @@ public sealed class WindowsControllerSource : IControllerSource, IReadOnlyContro
 		}
 	}
 
-	// The device instance id (stable while paired), or the interface path when it can't be read.
-	public static string IdOf(HidDevice device) => DeviceInstance.FromInterfacePath(device.Path) ?? device.Path;
+	// The controller's identity everywhere (ControllerEntry.Id, remembered controllers, looks, own profiles): the device
+	// instance id of its Bluetooth HID node (stable while paired). Only Bluetooth DualSenses get one (Enumerate); the same
+	// controller on a USB cable is matched by its 0x09 address instead (CableSwitch) and never becomes a second entry.
+	// When Windows can't answer for a moment (for instance while the device tree changes) the same id is read
+	// from the interface path's text, so a failed lookup never turns the controller into a new one; the raw path is
+	// only the last resort for a path in an unknown form.
+	public static string IdOf(HidDevice device) => IdOf(device.Path, DeviceInstance.FromInterfacePath);
+
+	public static string IdOf(string path, Func<string, string?> lookup) =>
+		lookup(path) ?? DeviceInstance.FromInterfacePathText(path) ?? path;
 
 	public IReadOnlyList<ControllerPresence> Enumerate()
 	{
@@ -102,7 +110,7 @@ public sealed class WindowsControllerSource : IControllerSource, IReadOnlyContro
 	{
 		try
 		{
-			HidDevice? bt = WindowsHid.FindDualSenses().FirstOrDefault(d => d.Transport == Transport.Bluetooth && IdOf(d) == id);
+			HidDevice? bt = WindowsHid.FindDualSenses().FirstOrDefault(d => d.Transport == Transport.Bluetooth && string.Equals(IdOf(d), id, StringComparison.OrdinalIgnoreCase));
 			return bt == null ? null : WindowsHid.Open(bt);
 		}
 		catch (Exception)

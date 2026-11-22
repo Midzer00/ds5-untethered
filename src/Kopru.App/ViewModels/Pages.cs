@@ -4,6 +4,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Kopru.App.Services;
+using Kopru.Core.Bridge;
 using Kopru.Core.Localization;
 using Kopru.Core.Setup;
 using Kopru.Core.Diagnostics;
@@ -32,7 +33,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 		Settings = settings;
 		Func<FixAction, Task> fix = service.ExecuteFix;
 		HealthChips = [.. Enum.GetValues<HealthChipKind>().Select(k => new HealthChipViewModel(k, fix))];
-		Live = new LivePanelViewModel(service);
+		Live = new LivePanelViewModel(service, () => settings.ControllerMicSelected && settings.MicLive);
 		Live.OnStateChanged();
 		Quick = new QuickSettingsViewModel(service, settings);
 		_service.StateChanged += (_, _) => RunOnUi(() =>
@@ -48,6 +49,10 @@ public sealed partial class OverviewViewModel : PageViewModel
 			{
 				OnPropertyChanged(nameof(ArtLightIntensity));
 				OnPropertyChanged(nameof(ArtPlayerLeds));
+			}
+			else if (e.PropertyName is nameof(SettingsState.MicLive) or nameof(SettingsState.ControllerMicSelected))
+			{
+				Live.OnStateChanged();
 			}
 			OnPadStateChanged(e.PropertyName);
 		};
@@ -334,6 +339,14 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public bool IsLinkBorderline => LinkState == LinkQuality.Borderline;
 	public bool IsLinkPoor => LinkState == LinkQuality.Poor;
 	public bool IsLinkMeasuring => LinkState == LinkQuality.Measuring;
+	// The quality gauge: three pieces lit for Good, two for Fair, one for Weak, none while measuring.
+	public int LinkLevel => LinkState switch
+	{
+		LinkQuality.Good => 3,
+		LinkQuality.Borderline => 2,
+		LinkQuality.Poor => 1,
+		_ => 0
+	};
 
 	public static string LinkWord(LinkQuality state) => state switch
 	{
@@ -381,9 +394,10 @@ public sealed partial class OverviewViewModel : PageViewModel
 		{
 			_inputTimer = new Avalonia.Threading.DispatcherTimer(InputInterval, Avalonia.Threading.DispatcherPriority.Background, (_, _) => ReadInput());
 			_inputTimer.Start();
-			// The graph covers the time the page is shown: one sample a second.
+			// The graph reads the bridge's history once a second (the bridge keeps it while the page is hidden too).
 			_sampleTimer = new Avalonia.Threading.DispatcherTimer(TimeSpan.FromSeconds(1), Avalonia.Threading.DispatcherPriority.Background, (_, _) => Live.Sample());
 			_sampleTimer.Start();
+			Live.SetShown(true);
 			UpdateHealth();
 		}
 		else if (!visible && _inputTimer != null)
@@ -392,13 +406,13 @@ public sealed partial class OverviewViewModel : PageViewModel
 			_inputTimer = null;
 			_sampleTimer?.Stop();
 			_sampleTimer = null;
+			Live.SetShown(false);
 			LivePressed = Kopru.Core.Input.PadButtons.None;
 		}
 	}
 
 	private void ReadInput()
 	{
-		Live.Follow();
 		byte[]? raw = _service.IsBridgeRunning ? _service.RawInput : null;
 		LivePressed = raw is { Length: >= 9 }
 			? Kopru.Core.Input.InputSnapshot.DecodeButtons(raw[7], raw[8], raw.Length > 9 ? raw[9] : (byte)0)
@@ -522,10 +536,17 @@ public sealed partial class TriggersViewModel : ViewModelBase
 	}
 }
 
-public sealed class ColourPreset(uint rgb, Func<string> name) : LabelledChoice(name)
+// A colour swatch on the Light page: a preset (fixed colour), or the custom one (CustomColourSwatch).
+public class ColourPreset(uint rgb, Func<string> name) : LabelledChoice(name)
 {
-	public uint Rgb { get; } = rgb;
-	public IBrush Brush { get; } = new SolidColorBrush(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
+	public virtual uint Rgb { get; } = rgb;
+	public virtual IBrush? Brush { get; } = BrushOf(rgb);
+	public virtual bool IsCustom => false;
+	// The custom swatch before its first use: an empty ring with a plus, no colour.
+	public virtual bool IsEmpty => false;
+	public bool HasColour => !IsEmpty;
+
+	public static IBrush BrushOf(uint rgb) => new SolidColorBrush(Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
 }
 
 public sealed partial class LightViewModel : PageViewModel
@@ -545,35 +566,43 @@ public sealed partial class LightViewModel : PageViewModel
 			new(0xFF8A2F, () => Text.ColourOrange()),
 			new(0xF2F2F2, () => Text.ColourWhite()),
 		];
-		_selectedPreset = Presets.FirstOrDefault(p => p.Rgb == settings.LightbarColour) ?? Presets[0];
+		Custom = new CustomColourSwatch(() => Text.ColourCustom());
+		Swatches = [.. Presets, Custom];
+		_selectedPreset = Presets[0];
+		InitCustomColour();
 		InitEffects();
 	}
 
 	public SettingsState Settings { get; }
+	// The six preset colours; Swatches: the presets and Custom after them (what the page shows).
 	public IReadOnlyList<ColourPreset> Presets { get; }
+	public IReadOnlyList<ColourPreset> Swatches { get; }
 	public override string Title => Text.NavLight();
 	public string Intro => Text.LightIntro();
 	public string ColourLabel => Text.LightbarColour();
 	public string BrightnessLabel => Text.Brightness();
 	public string PlayerLedsLabel => Text.PlayerLeds();
 	public string PlayerLedsHint => Text.PlayerLedsHint();
-	public string SelectedName => SelectedPreset.Name;
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 
+	// The chosen swatch: a preset, or Custom (see LightCustomColour.cs).
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(SelectedName))]
+	[NotifyPropertyChangedFor(nameof(IsCustomSelected))]
+	[NotifyPropertyChangedFor(nameof(IsPresetSelected))]
 	private ColourPreset _selectedPreset;
 
-	partial void OnSelectedPresetChanged(ColourPreset value)
-	{
-		Settings.LightbarColour = value.Rgb;
-		_service.TestLight(value.Rgb);
-	}
+	partial void OnSelectedPresetChanged(ColourPreset value) => OnSwatchChosen(value);
 }
 
 public sealed class LanguageOption(Language? language, Func<string> name) : LabelledChoice(name)
 {
 	public Language? Language { get; } = language;
+}
+
+public sealed class CableModeOption(CableMode mode, Func<string> name) : LabelledChoice(name)
+{
+	public CableMode Mode { get; } = mode;
 }
 
 public sealed partial class SettingsViewModel : PageViewModel
@@ -590,6 +619,19 @@ public sealed partial class SettingsViewModel : PageViewModel
 		// Language names are shown in their own language (endonyms) on purpose.
 		Languages = BuildLanguages();
 		_selectedLanguage = Languages.First(o => o.Language == Localizer.Chosen);
+		CableModes =
+		[
+			new CableModeOption(CableMode.Wired, () => Text.CableModeWired()),
+			new CableModeOption(CableMode.ChargeOnly, () => Text.CableModeChargeOnly()),
+		];
+		_selectedCableMode = CableModes.First(o => o.Mode == Settings.CableMode);
+		Settings.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(SettingsState.CableMode))
+			{
+				SelectedCableMode = CableModes.First(o => o.Mode == Settings.CableMode);
+			}
+		};
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(nameof(HeadphonesPlugged)));
 		InitMic();
 		InitDsx();
@@ -597,6 +639,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 
 	public SettingsState Settings { get; }
 	public IReadOnlyList<LanguageOption> Languages { get; }
+	public IReadOnlyList<CableModeOption> CableModes { get; }
 	public override string Title => Text.NavSettings();
 	public string GeneralLabel => Text.General();
 	public string LanguageLabel => Text.LanguageLabel();
@@ -628,10 +671,14 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string PowerOffWhenIdleLabel => Text.PowerOffWhenIdleSetting();
 	public string PowerOffWhenIdleHint => Text.PowerOffWhenIdleHint();
 	public string HapticsGroupLabel => Text.CardHaptics();
+	public string CableGroupLabel => Text.CardCable();
 	public string PauseHapticsLabel => Text.PauseHapticsInSilence();
 	public string PauseHapticsHint => Text.PauseHapticsInSilenceHint();
 	public string AutoLowPowerLabel => Text.AutoLowPower();
 	public string AutoLowPowerHint => Text.AutoLowPowerHint();
+	public string CableModeLabel => Text.CableModeLabel();
+	public string CableModeShort => Text.CableModeShort();
+	public string CableModeHint => Text.CableModeHint();
 	public string KeepInTrayLabel => Text.KeepInTray();
 	public string KeepInTrayHint => Text.KeepInTrayHint();
 	public string NotificationsLabel => Text.GroupNotifications();
@@ -675,6 +722,11 @@ public sealed partial class SettingsViewModel : PageViewModel
 	[ObservableProperty]
 	private LanguageOption _selectedLanguage;
 
+	// The cable behaviour choice (Settings.CableMode both ways; a cleared selection while the language switch
+	// rebuilds nothing is ignored, as with the language picker).
+	[ObservableProperty]
+	private CableModeOption _selectedCableMode;
+
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasToolResult))]
 	private string _toolResult = string.Empty;
@@ -691,6 +743,14 @@ public sealed partial class SettingsViewModel : PageViewModel
 		if (value != null)
 		{
 			Localizer.Chosen = value.Language;
+		}
+	}
+
+	partial void OnSelectedCableModeChanged(CableModeOption value)
+	{
+		if (value != null && value.Mode != Settings.CableMode)
+		{
+			Settings.CableMode = value.Mode;
 		}
 	}
 

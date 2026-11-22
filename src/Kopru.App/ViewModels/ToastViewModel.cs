@@ -30,6 +30,7 @@ public sealed class ToastViewModel : ViewModelBase
 
 	// Visual on the left: the controller as the app draws it (the Edge drawing for an Edge).
 	public bool IsEdge => Notification.IsEdge;
+	public Kopru.App.Controls.PadLook? Look => Notification.Look;
 	public double ArtWidth => 90;
 	public double ArtHeight => 60;
 	// A controller that has gone away is drawn faded with its light off.

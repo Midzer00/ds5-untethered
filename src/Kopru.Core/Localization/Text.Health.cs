@@ -29,12 +29,12 @@ public static partial class Text
 		$"No Bluetooth adapter was found on this PC.");
 
 	public static string ConnectionNeverPairedReason(Language? l = null) => Pick(l,
-		$"Windows'ta eşleşmiş bir DualSense yok. Create ve PS tuşlarını ışık yanıp sönene kadar basılı tutup eşleştir.",
-		$"No DualSense is paired with Windows. Hold Create and PS until the light blinks, then pair it.");
+		$"Windows'ta eşleşmiş bir DualSense yok. Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştir.",
+		$"No DualSense is paired with Windows. Hold Create and the ø button until the light blinks, then pair it.");
 
 	public static string ConnectionPairedNotConnectedReason(Language? l = null) => Pick(l,
-		$"Kumanda eşleşmiş ama kapalı ya da uykuda. Açmak için PS tuşuna bas.",
-		$"The controller is paired but off or asleep. Press the PS button to turn it on.");
+		$"Kumanda eşleşmiş ama kapalı ya da uykuda. Açmak için ø tuşuna bas.",
+		$"The controller is paired but off or asleep. Press the ø button to turn it on.");
 
 	public static string ConnectionBluetoothReason(Language? l = null) => Pick(l,
 		$"Kumanda Bluetooth ile bağlı.",
@@ -206,5 +206,5 @@ public static partial class Text
 	public static string TimeMinutesAgo(int minutes, Language? l = null) => Pick(l, $"{minutes} dk önce", $"{minutes} min ago");
 	public static string TimeHoursAgo(int hours, Language? l = null) => Pick(l, $"{hours} sa önce", $"{hours} h ago");
 	public static string TimeYesterday(Language? l = null) => Pick(l, $"dün", $"yesterday");
-	public static string TimeDaysAgo(int days, Language? l = null) => Pick(l, $"{days} gün önce", $"{days} days ago");
+	public static string TimeDaysAgo(int days, Language? l = null) => Pick(l, $"{days} gün önce", $"{days} {En(days, "day", "days")} ago");
 }

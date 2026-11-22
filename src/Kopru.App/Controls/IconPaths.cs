@@ -33,6 +33,8 @@ public static class IconPaths
 	public static Geometry ChevronRight { get; } = Geometry.Parse("M9.5,6 L15.5,12 L9.5,18");
 	// A folder: a file to choose (a game's start file).
 	public static Geometry Folder { get; } = Geometry.Parse("M3.5,7 C3.5,5.9 4.4,5 5.5,5 H9.5 L11.5,7.5 H18.5 C19.6,7.5 20.5,8.4 20.5,9.5 V17 C20.5,18.1 19.6,19 18.5,19 H5.5 C4.4,19 3.5,18.1 3.5,17 Z");
+	// A plus: add (the custom colour swatch before its first use).
+	public static Geometry Plus { get; } = Geometry.Parse("M12,6 V18 M6,12 H18");
 	// A cross: remove.
 	public static Geometry Cross { get; } = Geometry.Parse("M7,7 L17,17 M17,7 L7,17");
 	// A heart outline: support (GitHub Sponsors).

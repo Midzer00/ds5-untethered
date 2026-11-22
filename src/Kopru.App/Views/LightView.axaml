@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.LightView" x:DataType="vm:LightViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.LightView" x:DataType="vm:LightViewModel">
   <UserControl.Resources>
     <!-- Choice pill (same look as ChipToggle): the chosen one gets the accent edge and tint -->
     <ControlTheme x:Key="ChoicePill" TargetType="ListBoxItem">
@@ -31,8 +31,26 @@
       <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" /></Style>
     </ControlTheme>
     <ItemsPanelTemplate x:Key="Wrap"><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+    <!-- The custom colour: the colour disc (about 180 px across) and the hex code under it, in a pop-up anchored to the
+         Custom swatch (opened from LightView.axaml.cs). It opens above the swatches and the colour's title (lifted by that
+         row's height), its right edge on the swatch's, so it
+         covers only the mode and the game light card: the swatches, the hex code, Brightness and the preview stay in view. -->
+    <Flyout x:Key="CustomColourFlyout" Placement="TopEdgeAlignedRight" VerticalOffset="-34">
+      <StackPanel x:DataType="vm:LightViewModel" Spacing="12" Width="196">
+        <c:ColourWheel Width="196" Height="196" Cursor="Hand" Hue="{Binding CustomHue}" Saturation="{Binding CustomSaturation}"
+                       AutomationProperties.Name="{Binding WheelLabel}" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+          <TextBlock Classes="label" Text="{Binding HexLabel}" VerticalAlignment="Center" />
+          <TextBox Grid.Column="1" Width="96" MaxLength="7" Text="{Binding CustomHex}" HorizontalContentAlignment="Center"
+                   AutomationProperties.Name="{Binding HexLabel}">
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Enter" Command="{Binding CommitHexCommand}" />
+            </TextBox.KeyBindings>
+          </TextBox>
+        </Grid>
+      </StackPanel>
+    </Flyout>
   </UserControl.Resources>
-
   <!-- Header in the page column; below it the live preview beside the settings column. Both share one height: the column
        sets it (the stage follows), and when the window is too short the "Your Light" card scrolls while the preview and
        the game light switch stay in view -->
@@ -47,7 +65,7 @@
     <Grid Grid.Row="2" ColumnDefinitions="4*,16,5*" VerticalAlignment="Top">
       <!-- Live preview of the user's own light: the light strips follow the effect, brightness and player LEDs -->
       <Border Classes="stage" Padding="24,20" MinHeight="300">
-        <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding PreviewColor}" LightIntensity="{Binding Settings.LightIntensity}"
+        <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding PreviewColor}" LightIntensity="{Binding Settings.LightIntensity}"
                          PlayerLedMask="{Binding PreviewPlayerMask}" MaxHeight="420" VerticalAlignment="Center" />
       </Border>
 
@@ -82,28 +100,34 @@
                 <TextBlock Classes="body" Text="{Binding ModeHint}" />
               </StackPanel>
 
-              <!-- Colour (static, breathing) -->
+              <!-- Colour (static, breathing): the six presets and Custom. With Custom chosen its hex code stands where a preset's
+                   name does; a click on Custom (again, too) opens the colour disc with the hex box under it, anchored to the
+                   swatch (CustomColourFlyout), so the card is as tall as with a preset. -->
               <StackPanel IsVisible="{Binding ShowsColour}">
                 <Border Classes="divider" />
                 <StackPanel Spacing="8" Margin="0,12">
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Classes="h2" Text="{Binding ColourLabel}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding SelectedName}" />
+                    <TextBlock Grid.Column="1" Name="ColourName" Classes="value" Text="{Binding SelectedName}" VerticalAlignment="Center" />
                   </Grid>
-                  <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}"
+                  <ListBox Name="ColourSwatches" Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Swatches}" SelectedItem="{Binding SelectedPreset}"
                            ItemContainerTheme="{StaticResource SwatchItem}" HorizontalAlignment="Left">
                     <ListBox.ItemsPanel>
                       <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                     </ListBox.ItemsPanel>
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="vm:ColourPreset">
-                        <Ellipse Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
+                        <Panel ToolTip.Tip="{Binding Name}" Background="Transparent">
+                          <Ellipse Fill="{Binding Brush}" IsVisible="{Binding HasColour}" />
+                          <!-- Custom before its first use: a plain ring with a plus -->
+                          <Ellipse Stroke="{StaticResource MutedBrush}" StrokeThickness="1.5" IsVisible="{Binding IsEmpty}" />
+                          <c:IconSlot Data="{x:Static c:IconPaths.Plus}" Size="16" Stroke="{StaticResource TextSecondaryBrush}" IsVisible="{Binding IsEmpty}" />
+                        </Panel>
                       </DataTemplate>
                     </ListBox.ItemTemplate>
                   </ListBox>
                 </StackPanel>
               </StackPanel>
-
               <!-- Breathing: one section, three sliders -->
               <StackPanel IsVisible="{Binding ShowsBreathing}">
                 <Border Classes="divider" />
@@ -145,13 +169,15 @@
               </StackPanel>
 
               <!-- Brightness -->
-              <Border Classes="divider" />
-              <StackPanel Spacing="4" Margin="0,12">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Classes="h2" Text="{Binding BrightnessLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.BrightnessText}" />
-                </Grid>
-                <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.Brightness}" />
+              <StackPanel Name="BrightnessSection">
+                <Border Classes="divider" />
+                <StackPanel Spacing="4" Margin="0,12">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="h2" Text="{Binding BrightnessLabel}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.BrightnessText}" />
+                  </Grid>
+                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.Brightness}" />
+                </StackPanel>
               </StackPanel>
 
               <!-- Player LEDs, with their brightness as a sub-setting: its label and a segmented choice on one line -->

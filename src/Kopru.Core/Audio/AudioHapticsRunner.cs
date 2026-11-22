@@ -86,6 +86,7 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 			}
 			dsp.Band = value.Band;
 			dsp.Strength = value.Strength;
+			dsp.Sensitivity = value.Sensitivity;
 			bool wasOn = settings.On;
 			settings = value;
 			int pid = activeGame?.ProcessId ?? 0;
@@ -199,7 +200,7 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 		capture = started;
 		startedAt = Stopwatch.GetTimestamp();
 		log(string.Create(CultureInfo.InvariantCulture,
-			$"audio haptics: listening to {target.Exe} ({ModeName(started.Mode)}), band {BandName(settings.Band)}, strength {Math.Round(settings.Strength * 100):0} %"));
+			$"audio haptics: listening to {target.Exe} ({ModeName(started.Mode)}), band {BandName(settings.Band)}, strength {Math.Round(settings.Strength * 100):0} %, sensitivity {Math.Round(dsp.Sensitivity):0} %"));
 	}
 
 	// Caller holds gate.
@@ -230,8 +231,8 @@ public sealed class AudioHapticsRunner : IAudioCaptureSink, IThreadPoolWorkItem,
 		TimeSpan active = Stopwatch.GetElapsedTime(startedAt);
 		log($"audio haptics: stopped ({reason})");
 		// The capture thread has stopped (Dispose waits for it): its numbers are settled.
-		log("audio haptics: " + stats.Summary(active, dsp.PeakEnvelope));
-		log("audio haptics: session verdict: " + stats.Verdict(settings.Strength));
+		log("audio haptics: " + stats.Summary(active, dsp.PeakEnvelope, dsp.GateOpenDb));
+		log("audio haptics: session verdict: " + stats.Verdict(settings.Strength, dsp.GateOpenDb));
 		paused = false;
 	}
 

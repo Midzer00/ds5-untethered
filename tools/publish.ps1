@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Builds the user download: artifacts\DS5-Untethered-<version>-win-x64.zip, plus
+# Builds the user download: artifacts\DS5-Untethered-<version>-win-x64-Portable.zip, plus
 # artifacts\DS5-Untethered-<version>-Setup.exe when Inno Setup 6 is installed (tools\installer\DS5Untethered.iss), and with
 # both, artifacts\DS5-Untethered-<version>-Update.exe (a byte-identical copy of the Setup.exe that only the in-app updater
 # downloads, so GitHub's per-asset download counts tell new downloads from updates) and artifacts\update.json: the next
@@ -52,7 +52,7 @@ if (-not [string]::IsNullOrWhiteSpace($StagingDir)) {
 		Fail 'StagingDir must be inside the artifacts folder (it is emptied first).'
 	}
 }
-$zip = Join-Path $artifacts "$name.zip"
+$zip = Join-Path $artifacts "$name-Portable.zip"
 $iss = Join-Path $PSScriptRoot 'installer\DS5Untethered.iss'
 $setup = Join-Path $artifacts "DS5-Untethered-$version-Setup.exe"
 # The same installer under the name only update.json links to (docs\RELEASING.md, "Download counts").
@@ -228,7 +228,7 @@ $zipInfo = Get-Item $zip
 $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash
 $total = ($files | Measure-Object -Property Length -Sum).Sum
 Write-Host ''
-Write-Host "Zip:     $($zipInfo.FullName)"
+Write-Host "Portable: $($zipInfo.FullName)"
 Write-Host ("Size:    {0:N1} MB (unpacked {1:N1} MB)" -f ($zipInfo.Length / 1MB), ($total / 1MB))
 Write-Host "Files:   $($files.Count)"
 Write-Host "SHA-256: $hash"
@@ -288,7 +288,7 @@ Write-Host ''
 Write-Host 'Release order (docs\RELEASING.md):' -ForegroundColor Cyan
 Write-Host "  1. Create the GitHub release v$version and upload all three files, under exactly these names:"
 Write-Host "     $(Split-Path $setup -Leaf), $(Split-Path $zip -Leaf), $(Split-Path $update -Leaf)"
-Write-Host '     Link only the Setup.exe and the zip in the release notes; the Update.exe is used by in-app updates.'
+Write-Host '     Link only the Setup.exe and the portable zip in the release notes; the Update.exe is used by in-app updates.'
 Write-Host '  2. Check that all three download links work.'
 Write-Host '  3. Only then copy artifacts\update.json over the repository''s update.json, commit and push it to main.'
 Write-Host '     (Running copies see the new version within a week, or at once with Check Now.)'

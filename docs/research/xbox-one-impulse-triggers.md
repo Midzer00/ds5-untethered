@@ -248,7 +248,7 @@ Steps 1 to 3 already answer go/no-go. No real controller, HidHide change or new 
 
 - Trigger effects are 11-byte blocks built in `src/Kopru.Core/Protocol/TriggerEffects.cs`. `Vibration(position, amplitude, frequency)` produces mode `0x26`: a zone mask, **amplitude 1 to 8** per zone and a **frequency 1 to 255 Hz**. `MultiplePositionVibration` gives a different amplitude per zone.
 - A virtual pad hands the bridge a DualSense-format output report through `IVirtualPad.OutputReceived` (`src/Kopru.Core/Virtual/IVirtualPad.cs`). The Xbox 360 pad does this in `XboxReports.RumbleToDualSense`, setting only the two motor bytes (`src/Kopru.Core/Virtual/XboxReports.cs`).
-- `ControllerBridge` (`src/Kopru.Core/Bridge/ControllerBridge.cs`) takes that report: it drops repeats of an identical block, remembers the game's effect per trigger, sets `triggersSeen` on the first real effect, scales effects by trigger strength in `ApplyTriggers` (`TriggerEffects.Scale` already handles mode `0x26`), applies the fallback effect only while the game has sent none, and sends the result at once with `BluetoothSession.UpdateOutput` (`src/Kopru.Core/Bluetooth/BluetoothSession.cs`).
+- `ControllerBridge` (`src/Kopru.Core/Bridge/ControllerBridge/ControllerBridge.cs`) takes that report: it drops repeats of an identical block, remembers the game's effect per trigger, sets `triggersSeen` on the first real effect, scales effects by trigger strength in `ApplyTriggers` (`TriggerEffects.Scale` already handles mode `0x26`), applies the fallback effect only while the game has sent none, and sends the result at once with `BluetoothSession.UpdateOutput` (`src/Kopru.Core/Bluetooth/BluetoothSession.cs`).
 
 ### Proposed mapping
 

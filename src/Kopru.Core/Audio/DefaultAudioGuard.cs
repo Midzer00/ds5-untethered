@@ -34,7 +34,9 @@ public sealed record PadAudioMatch(bool IsVirtualPad, int? Port, PadMatchMethod 
 	public static readonly PadAudioMatch None = new(false, null, PadMatchMethod.NotPad, "not a virtual pad");
 }
 
-public sealed record AudioEndpointInfo(string Id, AudioFlow Flow, bool IsActive, string Name, PadAudioMatch Pad);
+// UsbDevice: the plain USB device ("USB\VID_054C&PID_0CE6\inst") the endpoint's audio function sits on, when the
+// device tree named one; wired mode matches the controller's USB audio output by it (WiredAudioEndpoints).
+public sealed record AudioEndpointInfo(string Id, AudioFlow Flow, bool IsActive, string Name, PadAudioMatch Pad, string? UsbDevice = null);
 
 // Change notifications (may arrive on any thread).
 public interface IAudioDefaultsListener

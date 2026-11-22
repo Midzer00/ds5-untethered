@@ -72,12 +72,12 @@ public static partial class Text
 		$"Switches back if Windows picks the controller.");
 
 	public static string ShortcutsShort(Language? l = null) => Pick(l,
-		$"PS'yi basılı tut ve listedeki tuşlardan birine bas.",
-		$"Hold PS and press one of the listed buttons.");
+		$"ø tuşunu basılı tut ve listedeki tuşlardan birine bas.",
+		$"Hold the ø button and press one of the listed buttons.");
 
 	public static string PsOpenAppShort(Language? l = null) => Pick(l,
-		$"Oyun açık değilken PS'ye kısa bas: uygulama öne gelir.",
-		$"With no game open, a short PS press shows the app.");
+		$"Oyun açık değilken ø tuşuna kısa bas: uygulama öne gelir.",
+		$"With no game open, a short ø button press shows the app.");
 
 	public static string DesktopModeShort(Language? l = null) => Pick(l,
 		$"Kumanda fare ve klavye olur; oyunlar giriş almaz.",

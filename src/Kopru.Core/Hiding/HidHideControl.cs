@@ -137,6 +137,19 @@ public sealed class HidHideControl(ICommandRunner runner, string? cliPath)
 		return RunAsync("--dev-hide " + Quote(instanceId), cancellationToken);
 	}
 
+	// Hides a USB HID collection ("HID\VID_..."), the one place the USB twin's shape is checked: only ever the USB
+	// twin of the bridged controller while it charges over the cable, never our own virtual pad — the two share this
+	// id shape, so which pad is hidden is decided by the caller (the cable code passes only the pad whose 0x09
+	// address matched the bridged controller).
+	public Task HideUsbAsync(string instanceId, CancellationToken cancellationToken = default)
+	{
+		if (!DeviceInstance.IsUsbHidCollection(instanceId))
+		{
+			throw new ArgumentException(instanceId, nameof(instanceId));
+		}
+		return RunAsync("--dev-hide " + Quote(instanceId), cancellationToken);
+	}
+
 	public Task UnhideAsync(string instanceId, CancellationToken cancellationToken = default) =>
 		RunAsync("--dev-unhide " + Quote(instanceId), cancellationToken);
 

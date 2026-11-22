@@ -45,12 +45,15 @@ public static partial class Text
 		Pick(l, $"{hours} sa {minutes:00} dk", $"{hours} h {minutes:00} min");
 	public static string DurationDaysHours(int days, int hours, Language? l = null) => Pick(l, $"{days} g {hours} sa", $"{days} d {hours} h");
 
-	// USB/Bluetooth switch toast and the stuck connection chip.
-	public static string NotifyCableTitle(Language? l = null) => Pick(l, $"Kablo Bağlandı", $"Cable Connected");
+	// The toast when Bluetooth is lost while the controller is on a cable, and the stuck connection chip.
+	public static string NotifyCableTitle(Language? l = null) => Pick(l, $"Bluetooth Bağlantısı Koptu", $"Bluetooth Connection Lost");
 
 	public static string NotifyCableBody(Language? l = null) => Pick(l,
-		$"Sanal kumanda durduruldu. Kabloyu çıkarınca Bluetooth'ta kendiliğinden yeniden başlar.",
-		$"The virtual controller was stopped. Unplug the cable and it starts again by itself on Bluetooth.");
+		$"Kumanda kabloyla çalışıyor; sanal kumanda durduruldu. Bluetooth geri gelince kendiliğinden yeniden başlar.",
+		$"The controller now works over its cable and the virtual controller was stopped. It starts again by itself when Bluetooth is back.");
+
+	// Connection value while the controller stays on Bluetooth with its charging cable plugged in.
+	public static string ConnectionBluetoothCable(Language? l = null) => Pick(l, $"Bluetooth · Kablo Takılı", $"Bluetooth · Cable Plugged In");
 
 	public static string HealthBridgeStuck(Language? l = null) => Pick(l,
 		$"Gerçek kumanda görünüyor ama sanal kumanda ona bağlanamıyor. Yeniden bağlamayı dene.",

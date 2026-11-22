@@ -221,7 +221,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	public string AppName => AppInfo.Name;
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 	public string DeviceName => _service.IsConnected ? _service.DeviceName : Text.DeviceNoController();
-	public string DeviceConnection => _service.IsConnected ? Text.DeviceConnectedBluetooth() : Text.DeviceNotConnected();
+	public string DeviceConnection => !_service.IsConnected ? Text.DeviceNotConnected()
+		: _service.IsWired ? Text.ConnectionWired()
+		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable()
+		: Text.DeviceConnectedBluetooth();
 	public string DeviceBattery => !_service.HasBattery ? Text.BatteryUnknown() : _service.IsCharging
 		? Text.BatteryCharging(Math.Round(_service.BatteryPercent))
 		: Text.BatteryPercent(Math.Round(_service.BatteryPercent));

@@ -1,55 +1,71 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.OverviewView" x:DataType="vm:OverviewViewModel">
+  <!-- The live card's palette: flat colours the app already uses (accent blue, the Support pink, the wait amber) and a
+       violet and a teal; the chart and gauge take the verdict colours. Fills are these at low opacity, never gradients. -->
+  <UserControl.Resources>
+    <SolidColorBrush x:Key="LiveBlueBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="LivePinkBrush" Color="#DB61A2" />
+    <SolidColorBrush x:Key="LiveVioletBrush" Color="#9B8AFB" />
+    <SolidColorBrush x:Key="LiveTealBrush" Color="#3DBDAA" />
+    <SolidColorBrush x:Key="LiveAmberBrush" Color="#C9A24A" />
+    <SolidColorBrush x:Key="LiveLimitBrush" Color="#2EFFFFFF" />
+    <SolidColorBrush x:Key="LiveTrackBrush" Color="#26FFFFFF" />
+  </UserControl.Resources>
   <UserControl.Styles>
     <Style Selector="TextBlock.rowValue.poor"><Setter Property="Foreground" Value="{StaticResource DangerBrush}" /></Style>
     <Style Selector="TextBlock.rowValue.muted"><Setter Property="Foreground" Value="{StaticResource MutedBrush}" /><Setter Property="FontWeight" Value="Normal" /></Style>
-    <!-- The live card: the delay headline, the quality word (the only coloured text: green / amber / red, muted while
-         measuring), and thin live meters on a visible track whose value reads muted at rest -->
+    <!-- The live card: the delay headline -->
     <Style Selector="TextBlock.liveBig">
       <Setter Property="FontSize" Value="26" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="TextWrapping" Value="NoWrap" />
     </Style>
-    <Style Selector="TextBlock.linkWord">
-      <Setter Property="FontSize" Value="17" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="TextWrapping" Value="NoWrap" />
-      <Setter Property="VerticalAlignment" Value="Top" />
-      <Setter Property="Margin" Value="0,5,0,0" />
-    </Style>
     <Style Selector="TextBlock.linkWord.good"><Setter Property="Foreground" Value="{StaticResource IndicatorOnBrush}" /></Style>
     <Style Selector="TextBlock.linkWord.warn"><Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" /></Style>
     <Style Selector="TextBlock.linkWord.poor"><Setter Property="Foreground" Value="{StaticResource DangerBrush}" /></Style>
     <Style Selector="TextBlock.linkWord.muted"><Setter Property="Foreground" Value="{StaticResource MutedBrush}" /></Style>
-    <Style Selector="StackPanel.meterGroup">
-      <Setter Property="Spacing" Value="6" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="ToolTip.ShowDelay" Value="350" />
-    </Style>
-    <Style Selector="TextBlock.groupTitle">
-      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+    <!-- The quality gauge and the chart in the verdict's colour (accent while measuring) -->
+    <Style Selector="c|QualityGauge.quality"><Setter Property="Fill" Value="{StaticResource MutedBrush}" /><Setter Property="Track" Value="{StaticResource LiveTrackBrush}" /></Style>
+    <Style Selector="c|QualityGauge.quality.good"><Setter Property="Fill" Value="{StaticResource IndicatorOnBrush}" /></Style>
+    <Style Selector="c|QualityGauge.quality.warn"><Setter Property="Fill" Value="{StaticResource IndicatorWaitBrush}" /></Style>
+    <Style Selector="c|QualityGauge.quality.poor"><Setter Property="Fill" Value="{StaticResource DangerBrush}" /></Style>
+    <Style Selector="c|Sparkline.zone"><Setter Property="Stroke" Value="{StaticResource AccentBrush}" /></Style>
+    <Style Selector="c|Sparkline.zone.good"><Setter Property="Stroke" Value="{StaticResource IndicatorOnBrush}" /></Style>
+    <Style Selector="c|Sparkline.zone.warn"><Setter Property="Stroke" Value="{StaticResource IndicatorWaitBrush}" /></Style>
+    <Style Selector="c|Sparkline.zone.poor"><Setter Property="Stroke" Value="{StaticResource DangerBrush}" /></Style>
+    <Style Selector="TextBlock.linkWord">
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Grid.meterRow">
+    <!-- Signals lanes: the trace, then the names and current values in a narrow column on the right -->
+    <Style Selector="Grid.lane">
+      <Setter Property="ColumnSpacing" Value="12" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="ToolTip.ShowDelay" Value="350" />
     </Style>
-    <Style Selector="Grid.meterRow > TextBlock">
+    <Style Selector="StackPanel.laneValues">
+      <Setter Property="Width" Value="60" />
+      <Setter Property="Spacing" Value="1" />
       <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.laneValue">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style Selector="TextBlock.laneName, TextBlock.laneTitle, TextBlock.laneNumber">
+      <Setter Property="FontSize" Value="12" />
       <Setter Property="TextWrapping" Value="NoWrap" />
     </Style>
-    <Style Selector="TextBlock.meterValue">
-      <Setter Property="TextAlignment" Value="Right" />
-      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    <Style Selector="TextBlock.laneName">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="MinWidth" Value="16" />
     </Style>
-    <Style Selector="TextBlock.meterValue.active"><Setter Property="Foreground" Value="{StaticResource TextBrush}" /></Style>
-    <Style Selector="ProgressBar.meter.level">
-      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="ProgressBar.meter.level.haptic">
-      <Setter Property="Foreground" Value="#7AB0FF" />
+    <Style Selector="TextBlock.laneTitle"><Setter Property="Foreground" Value="{StaticResource MutedBrush}" /></Style>
+    <Style Selector="TextBlock.laneNumber">
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="FontFeatures" Value="+tnum" />
+      <Setter Property="MinWidth" Value="18" />
     </Style>
     <!-- Big line in the hero: the game, the controller or "no controller" -->
     <Style Selector="TextBlock.hero">
@@ -267,9 +283,9 @@
             <Grid ColumnDefinitions="160,*" ColumnSpacing="{StaticResource Gap}">
               <Viewbox Name="HeroArt" Stretch="Uniform" VerticalAlignment="Center">
                 <Panel Width="204" Height="136" Opacity="{Binding ArtOpacity}">
-                  <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+                  <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
                                    PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" />
-                  <c:ControllerInputOverlay Pressed="{Binding LivePressed}" IsEdge="{Binding IsEdge}" Accent="{StaticResource AccentBrush}" />
+                  <c:ControllerInputOverlay Pressed="{Binding LivePressed}" IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" Accent="{StaticResource AccentBrush}" />
                 </Panel>
               </Viewbox>
 
@@ -323,83 +339,118 @@
             </Grid>
           </Border>
 
-          <!-- Live: the link as a headline (the typical delay big, the worst under it, the quality word in its colour), the last
-               30 s as a graph scaled to the data (the "you can feel it" line only when it is in range), what to do only when
-               something must be done, the input rate with its low, and the triggers and haptics as two small groups of live
-               meters. Stretched ("fill") only to end on the quick settings' line: the graph takes that bit of height, between
-               its minimum and a cap. -->
-          <Border Grid.Row="1" Classes="panel fill">
+          <!-- Live, in two views picked in the header: Link (the typical delay as the headline beside a small quality gauge in
+               the verdict's colour with its word, the last 60 s as an area chart in that colour, what to do only when something
+               must be done) and Signals (the last 10 s of the triggers, the haptic motors and the live microphone as small
+               scrolling traces). Both views share one cell, so the card keeps its height whichever is shown. Stretched ("fill")
+               only to end on the quick settings' line: the chart takes that bit of height, between its minimum and a cap. -->
+          <Border Grid.Row="1" Classes="panel fill" Name="LiveCard">
             <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource Gap}">
-              <Grid ColumnDefinitions="*,Auto">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
                 <TextBlock Classes="h2" Text="{Binding LiveTitle}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Live.GraphCaption}" IsVisible="{Binding IsLive}" VerticalAlignment="Center" />
+                <ListBox Grid.Column="1" Name="LiveViews" Theme="{StaticResource Segmented}" ItemsSource="{Binding Live.Views}" SelectedIndex="{Binding Live.SelectedView}"
+                         IsVisible="{Binding IsLive}" MinWidth="176" AutomationProperties.Name="{Binding LiveTitle}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TabOption">
+                      <Panel>
+                        <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                                   IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
+                        <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                                   IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                      </Panel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
               </Grid>
               <TextBlock Grid.Row="1" Classes="body" Text="{Binding LiveIdle}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"
                          TextAlignment="Center" IsVisible="{Binding IsNotLive}" />
-              <Grid Grid.Row="1" IsVisible="{Binding IsLive}" RowSpacing="{StaticResource Gap}">
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto" />
-                  <RowDefinition Height="*" MinHeight="40" MaxHeight="200" />
-                  <RowDefinition Height="Auto" />
-                  <RowDefinition Height="Auto" />
-                  <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <!-- Headline: the typical delay, the worst under it, and the quality word (the only coloured text) -->
-                <Grid Name="LiveHeadline" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding LatencyTip}" Background="Transparent">
-                  <StackPanel Spacing="0">
-                    <TextBlock Classes="liveBig" Text="{Binding Live.DelayValue}" />
-                    <TextBlock Classes="caption" Text="{Binding Live.DelayDetail}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1" Name="LinkWord" Classes="linkWord" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}"
-                             Classes.poor="{Binding IsLinkPoor}" Classes.muted="{Binding IsLinkMeasuring}" Text="{Binding LinkStateText}" />
-                </Grid>
-                <Panel Grid.Row="1" ToolTip.Tip="{Binding Live.GraphTip}" Background="Transparent">
-                  <c:Sparkline Values="{Binding Live.WorstHistory}" Secondary="{Binding Live.TypicalHistory}" Capacity="30" Maximum="{Binding Live.ChartTop}"
-                               Limit="{Binding Live.ShownLimitMs}" Unit="{Binding Live.Unit}"
-                               Stroke="{StaticResource AccentBrush}" LimitBrush="{StaticResource MutedBrush}" LabelBrush="{StaticResource MutedBrush}" />
-                  <TextBlock Name="ChartNote" Classes="caption" Text="{Binding Live.ChartNote}" IsVisible="{Binding Live.HasChartNote}"
-                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,11,0,0" />
-                </Panel>
-                <!-- What to do, only when something must be done -->
-                <TextBlock Grid.Row="2" Name="LinkAdvice" Classes="caption" Text="{Binding LinkAdvice}" IsVisible="{Binding HasLinkAdvice}" TextWrapping="Wrap"
-                           MaxLines="3" TextTrimming="CharacterEllipsis" />
-                <!-- Input rate now, its low of the last 30 seconds beside it -->
-                <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
-                  <TextBlock Classes="rowLabel" Text="{Binding Live.RateLabel}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Live.RateMin}" IsVisible="{Binding Live.HasRateMin}"
-                             VerticalAlignment="Center" TextWrapping="NoWrap" />
-                  <TextBlock Grid.Column="2" Classes="rowValue" Text="{Binding Live.RateValue}" TextWrapping="NoWrap" />
-                </Grid>
-                <!-- Two small groups: the triggers' travel and the haptic motors' level, each a thin live meter with its value -->
-                <Grid Grid.Row="4" Name="LiveMeters" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource GapLarge}" Margin="0,2,0,0">
-                  <StackPanel Classes="meterGroup" ToolTip.Tip="{Binding Live.TriggersTip}">
-                    <TextBlock Classes="caption groupTitle" Text="{Binding Live.TriggersLabel}" />
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38">
-                      <TextBlock Classes="caption" Text="{Binding Live.L2Label}" />
-                      <ProgressBar Grid.Column="1" Classes="meter level" Classes.active="{Binding Live.IsL2Active}" Value="{Binding Live.L2}" />
-                      <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsL2Active}" Text="{Binding Live.L2Text}" />
+              <Panel Grid.Row="1" IsVisible="{Binding IsLive}">
+                <!-- Link -->
+                <Grid Name="LiveLink" IsVisible="{Binding Live.IsLinkView}" RowSpacing="12">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" MinHeight="40" MaxHeight="260" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <Grid Name="LiveHeadline" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding LatencyTip}" Background="Transparent">
+                    <StackPanel Spacing="0" VerticalAlignment="Center">
+                      <TextBlock Classes="liveBig" Text="{Binding Live.DelayValue}" />
+                      <TextBlock Classes="caption" Text="{Binding Live.DelayCaption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" MinWidth="76">
+                      <c:QualityGauge Name="LinkGauge" Width="76" Height="40" HorizontalAlignment="Center" Level="{Binding LinkLevel}" Classes="quality"
+                                      Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}" Classes.poor="{Binding IsLinkPoor}" />
+                      <TextBlock Name="LinkWord" Classes="linkWord" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}"
+                                 Classes.poor="{Binding IsLinkPoor}" Classes.muted="{Binding IsLinkMeasuring}" Text="{Binding LinkStateText}" />
+                    </StackPanel>
+                  </Grid>
+                  <Panel Grid.Row="1" ToolTip.Tip="{Binding Live.GraphTip}" Background="Transparent">
+                    <c:Sparkline Name="LinkChart" Classes="zone" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}" Classes.poor="{Binding IsLinkPoor}"
+                                 Values="{Binding Live.WorstHistory}" Secondary="{Binding Live.TypicalHistory}" Marks="{Binding Live.TroubleMarks}" Capacity="60"
+                                 Maximum="{Binding Live.ChartTop}" Limit="{Binding Live.ShownLimitMs}" Unit="{Binding Live.Unit}"
+                                 LimitBrush="{StaticResource LiveLimitBrush}" LabelBrush="{StaticResource MutedBrush}" />
+                  </Panel>
+                  <!-- One muted line (what the chart covers, and the input rate), then what to do only when something must be done;
+                       one row, so the line ends on the card's bottom like the Signals view's when there is no advice -->
+                  <StackPanel Grid.Row="2" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                      <TextBlock Name="ChartNote" Classes="caption" Text="{Binding Live.GraphCaption}" TextWrapping="NoWrap" />
+                      <TextBlock Grid.Column="1" Name="LiveRate" Classes="caption" Text="{Binding Live.RateValue}" IsVisible="{Binding Live.HasRate}" TextWrapping="NoWrap"
+                                 ToolTip.Tip="{Binding Live.RateLabel}" />
                     </Grid>
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38">
-                      <TextBlock Classes="caption" Text="{Binding Live.R2Label}" />
-                      <ProgressBar Grid.Column="1" Classes="meter level" Classes.active="{Binding Live.IsR2Active}" Value="{Binding Live.R2}" />
-                      <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsR2Active}" Text="{Binding Live.R2Text}" />
-                    </Grid>
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Classes="meterGroup">
-                    <TextBlock Classes="caption groupTitle" Text="{Binding Live.HapticsLabel}" />
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38" ToolTip.Tip="{Binding Live.LeftHapticsTip}">
-                      <TextBlock Classes="caption" Text="{Binding Live.LeftLabel}" />
-                      <ProgressBar Grid.Column="1" Classes="meter level haptic" Classes.active="{Binding Live.IsHapticsLeftActive}" Value="{Binding Live.HapticsLeft}" />
-                      <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsHapticsLeftActive}" Text="{Binding Live.HapticsLeftText}" />
-                    </Grid>
-                    <Grid Classes="meterRow" ColumnDefinitions="28,*,38" ToolTip.Tip="{Binding Live.RightHapticsTip}">
-                      <TextBlock Classes="caption" Text="{Binding Live.RightLabel}" />
-                      <ProgressBar Grid.Column="1" Classes="meter level haptic" Classes.active="{Binding Live.IsHapticsRightActive}" Value="{Binding Live.HapticsRight}" />
-                      <TextBlock Grid.Column="2" Classes="caption meterValue" Classes.active="{Binding Live.IsHapticsRightActive}" Text="{Binding Live.HapticsRightText}" />
-                    </Grid>
+                    <TextBlock Name="LinkAdvice" Classes="caption" Text="{Binding LinkAdvice}" IsVisible="{Binding HasLinkAdvice}" TextWrapping="Wrap"
+                               MaxLines="3" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
                 </Grid>
-              </Grid>
+
+                <!-- Signals: one lane per group, its trace left and its names with the current values right; the lanes grow up to
+                     a cap and the muted footer line stays on the card's bottom, as in the Link view -->
+                <Grid Name="LiveSignals" IsVisible="{Binding Live.IsSignalsView}" RowDefinitions="*,Auto" RowSpacing="10" Background="Transparent"
+                      ToolTip.Tip="{Binding Live.SignalsTip}">
+                <Grid RowSpacing="10">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
+                    <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
+                    <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
+                  </Grid.RowDefinitions>
+                  <Grid Classes="lane" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Live.TriggersTip}">
+                    <c:SignalTrace Name="TriggerTrace" Mode="Areas" Primary="{Binding Live.L2Trace}" Secondary="{Binding Live.R2Trace}" Revision="{Binding Live.SignalRevision}"
+                                   PrimaryBrush="{StaticResource LivePinkBrush}" SecondaryBrush="{StaticResource LiveBlueBrush}" />
+                    <StackPanel Grid.Column="1" Classes="laneValues">
+                      <StackPanel Classes="laneValue">
+                        <TextBlock Classes="laneName" Foreground="{StaticResource LivePinkBrush}" Text="{Binding Live.L2Label}" />
+                        <TextBlock Classes="laneNumber" Text="{Binding Live.L2Text}" />
+                      </StackPanel>
+                      <StackPanel Classes="laneValue">
+                        <TextBlock Classes="laneName" Foreground="{StaticResource LiveBlueBrush}" Text="{Binding Live.R2Label}" />
+                        <TextBlock Classes="laneNumber" Text="{Binding Live.R2Text}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                  <Grid Grid.Row="1" Classes="lane" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Live.HapticsTip}">
+                    <c:SignalTrace Name="HapticsTrace" Mode="Mirrored" Primary="{Binding Live.HapticsLeftTrace}" Secondary="{Binding Live.HapticsRightTrace}"
+                                   Revision="{Binding Live.SignalRevision}" PrimaryBrush="{StaticResource LiveVioletBrush}" SecondaryBrush="{StaticResource LiveTealBrush}" />
+                    <StackPanel Grid.Column="1" Classes="laneValues">
+                      <TextBlock Classes="laneTitle" Text="{Binding Live.HapticsLabel}" />
+                      <StackPanel Classes="laneValue">
+                        <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveVioletBrush}" Text="{Binding Live.HapticsLeftText}" />
+                        <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveTealBrush}" Text="{Binding Live.HapticsRightText}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                  <Grid Grid.Row="2" Classes="lane" ColumnDefinitions="*,Auto" IsVisible="{Binding Live.HasMic}">
+                    <c:SignalTrace Name="MicTrace" Mode="Envelope" Primary="{Binding Live.MicTrace}" Revision="{Binding Live.SignalRevision}"
+                                   PrimaryBrush="{StaticResource LiveAmberBrush}" />
+                    <StackPanel Grid.Column="1" Classes="laneValues">
+                      <TextBlock Classes="laneTitle" Text="{Binding Live.MicLabel}" />
+                      <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveAmberBrush}" Text="{Binding Live.MicText}" />
+                    </StackPanel>
+                  </Grid>
+                </Grid>
+                  <!-- One muted line: what the traces cover -->
+                  <TextBlock Grid.Row="1" Name="SignalsNote" Classes="caption" Text="{Binding Live.SignalsCaption}" TextWrapping="NoWrap" />
+                </Grid>
+              </Panel>
             </Grid>
           </Border>
         </Grid>

@@ -1,0 +1,2076 @@
+{
+ "about": "Controller colour variants for the app art (site_variants.py, variant_materials.py), in display order: standard colours, then special editions. Colours are photo estimates, brought onto the model's calibration in variant_materials.linear. No logos, artwork, symbols or brand marks: only colour schemes, finishes and simple procedural patterns. approach: solid (the colour's own plain colours and finish), scheme-only (a printed edition reduced to its colour scheme), original-pattern (our own procedural pattern evoking the edition's look in colour, density and placement; nothing traced). The default white is the shipped art and has no recipe.",
+ "variants": [
+  {
+   "id": "jet-black",
+   "group": "standard",
+   "name": {
+    "en": "Jet Black",
+    "tr": "Kuzgun Siyahı"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#1E1F22",
+    "touchpad": "#1E1F22",
+    "core": "#2A2B2F",
+    "face": "#26272B",
+    "dpad": "#26272B",
+    "sticks": "#222327",
+    "triggers": "#1E1F22"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "crimson-red",
+   "group": "standard",
+   "name": {
+    "en": "Crimson Red",
+    "tr": "Koyu Kırmızı"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#95254C",
+    "touchpad": "#95254C",
+    "core": "#1C1C1F",
+    "face": "#9D2E53",
+    "dpad": "#9D2E53",
+    "sticks": "#1F1F22",
+    "triggers": "#1C1C1F"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "sky-blue",
+   "group": "standard",
+   "name": {
+    "en": "Sky Blue",
+    "tr": "Gök Mavisi"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#1BB2FF",
+    "touchpad": "#1BB2FF",
+    "core": "#1E1F22",
+    "face": "#20BAFF",
+    "dpad": "#20BAFF",
+    "sticks": "#1F2023",
+    "triggers": "#1E1F22"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "bright-pink",
+   "group": "standard",
+   "name": {
+    "en": "Bright Pink",
+    "tr": "Canlı Pembe"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#EC8DB4",
+    "touchpad": "#EC8DB4",
+    "core": "#1E1F22",
+    "face": "#EF98BC",
+    "dpad": "#EF98BC",
+    "sticks": "#1F2023",
+    "triggers": "#1E1F22"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "deep-violet",
+   "group": "standard",
+   "name": {
+    "en": "Deep Violet",
+    "tr": "Koyu Mor"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#57238E",
+    "touchpad": "#57238E",
+    "core": "#1E1F22",
+    "face": "#612A97",
+    "dpad": "#612A97",
+    "sticks": "#1F2023",
+    "triggers": "#1E1F22"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "grey-camo",
+   "group": "standard",
+   "name": {
+    "en": "Grey Camo",
+    "tr": "Gri Kamuflaj"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "camo": [
+      "#5C5C60",
+      "#8E8F93",
+      "#303034",
+      "#18181A"
+     ],
+     "size": 75,
+     "seed": 3
+    },
+    "touchpad": {
+     "camo": [
+      "#5C5C60",
+      "#8E8F93",
+      "#303034",
+      "#18181A"
+     ],
+     "size": 75,
+     "seed": 3
+    },
+    "core": "#1E1F22",
+    "face": "#26272B",
+    "dpad": "#26272B",
+    "sticks": "#1F2023",
+    "triggers": "#1E1F22",
+    "pill": "#1E1F22",
+    "rearColour": "#5C5C60"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "metallic-red",
+   "group": "standard",
+   "name": {
+    "en": "Metallic Red",
+    "tr": "Metalik Kırmızı"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#B54251",
+    "touchpad": "#B54251",
+    "core": "#2A2224",
+    "face": "#BD535F",
+    "dpad": "#BD535F",
+    "sticks": "#232326",
+    "triggers": "#2A2224"
+   },
+   "finish": {
+    "default": "metallic",
+    "core": "matte",
+    "sticks": "matte",
+    "triggers": "satin"
+   }
+  },
+  {
+   "id": "metallic-blue",
+   "group": "standard",
+   "name": {
+    "en": "Metallic Blue",
+    "tr": "Metalik Mavi"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#3738AC",
+    "touchpad": "#3738AC",
+    "core": "#1E2233",
+    "face": "#4240B4",
+    "dpad": "#4240B4",
+    "sticks": "#20232C",
+    "triggers": "#1E2233"
+   },
+   "finish": {
+    "default": "metallic",
+    "core": "matte",
+    "sticks": "matte",
+    "triggers": "satin"
+   }
+  },
+  {
+   "id": "metallic-silver",
+   "group": "standard",
+   "name": {
+    "en": "Metallic Silver",
+    "tr": "Metalik Gümüş"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#C8CCD2",
+    "touchpad": "#C8CCD2",
+    "core": "#2E3035",
+    "face": "#BFC3C9",
+    "dpad": "#BFC3C9",
+    "sticks": "#26282C",
+    "triggers": "#C8CCD2",
+    "pill": "#2E3035"
+   },
+   "finish": {
+    "default": "metallic",
+    "core": "matte",
+    "sticks": "matte"
+   }
+  },
+  {
+   "id": "pearl-iridescent",
+   "group": "standard",
+   "name": {
+    "en": "Pearl Iridescent",
+    "tr": "İnci Yanardöner"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": {
+     "shift": [
+      "#F4EEE4",
+      "#E2C8E2"
+     ],
+     "blend": 0.35
+    },
+    "touchpad": {
+     "shift": [
+      "#F4EEE4",
+      "#E2C8E2"
+     ],
+     "blend": 0.35
+    },
+    "core": {
+     "shift": [
+      "#E3DDE0",
+      "#C8BCDA"
+     ],
+     "blend": 0.35
+    },
+    "face": "#EFE7E2",
+    "dpad": "#EFE7E2",
+    "sticks": "#E4DCD8",
+    "triggers": "#F2ECE6",
+    "emblem": "#5A5E66"
+   },
+   "finish": {
+    "default": "pearl",
+    "sticks": "satin"
+   }
+  },
+  {
+   "id": "indigo-iridescent",
+   "group": "standard",
+   "name": {
+    "en": "Indigo Iridescent",
+    "tr": "Çivit Yanardöner"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": {
+     "shift": [
+      "#4643A2",
+      "#550F71"
+     ],
+     "blend": 0.3
+    },
+    "touchpad": {
+     "shift": [
+      "#4643A2",
+      "#550F71"
+     ],
+     "blend": 0.3
+    },
+    "core": {
+     "shift": [
+      "#431D61",
+      "#2A083D"
+     ],
+     "blend": 0.3
+    },
+    "face": "#43207C",
+    "dpad": "#43207C",
+    "sticks": "#321440",
+    "triggers": "#431B81"
+   },
+   "finish": {
+    "default": "pearl",
+    "sticks": "satin"
+   }
+  },
+  {
+   "id": "teal-iridescent",
+   "group": "standard",
+   "name": {
+    "en": "Teal Iridescent",
+    "tr": "Camgöbeği Yanardöner"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": {
+     "shift": [
+      "#3F8182",
+      "#05365A"
+     ],
+     "blend": 0.3
+    },
+    "touchpad": {
+     "shift": [
+      "#3F8182",
+      "#05365A"
+     ],
+     "blend": 0.3
+    },
+    "core": {
+     "shift": [
+      "#123A53",
+      "#06233C"
+     ],
+     "blend": 0.3
+    },
+    "face": "#0C4259",
+    "dpad": "#0C4259",
+    "sticks": "#092334",
+    "triggers": "#094158"
+   },
+   "finish": {
+    "default": "pearl",
+    "sticks": "satin"
+   }
+  },
+  {
+   "id": "fade-red",
+   "group": "standard",
+   "name": {
+    "en": "Black-to-Red Fade",
+    "tr": "Siyahtan Kırmızıya Geçiş"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "gradient": [
+      "#0B0B0D",
+      "#DD253D"
+     ],
+     "y": [
+      170,
+      560
+     ]
+    },
+    "touchpad": "#0B0B0D",
+    "core": "#DD253D",
+    "face": "#111114",
+    "dpad": "#111114",
+    "sticks": "#DD253D",
+    "triggers": "#0B0B0D",
+    "pill": "#111114",
+    "rearColour": "#DD253D"
+   },
+   "finish": {
+    "default": "glossy",
+    "sticks": "matte",
+    "core": "satin"
+   }
+  },
+  {
+   "id": "fade-green",
+   "group": "standard",
+   "name": {
+    "en": "Black-to-Green Fade",
+    "tr": "Siyahtan Yeşile Geçiş"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "gradient": [
+      "#0B0B0D",
+      "#97DA38"
+     ],
+     "y": [
+      170,
+      560
+     ]
+    },
+    "touchpad": "#0B0B0D",
+    "core": "#97DA38",
+    "face": "#111114",
+    "dpad": "#111114",
+    "sticks": "#97DA38",
+    "triggers": "#0B0B0D",
+    "pill": "#111114",
+    "rearColour": "#97DA38"
+   },
+   "finish": {
+    "default": "glossy",
+    "sticks": "matte",
+    "core": "satin"
+   }
+  },
+  {
+   "id": "fade-blue",
+   "group": "standard",
+   "name": {
+    "en": "Black-to-Blue Fade",
+    "tr": "Siyahtan Maviye Geçiş"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "gradient": [
+      "#0B0B0D",
+      "#01BCFF"
+     ],
+     "y": [
+      170,
+      560
+     ]
+    },
+    "touchpad": "#0B0B0D",
+    "core": "#01BCFF",
+    "face": "#111114",
+    "dpad": "#111114",
+    "sticks": "#01BCFF",
+    "triggers": "#0B0B0D",
+    "pill": "#111114",
+    "rearColour": "#01BCFF"
+   },
+   "finish": {
+    "default": "glossy",
+    "sticks": "matte",
+    "core": "satin"
+   }
+  },
+  {
+   "id": "clear-orange",
+   "group": "standard",
+   "name": {
+    "en": "Clear Orange",
+    "tr": "Şeffaf Turuncu"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#FF8A1E",
+    "touchpad": "#FF8A1E",
+    "core": {
+     "internals": [
+      "#F7801E",
+      "#3A1606",
+      "#8A8C90"
+     ]
+    },
+    "face": "#FF9A40",
+    "dpad": "#FF9A40",
+    "sticks": "#F7801E",
+    "triggers": "#FF8A1E",
+    "pill": "#FF9A40"
+   },
+   "finish": {
+    "default": "translucent",
+    "core": "metallic",
+    "sticks": "matte"
+   }
+  },
+  {
+   "id": "clear-smoke",
+   "group": "standard",
+   "name": {
+    "en": "Clear Smoke",
+    "tr": "Şeffaf Füme"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#56607A",
+    "touchpad": "#56607A",
+    "core": {
+     "internals": [
+      "#6A7080",
+      "#1A1D26",
+      "#8A8C90"
+     ]
+    },
+    "face": "#5A6278",
+    "dpad": "#5A6278",
+    "sticks": "#6A7080",
+    "triggers": "#56607A",
+    "pill": "#5A6278"
+   },
+   "finish": {
+    "default": "translucent",
+    "core": "metallic",
+    "sticks": "matte"
+   }
+  },
+  {
+   "id": "clear-emerald",
+   "group": "standard",
+   "name": {
+    "en": "Clear Emerald",
+    "tr": "Şeffaf Zümrüt"
+   },
+   "approach": "solid",
+   "parts": {
+    "shell": "#22A890",
+    "touchpad": "#22A890",
+    "core": {
+     "internals": [
+      "#24967F",
+      "#062A22",
+      "#8A8C90"
+     ]
+    },
+    "face": "#30B49C",
+    "dpad": "#30B49C",
+    "sticks": "#24967F",
+    "triggers": "#22A890",
+    "pill": "#30B49C"
+   },
+   "finish": {
+    "default": "translucent",
+    "core": "metallic",
+    "sticks": "matte"
+   }
+  },
+  {
+   "id": "retro-grey",
+   "group": "special",
+   "name": {
+    "en": "Retro Grey",
+    "tr": "Retro Gri"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#A8ACB6",
+    "touchpad": "#A8ACB6",
+    "core": "#6E727B",
+    "face": "#3C3F45",
+    "dpad": "#3C3F45",
+    "sticks": "#3A3C41",
+    "triggers": "#3C3F45",
+    "pill": "#3C3F45"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "layered-blue",
+   "group": "special",
+   "name": {
+    "en": "Layered Royal Blue",
+    "tr": "Katmanlı Kraliyet Mavisi"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": "#1D3CC4",
+    "touchpad": {
+     "base": "#2F6CF2",
+     "overlay": [
+      {
+       "op": "dots",
+       "pts": [
+        [
+         730,
+         60
+        ],
+        [
+         1560,
+         60
+        ],
+        [
+         1560,
+         470
+        ],
+        [
+         730,
+         470
+        ]
+       ],
+       "spacing": 28,
+       "size": 8,
+       "colour": "#5A8CFF",
+       "alpha": 0.7
+      }
+     ]
+    },
+    "core": "#2F64E8",
+    "face": "#1E3DB8",
+    "dpad": "#1E3DB8",
+    "sticks": "#2F68EA",
+    "triggers": "#2448C8"
+   },
+   "finish": {
+    "default": "matte",
+    "touchpad": "satin"
+   }
+  },
+  {
+   "id": "emerald-white",
+   "group": "special",
+   "name": {
+    "en": "Emerald and White",
+    "tr": "Zümrüt ve Beyaz"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#0F7A55",
+    "touchpad": "#0F7A55",
+    "core": "#F2F2F0",
+    "face": "#E8EAE8",
+    "dpad": "#E8EAE8",
+    "sticks": "#F2F2F0",
+    "triggers": "#F2F2F0",
+    "emblem": "#5A5E66"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "navy-ice",
+   "group": "special",
+   "name": {
+    "en": "Navy and Ice",
+    "tr": "Lacivert ve Buz Beyazı"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#2A3A8E",
+    "touchpad": "#E3E6F2",
+    "core": "#E3E6F2",
+    "face": "#1C1D22",
+    "dpad": "#1C1D22",
+    "sticks": "#1F2024",
+    "triggers": "#1C1D22",
+    "pill": "#1C1D22",
+    "emblem": "#5A5E66"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "black-gold",
+   "group": "special",
+   "name": {
+    "en": "Black and Gold",
+    "tr": "Siyah ve Altın"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#1A1A1C",
+    "touchpad": "#1A1A1C",
+    "core": "#1A1A1C",
+    "face": "#C9A03A",
+    "dpad": "#C9A03A",
+    "sticks": "#1F1F22",
+    "triggers": "#1A1A1C",
+    "pill": "#C9A03A"
+   },
+   "finish": {
+    "default": "matte",
+    "face": "metallic",
+    "dpad": "metallic",
+    "pill": "metallic"
+   }
+  },
+  {
+   "id": "black-crystal",
+   "group": "special",
+   "name": {
+    "en": "Black with Crystal Blue and Gold",
+    "tr": "Kristal Mavi ve Altınlı Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#1C1D21",
+     "overlay": [
+      {
+       "op": "shards",
+       "count": 130,
+       "size": [
+        40,
+        140
+       ],
+       "seed": 11,
+       "colours": [
+        "#3FA9F5",
+        "#3FA9F5",
+        "#C8A24A"
+       ],
+       "region": [
+        80,
+        40,
+        2210,
+        1480
+       ]
+      }
+     ],
+     "metal": 0.6
+    },
+    "touchpad": {
+     "base": "#1C1D21",
+     "overlay": [
+      {
+       "op": "shards",
+       "count": 130,
+       "size": [
+        40,
+        140
+       ],
+       "seed": 11,
+       "colours": [
+        "#3FA9F5",
+        "#3FA9F5",
+        "#C8A24A"
+       ],
+       "region": [
+        80,
+        40,
+        2210,
+        1480
+       ]
+      }
+     ],
+     "metal": 0.6
+    },
+    "core": "#2A2B2F",
+    "face": "#26272B",
+    "dpad": "#26272B",
+    "sticks": "#222327",
+    "triggers": "#1C1D21"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "black-paint",
+   "group": "special",
+   "name": {
+    "en": "Black with Paint Strokes",
+    "tr": "Boya Darbeli Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#18191C",
+     "overlay": [
+      {
+       "op": "strokes",
+       "colour": "#F5C518",
+       "seed": 21,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": -30,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#FF3E9A",
+       "seed": 22,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": 20,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#2D7FF9",
+       "seed": 23,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": -60,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#39C06A",
+       "seed": 24,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": 40,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#F2F2F2",
+       "seed": 25,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": 0,
+       "spread": 70,
+       "overlap": 0.3
+      }
+     ]
+    },
+    "touchpad": {
+     "base": "#18191C",
+     "overlay": [
+      {
+       "op": "strokes",
+       "colour": "#F5C518",
+       "seed": 21,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": -30,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#FF3E9A",
+       "seed": 22,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": 20,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#2D7FF9",
+       "seed": 23,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": -60,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#39C06A",
+       "seed": 24,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": 40,
+       "spread": 70,
+       "overlap": 0.3
+      },
+      {
+       "op": "strokes",
+       "colour": "#F2F2F2",
+       "seed": 25,
+       "count": 5,
+       "width": 34,
+       "dry": 0.35,
+       "length": [
+        300,
+        700
+       ],
+       "angle": 0,
+       "spread": 70,
+       "overlap": 0.3
+      }
+     ]
+    },
+    "core": "#18191C",
+    "face": "#222327",
+    "dpad": "#222327",
+    "sticks": "#1F2023",
+    "triggers": "#18191C"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "black-over-red",
+   "group": "special",
+   "name": {
+    "en": "Black over Red",
+    "tr": "Kırmızı Üstüne Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "gradient": [
+      "#141416",
+      "#C4122F"
+     ],
+     "x": [
+      1560,
+      2100
+     ]
+    },
+    "touchpad": "#141416",
+    "core": "#141416",
+    "face": "#1E1E21",
+    "dpad": "#1E1E21",
+    "sticks": "#1E1E21",
+    "triggers": "#141416",
+    "rearColour": "#141416"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "black-speedlines",
+   "group": "special",
+   "name": {
+    "en": "Black with Speed Lines",
+    "tr": "Hız Çizgili Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#1C1D21",
+     "overlay": [
+      {
+       "op": "rays",
+       "centre": [
+        1144,
+        270
+       ],
+       "count": 46,
+       "width": 7,
+       "inner": 420,
+       "colour": "#FF6A1A",
+       "seed": 31
+      },
+      {
+       "op": "rays",
+       "centre": [
+        1144,
+        270
+       ],
+       "count": 46,
+       "width": 4,
+       "inner": 470,
+       "colour": "#19B5C1",
+       "seed": 32
+      }
+     ]
+    },
+    "touchpad": {
+     "base": "#1C1D21",
+     "overlay": [
+      {
+       "op": "rays",
+       "centre": [
+        1144,
+        270
+       ],
+       "count": 46,
+       "width": 7,
+       "inner": 420,
+       "colour": "#FF6A1A",
+       "seed": 31
+      },
+      {
+       "op": "rays",
+       "centre": [
+        1144,
+        270
+       ],
+       "count": 46,
+       "width": 4,
+       "inner": 470,
+       "colour": "#19B5C1",
+       "seed": 32
+      }
+     ]
+    },
+    "core": "#2A2B2F",
+    "face": "#26272B",
+    "dpad": "#26272B",
+    "sticks": "#222327",
+    "triggers": "#1C1D21"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "white-blue-panels",
+   "group": "special",
+   "name": {
+    "en": "White with Metallic Blue",
+    "tr": "Metalik Mavili Beyaz"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#EEF0F3",
+     "overlay": [
+      {
+       "op": "poly",
+       "pts": [
+        [
+         40,
+         860
+        ],
+        [
+         300,
+         820
+        ],
+        [
+         420,
+         1060
+        ],
+        [
+         520,
+         1500
+        ],
+        [
+         150,
+         1520
+        ],
+        [
+         30,
+         1180
+        ]
+       ],
+       "colour": "#1F57D6",
+       "mirror": true
+      }
+     ],
+     "metal": 0.8
+    },
+    "touchpad": "#141518",
+    "core": "#D9DCE1",
+    "face": "#EEF0F3",
+    "dpad": "#EEF0F3",
+    "sticks": "#D9DCE1",
+    "triggers": "#EEF0F3",
+    "emblem": "#5A5E66",
+    "rearColour": "#EEF0F3"
+   },
+   "finish": {
+    "default": "matte",
+    "touchpad": "glossy"
+   }
+  },
+  {
+   "id": "sky-doodle",
+   "group": "special",
+   "name": {
+    "en": "Sky Blue Doodle",
+    "tr": "Karalamalı Gök Mavisi"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#5DB3EA",
+     "overlay": [
+      {
+       "op": "strokes",
+       "colour": "#16171A",
+       "seed": 41,
+       "count": 16,
+       "width": 12,
+       "dry": 0.1,
+       "length": [
+        180,
+        420
+       ],
+       "angle": 0,
+       "spread": 90,
+       "overlap": 0.2
+      }
+     ]
+    },
+    "touchpad": {
+     "base": "#5DB3EA",
+     "overlay": [
+      {
+       "op": "strokes",
+       "colour": "#16171A",
+       "seed": 41,
+       "count": 16,
+       "width": 12,
+       "dry": 0.1,
+       "length": [
+        180,
+        420
+       ],
+       "angle": 0,
+       "spread": 90,
+       "overlap": 0.2
+      }
+     ]
+    },
+    "core": "#1E1F22",
+    "face": "#7CC3F0",
+    "dpad": "#7CC3F0",
+    "sticks": "#1F2023",
+    "triggers": "#1E1F22"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "black-hazard",
+   "group": "special",
+   "name": {
+    "en": "Black and Hazard Yellow",
+    "tr": "Siyah ve Tehlike Sarısı"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#1A1B1E",
+     "overlay": [
+      {
+       "op": "hatch",
+       "pts": [
+        [
+         150,
+         830
+        ],
+        [
+         520,
+         830
+        ],
+        [
+         560,
+         1250
+        ],
+        [
+         190,
+         1250
+        ]
+       ],
+       "spacing": 22,
+       "width": 7,
+       "angle": 45,
+       "colour": "#5A5C62",
+       "mirror": true
+      },
+      {
+       "op": "line",
+       "pts": [
+        [
+         170,
+         1080
+        ],
+        [
+         470,
+         1460
+        ]
+       ],
+       "width": 70,
+       "colour": "#F2C230",
+       "wear": 0.42,
+       "seed": 51,
+       "mirror": true
+      }
+     ]
+    },
+    "touchpad": {
+     "base": "#1A1B1E",
+     "overlay": [
+      {
+       "op": "poly",
+       "pts": [
+        [
+         860,
+         455
+        ],
+        [
+         1430,
+         455
+        ],
+        [
+         1430,
+         512
+        ],
+        [
+         860,
+         512
+        ]
+       ],
+       "colour": "#F2C230"
+      },
+      {
+       "op": "hatch",
+       "pts": [
+        [
+         860,
+         455
+        ],
+        [
+         1430,
+         455
+        ],
+        [
+         1430,
+         512
+        ],
+        [
+         860,
+         512
+        ]
+       ],
+       "spacing": 34,
+       "width": 16,
+       "angle": 45,
+       "colour": "#1A1B1E"
+      }
+     ]
+    },
+    "core": "#1E1F22",
+    "face": "#24252A",
+    "dpad": "#24252A",
+    "sticks": "#1F2023",
+    "triggers": "#1A1B1E"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "red-silver",
+   "group": "special",
+   "name": {
+    "en": "Red with Silver",
+    "tr": "Gümüşlü Kırmızı"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#B01828",
+    "touchpad": "#B01828",
+    "core": "#2A2224",
+    "face": "#C3C7CC",
+    "dpad": "#C3C7CC",
+    "sticks": "#232326",
+    "triggers": "#2A2224",
+    "pill": "#C3C7CC"
+   },
+   "finish": {
+    "default": "metallic",
+    "core": "matte",
+    "sticks": "matte",
+    "triggers": "satin"
+   }
+  },
+  {
+   "id": "reverse-black-white",
+   "group": "special",
+   "name": {
+    "en": "Reverse Black and White",
+    "tr": "Ters Siyah-Beyaz"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#141416",
+    "touchpad": "#141416",
+    "core": "#EDEDED",
+    "face": "#1E1E21",
+    "dpad": "#1E1E21",
+    "sticks": "#EDEDED",
+    "triggers": "#EDEDED",
+    "pill": "#1E1E21",
+    "emblem": "#5A5E66"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "black-signal-orange",
+   "group": "special",
+   "name": {
+    "en": "Black with Signal Orange",
+    "tr": "Sinyal Turuncusu ile Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#1E2128",
+     "overlay": [
+      {
+       "op": "line",
+       "pts": [
+        [
+         110,
+         870
+        ],
+        [
+         430,
+         870
+        ],
+        [
+         520,
+         1380
+        ],
+        [
+         210,
+         1430
+        ],
+        [
+         110,
+         870
+        ]
+       ],
+       "width": 5,
+       "dash": [
+        18,
+        10
+       ],
+       "colour": "#F7A24A",
+       "mirror": true
+      },
+      {
+       "op": "line",
+       "pts": [
+        [
+         150,
+         920
+        ],
+        [
+         380,
+         920
+        ]
+       ],
+       "width": 4,
+       "colour": "#F7A24A",
+       "mirror": true
+      }
+     ]
+    },
+    "touchpad": "#F7A24A",
+    "core": "#2B2E36",
+    "face": "#24262C",
+    "dpad": "#24262C",
+    "sticks": "#2B2E36",
+    "triggers": "#1E2128"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "gold-brush-ivory",
+   "group": "special",
+   "name": {
+    "en": "Ivory with Gold Brushwork",
+    "tr": "Altın Fırça İzli Fildişi"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#EDE8DF",
+     "overlay": [
+      {
+       "op": "strokes",
+       "colour": "#C9A03A",
+       "seed": 15,
+       "count": 10,
+       "width": 95,
+       "dry": 0.8
+      }
+     ],
+     "metal": 0.85
+    },
+    "touchpad": {
+     "base": "#EDE8DF",
+     "overlay": [
+      {
+       "op": "strokes",
+       "colour": "#C9A03A",
+       "seed": 15,
+       "count": 10,
+       "width": 95,
+       "dry": 0.8
+      }
+     ],
+     "metal": 0.85
+    },
+    "core": "#B9BCC1",
+    "face": "#E6E2DA",
+    "dpad": "#E6E2DA",
+    "sticks": "#B3B6BB",
+    "triggers": "#EDE8DF",
+    "pill": "#E6E2DA",
+    "emblem": "#5A5E66",
+    "rearColour": "#EDE8DF"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "ink-ivory",
+   "group": "special",
+   "name": {
+    "en": "Ivory with Ink Brushwork",
+    "tr": "Mürekkep Fırça İzli Fildişi"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "strokes": "#EAE6DE",
+     "ink": "#2A2A2A",
+     "seed": 9,
+     "count": 11
+    },
+    "touchpad": {
+     "strokes": "#EAE6DE",
+     "ink": "#2A2A2A",
+     "seed": 9,
+     "count": 11
+    },
+    "core": "#B9BCC1",
+    "face": "#E3DFD7",
+    "dpad": "#E3DFD7",
+    "sticks": "#B3B6BB",
+    "triggers": "#EAE6DE",
+    "pill": "#E3DFD7",
+    "emblem": "#5A5E66",
+    "rearColour": "#EAE6DE"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "ash-red-band",
+   "group": "special",
+   "name": {
+    "en": "Ash Grey with Red Stripe",
+    "tr": "Kırmızı Şeritli Kül Grisi"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#DADDE0",
+     "overlay": [
+      {
+       "op": "poly",
+       "pts": [
+        [
+         1640,
+         30
+        ],
+        [
+         1880,
+         30
+        ],
+        [
+         2260,
+         640
+        ],
+        [
+         2260,
+         1520
+        ],
+        [
+         2030,
+         1520
+        ],
+        [
+         2070,
+         980
+        ],
+        [
+         2000,
+         700
+        ],
+        [
+         1840,
+         560
+        ],
+        [
+         1700,
+         320
+        ]
+       ],
+       "colour": "#A5121E"
+      }
+     ]
+    },
+    "touchpad": "#DADDE0",
+    "core": "#DADDE0",
+    "face": "#E6E8EA",
+    "dpad": "#E6E8EA",
+    "sticks": "#3A3C40",
+    "triggers": "#E6E8EA",
+    "emblem": "#5A5E66",
+    "rearColour": "#DADDE0"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "ivory-teal",
+   "group": "special",
+   "name": {
+    "en": "Ivory and Deep Teal",
+    "tr": "Fildişi ve Koyu Camgöbeği"
+   },
+   "approach": "scheme-only",
+   "parts": {
+    "shell": "#EFE9DE",
+    "touchpad": "#EFE9DE",
+    "core": "#1F5C6C",
+    "face": "#EFE9DE",
+    "dpad": "#EFE9DE",
+    "sticks": "#1F5C6C",
+    "triggers": "#EFE9DE",
+    "pill": "#EFE9DE"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "white-lime",
+   "group": "special",
+   "name": {
+    "en": "White with Neon Lime",
+    "tr": "Neon Limonlu Beyaz"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#EEEFF1",
+     "overlay": [
+      {
+       "op": "hatch",
+       "pts": [
+        [
+         60,
+         760
+        ],
+        [
+         520,
+         700
+        ],
+        [
+         600,
+         1500
+        ],
+        [
+         140,
+         1520
+        ],
+        [
+         40,
+         1150
+        ]
+       ],
+       "spacing": 120,
+       "width": 46,
+       "angle": -35,
+       "colour": "#C6F432"
+      },
+      {
+       "op": "hatch",
+       "pts": [
+        [
+         60,
+         760
+        ],
+        [
+         520,
+         700
+        ],
+        [
+         600,
+         1500
+        ],
+        [
+         140,
+         1520
+        ],
+        [
+         40,
+         1150
+        ]
+       ],
+       "spacing": 120,
+       "width": 18,
+       "angle": -35,
+       "phase": 52,
+       "colour": "#1A1B1E"
+      },
+      {
+       "op": "poly",
+       "pts": [
+        [
+         1700,
+         1180
+        ],
+        [
+         1900,
+         1180
+        ],
+        [
+         1900,
+         1215
+        ],
+        [
+         1700,
+         1215
+        ]
+       ],
+       "colour": "#F2C230"
+      },
+      {
+       "op": "hatch",
+       "pts": [
+        [
+         1700,
+         1180
+        ],
+        [
+         1900,
+         1180
+        ],
+        [
+         1900,
+         1215
+        ],
+        [
+         1700,
+         1215
+        ]
+       ],
+       "spacing": 24,
+       "width": 10,
+       "angle": 45,
+       "colour": "#1A1B1E"
+      }
+     ]
+    },
+    "touchpad": "#EEEFF1",
+    "core": "#EEEFF1",
+    "face": "#E6E8EB",
+    "dpad": "#E6E8EB",
+    "sticks": "#26272B",
+    "triggers": "#EEEFF1",
+    "emblem": "#5A5E66",
+    "rearColour": "#EEEFF1"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "gold-rays",
+   "group": "special",
+   "name": {
+    "en": "Gold and Black",
+    "tr": "Altın ve Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#C9AA6C",
+     "overlay": [
+      {
+       "op": "rays",
+       "centre": [
+        1144,
+        270
+       ],
+       "count": 110,
+       "width": 2.2,
+       "inner": 30,
+       "colour": "#3A2C12",
+       "alpha": 0.55,
+       "seed": 61
+      }
+     ]
+    },
+    "touchpad": {
+     "base": "#C9AA6C",
+     "overlay": [
+      {
+       "op": "rays",
+       "centre": [
+        1144,
+        270
+       ],
+       "count": 110,
+       "width": 2.2,
+       "inner": 30,
+       "colour": "#3A2C12",
+       "alpha": 0.55,
+       "seed": 61
+      }
+     ]
+    },
+    "core": "#1C1E23",
+    "face": "#1C1E23",
+    "dpad": "#1C1E23",
+    "sticks": "#1F2126",
+    "triggers": "#1C1E23",
+    "pill": "#1C1E23"
+   },
+   "finish": {
+    "default": "metallic",
+    "core": "matte",
+    "sticks": "matte",
+    "face": "satin",
+    "dpad": "satin",
+    "triggers": "satin"
+   }
+  },
+  {
+   "id": "black-yellow",
+   "group": "special",
+   "name": {
+    "en": "Black and Yellow",
+    "tr": "Siyah ve Sarı"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": {
+      "brushed": "#1E1E21",
+      "amount": 0.35
+     },
+     "overlay": [
+      {
+       "op": "poly",
+       "pts": [
+        [
+         60,
+         1250
+        ],
+        [
+         480,
+         1250
+        ],
+        [
+         520,
+         1520
+        ],
+        [
+         120,
+         1520
+        ]
+       ],
+       "colour": "#F6C21B",
+       "mirror": true
+      }
+     ]
+    },
+    "touchpad": {
+     "brushed": "#1E1E21",
+     "amount": 0.35
+    },
+    "core": "#F6C21B",
+    "face": "#222225",
+    "dpad": "#222225",
+    "sticks": "#F6C21B",
+    "triggers": "#1A1A1C",
+    "pill": "#222225",
+    "rearColour": "#1A1A1C"
+   },
+   "finish": {
+    "default": "matte"
+   }
+  },
+  {
+   "id": "brushed-silver",
+   "group": "special",
+   "name": {
+    "en": "Brushed Silver",
+    "tr": "Fırçalanmış Gümüş"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "brushed": "#C7CACE",
+     "amount": 0.12
+    },
+    "touchpad": {
+     "brushed": "#C7CACE",
+     "amount": 0.12
+    },
+    "core": "#1E1F24",
+    "face": "#2A2B30",
+    "dpad": "#2A2B30",
+    "sticks": "#2A2B30",
+    "triggers": "#C7CACE",
+    "pill": "#2A2B30"
+   },
+   "finish": {
+    "default": "metallic",
+    "core": "matte",
+    "sticks": "matte",
+    "face": "satin",
+    "dpad": "satin"
+   }
+  },
+  {
+   "id": "pearl-sparkle",
+   "group": "special",
+   "name": {
+    "en": "Pearl with Sparkles",
+    "tr": "Işıltılı İnci"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": {
+      "shift": [
+       "#F4EEE4",
+       "#E2C8E2"
+      ],
+      "blend": 0.35
+     },
+     "overlay": [
+      {
+       "op": "speckle",
+       "count": 260,
+       "size": [
+        3,
+        7
+       ],
+       "seed": 71,
+       "colours": [
+        "#FFFFFF",
+        "#F4D9F0",
+        "#E8E2B8"
+       ],
+       "alpha": 0.9
+      }
+     ]
+    },
+    "touchpad": {
+     "base": {
+      "shift": [
+       "#F4EEE4",
+       "#E2C8E2"
+      ],
+      "blend": 0.35
+     },
+     "overlay": [
+      {
+       "op": "speckle",
+       "count": 260,
+       "size": [
+        3,
+        7
+       ],
+       "seed": 71,
+       "colours": [
+        "#FFFFFF",
+        "#F4D9F0",
+        "#E8E2B8"
+       ],
+       "alpha": 0.9
+      }
+     ]
+    },
+    "core": {
+     "shift": [
+      "#E3DDE0",
+      "#CFC6D8"
+     ],
+     "blend": 0.5
+    },
+    "face": "#EFE7E2",
+    "dpad": "#EFE7E2",
+    "sticks": "#E4DCD8",
+    "triggers": "#F2ECE6",
+    "emblem": "#5A5E66"
+   },
+   "finish": {
+    "default": "pearl",
+    "sticks": "satin"
+   }
+  },
+  {
+   "id": "black-shift",
+   "group": "special",
+   "name": {
+    "en": "Black Sparkle with Blue-Violet Centre",
+    "tr": "Mavi-Mor Merkezli Işıltılı Siyah"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": {
+     "base": "#1B1D1F",
+     "overlay": [
+      {
+       "op": "speckle",
+       "count": 3000,
+       "size": [
+        1.2,
+        2.6
+       ],
+       "seed": 81,
+       "colours": [
+        "#9AA0B0",
+        "#C8B6E8"
+       ],
+       "alpha": 0.55
+      }
+     ]
+    },
+    "touchpad": {
+     "base": "#1B1D1F",
+     "overlay": [
+      {
+       "op": "speckle",
+       "count": 3000,
+       "size": [
+        1.2,
+        2.6
+       ],
+       "seed": 81,
+       "colours": [
+        "#9AA0B0",
+        "#C8B6E8"
+       ],
+       "alpha": 0.55
+      }
+     ]
+    },
+    "core": {
+     "gradient": [
+      "#2A6BE0",
+      "#6A2FB0"
+     ],
+     "y": [
+      520,
+      1000
+     ]
+    },
+    "face": "#1E2023",
+    "dpad": "#1E2023",
+    "sticks": "#26282C",
+    "triggers": "#1B1D1F",
+    "pill": "#1E2023"
+   },
+   "finish": {
+    "default": "satin",
+    "core": "pearl"
+   }
+  },
+  {
+   "id": "white-shift",
+   "group": "special",
+   "name": {
+    "en": "White with Blue-Violet Centre",
+    "tr": "Mavi-Mor Merkezli Beyaz"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": "#F3F4F6",
+    "touchpad": "#F3F4F6",
+    "core": {
+     "gradient": [
+      "#2A6BE0",
+      "#6A2FB0"
+     ],
+     "y": [
+      520,
+      1000
+     ]
+    },
+    "face": "#F0F1F3",
+    "dpad": "#F0F1F3",
+    "sticks": "#D6D8DC",
+    "triggers": "#F3F4F6",
+    "pill": "#F0F1F3"
+   },
+   "finish": {
+    "default": "matte",
+    "core": "pearl"
+   }
+  },
+  {
+   "id": "racing-carbon",
+   "group": "special",
+   "name": {
+    "en": "Racing White and Carbon",
+    "tr": "Yarış Beyazı ve Karbon"
+   },
+   "approach": "original-pattern",
+   "parts": {
+    "shell": "#F4F5F7",
+    "touchpad": {
+     "stripes": "#F4F5F7",
+     "colour": "#1E1F22",
+     "x": [
+      [
+       999,
+       1129
+      ],
+      [
+       1159,
+       1289
+      ]
+     ]
+    },
+    "core": {
+     "carbon": [
+      "#2A2B2E",
+      "#3A3B3F"
+     ],
+     "cell": 9
+    },
+    "face": "#1E1F22",
+    "dpad": "#1E1F22",
+    "sticks": "#26272A",
+    "triggers": "#1E1F22",
+    "pill": "#1E1F22"
+   },
+   "finish": {
+    "default": "glossy",
+    "core": "satin",
+    "sticks": "matte"
+   }
+  }
+ ]
+}

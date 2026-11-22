@@ -6,3 +6,4 @@ captures/
 .claude/
 artifacts/
 TestResults/
+docs/screens/*.png

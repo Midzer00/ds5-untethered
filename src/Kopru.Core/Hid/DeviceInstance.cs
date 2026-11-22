@@ -26,8 +26,34 @@ public static class DeviceInstance
 	// True for USB-parented nodes, which includes our virtual pad. These must never be hidden.
 	public static bool IsUsbDevice(string? instanceId) =>
 		instanceId is not null &&
-		(instanceId.StartsWith(@"USB\", StringComparison.OrdinalIgnoreCase) ||
-		 instanceId.StartsWith(@"HID\VID_", StringComparison.OrdinalIgnoreCase));
+		(instanceId.StartsWith(@"USB\", StringComparison.OrdinalIgnoreCase) || IsUsbHidCollection(instanceId));
+
+	// True when the instance ID is the HID collection of a USB device ("HID\VID_..."). A real wired DualSense and our
+	// own virtual pad both look like this: the shape alone never tells them apart, so callers must never pass ours
+	// (its 0x09 answer, PairingInfo.VirtualAddress, is how the cable code knows it from the real wired pad).
+	public static bool IsUsbHidCollection(string? instanceId) =>
+		instanceId is not null && instanceId.StartsWith(@"HID\VID_", StringComparison.OrdinalIgnoreCase);
+
+	// The instance ID spelled inside an interface path, without asking Windows: "\\?\HID#<hardware id>#<instance>#{class}"
+	// is the instance ID "HID\<hardware id>\<instance>" with '\' written as '#' and the interface class GUID added. Case
+	// may differ from what Windows reports (ids are compared ignoring case). Null when the path is not in that form.
+	public static string? FromInterfacePathText(string interfacePath)
+	{
+		if (string.IsNullOrEmpty(interfacePath))
+		{
+			return null;
+		}
+		string rest = interfacePath.StartsWith(@"\\?\", StringComparison.Ordinal) || interfacePath.StartsWith(@"\??\", StringComparison.Ordinal)
+			? interfacePath[4..]
+			: interfacePath;
+		int classGuid = rest.LastIndexOf("#{", StringComparison.Ordinal);
+		if (classGuid <= 0 || !rest.EndsWith('}'))
+		{
+			return null;
+		}
+		string[] parts = rest[..classGuid].Split('#');
+		return parts.Length == 3 && parts.All(p => p.Length > 0) ? string.Join('\\', parts) : null;
+	}
 
 	// Instance ID of the device that owns a device interface path (e.g. the path HidConnection opens).
 	public static string? FromInterfacePath(string interfacePath)

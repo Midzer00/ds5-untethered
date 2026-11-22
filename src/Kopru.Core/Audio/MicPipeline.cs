@@ -44,6 +44,9 @@ public sealed class MonoResampler(int inputRate, int outputRate)
 // Reports lost on the way (a gap in the report counter, byte 2) are filled with the decoder's packet loss concealment, so
 // the timing stays right and the jitter buffer does not run dry; a gap longer than MaxConcealedPackets is a restart of
 // the stream, not loss (the buffer conceals and refills).
+// The level meter is measured on both sides: as the controller's packets arrive (after decode and gain) and as the virtual
+// pad's endpoint is read. Windows reads that endpoint only while some app records from it, so the arrival side keeps the
+// meter moving when nothing records; while something does, the endpoint side (what games get: gate, mute, test tone) wins.
 public sealed class MicPipeline : IMicFeed, IDisposable
 {
 	// Lost reports in a row concealed at most (50 ms); a longer gap is not filled.
@@ -64,11 +67,27 @@ public sealed class MicPipeline : IMicFeed, IDisposable
 
 	private int gateQuiet = GateHoldSamples;
 
-	private double level;
+	// The level meter: a side not updated for this long reads as silence (the mic went off, the stream stalled, the game
+	// stopped recording), so the meter never freezes on its last value.
+	public static readonly TimeSpan LevelTimeout = TimeSpan.FromMilliseconds(200);
 
-	public MicPipeline(IMicDecoder? decoder, MicJitterBuffer? buffer = null)
+	// Each new block's peak against the last level times this (the meter falls off slowly).
+	private const double LevelDecay = 0.9;
+
+	private const long NotYet = long.MinValue;
+
+	private readonly TimeProvider time;
+
+	// Peak with decay (0..1) and when it was last updated (time's timestamp; NotYet: never). One writer per side: the
+	// endpoint's reads (fillLevel) and the session's read thread (inputLevel); any thread reads.
+	private double fillLevel, inputLevel;
+
+	private long fillLevelAt = NotYet, inputLevelAt = NotYet;
+
+	public MicPipeline(IMicDecoder? decoder, MicJitterBuffer? buffer = null, TimeProvider? time = null)
 	{
 		this.decoder = decoder;
+		this.time = time ?? TimeProvider.System;
 		Buffer = buffer ?? new MicJitterBuffer();
 	}
 
@@ -88,8 +107,44 @@ public sealed class MicPipeline : IMicFeed, IDisposable
 		set => Volatile.Write(ref gain, Math.Clamp(value, 0, MaxGain));
 	}
 
-	// Peak of the last filled block after gain (0..1, falls off slowly), for the level meter.
-	public double Level => Volatile.Read(ref level);
+	// The level meter (0..1 after gain, falls off slowly; 0 after LevelTimeout without audio): what the endpoint gave while
+	// it is being read, otherwise what the controller sends.
+	public double Level
+	{
+		get
+		{
+			if (Fresh(ref fillLevelAt))
+			{
+				return Volatile.Read(ref fillLevel);
+			}
+			return Fresh(ref inputLevelAt) ? Volatile.Read(ref inputLevel) : 0;
+		}
+	}
+
+	private bool Fresh(ref long at)
+	{
+		long t = Volatile.Read(ref at);
+		return t != NotYet && time.GetElapsedTime(t) < LevelTimeout;
+	}
+
+	// The peak of a block against the decayed last level (a stale level counts as silence); value first, then the time.
+	private void UpdateLevel(ref double value, ref long at, double peak)
+	{
+		double last = Fresh(ref at) ? Volatile.Read(ref value) : 0;
+		Volatile.Write(ref value, Math.Max(peak, last * LevelDecay));
+		Volatile.Write(ref at, time.GetTimestamp());
+	}
+
+	// The arrival side of the meter: the block's peak after gain (the gate and mute are the endpoint's).
+	private void MeasureInput(ReadOnlySpan<short> pcm)
+	{
+		int peak = 0;
+		foreach (short v in pcm)
+		{
+			peak = Math.Max(peak, Math.Abs((int)v));
+		}
+		UpdateLevel(ref inputLevel, ref inputLevelAt, Math.Min(1, peak * Gain / 32768.0));
+	}
 
 	public long Packets => Interlocked.Read(ref packets);
 
@@ -162,11 +217,17 @@ public sealed class MicPipeline : IMicFeed, IDisposable
 		Interlocked.Increment(ref packets);
 		if (n > 0)
 		{
+			MeasureInput(decoded.AsSpan(0, n));
 			Buffer.Write(decoded.AsSpan(0, n));
 		}
 	}
 
-	public void PushPcm(ReadOnlySpan<short> mono48k) => Buffer.Write(mono48k);
+	public void PushPcm(ReadOnlySpan<short> mono48k)
+	{
+		Interlocked.Increment(ref packets);
+		MeasureInput(mono48k);
+		Buffer.Write(mono48k);
+	}
 
 	// The stream starts again (the mic switched back on): the report counter starts over and the buffer is emptied
 	// without counting an underrun. Call while no reports arrive (before hooking PushReport).
@@ -221,8 +282,7 @@ public sealed class MicPipeline : IMicFeed, IDisposable
 		{
 			Buffer.Read(m);
 		}
-		double peak = Process(m);
-		Volatile.Write(ref level, Math.Max(peak, Level * 0.9));
+		UpdateLevel(ref fillLevel, ref fillLevelAt, Process(m));
 		pcm.Clear();
 		if (Muted)
 		{

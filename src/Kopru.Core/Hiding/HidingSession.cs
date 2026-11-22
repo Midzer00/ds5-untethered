@@ -140,35 +140,69 @@ public sealed class HidingSession : IDisposable, IAsyncDisposable
 			.Where(id => DeviceInstance.IsBluetoothHid(id) && !DeviceInstance.IsUsbDevice(id)); // never the virtual (USB) pad
 
 	// Hides more Bluetooth controllers in this session (e.g. one found after the session started).
-	public async Task AddDevicesAsync(IEnumerable<string> deviceInstanceIds, CancellationToken cancellationToken = default)
+	public Task AddDevicesAsync(IEnumerable<string> deviceInstanceIds, CancellationToken cancellationToken = default) =>
+		AddAsync(BluetoothOnly(deviceInstanceIds).ToList(), _control.HideAsync, cancellationToken);
+
+	// Hides the USB twin of the bridged controller in this session (it is charging over the cable while the bridge
+	// stays on Bluetooth). Its instance id shares the virtual pad's shape, so only the caller's 0x09 match vouches it
+	// is the real wired pad; the shape itself is refused in HidHideControl.HideUsbAsync.
+	public Task AddUsbTwinAsync(string instanceId, CancellationToken cancellationToken = default) =>
+		AddAsync([instanceId], _control.HideUsbAsync, cancellationToken);
+
+	private async Task AddAsync(List<string> ids, Func<string, CancellationToken, Task> hide, CancellationToken cancellationToken)
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
-		List<string> ids = BluetoothOnly(deviceInstanceIds).ToList();
 		if (ids.Count == 0)
 		{
 			return;
 		}
 		using IDisposable _ = await _store.LockAsync(cancellationToken).ConfigureAwait(false);
 		HidingLedger ledger = _store.Load();
-		ids.RemoveAll(id => ledger.Claims.Any(c => Mine(c) && c.SameEntry(HidingClaimKind.Device, id)));
+		HidHideState state = await _control.GetStateAsync(cancellationToken).ConfigureAwait(false);
+		// A claim whose hide failed earlier is not in HidHide's list and is hidden again.
+		ids.RemoveAll(id => ledger.Claims.Any(c => Mine(c) && c.SameEntry(HidingClaimKind.Device, id)) &&
+			state.HiddenDevices.Contains(id, StringComparer.OrdinalIgnoreCase));
 		if (ids.Count == 0)
 		{
 			return;
 		}
-		HidHideState state = await _control.GetStateAsync(cancellationToken).ConfigureAwait(false);
 		var plan = new Plan(_store, ledger, state);
 		foreach (string id in ids)
 		{
 			plan.Want(HidingClaimKind.Device, id);
 		}
 		plan.Log("add");
-		ledger.Claims.AddRange(plan.Claims);
+		// Claimed before HidHide is changed and kept when the hide fails (the CLI may have applied it anyway; a stop
+		// or recovery must still undo it). A retry never duplicates a claim this session already holds for the entry.
+		ledger.Claims.AddRange(plan.Claims
+			.Where(c => !ledger.Claims.Any(h => Mine(h) && h.SameEntry(c.Kind, c.Value)))
+			.ToList());
 		_store.Save(ledger);
 		foreach (string id in plan.Add(HidingClaimKind.Device))
 		{
-			await _control.HideAsync(id, cancellationToken).ConfigureAwait(false);
-			_addedDevices.Add(id);
+			await hide(id, cancellationToken).ConfigureAwait(false);
+			if (!_addedDevices.Contains(id, StringComparer.OrdinalIgnoreCase))
+			{
+				_addedDevices.Add(id);
+			}
 		}
+	}
+
+	// Unhides the given devices again while the session keeps running (the USB twin when its cable comes out). Entries
+	// another claim of ours still needs, or ones we never claimed, are left alone; an ended session already undid
+	// everything, so there is nothing to do then.
+	public async Task RemoveDevicesAsync(IEnumerable<string> deviceInstanceIds, string why, CancellationToken cancellationToken = default)
+	{
+		if (_disposed)
+		{
+			return;
+		}
+		var ids = new HashSet<string>(deviceInstanceIds, StringComparer.OrdinalIgnoreCase);
+		using IDisposable _ = await _store.LockAsync(cancellationToken).ConfigureAwait(false);
+		HidingLedger ledger = _store.Load();
+		await ReleaseAsync(_control, _store, ledger,
+			c => Mine(c) && c.Kind == HidingClaimKind.Device && ids.Contains(c.Value), why, cancellationToken).ConfigureAwait(false);
+		_addedDevices.RemoveAll(ids.Contains);
 	}
 
 	public async ValueTask DisposeAsync()

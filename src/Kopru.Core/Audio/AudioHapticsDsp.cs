@@ -18,13 +18,13 @@ public enum AudioHapticsBand
 //     at the band's cutoff (Bass 140 Hz, Full 400 Hz), at the input rate;
 //  3. down to 3 kHz by averaging the samples of each output frame (the low-pass already removed everything above 400 Hz);
 //  4. at 3 kHz: an envelope follower (peak, 2 ms attack, 120 ms release) on the louder side, a noise gate with hysteresis
-//     and hold (opens at -46 dBFS, closes under -52 dBFS after 60 ms), and a compressor on that envelope (threshold
-//     -30 dBFS, ratio 4:1, +18 dB makeup) whose gain is applied to both sides alike, so left/right stay as the game mixed
+//     and hold (opens where Sensitivity says, -46 dBFS by default; closes 6 dB under that after 60 ms), and a compressor
+//     on that envelope (threshold -30 dBFS, ratio 4:1, +18 dB makeup) whose gain is applied to both sides alike, so left/right stay as the game mixed
 //     them and quiet scenes do not buzz while loud ones do not saturate;
 //  5. strength (0..2), then a soft limit (tanh) to full scale.
 // A closed gate gives exact zeros (and digital silence into settled filters stays exactly 0), so the haptics stream can go
-// idle. Allocates nothing after construction; not thread-safe (one capture thread). Band and strength may be changed from
-// any thread: they are read once per block.
+// idle. Allocates nothing after construction; not thread-safe (one capture thread). Band, strength and sensitivity may be
+// changed from any thread: they are read once per block.
 public sealed class AudioHapticsDsp
 {
 	public const int OutputRate = HapticsConverter.OutputRate;
@@ -33,8 +33,15 @@ public sealed class AudioHapticsDsp
 	public const double HighPassHz = 25;
 	public const double AttackMs = 2;
 	public const double ReleaseMs = 120;
-	public const double GateOpenDb = -46;
-	public const double GateCloseDb = -52;
+	// Sensitivity (0-100 %) sets where the gate opens: -22 dBFS at 0 %, -46 at 50 % (the default), -70 at 100 %; it closes
+	// GateHysteresisDb under that.
+	public const double DefaultSensitivity = 50;
+	public const double MaxSensitivity = 100;
+	public const double GateOpenDbAtZero = -22;
+	// dB the open threshold moves over the whole 0-100 % (0.48 dB per percent).
+	public const double GateOpenDbRange = 48;
+	public const double GateHysteresisDb = 6;
+	public static readonly double DefaultGateOpenDb = GateOpenDbFor(DefaultSensitivity);
 	public const double GateHoldMs = 60;
 	public const double GateFadeInMs = 2;
 	public const double GateFadeOutMs = 25;
@@ -73,6 +80,7 @@ public sealed class AudioHapticsDsp
 
 	private volatile int band = (int)AudioHapticsBand.Bass;
 	private double strength = 1;
+	private double sensitivity = DefaultSensitivity;
 
 	public AudioHapticsDsp()
 	{
@@ -95,6 +103,22 @@ public sealed class AudioHapticsDsp
 		get => Volatile.Read(ref strength);
 		set => Volatile.Write(ref strength, Math.Clamp(double.IsFinite(value) ? value : 1, 0, MaxStrength));
 	}
+
+	// 0..100 %: how quiet a sound can be and still open the gate (higher: quieter sounds count).
+	public double Sensitivity
+	{
+		get => Volatile.Read(ref sensitivity);
+		set => Volatile.Write(ref sensitivity, ClampSensitivity(value));
+	}
+
+	// Where the gate opens and closes now (dBFS).
+	public double GateOpenDb => GateOpenDbFor(Sensitivity);
+	public double GateCloseDb => GateOpenDb - GateHysteresisDb;
+
+	// The gate's open threshold (dBFS) for a sensitivity in percent (clamped to 0-100; not finite reads as the default).
+	public static double GateOpenDbFor(double sensitivityPercent) => GateOpenDbAtZero - GateOpenDbRange * ClampSensitivity(sensitivityPercent) / MaxSensitivity;
+
+	public static double ClampSensitivity(double value) => Math.Clamp(double.IsFinite(value) ? value : DefaultSensitivity, 0, MaxSensitivity);
 
 	// The envelope (0..1 of full scale) after the last block, for diagnostics.
 	public double Envelope => envelope;
@@ -136,6 +160,7 @@ public sealed class AudioHapticsDsp
 			throw new ArgumentException("output too short", nameof(left));
 		}
 		double k = Strength;
+		double open = GateOpenDb, close = open - GateHysteresisDb;
 		int written = 0;
 		for (int f = 0; f < frames; f++)
 		{
@@ -161,7 +186,7 @@ public sealed class AudioHapticsDsp
 				double outL = sumL / sumCount, outR = sumR / sumCount;
 				sumL = sumR = 0;
 				sumCount = 0;
-				Shape(outL, outR, k, out left[written], out right[written]);
+				Shape(outL, outR, k, open, close, out left[written], out right[written]);
 				written++;
 			}
 		}
@@ -169,7 +194,7 @@ public sealed class AudioHapticsDsp
 	}
 
 	// The 3 kHz stage: envelope, gate, compressor, strength and soft limit.
-	private void Shape(double l, double r, double k, out sbyte outL, out sbyte outR)
+	private void Shape(double l, double r, double k, double openDb, double closeDb, out sbyte outL, out sbyte outR)
 	{
 		double peak = Math.Max(Math.Abs(l), Math.Abs(r));
 		envelope += (peak > envelope ? attackCoef : releaseCoef) * (peak - envelope);
@@ -182,12 +207,12 @@ public sealed class AudioHapticsDsp
 			peakEnvelope = envelope;
 		}
 		double db = envelope > 0 ? 20 * Math.Log10(envelope) : -200;
-		if (db >= GateOpenDb)
+		if (db >= openDb)
 		{
 			gateOpen = true;
 			holdFrames = holdLength;
 		}
-		else if (db < GateCloseDb && gateOpen && --holdFrames <= 0)
+		else if (db < closeDb && gateOpen && --holdFrames <= 0)
 		{
 			gateOpen = false;
 		}

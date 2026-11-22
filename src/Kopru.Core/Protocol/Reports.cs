@@ -57,7 +57,9 @@ public static class OutputBlock
 	public const byte MuteLedOn = 1;
 
 	// Haptics over Bluetooth (report 0x32) play only while report 0x31 leaves the rumble bits off and turns on power-save
-	// control, the haptics low-pass filter and motor power reduction, all at 0 (found on hardware, 2026-11-09).
+	// control, the haptics low-pass filter and motor power reduction, all at 0 (found on hardware, 2026-11-09). Report
+	// 0x02 gets the same while wired: USB audio haptics were silent on hardware with only the rumble bits cleared
+	// (the likely cause; not yet confirmed on hardware).
 	public static void SetHapticsMode(Span<byte> block)
 	{
 		block[Flag0] &= unchecked((byte)~(CompatibleVibration | HapticsSelect));

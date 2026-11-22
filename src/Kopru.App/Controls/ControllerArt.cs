@@ -12,6 +12,9 @@ namespace Kopru.App.Controls;
 // painted through three masks rendered with the art (the diffuser channel, its bright middle, and the light it throws on
 // the shell and touchpad around it; LightTint has them in colour), stronger with LightIntensity and with the colour's own brightness, so breathing and
 // the other effects look like the strip glowing. The player LEDs under the touchpad glow softly on top. No logos.
+// Look picks the pictures (PadArt): the default art, a colour variant from the built-in pack (half resolution, drawn into
+// the same art box, so the light, LEDs and stick sprites line up the same) or the user's own picture, drawn fitted in the
+// art box with nothing on it (it is an arbitrary image: no light strip, LEDs or input).
 public sealed class ControllerArt : Control
 {
 	public static readonly StyledProperty<bool> IsEdgeProperty = AvaloniaProperty.Register<ControllerArt, bool>(nameof(IsEdge));
@@ -24,6 +27,8 @@ public sealed class ControllerArt : Control
 	public static readonly StyledProperty<int> PlayerLedMaskProperty = AvaloniaProperty.Register<ControllerArt, int>(nameof(PlayerLedMask), -1);
 	// The player LEDs' brightness 0..1 (the controller's low / medium / high).
 	public static readonly StyledProperty<double> PlayerLedLevelProperty = AvaloniaProperty.Register<ControllerArt, double>(nameof(PlayerLedLevel), 1.0);
+	// Null: the default art.
+	public static readonly StyledProperty<PadLook?> LookProperty = AvaloniaProperty.Register<ControllerArt, PadLook?>(nameof(Look));
 
 	private static readonly Lazy<Bitmap> Standard = new(() => Load("controller.png"));
 	private static readonly Lazy<Bitmap> Edge = new(() => Load("controller-edge.png"));
@@ -39,6 +44,9 @@ public sealed class ControllerArt : Control
 	{
 		GradientStops = { new GradientStop(Color.FromArgb(150, 255, 255, 255), 0), new GradientStop(Color.FromArgb(0, 255, 255, 255), 1) },
 	}.ToImmutable();
+
+	// An own picture's corner radius (the app's RadiusSmall).
+	private const double OwnCornerRadius = 8;
 
 	// Image geometry (pixels of the asset): aspect ratio and where the player LEDs sit, under the touchpad.
 	private const double ImageWidth = 2290;
@@ -56,7 +64,8 @@ public sealed class ControllerArt : Control
 
 	static ControllerArt()
 	{
-		AffectsRender<ControllerArt>(IsEdgeProperty, LightColorProperty, LightIntensityProperty, PlayerLedsProperty, PlayerLedMaskProperty, PlayerLedLevelProperty);
+		AffectsRender<ControllerArt>(IsEdgeProperty, LightColorProperty, LightIntensityProperty, PlayerLedsProperty, PlayerLedMaskProperty, PlayerLedLevelProperty,
+			LookProperty);
 	}
 
 	// The asset is larger than most places it is shown; smooth downscaling keeps the outlines clean.
@@ -99,6 +108,12 @@ public sealed class ControllerArt : Control
 		set => SetValue(PlayerLedsProperty, value);
 	}
 
+	public PadLook? Look
+	{
+		get => GetValue(LookProperty);
+		set => SetValue(LookProperty, value);
+	}
+
 	public static Bitmap ArtBitmap(bool edge) => (edge ? Edge : Standard).Value;
 
 	public static Bitmap StickWellSprite(bool edge, bool left) => Wells[(edge ? 2 : 0) + (left ? 0 : 1)].Value;
@@ -130,7 +145,26 @@ public sealed class ControllerArt : Control
 			return;
 		}
 		var rect = new Rect((Bounds.Width - ImageWidth * scale) / 2, (Bounds.Height - ImageHeight * scale) / 2, ImageWidth * scale, ImageHeight * scale);
-		context.DrawImage(IsEdge ? Edge.Value : Standard.Value, rect);
+		PadArtSet art = PadArt.Resolve(Look, IsEdge);
+		if (art.IsOwn)
+		{
+			// The user's picture, fitted (uniform) and centred in the art box, alone, with rounded corners (RadiusSmall, less on
+			// a small drawing such as the sidebar card's).
+			Size size = art.Body.Size;
+			double fit = Math.Min(rect.Width / size.Width, rect.Height / size.Height);
+			if (fit > 0)
+			{
+				var picture = new Rect(rect.X + (rect.Width - size.Width * fit) / 2, rect.Y + (rect.Height - size.Height * fit) / 2,
+					size.Width * fit, size.Height * fit);
+				double radius = Math.Min(OwnCornerRadius, Math.Min(picture.Width, picture.Height) * 0.12);
+				using (context.PushClip(new RoundedRect(picture, radius)))
+				{
+					context.DrawImage(art.Body, picture);
+				}
+			}
+			return;
+		}
+		context.DrawImage(art.Body, rect);
 
 		// The light: the colour at full brightness (its own brightness, e.g. breathing, and LightIntensity set how strongly
 		// it shows), through the masks: the glow on the surroundings, the diffuser, its hot middle.

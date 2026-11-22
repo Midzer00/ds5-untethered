@@ -3,56 +3,69 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 
 namespace Kopru.App.Controls;
 
-// A small line graph of recent values, oldest on the left: Values as the accent line over a faint flat fill with its last
-// point marked, Secondary (optional) as a thin muted line.
-// Scale: with Maximum set, a 0..Maximum axis with faint grid lines at the top and half-way, labelled on the right ("Maximum
-// Unit", the half, "0"); without it, the larger of the series' maxima (never below MinScale).
-// Limit (optional): a thin dashed line in LimitBrush with LimitLabel small above its left end, and its value on the axis
-// (instead of the half-way label); nothing is drawn for a limit above Maximum.
+// A small area chart of recent values, oldest on the left, filling from the right as samples arrive: Values as a line in
+// Stroke over a flat translucent fill of the same colour down to the baseline, Secondary (optional) as a thin faint line.
+// A NaN value leaves a gap. Marks (optional, aligned with Values from the right) are small muted ticks under the baseline.
+// Scale: with Maximum set, a 0..Maximum axis with its value small inside the plot, top right ("Maximum Unit"); without
+// it, the larger of the series' maxima (never below MinScale) and no labels.
+// Limit (optional): a faint dashed line in LimitBrush; nothing is drawn for a limit above Maximum.
+// Pens and brushes are made when their colour changes, not on every frame; each series is one StreamGeometry.
 public sealed class Sparkline : Control
 {
 	public static readonly StyledProperty<IReadOnlyList<double>?> ValuesProperty =
 		AvaloniaProperty.Register<Sparkline, IReadOnlyList<double>?>(nameof(Values));
 	public static readonly StyledProperty<IReadOnlyList<double>?> SecondaryProperty =
 		AvaloniaProperty.Register<Sparkline, IReadOnlyList<double>?>(nameof(Secondary));
-	public static readonly StyledProperty<int> CapacityProperty = AvaloniaProperty.Register<Sparkline, int>(nameof(Capacity), 30);
+	public static readonly StyledProperty<IReadOnlyList<bool>?> MarksProperty =
+		AvaloniaProperty.Register<Sparkline, IReadOnlyList<bool>?>(nameof(Marks));
+	public static readonly StyledProperty<int> CapacityProperty = AvaloniaProperty.Register<Sparkline, int>(nameof(Capacity), 60);
 	public static readonly StyledProperty<double> MinScaleProperty = AvaloniaProperty.Register<Sparkline, double>(nameof(MinScale), 1);
 	public static readonly StyledProperty<double> MaximumProperty = AvaloniaProperty.Register<Sparkline, double>(nameof(Maximum));
 	public static readonly StyledProperty<double> LimitProperty = AvaloniaProperty.Register<Sparkline, double>(nameof(Limit));
-	public static readonly StyledProperty<string?> LimitLabelProperty = AvaloniaProperty.Register<Sparkline, string?>(nameof(LimitLabel));
 	public static readonly StyledProperty<string?> UnitProperty = AvaloniaProperty.Register<Sparkline, string?>(nameof(Unit));
 	public static readonly StyledProperty<IBrush?> StrokeProperty = AvaloniaProperty.Register<Sparkline, IBrush?>(nameof(Stroke));
 	public static readonly StyledProperty<IBrush?> LimitBrushProperty = AvaloniaProperty.Register<Sparkline, IBrush?>(nameof(LimitBrush));
 	public static readonly StyledProperty<IBrush?> LabelBrushProperty = AvaloniaProperty.Register<Sparkline, IBrush?>(nameof(LabelBrush));
 
-	// Axis and limit labels: small, in the label gutter on the right.
+	// The axis label: small, inside the plot at its top right (no gutter: the plot uses the full width).
 	public const double LabelSize = 10.5;
-	public const double LabelGutter = 30;
+	public const double LabelGutter = 0;
+	// The fill's opacity over the line's colour, and the loss ticks' size.
+	public const byte FillAlpha = 46;
+	public const double MarkHeight = 4;
 
-	private static readonly IBrush Baseline = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255));
-	private static readonly IBrush SecondaryStroke = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
-	private static readonly IBrush Grid = new SolidColorBrush(Color.FromArgb(18, 255, 255, 255));
-	public const double LastPointRadius = 3;
+	private static readonly IBrush Baseline = new SolidColorBrush(Color.FromArgb(34, 255, 255, 255));
+	private static readonly IBrush SecondaryStroke = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255));
+	private static readonly IBrush MarkBrush = new SolidColorBrush(Color.FromArgb(150, 0x8A, 0x90, 0x9A));
+	private static readonly IPen BaselinePen = new ImmutablePen(Baseline.ToImmutable(), 1);
+	private static readonly IPen SecondaryPen = new ImmutablePen(SecondaryStroke.ToImmutable(), 1, lineJoin: PenLineJoin.Round);
+	private static readonly IPen MarkPen = new ImmutablePen(MarkBrush.ToImmutable(), 1.5);
+
+	private IPen? _linePen;
+	private IBrush? _fill;
+	private IPen? _limitPen;
+	private FormattedText? _topLabel;
 
 	static Sparkline()
 	{
-		AffectsRender<Sparkline>(ValuesProperty, SecondaryProperty, CapacityProperty, MinScaleProperty, MaximumProperty, LimitProperty,
-			LimitLabelProperty, UnitProperty, StrokeProperty, LimitBrushProperty, LabelBrushProperty);
+		AffectsRender<Sparkline>(ValuesProperty, SecondaryProperty, MarksProperty, CapacityProperty, MinScaleProperty, MaximumProperty, LimitProperty,
+			UnitProperty, StrokeProperty, LimitBrushProperty, LabelBrushProperty);
 	}
 
 	public IReadOnlyList<double>? Values { get => GetValue(ValuesProperty); set => SetValue(ValuesProperty, value); }
 	public IReadOnlyList<double>? Secondary { get => GetValue(SecondaryProperty); set => SetValue(SecondaryProperty, value); }
-	// Samples across the full width (the graph fills from the right as samples arrive).
+	public IReadOnlyList<bool>? Marks { get => GetValue(MarksProperty); set => SetValue(MarksProperty, value); }
+	// Samples across the full width.
 	public int Capacity { get => GetValue(CapacityProperty); set => SetValue(CapacityProperty, value); }
 	public double MinScale { get => GetValue(MinScaleProperty); set => SetValue(MinScaleProperty, value); }
 	// A fixed top of the scale (0: scale to the data).
 	public double Maximum { get => GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
 	// The "you can feel it" line (0: none).
 	public double Limit { get => GetValue(LimitProperty); set => SetValue(LimitProperty, value); }
-	public string? LimitLabel { get => GetValue(LimitLabelProperty); set => SetValue(LimitLabelProperty, value); }
 	public string? Unit { get => GetValue(UnitProperty); set => SetValue(UnitProperty, value); }
 	public IBrush? Stroke { get => GetValue(StrokeProperty); set => SetValue(StrokeProperty, value); }
 	public IBrush? LimitBrush { get => GetValue(LimitBrushProperty); set => SetValue(LimitBrushProperty, value); }
@@ -60,7 +73,7 @@ public sealed class Sparkline : Control
 
 	public bool HasAxis => Maximum > 0;
 
-	// Where the plot area ends on the right (the label gutter follows when the axis is labelled).
+	// Where the plot area ends on the right (LabelGutter less than the width when the axis is labelled).
 	public double PlotWidth => Math.Max(0, Bounds.Width - (HasAxis ? LabelGutter : 0));
 
 	// The vertical position of a value in the plot area (top padding leaves room for the top label).
@@ -69,6 +82,27 @@ public sealed class Sparkline : Control
 		(double top, double bottom) = PlotRows();
 		double max = HasAxis ? Maximum : ScaleTop(MinScale, Values ?? [], Secondary ?? []);
 		return bottom - Math.Clamp(value / max, 0, 1) * (bottom - top);
+	}
+
+	// The x of sample i of a series of count samples (the newest at the right edge).
+	public double XOf(int i, int count) => PlotWidth - (count - 1 - i) * PlotWidth / (Math.Max(2, Capacity) - 1);
+
+	protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+	{
+		base.OnPropertyChanged(change);
+		if (change.Property == StrokeProperty)
+		{
+			_linePen = null;
+			_fill = null;
+		}
+		else if (change.Property == LimitBrushProperty)
+		{
+			_limitPen = null;
+		}
+		else if (change.Property == MaximumProperty || change.Property == UnitProperty || change.Property == LabelBrushProperty)
+		{
+			_topLabel = null;
+		}
 	}
 
 	public override void Render(DrawingContext context)
@@ -81,72 +115,44 @@ public sealed class Sparkline : Control
 		(double top, double bottom) = PlotRows();
 		IReadOnlyList<double> main = Values ?? [];
 		IReadOnlyList<double> second = Secondary ?? [];
-		int capacity = Math.Max(2, Capacity);
-		double step = w / (capacity - 1);
-		Point At(IReadOnlyList<double> values, int i) => new(w - (values.Count - 1 - i) * step, YOf(values[i]));
-		bool limitShown = Limit > 0 && (!HasAxis || Limit <= Maximum);
 
-		// Faint grid: the baseline, and with an axis the top and half-way lines.
-		context.DrawLine(new Pen(Baseline, 1), new Point(0, bottom + 0.5), new Point(w, bottom + 0.5));
-		if (HasAxis)
-		{
-			var grid = new Pen(Grid, 1);
-			context.DrawLine(grid, new Point(0, Math.Round(top) + 0.5), new Point(w, Math.Round(top) + 0.5));
-			double half = Math.Round(YOf(Maximum / 2)) + 0.5;
-			context.DrawLine(grid, new Point(0, half), new Point(w, half));
-		}
-
-		IBrush limitBrush = LimitBrush ?? SecondaryStroke;
-		if (limitShown)
+		context.DrawLine(BaselinePen, new Point(0, bottom + 0.5), new Point(w, bottom + 0.5));
+		if (Limit > 0 && (!HasAxis || Limit <= Maximum))
 		{
 			double y = Math.Round(YOf(Limit)) + 0.5;
-			context.DrawLine(new Pen(limitBrush, 1, new DashStyle([3, 3], 0)), new Point(0, y), new Point(w, y));
+			_limitPen ??= new ImmutablePen((LimitBrush ?? SecondaryStroke).ToImmutable(), 1, new ImmutableDashStyle([2, 4], 0));
+			context.DrawLine(_limitPen, new Point(0, y), new Point(w, y));
 		}
 
+		if (main.Count >= 2)
+		{
+			Color c = Stroke is ISolidColorBrush s ? s.Color : Colors.White;
+			_fill ??= new ImmutableSolidColorBrush(Color.FromArgb(FillAlpha, c.R, c.G, c.B));
+			_linePen ??= new ImmutablePen((Stroke ?? Brushes.White).ToImmutable(), 1.6, lineJoin: PenLineJoin.Round, lineCap: PenLineCap.Round);
+			context.DrawGeometry(_fill, null, Area(main, bottom));
+			context.DrawGeometry(null, _linePen, Line(main));
+		}
 		if (second.Count >= 2)
 		{
-			context.DrawGeometry(null, new Pen(SecondaryStroke, 1), Line(second.Count, i => At(second, i), false, bottom));
+			context.DrawGeometry(null, SecondaryPen, Line(second));
 		}
-		if (main.Count >= 1)
+		if (Marks is { Count: > 0 } marks)
 		{
-			IBrush stroke = Stroke ?? Brushes.White;
-			if (main.Count >= 2)
+			for (int i = 0; i < marks.Count; i++)
 			{
-				Color c = stroke is ISolidColorBrush s ? s.Color : Colors.White;
-				var fill = new SolidColorBrush(Color.FromArgb(36, c.R, c.G, c.B));
-				context.DrawGeometry(fill, null, Line(main.Count, i => At(main, i), true, bottom));
-				context.DrawGeometry(null, new Pen(stroke, 1.6, lineJoin: PenLineJoin.Round, lineCap: PenLineCap.Round), Line(main.Count, i => At(main, i), false, bottom));
+				if (marks[i])
+				{
+					double x = Math.Round(Math.Clamp(XOf(i, marks.Count), 1, w - 1)) + 0.5;
+					context.DrawLine(MarkPen, new Point(x, bottom + 2), new Point(x, bottom + 2 + MarkHeight));
+				}
 			}
-			// The latest second, marked.
-			Point last = At(main, main.Count - 1);
-			context.DrawEllipse(stroke, null, new Point(Math.Min(last.X, w - LastPointRadius), last.Y), LastPointRadius, LastPointRadius);
-		}
-
-		// The limit's name, small, above the left end of its line (no plate).
-		if (limitShown && !string.IsNullOrEmpty(LimitLabel))
-		{
-			FormattedText text = Label(LimitLabel!, limitBrush);
-			context.DrawText(text, new Point(0, Math.Max(0, Math.Round(YOf(Limit)) - text.Height - 1)));
 		}
 
 		if (HasAxis)
 		{
-			IBrush labels = LabelBrush ?? SecondaryStroke;
-			void AxisLabel(string s, double y, IBrush brush)
-			{
-				FormattedText t = Label(s, brush);
-				context.DrawText(t, new Point(w + 6, Math.Clamp(y - t.Height / 2, 0, h - t.Height)));
-			}
-			AxisLabel(Format(Maximum) + (string.IsNullOrEmpty(Unit) ? string.Empty : " " + Unit), top, labels);
-			if (limitShown && Limit < Maximum)
-			{
-				AxisLabel(Format(Limit), YOf(Limit), limitBrush);
-			}
-			else
-			{
-				AxisLabel(Format(Maximum / 2), YOf(Maximum / 2), labels);
-			}
-			AxisLabel("0", bottom, labels);
+			_topLabel ??= new FormattedText(Format(Maximum) + (string.IsNullOrEmpty(Unit) ? string.Empty : " " + Unit), CultureInfo.CurrentCulture,
+				FlowDirection.LeftToRight, Typeface.Default, LabelSize, LabelBrush ?? SecondaryStroke);
+			context.DrawText(_topLabel, new Point(Math.Max(0, w - _topLabel.Width), Math.Clamp(top + 3, 0, Math.Max(0, h - _topLabel.Height))));
 		}
 	}
 
@@ -154,38 +160,80 @@ public sealed class Sparkline : Control
 	// minScale, so small jitter on a low line stays a flat line instead of being stretched over the whole height.
 	public static double ScaleTop(double minScale, params IReadOnlyList<double>[] series)
 	{
-		double peak = series.Select(s => s.DefaultIfEmpty(0).Max()).DefaultIfEmpty(0).Max();
+		double peak = series.Select(s => s.Where(v => !double.IsNaN(v)).DefaultIfEmpty(0).Max()).DefaultIfEmpty(0).Max();
 		return Math.Max(Math.Max(minScale, 0.001), peak * 1.15);
 	}
 
 	private (double Top, double Bottom) PlotRows()
 	{
 		double h = Bounds.Height;
-		// With labels, half a label of room above the top and below the baseline so they are not cut off.
-		double pad = HasAxis ? Math.Ceiling(LabelSize * 0.7) : 1;
-		return (HasAxis ? pad : 2, h - pad);
+		// Half a label of room above the top; room for the ticks under the baseline.
+		double topPad = HasAxis ? Math.Ceiling(LabelSize * 0.7) : 2;
+		return (topPad, h - (MarkHeight + 3));
 	}
 
 	private static string Format(double v) => v.ToString("0.#", CultureInfo.CurrentCulture);
 
-	private static FormattedText Label(string text, IBrush brush) =>
-		new(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, LabelSize, brush);
-
-	private static StreamGeometry Line(int count, Func<int, Point> at, bool closed, double bottom)
+	// The line, one figure per run of real values (a NaN breaks it).
+	private StreamGeometry Line(IReadOnlyList<double> values)
 	{
 		var g = new StreamGeometry();
 		using StreamGeometryContext ctx = g.Open();
-		ctx.BeginFigure(at(0), closed);
-		for (int i = 1; i < count; i++)
+		bool open = false;
+		for (int i = 0; i < values.Count; i++)
 		{
-			ctx.LineTo(at(i));
+			if (double.IsNaN(values[i]))
+			{
+				if (open)
+				{
+					ctx.EndFigure(false);
+					open = false;
+				}
+				continue;
+			}
+			Point p = new(XOf(i, values.Count), YOf(values[i]));
+			if (!open)
+			{
+				ctx.BeginFigure(p, false);
+				open = true;
+			}
+			else
+			{
+				ctx.LineTo(p);
+			}
 		}
-		if (closed)
+		if (open)
 		{
-			ctx.LineTo(new Point(at(count - 1).X, bottom));
-			ctx.LineTo(new Point(at(0).X, bottom));
+			ctx.EndFigure(false);
 		}
-		ctx.EndFigure(closed);
+		return g;
+	}
+
+	// The fill under the line, down to the baseline, one closed figure per run of real values.
+	private StreamGeometry Area(IReadOnlyList<double> values, double bottom)
+	{
+		var g = new StreamGeometry();
+		using StreamGeometryContext ctx = g.Open();
+		int i = 0;
+		while (i < values.Count)
+		{
+			while (i < values.Count && double.IsNaN(values[i]))
+			{
+				i++;
+			}
+			if (i >= values.Count)
+			{
+				break;
+			}
+			ctx.BeginFigure(new Point(XOf(i, values.Count), bottom), true);
+			while (i < values.Count && !double.IsNaN(values[i]))
+			{
+				ctx.LineTo(new Point(XOf(i, values.Count), YOf(values[i])));
+				i++;
+			}
+			ctx.LineTo(new Point(XOf(i - 1, values.Count), bottom));
+			ctx.EndFigure(true);
+		}
 		return g;
 	}
 }

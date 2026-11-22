@@ -96,6 +96,10 @@ public static class PairingInfo
 
 	// The virtual pad's address (Virtual.DeviceIdentity.VirtualAddress), so our own pad is never taken for the controller.
 	public static ulong VirtualAddress { get; } = ParseAddress([ReportId, .. Virtual.DeviceIdentity.VirtualAddress])!.Value;
+
+	// Any of our virtual pads, slots 1-4: their 0x09 addresses share the first five report bytes and differ only in
+	// the top byte (the slot number).
+	public static bool IsVirtual(ulong address) => (address & 0xFFFFFFFFFF) == (VirtualAddress & 0xFFFFFFFFFF);
 }
 
 public static class AddressText

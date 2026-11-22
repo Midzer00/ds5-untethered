@@ -1,0 +1,245 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls"
+             x:Class="Kopru.App.Views.TesterView" x:DataType="vm:TesterViewModel">
+  <UserControl.Styles>
+    <!-- This tab's cards: a little tighter than the page default so the whole tab fits one window -->
+    <Style Selector="Border.panel.testCard">
+      <Setter Property="Padding" Value="18,14" />
+    </Style>
+    <!-- A slider's label with its value on one line, the slider under it -->
+    <Style Selector="StackPanel.testSlider">
+      <Setter Property="Spacing" Value="2" />
+    </Style>
+    <Style Selector="StackPanel.testSlider TextBlock.value">
+      <Setter Property="MinWidth" Value="0" />
+    </Style>
+    <!-- A trigger card's two sliders side by side; a narrow card puts them under each other (TesterLayout sets the class) -->
+    <Style Selector="Grid.triggerRange > StackPanel.end">
+      <Setter Property="Grid.Column" Value="2" />
+    </Style>
+    <Style Selector="c|TesterLayout.stackedTriggers Grid.triggerRange > StackPanel">
+      <Setter Property="Grid.ColumnSpan" Value="3" />
+    </Style>
+    <Style Selector="c|TesterLayout.stackedTriggers Grid.triggerRange > StackPanel.end">
+      <Setter Property="Grid.Column" Value="0" />
+      <Setter Property="Grid.Row" Value="1" />
+      <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <!-- Motion: gyroscope and accelerometer side by side; under each other in a narrow card -->
+    <Style Selector="Grid.motionAxes > StackPanel.accel">
+      <Setter Property="Grid.Column" Value="2" />
+    </Style>
+    <Style Selector="c|TesterLayout.stackedMotion Grid.motionAxes > StackPanel">
+      <Setter Property="Grid.ColumnSpan" Value="3" />
+    </Style>
+    <Style Selector="c|TesterLayout.stackedMotion Grid.motionAxes > StackPanel.accel">
+      <Setter Property="Grid.Column" Value="0" />
+      <Setter Property="Grid.Row" Value="1" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+    </Style>
+    <!-- A stick card's circle beside its sliders; above them in a tall card (TesterLayout sets the class) -->
+    <Style Selector="StackPanel.stickSliders">
+      <Setter Property="Grid.Column" Value="2" />
+    </Style>
+    <Style Selector="c|StickPreview.top">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="c|TesterLayout.tallSticks c|StickPreview.top">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="c|TesterLayout.tallSticks c|StickPreview.side">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="c|TesterLayout.tallSticks StackPanel.stickSliders">
+      <Setter Property="Grid.Column" Value="0" />
+      <Setter Property="Grid.ColumnSpan" Value="3" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <!-- A stick: the live preview left of its deadzones (or above them in a tall card), the response curve at the bottom; a
+         card taller than its content keeps the preview and sliders centred between the title and the curve -->
+    <DataTemplate DataType="vm:TesterStickPanel">
+      <Border Classes="panel testCard fill">
+        <Grid RowDefinitions="Auto,*,Auto" Grid.IsSharedSizeScope="True">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Classes="h2" Text="{Binding Live.Title}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Live.ValueText}" TextWrapping="NoWrap" VerticalAlignment="Center" FontFamily="Consolas,Menlo,monospace" />
+          </Grid>
+          <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Center" Margin="0,10,0,12">
+          <!-- Above the sliders in a tall card, beside them otherwise (TesterLayout picks and sizes it) -->
+          <c:StickPreview Classes="top" Width="96" Height="96" HorizontalAlignment="Center" Accent="{StaticResource AccentBrush}"
+                          RawX="{Binding Live.RawX}" RawY="{Binding Live.RawY}" TunedX="{Binding Live.TunedX}" TunedY="{Binding Live.TunedY}"
+                          InnerDeadzone="{Binding Live.Inner}" OuterDeadzone="{Binding Live.Outer}" IsLive="{Binding Live.IsLive}"
+                          ToolTip.Tip="{Binding $parent[UserControl].((vm:TesterViewModel)DataContext).StickHint}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" SharedSizeGroup="lead" />
+              <ColumnDefinition Width="18" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <c:StickPreview Classes="side" Width="96" Height="96" HorizontalAlignment="Center" VerticalAlignment="Center" Accent="{StaticResource AccentBrush}"
+                            RawX="{Binding Live.RawX}" RawY="{Binding Live.RawY}" TunedX="{Binding Live.TunedX}" TunedY="{Binding Live.TunedY}"
+                            InnerDeadzone="{Binding Live.Inner}" OuterDeadzone="{Binding Live.Outer}" IsLive="{Binding Live.IsLive}"
+                            ToolTip.Tip="{Binding $parent[UserControl].((vm:TesterViewModel)DataContext).StickHint}" />
+            <StackPanel Classes="stickSliders" Spacing="8" VerticalAlignment="Center">
+              <StackPanel Classes="testSlider">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Classes="label" Text="{Binding Tune.InnerLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Tune.InnerText}" />
+                </Grid>
+                <Slider Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Tune.Inner}" AutomationProperties.Name="{Binding Tune.InnerLabel}" />
+              </StackPanel>
+              <StackPanel Classes="testSlider">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Classes="label" Text="{Binding Tune.OuterLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Tune.OuterText}" />
+                </Grid>
+                <Slider Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Tune.Outer}" AutomationProperties.Name="{Binding Tune.OuterLabel}" />
+              </StackPanel>
+              <StackPanel Classes="testSlider">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock Classes="label" Text="{Binding Tune.AntiLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Tune.AntiText}" />
+                </Grid>
+                <Slider Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Tune.Anti}" AutomationProperties.Name="{Binding Tune.AntiLabel}" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+          </StackPanel>
+          <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" SharedSizeGroup="lead" />
+              <ColumnDefinition Width="18" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Classes="label" Text="{Binding Tune.CurveLabel}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding Tune.Curves}" SelectedItem="{Binding Tune.SelectedCurve}"
+                      AutomationProperties.Name="{Binding Tune.CurveLabel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CurveOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+        </Grid>
+      </Border>
+    </DataTemplate>
+    <!-- A trigger: what games receive as a bar with the raw number, the range under it side by side -->
+    <DataTemplate DataType="vm:TesterTriggerPanel">
+      <Border Classes="panel testCard fill">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <TextBlock Classes="h2" Text="{Binding Live.Name}" VerticalAlignment="Center" />
+            <ProgressBar Grid.Column="1" Classes="meter" Value="{Binding Live.GameLevel}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Classes="caption" Text="{Binding Live.ValueText}" MinWidth="24" TextAlignment="Right" TextWrapping="NoWrap" VerticalAlignment="Center"
+                       FontFamily="Consolas,Menlo,monospace" />
+          </Grid>
+          <Grid Classes="triggerRange" ColumnDefinitions="*,24,*" RowDefinitions="Auto,Auto">
+            <StackPanel Classes="testSlider">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="label" Text="{Binding Tune.StartLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Tune.StartText}" />
+              </Grid>
+              <Slider Maximum="95" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Tune.Start}" AutomationProperties.Name="{Binding Tune.StartLabel}" />
+            </StackPanel>
+            <StackPanel Classes="testSlider end">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="label" Text="{Binding Tune.EndLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Tune.EndText}" />
+              </Grid>
+              <Slider Minimum="5" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Tune.End}" AutomationProperties.Name="{Binding Tune.EndLabel}" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+    <DataTemplate DataType="vm:AxisReadout">
+      <Grid ColumnDefinitions="14,*,*,42" Margin="0,2">
+        <TextBlock Classes="caption" Text="{Binding Name}" VerticalAlignment="Center" />
+        <ProgressBar Grid.Column="1" Classes="meter" Height="6" MinHeight="6" Value="{Binding Negative}" FlowDirection="RightToLeft" VerticalAlignment="Center" />
+        <ProgressBar Grid.Column="2" Classes="meter" Height="6" MinHeight="6" Value="{Binding Positive}" VerticalAlignment="Center" Margin="2,0,0,0" />
+        <TextBlock Grid.Column="3" Classes="caption" Text="{Binding Value}" TextAlignment="Right" TextWrapping="NoWrap" VerticalAlignment="Center" FontFamily="Consolas,Menlo,monospace" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <!-- The controller page's Test tab (ControllerView holds the page title, the tabs and the scrolling). Laid out to fit one
+       window: the status line; drift calibration, the controller (pressed buttons and touchpad fingers light up on it) and the
+       motion sensors; then each side's stick and trigger with their settings, left and right like the controller -->
+  <StackPanel Spacing="12">
+    <!-- Status in one line: source, battery, connection, report rate; what the source means on hover -->
+    <WrapPanel ItemSpacing="28" LineSpacing="4">
+      <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent" ToolTip.Tip="{Binding SourceHint}">
+        <TextBlock Classes="caption" Text="{Binding SourceLabel}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+        <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding SourceText}" TextWrapping="NoWrap" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Classes="caption" Text="{Binding BatteryLabel}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+        <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding BatteryText}" TextWrapping="NoWrap" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Classes="caption" Text="{Binding ConnectionLabel}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+        <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding ConnectionText}" TextWrapping="NoWrap" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Classes="caption" Text="{Binding RateLabel}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+        <TextBlock Classes="label" FontWeight="SemiBold" Text="{Binding RateText}" TextWrapping="NoWrap" />
+      </StackPanel>
+    </WrapPanel>
+
+    <!-- The cards; TesterLayout picks the columns from the width and fills the tab's height (see there). The ScrollViewer
+         around the page stays as a fallback -->
+    <c:TesterLayout x:Name="Cards">
+      <!-- Drift calibration: what to do, the button at the bottom; the progress replaces the hint while it runs -->
+      <Border Classes="panel testCard fill">
+        <DockPanel>
+          <Button DockPanel.Dock="Bottom" Theme="{StaticResource QuietButton}" Content="{Binding Tuning.CalibrateText}" Command="{Binding Tuning.CalibrateCommand}"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,10,0,0" ToolTip.Tip="{Binding CalibrationHint}" />
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="{Binding Tuning.CalibrationLabel}" />
+            <TextBlock Classes="caption" Text="{Binding CalibrationHint}" IsVisible="{Binding !Tuning.HasCalibrationText}" />
+            <StackPanel Spacing="6" IsVisible="{Binding Tuning.HasCalibrationText}">
+              <TextBlock Classes="caption" Text="{Binding Tuning.CalibrationText}" />
+              <ProgressBar Classes="meter" Value="{Binding Tuning.CalibrationProgress}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- The controller: pressed buttons, stick clicks and touchpad fingers light up on it; the picture grows with the stage -->
+      <Border Classes="stage" Padding="10">
+        <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+          <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+                           PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" />
+          <!-- Sticks -1..1 (Y down) and triggers 0..100 %, the raw input as the cards around it show it -->
+          <c:ControllerInputOverlay Pressed="{Binding Pressed}" Touch1="{Binding Touch1}" Touch2="{Binding Touch2}" IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}"
+                                    LeftStickX="{Binding LeftStick.RawX}" LeftStickY="{Binding LeftStick.RawY}"
+                                    RightStickX="{Binding RightStick.RawX}" RightStickY="{Binding RightStick.RawY}"
+                                    L2Level="{Binding L2.Level}" R2Level="{Binding R2.Level}" Accent="{StaticResource AccentBrush}" />
+        </Panel>
+      </Border>
+
+      <!-- Motion: gyroscope and accelerometer side by side -->
+      <Border Classes="panel testCard fill">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="h2" Text="{Binding MotionLabel}" />
+          <TextBlock Classes="caption" Text="{Binding MotionNeedsFull}" IsVisible="{Binding ShowsMotionNote}" />
+          <Grid Classes="motionAxes" ColumnDefinitions="*,14,*" RowDefinitions="Auto,Auto" IsVisible="{Binding !ShowsMotionNote}">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="section" Text="{Binding GyroLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+              <ItemsControl ItemsSource="{Binding Gyro}" />
+            </StackPanel>
+            <StackPanel Classes="accel" Spacing="2">
+              <TextBlock Classes="section" Text="{Binding AccelLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+              <ItemsControl ItemsSource="{Binding Accel}" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <ContentControl Content="{Binding LeftPanel}" VerticalContentAlignment="Stretch" />
+      <ContentControl Content="{Binding RightPanel}" VerticalContentAlignment="Stretch" />
+      <ContentControl Content="{Binding L2Panel}" VerticalContentAlignment="Stretch" />
+      <ContentControl Content="{Binding R2Panel}" VerticalContentAlignment="Stretch" />
+    </c:TesterLayout>
+  </StackPanel>
+</UserControl>

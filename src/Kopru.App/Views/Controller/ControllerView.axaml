@@ -1,0 +1,285 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
+             xmlns:c="using:Kopru.App.Controls"
+             x:Class="Kopru.App.Views.ControllerView" x:DataType="vm:ControllerPageViewModel">
+  <UserControl.Styles>
+    <!-- The look picker: a dimmed backdrop over the page and one opaque, rounded dialog card in the middle of it -->
+    <Style Selector="Border.lookBackdrop">
+      <Setter Property="Background" Value="#99000000" />
+    </Style>
+    <Style Selector="Border.lookDialog">
+      <Setter Property="Background" Value="{StaticResource ToastBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
+      <Setter Property="Padding" Value="20,18,20,16" />
+      <!-- Room for about seven tiles a row; as tall as the page allows up to MaxHeight, so the card keeps its size -->
+      <Setter Property="MaxWidth" Value="780" />
+      <Setter Property="MaxHeight" Value="600" />
+      <Setter Property="Margin" Value="24" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+    <!-- A tile: the picture in a rounded frame with the name under it; the chosen one has an accent frame -->
+    <Style Selector="Button.lookTile">
+      <Setter Property="Width" Value="96" />
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <!-- Keyboard focus shows on the picture's frame, not as a box round the whole tile -->
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button.lookTile:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.lookTile:pressed">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.lookFrame">
+      <Setter Property="Height" Value="64" />
+      <Setter Property="Background" Value="{StaticResource StageBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="Button.lookTile:pointerover Border.lookFrame">
+      <Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" />
+    </Style>
+    <Style Selector="Button.lookTile:focus-visible Border.lookFrame">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+    </Style>
+    <Style Selector="Border.lookFrame.selected">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Padding" Value="5" />
+    </Style>
+    <!-- The chosen tile's name is semibold -->
+    <Style Selector="TextBlock.lookName">
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.lookName.selected">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- Remove on the own image's tile: a small quiet round X in the picture frame's top right corner -->
+    <Style Selector="Button.lookRemove">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{StaticResource ToastBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,5,5,0" />
+    </Style>
+    <Style Selector="Button.lookRemove:pointerover">
+      <Setter Property="Background" Value="{StaticResource ToastHoverBrush}" />
+    </Style>
+    <Style Selector="Button.lookRemove > Path">
+      <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
+      <Setter Property="StrokeThickness" Value="1.6" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="Width" Value="9" />
+      <Setter Property="Height" Value="9" />
+      <Setter Property="Stretch" Value="Uniform" />
+    </Style>
+    <Style Selector="Button.lookRemove:pointerover > Path">
+      <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
+    </Style>
+    <!-- The colour tile's DualSense: four colours of the pack in flat vertical bands (tools/art/controller/make_look_icon.py),
+         drawn from a picture three times its size (scaled down smoothly, see the code-behind) -->
+    <Style Selector="Image.lookIcon">
+      <Setter Property="Width" Value="60" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style Selector="TextBlock.lookCardTitle">
+      <Setter Property="FontSize" Value="{StaticResource FontBody}" />
+      <Setter Property="LineHeight" Value="16" />
+      <Setter Property="Margin" Value="0,0,0,2" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- The name stays on one line under the title, at most 115 wide (trimmed, whole in its tooltip): the tile never grows -->
+    <Style Selector="TextBlock.lookCardName">
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+      <Setter Property="LineHeight" Value="15" />
+      <Setter Property="MaxWidth" Value="115" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+  </UserControl.Styles>
+  <UserControl.Resources>
+    <!-- The colour tile right of the header: a raised box with QuietButton's fill, hover, pressed and focus, as tall as the
+         header and the tabs together, a small DualSense over its title and the current look's name. A theme of its own: a
+         tile, not a text button (those keep the button heights). -->
+    <ControlTheme x:Key="LookCardButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+      <Setter Property="Width" Value="132" />
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </ControlTheme>
+    <!-- One tile: the picture (rounded) in its frame with the name under it; the own image's tile shows a plus until it has a
+         picture, then carries the remove X in the frame's corner -->
+    <DataTemplate x:Key="LookTile" x:DataType="vm:PadLookTile">
+      <Panel Width="96">
+        <Button Classes="lookTile" Theme="{StaticResource QuietButton}" Command="{Binding ChooseCommand}"
+                AutomationProperties.Name="{Binding AccessibleName}" ToolTip.Tip="{Binding Name}">
+          <StackPanel Spacing="5">
+            <Border Classes="lookFrame" Classes.selected="{Binding IsSelected}">
+              <Panel>
+                <Border CornerRadius="{StaticResource RadiusSmall}" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        IsVisible="{Binding !ShowsAdd}">
+                  <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                </Border>
+                <Path Data="{x:Static c:IconPaths.Plus}" IsVisible="{Binding ShowsAdd}" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.8"
+                      StrokeLineCap="Round" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Panel>
+            </Border>
+            <TextBlock Classes="lookName" Classes.selected="{Binding IsSelected}" Text="{Binding Name}" TextAlignment="Center"
+                       TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Button>
+        <Button Classes="lookRemove" Theme="{StaticResource QuietButton}" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}"
+                ToolTip.Tip="{Binding RemoveTip}" AutomationProperties.Name="{Binding RemoveText}" AutomationProperties.HelpText="{Binding RemoveTip}">
+          <Path Data="{x:Static c:IconPaths.Cross}" />
+        </Button>
+      </Panel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Panel>
+  <ScrollViewer Classes="page">
+    <StackPanel Spacing="{StaticResource GapLarge}" Classes="page">
+      <!-- Header and tabs left; the controller's colour tile right, as tall as both together (it opens the look picker). One
+           row, so the tile only stretches to the left side's height and never adds to it while it is no taller. -->
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+        <StackPanel Spacing="{StaticResource GapLarge}">
+          <!-- Header: title, description and the controller picker -->
+          <Grid Classes="pageHeader">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="h1" Text="{Binding Title}" />
+              <TextBlock Classes="body" Text="{Binding Intro}" />
+              <v:ControllerSelector DataContext="{Binding Test.Picker}" Margin="0,6,0,0" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Test first (what the controller sends, fixed right beside it), then the output tests, then remap & gyro; the Test
+               tab's reset at the line's right end -->
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Gap}">
+            <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="420"
+                     VerticalAlignment="Center">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TabOption">
+                  <!-- Regular, and semibold while selected: two labels with a fixed weight each, so the selected one is always measured
+                       bold (a label that only inherits the bold weight can keep its narrower size and lose its last letter) -->
+                  <Panel>
+                    <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                               IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
+                    <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                               IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                  </Panel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Grid.Column="1" Name="ResetButton" Theme="{StaticResource QuietButton}" Content="{Binding Tuning.ResetText}" Command="{Binding Tuning.ResetCommand}"
+                    IsVisible="{Binding IsTestTab}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" />
+          </Grid>
+        </StackPanel>
+
+        <!-- The controller's colour: a small DualSense in flat bands of four of the pack's colours, "Controller Colour" and the current
+             look's name (trimmed, whole in its tooltip) under it -->
+        <Button Grid.Column="1" Name="LookTileButton" Theme="{StaticResource LookCardButton}"
+                Command="{Binding Look.OpenCommand}" IsVisible="{Binding Look.IsAvailable}" ToolTip.Tip="{Binding Look.ChangeTip}"
+                AutomationProperties.Name="{Binding Look.AccessibleName}" AutomationProperties.HelpText="{Binding Look.ChangeTip}">
+          <StackPanel>
+            <Image Name="LookIcon" Classes="lookIcon" Source="/Assets/look-icon.png" />
+            <TextBlock Name="LookTileTitle" Classes="lookCardTitle" Text="{Binding Look.Label}" />
+            <TextBlock Name="LookName" Classes="lookCardName" Text="{Binding Look.CurrentName}" ToolTip.Tip="{Binding Look.CurrentName}" />
+          </StackPanel>
+        </Button>
+      </Grid>
+
+      <Panel IsVisible="{Binding IsTestTab}">
+        <v:TesterView DataContext="{Binding Test}" />
+      </Panel>
+
+      <Panel IsVisible="{Binding IsOutputsTab}">
+        <v:OutputTestsView DataContext="{Binding Test}" />
+      </Panel>
+
+      <Panel IsVisible="{Binding IsRemapTab}">
+        <v:RemapView DataContext="{Binding Tuning.Remap}" />
+      </Panel>
+    </StackPanel>
+  </ScrollViewer>
+
+  <!-- The look picker over the page: Done, Esc or a click on the backdrop closes it; the tiles scroll inside it when the
+       window is short -->
+  <Panel Name="LookLayer" IsVisible="{Binding Look.IsOpen}">
+    <Border Name="LookBackdrop" Classes="lookBackdrop" />
+    <Border Name="LookDialog" Classes="lookDialog" KeyboardNavigation.TabNavigation="Cycle" XYFocus.NavigationModes="Keyboard">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+        <StackPanel Spacing="2">
+          <TextBlock Classes="h2" Text="{Binding Look.Label}" />
+          <TextBlock Classes="caption" Text="{Binding Look.Hint}" TextWrapping="Wrap" />
+        </StackPanel>
+        <ScrollViewer Grid.Row="1" Name="LookScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Spacing="14" Margin="0,0,6,0">
+            <ItemsControl ItemsSource="{Binding Look.Groups}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PadLookGroup">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="section" Text="{Binding Title}" />
+                    <ItemsControl ItemsSource="{Binding Tiles}" ItemTemplate="{StaticResource LookTile}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="10" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="caption" Text="{Binding Look.EdgeNote}" TextWrapping="Wrap" IsVisible="{Binding Look.IsEdge}" />
+          </StackPanel>
+        </ScrollViewer>
+        <!-- Footer, always in view: the own image's tile with its note (and a failed picture's message) left, Done right -->
+        <Border Grid.Row="2" Name="LookFooter" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+            <ContentControl Name="LookOwnTile" Content="{Binding Look.OwnTile}" ContentTemplate="{StaticResource LookTile}" VerticalAlignment="Top" />
+            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Classes="caption" Text="{Binding Look.OwnHint}" TextWrapping="Wrap" />
+              <TextBlock Name="LookError" Classes="caption" Foreground="{StaticResource DangerBrush}" Text="{Binding Look.Error}" IsVisible="{Binding Look.HasError}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="2" Name="LookDoneButton" Theme="{StaticResource PrimaryButton}" Content="{Binding Look.DoneText}" Command="{Binding Look.CloseCommand}"
+                    MinWidth="96" VerticalAlignment="Bottom" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+  </Panel>
+  </Panel>
+</UserControl>

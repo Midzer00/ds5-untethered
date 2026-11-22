@@ -20,12 +20,19 @@ public sealed record ProfileValues
 	public RumbleFeel RumbleFeel { get; init; } = RumbleFeel.Soft;
 	public FallbackTrigger FallbackTrigger { get; init; } = FallbackTrigger.Off;
 	public double FallbackStrength { get; init; } = 50;
+	// Where the fallback effect sits on the trigger's travel (missing in older profiles: the effects as they always were).
+	public FallbackShape FallbackShape { get; init; } = FallbackShape.Default;
+	// Custom Trigger per trigger, over whatever the game sends (missing in older profiles: Game's Effect on both).
+	public CustomTrigger LeftCustomTrigger { get; init; } = CustomTrigger.Default;
+	public CustomTrigger RightCustomTrigger { get; init; } = CustomTrigger.Default;
 	// How the Xbox Series pad's trigger rumble feels (missing in older profiles: Xbox-like).
 	public TriggerRumbleFeel TriggerRumble { get; init; } = TriggerRumbleFeel.XboxLike;
-	// "Turn sound into haptics" (missing in older profiles: off, 100 %, bass); strength in percent (0-200).
+	// "Turn sound into haptics" (missing in older profiles: off, 100 %, bass, 50 %); strength in percent (0-200), sensitivity
+	// in percent (0-100, how quiet a sound can be and still become haptics).
 	public bool AudioHaptics { get; init; }
 	public double AudioHapticsStrength { get; init; } = 100;
 	public Audio.AudioHapticsBand AudioHapticsBand { get; init; } = Audio.AudioHapticsBand.Bass;
+	public double AudioHapticsSensitivity { get; init; } = Audio.AudioHapticsDsp.DefaultSensitivity;
 	public InputTuning Tuning { get; init; } = InputTuning.Default;
 	public uint LightbarColour { get; init; } = 0x2F6BFF;
 	public double Brightness { get; init; } = 80;

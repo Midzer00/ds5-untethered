@@ -11,8 +11,9 @@ This build is not signed.
 1. Install or unzip
    - Installer (DS5-Untethered-...-Setup.exe): run it. It installs for your Windows user only, without administrator
      rights, into %LOCALAPPDATA%\Programs\DS5 Untethered and adds a Start menu shortcut.
-   - Zip (DS5-Untethered-...-win-x64.zip): unzip the whole folder anywhere (for example Documents\DS5 Untethered) and
-     run Kopru.App.exe. Keep all files together. Nothing else needs to be installed; .NET is included.
+   - Portable zip (DS5-Untethered-...-win-x64-Portable.zip): unzip the whole folder anywhere (for example
+     Documents\DS5 Untethered) and run Kopru.App.exe. Keep all files together. Nothing else needs to be
+     installed; .NET is included.
 
 2. Windows SmartScreen warning
    Because the build is not signed, Windows may show "Windows protected your PC". Click "More info", then "Run anyway".
@@ -29,7 +30,7 @@ This build is not signed.
      installed. The app does not require a specific
      version; it looks for the installed program and its driver. If Windows reports a pending restart, the app tells
      you; restart the PC if a driver installer asks you to.
-   - Pair the controller: with the controller off, hold PS and Create until the light bar flashes quickly, then add it
+   - Pair the controller: with the controller off, hold the ø button and Create until the light bar flashes quickly, then add it
      in Windows Settings > Bluetooth & devices > Add device. Use Bluetooth, not the USB cable.
    - Bluetooth adapter test (optional): measures whether your adapter is fast enough for haptics.
    When the required steps are done, the virtual controller starts by itself whenever the controller connects, and
@@ -65,8 +66,9 @@ Bu derleme imzalı değildir.
 1. Kurun ya da zip'i açın
    - Kurulum (DS5-Untethered-...-Setup.exe): çalıştırın. Yalnızca sizin Windows kullanıcınız için, yönetici izni
      istemeden %LOCALAPPDATA%\Programs\DS5 Untethered klasörüne kurar ve Başlat menüsüne kısayol ekler.
-   - Zip (DS5-Untethered-...-win-x64.zip): klasörün tamamını istediğiniz yere açın (ör. Belgeler\DS5 Untethered) ve
-     Kopru.App.exe'yi çalıştırın. Dosyaları birlikte tutun. Başka bir şey kurmanız gerekmez; .NET içindedir.
+   - Taşınabilir zip (DS5-Untethered-...-win-x64-Portable.zip): klasörün tamamını istediğiniz yere açın (ör.
+     Belgeler\DS5 Untethered) ve Kopru.App.exe'yi çalıştırın. Dosyaları birlikte tutun. Başka bir şey kurmanız
+     gerekmez; .NET içindedir.
 
 2. Windows SmartScreen uyarısı
    Sürüm imzalı olmadığı için Windows "Windows bilgisayarınızı korudu" uyarısı gösterebilir. "Ek bilgi"ye, sonra
@@ -84,7 +86,7 @@ Bu derleme imzalı değildir.
      bir sürüm istemez; kurulu
      programı ve sürücüsünü arar. Windows yeniden başlatma bekliyorsa uygulama bunu söyler; bir sürücü kurulumu
      isterse bilgisayarı yeniden başlatın.
-   - Kumandayı eşleştirin: kumanda kapalıyken PS ve Create tuşlarını ışık çubuğu hızlı yanıp sönene kadar basılı
+   - Kumandayı eşleştirin: kumanda kapalıyken ø ve Create tuşlarını ışık çubuğu hızlı yanıp sönene kadar basılı
      tutun, sonra Windows Ayarlar > Bluetooth ve cihazlar > Cihaz ekle ile ekleyin. USB kablosu değil, Bluetooth
      kullanın.
    - Bluetooth adaptör testi (isteğe bağlı): adaptörünüzün titreşim için yeterince hızlı olup olmadığını ölçer.

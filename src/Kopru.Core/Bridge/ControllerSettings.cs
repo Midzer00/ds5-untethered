@@ -26,17 +26,29 @@ public sealed record ControllerSettings(
 		RumbleLevel / 100, RumbleFeel, FallbackTrigger, Math.Clamp(FallbackStrength / 100, 0, 1))
 	{
 		AudioHaptics = new Kopru.Core.Audio.AudioHapticsSettings(AudioHapticsOn, Math.Clamp(AudioHapticsStrength / 100, 0, Kopru.Core.Audio.AudioHapticsDsp.MaxStrength),
-			AudioHapticsBand),
-		TriggerRumble = TriggerRumble
+			AudioHapticsBand, Kopru.Core.Audio.AudioHapticsDsp.ClampSensitivity(AudioHapticsSensitivity)),
+		TriggerRumble = TriggerRumble,
+		Shape = (FallbackShape ?? FallbackShape.Default).Normalized(),
+		LeftCustom = (LeftCustomTrigger ?? CustomTrigger.Default).Normalized(),
+		RightCustom = (RightCustomTrigger ?? CustomTrigger.Default).Normalized()
 	};
+
+	// Custom Trigger per trigger (Game's Effect: nothing over the game).
+	public CustomTrigger LeftCustomTrigger { get; init; } = CustomTrigger.Default;
+	public CustomTrigger RightCustomTrigger { get; init; } = CustomTrigger.Default;
+
+	// Where the fallback trigger effect sits on the trigger's travel (and the vibration's frequency).
+	public FallbackShape FallbackShape { get; init; } = FallbackShape.Default;
 
 	// How the Xbox Series pad's trigger rumble feels (Off, Xbox-like, Soft, Sharp).
 	public TriggerRumbleFeel TriggerRumble { get; init; } = TriggerRumbleFeel.XboxLike;
 
-	// "Turn sound into haptics" (the game's sound felt on the controller; AudioHapticsRunner): on, strength 0-200 %, band.
+	// "Turn sound into haptics" (the game's sound felt on the controller; AudioHapticsRunner): on, strength 0-200 %, band,
+	// sensitivity 0-100 % (where the noise gate opens).
 	public bool AudioHapticsOn { get; init; }
 	public double AudioHapticsStrength { get; init; } = 100;
 	public Kopru.Core.Audio.AudioHapticsBand AudioHapticsBand { get; init; } = Kopru.Core.Audio.AudioHapticsBand.Bass;
+	public double AudioHapticsSensitivity { get; init; } = Kopru.Core.Audio.AudioHapticsDsp.DefaultSensitivity;
 
 	// Light effect, player LED pattern and brightness, mute LED.
 	public Kopru.Core.Lighting.LightOptions LightOptions { get; init; } = Kopru.Core.Lighting.LightOptions.Default;
@@ -78,6 +90,11 @@ public sealed record ControllerSettings(
 	// "Pause Haptics In Silence" (app setting, not per profile; off by default): no haptics reports while the game is
 	// silent (BluetoothSession.PauseHapticsInSilence).
 	public bool PauseHapticsInSilence { get; init; }
+
+	// What the bridge does while the controller's USB cable is plugged in (app setting, not per profile): ChargeOnly
+	// hides the USB twin and keeps everything on Bluetooth, Wired moves input, output and audio onto the cable. This
+	// record's default and the app's (SettingsState.DefaultCableMode) are both ChargeOnly: wired mode is opt-in.
+	public CableMode CableMode { get; init; } = CableMode.ChargeOnly;
 
 	// Low Power mode turns the pause on as well while it is active (LowPower.Apply), without changing the setting.
 	public bool PauseHapticsForLowPower { get; init; }

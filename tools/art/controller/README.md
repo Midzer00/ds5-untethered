@@ -1,7 +1,9 @@
 # Controller art
 
-`src/Kopru.App/Assets/controller.png` (DualSense, white) and `controller-edge.png` (DualSense Edge, dark) are renders of
-a model built from scratch by `build_controller.py` in Blender. No outside models, textures or logos are used.
+`src/Kopru.App/Assets/controller-edge.png` (DualSense Edge, dark) and its sprites are renders of a model built from
+scratch by `build_controller.py` in Blender. No outside models, textures or logos are used. The DualSense pictures
+(`controller.png` and its sprites, white, with the app's emblem as the centre button) now come from the site project's
+model: see `site-model/README.md`. `build_controller.py --variant standard` still renders the earlier DualSense art.
 
 ## Render
 
@@ -55,3 +57,9 @@ python tools/art/controller/check_overlay.py src/Kopru.App/Assets/controller-edg
 
 Always render with `--sprites` so the moved-stick sprites match the art. `ControllerArtRenderTests` saves the places in the app that show the art when
 `KOPRU_PAGE_RENDER_DIR` is set.
+
+## Colour tile icon
+
+`src/Kopru.App/Assets/look-icon.png` (the Controller page's colour tile: a DualSense in four flat vertical bands of the
+pack's Crimson Red, Bright Pink, Deep Violet and Sky Blue) is cut from the pack's body pictures by
+`python tools/art/controller/make_look_icon.py`; run it again when those pictures change.

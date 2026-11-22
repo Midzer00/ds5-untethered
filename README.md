@@ -75,15 +75,15 @@ flowchart LR
 - **Profiles.** A profile holds the haptics, trigger and rumble settings. A game can have several named profiles: create
   one with a name from the game's settings (Games page), rename or duplicate it, and switch between them on the Overview
   or in the game's settings. A switch while the game runs applies at once.
-- **Quick changes without leaving the game.** Press PS briefly: the app comes to the front and Mouse Mode turns on, so
+- **Quick changes without leaving the game.** Press the ø button briefly: the app comes to the front and Mouse Mode turns on, so
   the touchpad works as a mouse. Change what you want, then press Back To Game: the game is in front again and Mouse
   Mode turns off.
 
 ### Download
 
 The current release is on the repository's [Releases](https://github.com/Midzer00/ds5-untethered/releases) page, as an
-installer (`DS5-Untethered-<version>-Setup.exe`, per-user, no administrator rights) and as a zip
-(`DS5-Untethered-<version>-win-x64.zip`, unzip anywhere and run `Kopru.App.exe`). Both include .NET; nothing else needs
+installer (`DS5-Untethered-<version>-Setup.exe`, per-user, no administrator rights) and as a portable zip
+(`DS5-Untethered-<version>-win-x64-Portable.zip`, unzip anywhere and run `Kopru.App.exe`). Both include .NET; nothing else needs
 to be installed for the app itself.
 
 - The build is not signed, so Windows SmartScreen may warn: choose "More info", then "Run anyway".
@@ -151,11 +151,12 @@ DS5 Untethered is free and stays free. If it is useful to you, you can support i
 - **The Bluetooth Adapter Test says "Borderline" or "Not suitable".** Move the adapter to a front USB 2.0 port or onto a
   short USB extension cable on the desk, away from USB 3.0 (blue) ports and 2.4 GHz receivers. Keep the controller
   within a few metres; if nothing changes, try a Bluetooth 5 or newer adapter.
-- **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the PS button.
-  If the app shows "Not Paired", hold Create and PS until the light blinks, then pair it.
-- **The controller is plugged in with a USB cable.** Games already see it as wired, so the app stops the virtual
-  controller ("Cable Connected"). Unplug the cable to play wirelessly; the virtual controller starts again by itself
-  over Bluetooth.
+- **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the ø button.
+  If the app shows "Not Paired", hold Create and the ø button until the light blinks, then pair it.
+- **The controller is plugged in with a USB cable.** While Bluetooth is connected the cable only charges: the
+  virtual controller keeps running and games still see one controller (Settings > Notifications > Cable). If
+  Bluetooth drops while the cable is in, the app stops the virtual controller ("Bluetooth Connection Lost") and
+  games use the wired controller; it starts again by itself when Bluetooth is back.
 - **SmartScreen warns when you start the installer.** The build is not signed: choose "More info", then "Run anyway".
 - **A game doesn't see the controller after a Controller Type change.** A change made while the game is open applies
   when you restart the game. "Apply Now" switches right away, but the game may lose the controller; then restart the
@@ -177,7 +178,7 @@ Done and verified on hardware:
   controller; the controller's mute button turns the microphone on and off.
 - Controller speaker: sound played to the controller's speaker is heard by its own microphone.
 - Mouse Mode: touchpad pointer, one click per press, Right Click setting (Off by default, Right Side or Two
-  Fingers), a short PS press that opens the app also turns it on, and Back To Game.
+  Fingers), a short ø button press that opens the app also turns it on, and Back To Game.
 - In-app updates from this repository's Releases (0.1.8 updated itself to 0.1.9).
 - DualShock 4 type: it presents itself like a real wired DualShock 4; verified in one game with native DualShock 4
   support so far.
@@ -321,7 +322,7 @@ flowchart LR
 
 Güncel sürümü deponun [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasından indirebilirsiniz.
 Kurulum dosyası (`DS5-Untethered-<sürüm>-Setup.exe`) uygulamayı yalnızca sizin hesabınıza kurar ve yönetici izni
-istemez. ZIP paketini (`DS5-Untethered-<sürüm>-win-x64.zip`) istediğiniz yere açıp `Kopru.App.exe`'yi çalıştırmanız yeterli.
+istemez. Taşınabilir ZIP paketini (`DS5-Untethered-<sürüm>-win-x64-Portable.zip`) istediğiniz yere açıp `Kopru.App.exe`'yi çalıştırmanız yeterli.
 .NET her iki pakete de dahildir; ayrıca .NET kurmanız gerekmez.
 
 - Uygulamada kod imzası bulunmadığından Windows SmartScreen uyarı gösterebilir. "Ek bilgi"ye, ardından "Yine de çalıştır"a
@@ -394,9 +395,11 @@ Hata bildirimleri, öneriler ve kod katkıları da projenin gelişmesine yardım
   USB uzatma kablosuyla masanın üstüne alın; USB 3.0 (mavi) girişlerden ve 2,4 GHz alıcılardan uzak tutun. Kumandayı
   birkaç metre içinde tutun; sonuç değişmezse Bluetooth 5 ya da daha yeni bir adaptör deneyin.
 - **Kumanda Windows'ta eşleşmiş ama uygulama "Bağlı Değil" gösteriyor.** Kumanda kapalı ya da uykuda: PS tuşuna basın.
-  Uygulama "Eşleşmemiş" gösteriyorsa Create ve PS tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
-- **Kumanda USB kablosuyla takılı.** Oyunlar onu zaten kablolu gördüğü için uygulama sanal kumandayı durdurur ("Kablo
-  Bağlandı"). Kablosuz oynamak için kabloyu çıkarın; sanal kumanda Bluetooth'ta kendiliğinden yeniden başlar.
+  Uygulama "Eşleşmemiş" gösteriyorsa Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
+- **Kumanda USB kablosuyla takılı.** Bluetooth bağlıyken kablo yalnızca şarj eder: sanal kumanda çalışmaya devam
+  eder ve oyunlar yine tek kumanda görür (Ayarlar > Bildirimler > Kablo). Kablo takılıyken Bluetooth koparsa
+  uygulama sanal kumandayı durdurur ("Bluetooth Bağlantısı Koptu") ve oyunlar kablolu kumandayı kullanır; Bluetooth
+  geri gelince sanal kumanda kendiliğinden yeniden başlar.
 - **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Uygulamada kod imzası yok: "Ek bilgi"ye, ardından "Yine de
   çalıştır"a tıklayın.
 - **Kumanda Türü değişince oyun kumandayı görmüyor.** Oyun açıkken yapılan değişiklik, oyunu yeniden başlatınca geçerli
@@ -419,7 +422,7 @@ Gerçek kumandayla doğrulananlar:
   Kumandadaki mikrofon tuşu mikrofonu açıp kapatıyor.
 - Kumanda hoparlörü: kumandanın hoparlöründen çalınan sesi kumandanın kendi mikrofonu duyuyor.
 - Fare Modu: dokunmatik yüzeyle imleç, her basışa tek tık, Sağ Tık ayarı (varsayılan Kapalı, Sağ Taraf ya da İki
-  Parmak), uygulamayı açan kısa PS basışıyla açılması ve Oyuna Dön düğmesi.
+  Parmak), uygulamayı açan kısa ø tuşu basışıyla açılması ve Oyuna Dön düğmesi.
 - Bu deponun Releases sayfasından uygulama içi güncelleme (0.1.8 kendini 0.1.9'a güncelledi).
 - DualShock 4 türü: kendini gerçek bir kablolu DualShock 4 gibi tanıtıyor; şimdilik DualShock 4'ü doğrudan destekleyen
   bir oyunda doğrulandı.

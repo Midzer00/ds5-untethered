@@ -100,7 +100,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !Picker.IsMulti}">
-              <c:ControllerArt IsEdge="{Binding IsEdge}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+              <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
                                PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" Width="62" Height="42" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <!-- The controller's name (the user's or the model's) with a pencil to rename it -->

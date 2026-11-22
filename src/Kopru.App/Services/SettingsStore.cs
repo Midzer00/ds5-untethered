@@ -26,6 +26,8 @@ public sealed class AppSettings
 	public double BreathingMin { get; set; } = 10;
 	public double BreathingMax { get; set; } = 100;
 	public double RainbowSpeed { get; set; } = 3;
+	// The custom light bar colour (the Light page's seventh swatch), not per profile; null until it is first used.
+	public uint? LightbarCustomColour { get; set; }
 	public Kopru.Core.Lighting.PlayerLedPattern? PlayerLedPattern { get; set; }
 	public Kopru.Core.Lighting.LedBrightness PlayerLedBrightness { get; set; } = Kopru.Core.Lighting.LedBrightness.High;
 	public double IdlePowerOffMinutes { get; set; } = 15;
@@ -58,6 +60,11 @@ public sealed class AppSettings
 
 	// "Pause Haptics In Silence" (missing in older files: off; an app setting, not per profile).
 	public bool PauseHapticsInSilence { get; set; }
+
+	// What happens while the controller's USB cable is plugged in, null while the app's default is wanted — so a
+	// later change of the default still moves users who never chose (an app setting, not per profile).
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public Kopru.Core.Bridge.CableMode? CableMode { get; set; }
 
 	// Stick and trigger tuning (missing in older files: no change to the input).
 	public Kopru.Core.Input.InputTuning? Tuning { get; set; }

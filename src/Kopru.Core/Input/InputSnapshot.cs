@@ -104,10 +104,16 @@ public sealed record InputSnapshot(
 	}
 
 	// Any input report read from the pad: full USB 0x01 / Bluetooth 0x31 (CRC checked), or the short Bluetooth 0x01.
-	// Null for anything else.
+	// Null for anything else, and for a Bluetooth microphone report: it shares id 0x31 and passes the input CRC, but its
+	// bytes are Opus audio (MicPackets), so read as input it jumps the sticks and presses random buttons. A pad that was
+	// once asked for the mic keeps sending them (about 100/s) even while nobody listens (BluetoothSession drops them too).
 	public static InputSnapshot? FromReport(ReadOnlySpan<byte> report, bool bluetooth)
 	{
 		if (report.IsEmpty)
+		{
+			return null;
+		}
+		if (bluetooth && Audio.MicPackets.IsMicReport(report))
 		{
 			return null;
 		}

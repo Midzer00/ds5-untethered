@@ -6,6 +6,18 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.2.1 — 2026-11-23
+
+- New cable setting, When The Cable Is Plugged In (Settings > Notifications > Cable). Charge Only (the default): plugging in the USB cable to charge no longer stops the virtual controller; it stays on Bluetooth with every feature working, and games still see one controller. Use The Cable (Experimental): while the cable is in, input, light, triggers, speaker and microphone go over the cable; Bluetooth stays connected and takes over again when you unplug.
+- Controller colours: choose how each controller looks in the app, from the standard colours, the special editions or your own picture (Controller page, the colour tile beside the header).
+- Custom Trigger (a game's settings > Triggers): your own effect for L2 and R2 separately, Resistance, Weapon or Vibration, played over whatever the game sends, with a Try button.
+- Turn Sound Into Haptics: a Sensitivity slider per profile sets how quiet a sound still becomes haptics.
+- Light page: a Custom colour, picked on a colour disc or typed as a hex code.
+- Overview: a new Live card with a Link view (delay, quality and a chart of the last minute) and a Signals view (triggers, haptics and microphone over the last 10 seconds).
+- A game's settings are grouped into Game, Vibration and Triggers.
+- The zip download is now called Portable (`DS5-Untethered-0.2.1-win-x64-Portable.zip`); it is the same unzip-and-run copy.
+- Fixed: with the cable plugged in, the Test tab could show stick movements that never happened. The microphone level meter now moves even when no app is recording from the controller's microphone.
+
 ### 0.2.0 — 2026-11-18
 
 - New Xbox Series controller type: games see an Xbox Series controller, and Create works as View/Back. On Windows older than 10 21H2, or if Windows doesn't start it, the app uses Xbox 360 instead.
@@ -22,13 +34,13 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 - Games page: Automatic shows what it picks for the game, e.g. "Automatic (Xbox 360)". The Default Controller Type is now for games we know nothing about.
 - A pink Support button in the sidebar and a GitHub Sponsors link in Settings > General > Updates open GitHub Sponsors. The app stays free.
 - The classic rumble card is now Xbox And DS4 Rumble and says it is the general profile for Xbox and DualShock 4 rumble.
-- The Mouse Mode tip bar and its Show Tips switch are gone; a short PS press turns Mouse Mode on.
+- The Mouse Mode tip bar and its Show Tips switch are gone; a short ø button press turns Mouse Mode on.
 - Windows no longer slows the app down while it is hidden during a game (power throttling is turned off for the app).
 - Turn Sound Into Haptics now really works: earlier versions never captured the game's sound. Its switch, Strength and Bass/Full Sound now apply at once while the game runs.
 
 ### 0.1.9 — 2026-11-17
 
-- A short PS press that opens the app now turns Mouse Mode on, with a short notification; going back to the game turns it off.
+- A short ø button press that opens the app now turns Mouse Mode on, with a short notification; going back to the game turns it off.
 - Mouse Mode: every touchpad press is exactly one click, and the pointer no longer drifts while you press.
 - New Right Click setting (Settings > Mouse Mode): Off (every press is a left click, the default), Right Side or Two Fingers.
 - The DualShock 4 type now looks to Windows like a real wired DualShock 4, so games with native DualShock 4 support accept it: a game with native DualShock 4 support that sent it nothing before now sends its output to it. The DualShock 4's speaker is never left as the default Windows output.
@@ -65,7 +77,7 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 - Mouse Mode: choose the pointer stick and map 16 buttons to clicks, keys, window switching, volume and media actions.
 - Supported Games: an Installed view lists the supported games found on this PC.
 - Games whose exe name is not known are recognised by their folder, product name or window title.
-- A short PS press opens the app in games too (Also In Games); a second press returns to the game.
+- A short ø button press opens the app in games too (Also In Games); a second press returns to the game.
 - The mic button light always follows the microphone, also while a game drives the lights.
 - Smoother controller speaker sound.
 
@@ -77,7 +89,7 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 - The controller's microphone works over Bluetooth; the mic button mutes it or turns it off.
 - Controller Type: Automatic, or DualSense, DualShock 4 or Xbox 360 for every game.
 - Game pictures on the Supported Games list.
-- A short PS press opens the app when no game is in front.
+- A short ø button press opens the app when no game is in front.
 
 ### 0.1.0 Preview — 2026-11-10
 
@@ -87,6 +99,18 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.2.1 — 23.11.2026
+
+- Yeni kablo ayarı: "Kablo Takılınca" ("Ayarlar > Bildirimler > Kablo"). "Sadece Şarj Et" (varsayılan): Şarj için USB kablosunu takmak artık sanal kumandayı durdurmuyor. Kumanda, tüm özellikleri çalışır durumda Bluetooth üzerinden bağlı kalıyor ve oyunlar tek bir kumanda görmeye devam ediyor. "Kablo Üzerinden Çalış (Deneysel)": Kablo takılıyken girişler, ışık, tetikler, hoparlör ve mikrofon kablo üzerinden çalışıyor. Bluetooth bağlı kalıyor ve kabloyu çıkardığınızda yeniden devralıyor.
+- "Kumanda Rengi": Her kumandanın uygulamada nasıl görüneceğini standart renklerden, özel sürümlerden veya kendi görselinizden seçebilirsiniz. Bu seçenek, "Kumanda" sayfasında başlığın yanındaki renk kutucuğunda bulunuyor.
+- "Özel Tetik" (oyunun ayarları > "Tetikler"): L2 ve R2 için ayrı ayrı "Direnç", "Silah" veya "Titreşim" efekti belirleyebilirsiniz. Seçtiğiniz efekt, oyunun gönderdiği efektin üzerine uygulanıyor. Efekti denemek için "Dene" düğmesi bulunuyor.
+- "Sesi Titreşime Çevir": Her profildeki "Hassasiyet" kaydırıcısı, ne kadar kısık seslerin titreşime dönüştürüleceğini belirliyor.
+- "Işık" sayfası: "Özel" renk seçeneği eklendi. Rengi, renk çemberinden seçebilir veya onaltılık renk kodunu yazarak belirleyebilirsiniz.
+- "Genel Bakış": Yeni "Canlı" kartı eklendi. "Bağlantı" görünümü gecikmeyi, bağlantı kalitesini ve son bir dakikanın grafiğini; "Sinyaller" görünümü ise son 10 saniyedeki tetik, titreşim ve mikrofon verilerini gösteriyor.
+- Oyun ayarları "Oyun", "Titreşim" ve "Tetikler" altında gruplandırıldı.
+- ZIP indirmesinin adı artık Portable (`DS5-Untethered-0.2.1-win-x64-Portable.zip`). İçeriği aynı; yine dosyaları çıkarıp uygulamayı çalıştırabilirsiniz.
+- Düzeltildi: Kablo takılıyken "Test" sekmesi, gerçekte olmayan analog çubuk hareketleri gösterebiliyordu. Mikrofon seviye göstergesi artık hiçbir uygulama kumandanın mikrofonundan kayıt yapmıyorken de hareket ediyor.
 
 ### 0.2.0 — 18.11.2026
 
@@ -104,13 +128,13 @@ Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/
 - Oyunlar sayfası: Otomatik, oyuna neyi seçtiğini gösteriyor, ör. "Otomatik (Xbox 360)". Varsayılan Kumanda Türü artık hakkında bilgi olmayan oyunlar için.
 - Sol menüdeki pembe Destek Ol düğmesi ve Ayarlar > Genel > Güncellemeler'deki GitHub Sponsors bağlantısı GitHub Sponsors'u açıyor. Uygulama ücretsiz kalıyor.
 - Klasik titreşim kartının adı artık Xbox ve DS4 Titreşimi; Xbox ve DualShock 4 titreşimi için genel profil olduğunu söylüyor.
-- Fare Modu ipucu çubuğu ve İpuçlarını Göster anahtarı kaldırıldı; kısa bir PS basışı Fare Modu'nu açıyor.
+- Fare Modu ipucu çubuğu ve İpuçlarını Göster anahtarı kaldırıldı; ø tuşuna kısa basış Fare Modu'nu açıyor.
 - Windows, oyun sırasında gizli duran uygulamayı artık yavaşlatmıyor (uygulama için güç kısıtlaması kapatıldı).
 - Sesi Titreşime Çevir artık gerçekten çalışıyor; önceki sürümlerde oyunun sesini hiç yakalamıyordu. Anahtar, Güç ve Bas/Tüm Ses oyun açıkken hemen etki ediyor.
 
 ### 0.1.9 — 17.11.2026
 
-- Uygulamayı açan kısa PS basışı artık Fare Modu'nu da açıyor ve kısa bir bildirim gösteriyor; oyuna dönünce Fare Modu kapanıyor.
+- Uygulamayı açan kısa ø tuşu basışı artık Fare Modu'nu da açıyor ve kısa bir bildirim gösteriyor; oyuna dönünce Fare Modu kapanıyor.
 - Fare Modu: dokunmatik yüzeye her basış tam olarak tek tık; basarken imleç artık kaymıyor.
 - Yeni Sağ Tık ayarı (Ayarlar > Fare Modu): Kapalı (her basış sol tık, varsayılan), Sağ Taraf ya da İki Parmak.
 - DualShock 4 türü artık Windows'a gerçek, kablolu bir DualShock 4 gibi görünüyor; DualShock 4'ü doğrudan destekleyen oyunlar onu kabul ediyor. Önceden ona hiçbir şey göndermeyen, DualShock 4'ü doğrudan destekleyen bir oyun artık ona veri gönderiyor. DualShock 4'ün hoparlörü hiçbir zaman Windows'un varsayılan ses çıkışı olarak kalmıyor.
@@ -147,7 +171,7 @@ Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/
 - Fare Modu: imleci oynatan analog seçilebilir, 16 tuşa tık, klavye tuşu, pencere değiştirme, ses ve medya işlevi atanabilir.
 - Desteklenen Oyunlar: "Yüklü" görünümü bu bilgisayarda bulunan desteklenen oyunları listeler.
 - Exe adı bilinmeyen oyunlar klasör adından, ürün adından ya da pencere başlığından tanınır.
-- PS tuşuna kısa basış oyundayken de uygulamayı açar (Oyunda Da Aç); ikinci basış oyuna döndürür.
+- ø tuşuna kısa basış oyundayken de uygulamayı açar (Oyunda Da Aç); ikinci basış oyuna döndürür.
 - Mikrofon tuşunun ışığı, ışıkları oyun yönetirken de mikrofonu izler.
 - Kumanda hoparlöründen daha pürüzsüz ses.
 
@@ -159,7 +183,7 @@ Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/
 - Kumandanın mikrofonu Bluetooth'ta çalışır; mikrofon tuşu sessize alır ya da kapatır.
 - Kumanda Türü: Otomatik, ya da bütün oyunlar için DualSense, DualShock 4 veya Xbox 360.
 - Desteklenen Oyunlar listesinde oyun görselleri.
-- Oyun önde değilken PS tuşuna kısa basınca uygulama açılır.
+- Oyun önde değilken ø tuşuna kısa basınca uygulama açılır.
 
 ### 0.1.0 Ön Sürüm — 10.11.2026
 

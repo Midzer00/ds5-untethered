@@ -17,8 +17,8 @@ public static partial class Text
 		$"Gecikme hissedilir: yaklaş, adaptörü USB uzatma kablosuyla öne al, 2,4 GHz cihazlardan uzak tut.",
 		$"You can feel the delay: move closer, bring the adapter forward on a USB extension cable, away from 2.4 GHz devices.");
 	public static string LinkGraphTip(Language? l = null) => Pick(l,
-		$"Kalın çizgi: her saniyenin en kötü gecikmesi; ince çizgi: tipik gecikme. Kesikli çizginin üstü hissedilir.",
-		$"Thick line: the worst delay of each second; thin line: the typical delay. Above the dashed line you can feel it.");
+		$"Son 60 saniye. Renkli alan her saniyenin en yüksek gecikmesini, ince çizgi tipik gecikmeyi gösterir. Kesikli çizginin üstünde gecikme hissedilir. Alttaki küçük işaretler, rapor kaybı veya duraklama yaşanan saniyeleri gösterir.",
+		$"The last 60 seconds. Coloured area: the worst delay of each second; thin line: the typical delay. Above the dashed line you can feel it; the small ticks below mark seconds with lost reports or a pause.");
 
 	// Warning toast and its switch.
 	public static string NotifyLinkTitle(Language? l = null) => Pick(l, $"Bağlantı Zayıf", $"Weak Link");
@@ -65,8 +65,8 @@ public static partial class Text
 	public static string AdapterMeasuredNoLoss(Language? l = null) => Pick(l, $"Kayıp rapor yok", $"No lost reports");
 	public static string AdapterMeasuredLoss(double percent, Language? l = null) => Pick(l, $"Kayıp rapor %{percent:F1}", $"Lost reports {percent:F1}%");
 	public static string AdapterNeedLoss(double percent, Language? l = null) => Pick(l, $"en çok %{percent:F1}", $"at most {percent:F1}%");
-	public static string AdapterMeasuredGaps(int gaps, double ms, Language? l = null) => Pick(l, $"{gaps} kez {ms:F0} ms'den uzun kesinti", $"{gaps} gaps longer than {ms:F0} ms");
-	public static string AdapterNeedGaps(int count, double seconds, Language? l = null) => Pick(l, $"{seconds:F0} saniyede {count}'ten az olmalı", $"fewer than {count} in {seconds:F0} seconds");
+	public static string AdapterMeasuredGaps(int gaps, double ms, Language? l = null) => Pick(l, $"{gaps} kez {ms:F0} ms'den uzun kesinti", $"{gaps} {En(gaps, "gap", "gaps")} longer than {ms:F0} ms");
+	public static string AdapterNeedGaps(int count, double seconds, Language? l = null) => Pick(l, $"{seconds:F0} saniyede {count}'ten az olmalı", $"fewer than {count} in {seconds:F0} {En(seconds, "second", "seconds")}");
 	public static string AdapterMeasuredHaptics(double rate, Language? l = null) => Pick(l, $"Titreşim akışı saniyede {rate:F0}", $"Vibration stream {rate:F0} a second");
 	public static string AdapterNeedHaptics(double rate, Language? l = null) => Pick(l, $"en az {rate:F0} gerekli", $"at least {rate:F0} needed");
 	public static string AdapterMeasuredSlowdown(double idle, double load, Language? l = null) => Pick(l,
@@ -74,5 +74,5 @@ public static partial class Text
 	public static string AdapterNeedSlowdown(double percent, Language? l = null) => Pick(l, $"en az %{percent:F0}'ı kalmalı", $"should keep at least {percent:F0}%");
 	public static string AdapterLongGaps(int gaps, Language? l = null) => Pick(l,
 		$"Kumanda verisi {gaps} kez uzun süre kesildi.",
-		$"Controller data stopped for a long moment {gaps} times.");
+		$"Controller data stopped for a long moment {gaps} {En(gaps, "time", "times")}.");
 }

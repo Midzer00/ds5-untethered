@@ -51,7 +51,7 @@
 
       <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="14">
         <!-- The controller as it is drawn in the app, faded with its light off when it has gone away -->
-        <c:ControllerArt Width="{Binding ArtWidth}" Height="{Binding ArtHeight}" VerticalAlignment="Center" IsEdge="{Binding IsEdge}"
+        <c:ControllerArt Width="{Binding ArtWidth}" Height="{Binding ArtHeight}" VerticalAlignment="Center" IsEdge="{Binding IsEdge}" Look="{Binding Look}"
                          LightIntensity="{Binding LightIntensity}" Opacity="{Binding ArtOpacity}" />
         <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,4,0" VerticalAlignment="Center">
           <!-- Title (long game names are cut here, never in the body) with the status mark before it and the battery at the end -->

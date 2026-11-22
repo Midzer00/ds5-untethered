@@ -74,6 +74,10 @@ public static partial class Text
 		return (lang == Language.Turkish ? tr : en).ToString(Localizer.Culture(lang));
 	}
 
+	// English singular or plural for a count shown rounded to a whole number ("1 game", "2 games"); Turkish needs none.
+	private static string En(double count, string one, string many) =>
+		Math.Abs(Math.Round(count, MidpointRounding.AwayFromZero)) == 1 ? one : many;
+
 	public static string VerdictSuitable(Language? l = null) => Pick(l, $"Uygun", $"Suitable");
 	public static string VerdictBorderline(Language? l = null) => Pick(l, $"Sınırda", $"Borderline");
 	public static string VerdictUnsuitable(Language? l = null) => Pick(l, $"Uygun değil", $"Not suitable");

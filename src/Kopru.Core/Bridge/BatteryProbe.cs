@@ -104,7 +104,8 @@ public sealed class BatteryProbe
 				return null;
 			}
 			ReadOnlySpan<byte> report = buffer.AsSpan(0, length);
-			if (BluetoothReports.InputCrcValid(report))
+			// A microphone report shares id 0x31 and the input CRC; its byte 52 is audio, not the battery (InputSnapshot).
+			if (BluetoothReports.InputCrcValid(report) && !Audio.MicPackets.IsMicReport(report))
 			{
 				return BatteryStatus.Parse(InputState.Body(report));
 			}

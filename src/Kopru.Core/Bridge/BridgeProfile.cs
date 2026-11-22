@@ -44,13 +44,23 @@ public sealed record BridgeProfile(
 {
 	public static BridgeProfile Default { get; } = new();
 
+	// Custom Trigger (null: the game's effect): put on that trigger over whatever the game sends, unscaled.
+	public byte[]? CustomRightTrigger { get; init; }
+	public byte[]? CustomLeftTrigger { get; init; }
+
+	// Something the bridge puts on the triggers by itself (the fallback, a custom effect): written as soon as it connects.
+	public bool SetsTriggers => FallbackTrigger != null || CustomRightTrigger != null || CustomLeftTrigger != null;
+
 	// What the bridge plays the trigger rumble with: the profile's choice while the setting is on, else Off.
 	public TriggerRumbleFeel PlayedTriggerRumble => XboxTriggerRumbleOn ? TriggerRumble : TriggerRumbleFeel.Off;
 
-	// Equal values, the fallback bytes compared by content.
+	// Equal values, the fallback and custom bytes compared by content.
 	public bool SameAs(BridgeProfile other) =>
-		this with { FallbackTrigger = null } == other with { FallbackTrigger = null }
-		&& (FallbackTrigger ?? []).AsSpan().SequenceEqual(other.FallbackTrigger ?? []);
+		this with { FallbackTrigger = null, CustomRightTrigger = null, CustomLeftTrigger = null }
+			== other with { FallbackTrigger = null, CustomRightTrigger = null, CustomLeftTrigger = null }
+		&& Same(FallbackTrigger, other.FallbackTrigger) && Same(CustomRightTrigger, other.CustomRightTrigger) && Same(CustomLeftTrigger, other.CustomLeftTrigger);
+
+	private static bool Same(byte[]? a, byte[]? b) => a == null ? b == null : b != null && a.AsSpan().SequenceEqual(b);
 }
 
 // What the game sent since the last look: non-silent haptics audio, a trigger effect other than off, rumble, and trigger
