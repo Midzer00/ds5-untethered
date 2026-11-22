@@ -1,10 +1,13 @@
-<p align="center"><img src="docs/brand/logo.png" alt="DS5 Untethered logo" width="240"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/brand/logo.png">
+    <img src="docs/brand/ds5-untethered.gif" alt="A USB cable pulls away from a DualSense, revealing the DS5 Untethered logo" width="520">
+  </picture>
+</p>
 
 <h1 align="center">DS5 Untethered</h1>
 
-<p align="center">For DualSense — the game's own haptics and adaptive triggers over Bluetooth.</p>
-
-<p align="center">DS5 Untethered lets you play wirelessly on a Windows PC with the DualSense's haptic feedback and adaptive triggers.<br>Free and open source. No USB cable, no special dongle.</p>
+<p align="center"><strong>DualSense haptics and adaptive triggers over Bluetooth on Windows.</strong><br>Play supported games with their own controller effects, using your PC's Bluetooth.<br>Free and open source.</p>
 
 <p align="center">
   <a href="https://github.com/Midzer00/ds5-untethered/releases/latest"><img src="https://img.shields.io/github/v/release/Midzer00/ds5-untethered?label=release&color=2ea44f" alt="Latest release"></a>
@@ -21,9 +24,9 @@
   <a href="https://github.com/sponsors/Midzer00"><img src="https://img.shields.io/badge/Sponsor-on%20GitHub-db61a2?style=for-the-badge" alt="Sponsor on GitHub"></a>
 </p>
 
-<p align="center"><img src="docs/screens/v0.1.8/overview-en.jpg" alt="DS5 Untethered overview page with a DualSense connected over Bluetooth" width="760"></p>
+<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="#quick-start">Quick Start</a> · <a href="#troubleshooting">Troubleshooting</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="https://ds5untethered.com/">Website</a> · <a href="https://drive.google.com/file/d/1dSZgX1E2ETb50e1AbPEG-hCaTthpGGVd/view">Media kit</a></p>
 
-<p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="#quick-start">Quick Start</a> · <a href="#troubleshooting">Troubleshooting</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="https://midzer00.github.io/ds5-untethered/">Website</a></p>
+<p align="center"><img src="docs/screens/v0.2.0/overview-en.jpg" alt="DS5 Untethered Overview with a connected DualSense and live haptics and latency readings" width="820"></p>
 
 <p align="center"><sub>Unofficial project, not affiliated with Sony. See the <a href="#disclaimer">Disclaimer</a> (<a href="#yasal-uyarı">Yasal uyarı</a>).</sub></p>
 
@@ -39,7 +42,7 @@
 4. Open DS5 Untethered and follow its Setup page: it checks the drivers, guides pairing and tests the Bluetooth adapter.
 5. Start a game. It sees a wired DualSense, and its haptics and trigger effects reach the controller over Bluetooth.
 
-Questions? Ask in [Discussions](https://github.com/Midzer00/ds5-untethered/discussions). Website: [midzer00.github.io/ds5-untethered](https://midzer00.github.io/ds5-untethered/).
+Questions? Ask in [Discussions](https://github.com/Midzer00/ds5-untethered/discussions). Website: [ds5untethered.com](https://ds5untethered.com/).
 
 ### The problem
 
@@ -227,14 +230,13 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 
 ### Screenshots
 
-| | |
+| Per-game profiles | Haptics and triggers |
 |---|---|
-| ![Overview](docs/screens/v0.1.8/overview-en.jpg) | ![Haptics And Triggers](docs/screens/v0.1.8/haptics-and-triggers-en.jpg) |
-| ![Controller, Test](docs/screens/v0.1.8/controller-test-en.jpg) | ![Controller, Output Tests](docs/screens/v0.1.8/controller-output-tests-en.jpg) |
-| ![Controller, Remap & Gyro](docs/screens/v0.1.8/controller-remap-gyro-en.jpg) | ![Light](docs/screens/v0.1.8/light-en.jpg) |
-| ![Settings, General](docs/screens/v0.1.8/settings-general-en.jpg) | ![Settings, Game Mods and Haptics](docs/screens/v0.1.8/settings-game-mods-and-haptics-en.jpg) |
-| ![Settings, Shortcuts](docs/screens/v0.1.8/settings-shortcuts-en.jpg) | ![Settings, Mouse Mode](docs/screens/v0.1.8/settings-mouse-mode-en.jpg) |
-| ![Settings, Notifications](docs/screens/v0.1.8/settings-notifications-en.jpg) | |
+| ![Per-game profiles](docs/screens/v0.2.0/profiles-en.jpg) | ![Haptics and triggers](docs/screens/v0.2.0/haptics-and-triggers-en.jpg) |
+| **Gyro aiming** | **Sound into haptics** |
+| ![Gyro aiming](docs/screens/v0.2.0/gyro-aiming-en.jpg) | ![Sound into haptics](docs/screens/v0.2.0/sound-into-haptics-en.jpg) |
+
+Find cover images, screenshots, short videos and a setup guide in the [media kit](https://drive.google.com/file/d/1dSZgX1E2ETb50e1AbPEG-hCaTthpGGVd/view).
 
 ### Disclaimer
 
@@ -265,7 +267,7 @@ bilgisayarınızın Bluetooth'u veya standart bir USB Bluetooth adaptörü yeter
    Bluetooth adaptörünü test eder.
 5. Oyunu başlatın. Oyun kumandayı kablolu bir DualSense olarak tanır, haptik ve tetik efektleri de Bluetooth'tan kumandaya ulaşır.
 
-Sorularınız için [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazın. Web sitesi: [midzer00.github.io/ds5-untethered/tr](https://midzer00.github.io/ds5-untethered/tr/).
+Sorularınız için [Discussions](https://github.com/Midzer00/ds5-untethered/discussions) bölümüne yazın. Web sitesi: [ds5untethered.com/tr](https://ds5untethered.com/tr/).
 
 ### Neden böyle bir uygulama gerekiyor?
 
@@ -473,14 +475,15 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 
 ### Ekran görüntüleri
 
-| | |
+![Genel Bakış](docs/screens/v0.2.0/overview-tr.jpg)
+
+| Oyuna özel profiller | Titreşim ve tetikler |
 |---|---|
-| ![Genel Bakış](docs/screens/v0.1.8/overview-tr.jpg) | ![Titreşim ve Tetikler](docs/screens/v0.1.8/haptics-and-triggers-tr.jpg) |
-| ![Kumanda, Test](docs/screens/v0.1.8/controller-test-tr.jpg) | ![Kumanda, Çıkış Testleri](docs/screens/v0.1.8/controller-output-tests-tr.jpg) |
-| ![Kumanda, Tuş Atama ve Gyro](docs/screens/v0.1.8/controller-remap-gyro-tr.jpg) | ![Işık](docs/screens/v0.1.8/light-tr.jpg) |
-| ![Ayarlar, Genel](docs/screens/v0.1.8/settings-general-tr.jpg) | ![Ayarlar, Oyun Modları ve Haptik](docs/screens/v0.1.8/settings-game-mods-and-haptics-tr.jpg) |
-| ![Ayarlar, Kısayollar](docs/screens/v0.1.8/settings-shortcuts-tr.jpg) | ![Ayarlar, Fare Modu](docs/screens/v0.1.8/settings-mouse-mode-tr.jpg) |
-| ![Ayarlar, Bildirimler](docs/screens/v0.1.8/settings-notifications-tr.jpg) | |
+| ![Oyuna özel profiller](docs/screens/v0.2.0/profiles-tr.jpg) | ![Titreşim ve tetikler](docs/screens/v0.2.0/haptics-and-triggers-tr.jpg) |
+| **Gyro ile nişan alma** | **Sesi titreşime çevir** |
+| ![Gyro ile nişan alma](docs/screens/v0.2.0/gyro-aiming-tr.jpg) | ![Sesi titreşime çevir](docs/screens/v0.2.0/sound-into-haptics-tr.jpg) |
+
+Kapak görsellerini, ekran görüntülerini, kısa tanıtım videolarını ve Türkçe kurulum kılavuzunu [medya kitinde](https://drive.google.com/file/d/1dSZgX1E2ETb50e1AbPEG-hCaTthpGGVd/view) bulabilirsiniz.
 
 ### Yasal uyarı
 
