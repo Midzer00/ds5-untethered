@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-15",
+  "updated": "2026-11-23",
   "games": [
     {
       "name": "007 First Light",
@@ -296,6 +296,15 @@
       "notes": "Steam app 1938090: Modern Warfare II, Warzone, Black Ops 6 and Modern Warfare III install into Call of Duty HQ and run as cod.exe, so they are one entry; Modern Warfare III has adaptive triggers only. Not named \"Call of Duty\": Call of Duty (2003) installs into a folder of that name"
     },
     {
+      "name": "Call of Duty: Black Ops 6",
+      "exe": [],
+      "steamAppId": 4384550,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Call of Duty: Black Ops Cold War",
       "exe": [
         "BlackOpsColdWar.exe"
@@ -310,6 +319,33 @@
       "name": "Call of Duty: Modern Warfare 4",
       "exe": [],
       "steamAppId": 4435490,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Call of Duty: Modern Warfare II",
+      "exe": [],
+      "steamAppId": 3595230,
+      "haptics": true,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Call of Duty: Modern Warfare III",
+      "exe": [],
+      "steamAppId": 3595270,
+      "haptics": false,
+      "adaptiveTriggers": true,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
+      "name": "Call of Duty: Warzone 2.0",
+      "exe": [],
+      "steamAppId": 1938090,
       "haptics": true,
       "adaptiveTriggers": true,
       "exeConfidence": null,
@@ -948,6 +984,15 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Godbreakers",
+      "exe": [],
+      "steamAppId": 2687400,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Granblue Fantasy: Relink",
       "exe": [
         "granblue_fantasy_relink.exe"
@@ -1381,6 +1426,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Added from PCGamingWiki; exe name from Steam's launch options"
+    },
+    {
+      "name": "Mistfall Hunter",
+      "exe": [],
+      "steamAppId": 3282300,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Mixtape",
