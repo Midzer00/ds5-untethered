@@ -33,6 +33,8 @@
 
 ## English
 
+Help translate the Windows app interface on [Weblate](https://hosted.weblate.org/projects/ds5-untethered/windows-ui/).
+
 ### Quick Start
 
 1. Download the installer (`DS5-Untethered-<version>-Setup.exe`) from
@@ -261,6 +263,8 @@ GPL-3.0-or-later. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PART
 DS5 Untethered ile PC'de DualSense'in haptik titreşimlerini ve adaptif tetiklerini kablosuz kullanabilirsiniz.
 Uygulama, destekleyen oyunların kendi efektlerini Bluetooth üzerinden kumandaya aktarır. Ücretsiz ve açık kaynaklıdır;
 bilgisayarınızın Bluetooth'u veya standart bir USB Bluetooth adaptörü yeterlidir.
+
+Windows uygulamasının arayüz çevirilerine [Weblate](https://hosted.weblate.org/projects/ds5-untethered/windows-ui/) üzerinden katkıda bulunabilirsiniz.
 
 ### Hızlı Başlangıç
 
