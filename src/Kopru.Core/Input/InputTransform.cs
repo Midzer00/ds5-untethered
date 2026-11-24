@@ -9,9 +9,9 @@ namespace Kopru.Core.Input;
 // Swapped as a whole when settings change; Apply allocates nothing. With gyro on, it keeps smoothing/toggle state, so
 // only one thread (the bridge's input thread) may call Apply.
 //
-// Body offsets (same as InputState.Parse; Linux hid-playstation struct dualsense_input_report minus the report ID):
+// Body offsets (same as InputState.Parse; public DualSense input report documentation, offsets after the report ID):
 //   0 LX, 1 LY, 2 RX, 3 RY (0..255, center ~128), 4 L2 analog, 5 R2 analog,
-//   8 buttons[1]: bit 0x04 = L2 digital, bit 0x08 = R2 digital (DS_BUTTONS1_L2 / DS_BUTTONS1_R2).
+//   8 buttons[1]: bit 0x04 = L2 digital, bit 0x08 = R2 digital.
 public sealed class InputTransform
 {
 	public const int LeftX = 0, LeftY = 1, RightX = 2, RightY = 3, L2Analog = 4, R2Analog = 5, Buttons1 = 8;

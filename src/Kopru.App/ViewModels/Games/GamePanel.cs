@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Kopru.Core.Localization;
@@ -11,18 +12,44 @@ namespace Kopru.App.ViewModels;
 // (named after it, made once) and shows that profile's settings here; "Back To Default" puts it back on the default profile.
 // One instance per page: it shows the game in Game (null: closed). Its settings are in three segments (Game,
 // Vibration, Triggers); the one shown is kept while the app runs (opening another game keeps it), not saved.
+// Closing the running game, in two steps (GameModeController checks the key and that a close was asked before ending).
+public interface IGameCloser
+{
+	bool RequestClose(string key);
+
+	bool End(string key);
+}
+
+public enum CloseGameStep
+{
+	None,
+	Waiting,
+	Confirm
+}
+
 public sealed partial class GamePanelViewModel : ViewModelBase
 {
 	private readonly SettingsState _settings;
 	private readonly Func<string?> _runningGameKey;
 	private readonly Action<byte[], byte[]>? _testTriggers;
+	private readonly Func<bool>? _isEdge;
+	private readonly IGameCloser? _closer;
+	private readonly Func<TimeSpan, Task> _delay;
+	private int _closeRound;
+	private GameItemViewModel? _watchedGame;
+	private GamePadTypePicker? _watchedPadType;
 
 	// testTriggers: plays an effect per trigger (right, left) for a moment (IControllerService.TestTriggers).
-	public GamePanelViewModel(SettingsState settings, Func<string?> runningGameKey, Action<byte[], byte[]>? testTriggers = null)
+	// isEdge: whether the connected controller is a DualSense Edge (the controller node's picture and name).
+	public GamePanelViewModel(SettingsState settings, Func<string?> runningGameKey, Action<byte[], byte[]>? testTriggers = null, Func<bool>? isEdge = null,
+		IGameCloser? closer = null, Func<TimeSpan, Task>? delay = null)
 	{
 		_settings = settings;
 		_runningGameKey = runningGameKey;
 		_testTriggers = testTriggers;
+		_isEdge = isEdge;
+		_closer = closer;
+		_delay = delay ?? Task.Delay;
 		Feel = new ProfileFeelViewModel(settings, () => ProfileId);
 		Feel.LeftTrigger.PropertyChanged += (_, _) => OnPropertyChanged(nameof(CanTryCustomTriggers));
 		Feel.PropertyChanged += (_, e) =>
@@ -31,9 +58,20 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 			{
 				OnPropertyChanged(nameof(HasGameTriggerSettings));
 			}
+			if (e.PropertyName is nameof(ProfileFeelViewModel.LightFromGame) or "" or null)
+			{
+				OnPropertyChanged(nameof(LightChipText));
+			}
 		};
 		Feel.RightTrigger.PropertyChanged += (_, _) => OnPropertyChanged(nameof(CanTryCustomTriggers));
 		AudioHaptics = new ProfileAudioHapticsViewModel(settings, () => ProfileId);
+		AudioHaptics.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName is nameof(IAudioHapticsSettings.On) or nameof(IAudioHapticsSettings.Available) or "" or null)
+			{
+				OnPropertyChanged(nameof(AudioGateOn));
+			}
+		};
 		settings.ProfilesChanged += () => RunOnUi(RefreshProfile);
 	}
 
@@ -44,8 +82,52 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 
 	partial void OnGameChanged(GameItemViewModel? value)
 	{
+		ResetClose();
 		Naming = ProfileNaming.None;
+		if (_watchedGame != null)
+		{
+			_watchedGame.PropertyChanged -= OnWatchedGameChanged;
+		}
+		if (_watchedPadType != null)
+		{
+			_watchedPadType.PropertyChanged -= OnWatchedPadTypeChanged;
+		}
+		_watchedGame = value;
+		_watchedPadType = value?.PadType;
+		if (_watchedGame != null)
+		{
+			_watchedGame.PropertyChanged += OnWatchedGameChanged;
+		}
+		if (_watchedPadType != null)
+		{
+			_watchedPadType.PropertyChanged += OnWatchedPadTypeChanged;
+		}
 		RefreshProfile();
+	}
+
+	private void OnWatchedGameChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		// The game starting or stopping flips the state chip, the chain's apply state and the chain's line.
+		if (e.PropertyName is nameof(GameItemViewModel.IsRunning) or "" or null)
+		{
+			if (!IsGameRunning)
+			{
+				ResetClose();
+			}
+			OnPropertyChanged(nameof(IsGameRunning));
+			OnPropertyChanged(nameof(ShowsCloseGame));
+			OnPropertyChanged(nameof(StateText));
+			OnPropertyChanged(nameof(ApplyStateText));
+		}
+	}
+
+	private void OnWatchedPadTypeChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		// The game sees a different controller type the moment the picker changes.
+		if (e.PropertyName is nameof(GamePadTypePicker.Selected) or nameof(GamePadTypePicker.AutomaticType) or "" or null)
+		{
+			OnPropertyChanged(nameof(SeenPadName));
+		}
 	}
 
 	public bool IsOpen => Game != null;
@@ -77,6 +159,7 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 			OnPropertyChanged(nameof(IsGameSegment));
 			OnPropertyChanged(nameof(IsVibrationSegment));
 			OnPropertyChanged(nameof(IsTriggersSegment));
+			OnPropertyChanged(nameof(ShowsScope));
 		}
 	}
 
@@ -143,6 +226,44 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 	// The edited profile: the game's own, else the default one (the feel settings show only for the game's own).
 	public ProfileFeelViewModel Feel { get; }
 
+	// The controller art on the Game tab's chain reads the controller through these (the panel's `Settings`).
+	public SettingsState Settings => _settings;
+	public bool IsEdge => _isEdge?.Invoke() == true;
+	// The physical controller's name (product names stay the same in every language).
+	public string ControllerName => IsEdge ? "DualSense Edge" : "DualSense";
+
+	// The header's state chip and the chain's apply state switch between set (the game is not running) and applied now.
+	public bool IsGameRunning => Game?.IsRunning == true;
+	public string StateText => IsGameRunning ? Text.GameStateRunning() : Text.GameStateNotRunning();
+	public string ApplyStateText => IsGameRunning ? Text.GameAppliedNow() : Text.GameAppliesOnStart();
+	public string ChainTitle => Text.GamePanelChainTitle();
+	public string NodeGameText => Text.RowGame();
+	public string NodeVirtualText => Text.RowVirtualPad();
+	public string NodeControllerText => Text.CardController();
+	public string GameSeesText => Text.GameSeesLabel();
+
+	// The chain's middle node: the controller type the game gets (follows the picker's selected or automatic type).
+	public string SeenPadName => Game?.PadType is { } picker ? SettingsState.PadTypeName(picker.Selected?.Type ?? picker.AutomaticType) : string.Empty;
+	// The controller node's profile chip: the edited profile's display name.
+	public string ProfileDisplayName => Game == null ? string.Empty : SettingsState.DisplayName(_settings.Profiles.Find(ProfileId) ?? _settings.Profiles.Default);
+	// The controller node's light chip: the game sets the light, or the player's own light stays.
+	public string LightChipText => Feel.LightFromGame ? Text.GameLightChip() : Text.OwnLightChip();
+	// Right of the tab switch, on the feel tabs with a per-game profile: the scope block.
+	public bool ShowsScope => (IsVibrationSegment || IsTriggersSegment) && HasOwnProfile;
+	public string ProfileSharedShortText => Text.ProfileSharedShort();
+	// The panel's own close button (an icon): its tooltip and accessible name.
+	public string ClosePanelTip => Text.GamePanelCloseTip();
+
+	// The sound-to-haptics plot shows the gate only while the feature is on and available.
+	public bool AudioGateOn => AudioHaptics.On && AudioHaptics.Available;
+	public string GateSoundWord => Text.GatePlotSound();
+	public string GateThresholdWord => Text.GatePlotThreshold();
+	public string GateHapticsWord => Text.GatePlotHaptics();
+	public string GatePlotCaptionText => Text.GatePlotCaption();
+	// The Triggers tab's footer: what Trigger Strength covers and what the Try button does.
+	public string GameEffectsShortText => Text.GameEffectsShort();
+	public string TryShortText => Text.CustomTriggerTryShort();
+
 	// Sound to haptics of the edited profile (live through SettingsState when it is the active one).
 	public IAudioHapticsSettings AudioHaptics { get; }
 
@@ -178,6 +299,10 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 	public string ResetHint => Text.GameResetToDefaultHint();
 	public string CloseText => Text.GamePanelClose();
 	public string PadTypeLabel => Text.PadTypeLabel();
+	// Under the controller type picker on the Game tab.
+	public string PadTypeHint => Text.PadTypeGameHint();
+	// The Vibration tab's classic rumble card.
+	public string ClassicRumbleTitle => Text.GamePanelClassicRumble();
 	public string ProfileLabel => Text.ProfileLabel();
 	public string AudioTitle => Text.AudioHapticsLabel();
 	public string AudioSectionTitle => Text.AudioHapticsSection();
@@ -396,6 +521,67 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 		game.BackToGameCommand.Execute(null);
 	}
 
+	// "Oyunu Kapat": the running game's main window is asked to close; only when the game is still there after CloseWait the
+	// header asks whether to end it (Force Close, the only destructive step). Only the detected active game is ever touched
+	// (the closer checks the key). Never offered without a closer or while the game does not run.
+	public static TimeSpan CloseWait { get; set; } = TimeSpan.FromSeconds(5);
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(ShowsCloseGame), nameof(IsClosing), nameof(ConfirmsForceClose), nameof(ShowsHideOrRemove))]
+	private CloseGameStep _closeStep;
+
+	public bool ShowsCloseGame => IsGameRunning && _closer != null && CloseStep == CloseGameStep.None;
+	public bool IsClosing => CloseStep == CloseGameStep.Waiting;
+	public bool ConfirmsForceClose => CloseStep == CloseGameStep.Confirm;
+	public string CloseGameText => Text.CloseGame();
+	public string ClosingText => Text.ClosingGame();
+	public string ForceCloseQuestion => Text.ForceCloseQuestion();
+	public string ForceCloseText => Text.ForceClose();
+	// The question in Close Game's place (the full sentence, ForceCloseQuestion, is its tooltip).
+	public string ForceCloseAskText => Text.ForceCloseAsk();
+
+	private void ResetClose()
+	{
+		_closeRound++;
+		CloseStep = CloseGameStep.None;
+	}
+
+	[RelayCommand]
+	private async Task CloseGame()
+	{
+		if (_closer == null || Game is not { IsRunning: true } game || CloseStep != CloseGameStep.None)
+		{
+			return;
+		}
+		int round = ++_closeRound;
+		CloseStep = CloseGameStep.Waiting;
+		if (!_closer.RequestClose(game.Key))
+		{
+			// Nothing to ask (no window): straight to the question.
+			CloseStep = CloseGameStep.Confirm;
+			return;
+		}
+		await _delay(CloseWait);
+		if (round != _closeRound)
+		{
+			return;
+		}
+		CloseStep = game.IsRunning ? CloseGameStep.Confirm : CloseGameStep.None;
+	}
+
+	[RelayCommand]
+	private void ForceClose()
+	{
+		if (_closer != null && Game is { IsRunning: true } game && CloseStep == CloseGameStep.Confirm)
+		{
+			_closer.End(game.Key);
+		}
+		ResetClose();
+	}
+
+	[RelayCommand]
+	private void KeepGame() => ResetClose();
+
 	// Hide (a found game) or Remove (an added one): the row leaves the list, the panel closes.
 	[RelayCommand]
 	private void HideOrRemove()
@@ -414,6 +600,8 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 
 	public string HideOrRemoveText => Game?.IsFound == true ? Text.HideGame() : Text.RemoveGame();
 	public bool CanHideOrRemove => Game is { IsFound: true } or { IsUserAdded: true };
+	// Hide/Remove steps aside while Close Game asks its question (the header keeps its width).
+	public bool ShowsHideOrRemove => CanHideOrRemove && !ConfirmsForceClose;
 
 	private void ActivateIfRunning(string profileId)
 	{
@@ -433,8 +621,14 @@ public sealed partial class GamePanelViewModel : ViewModelBase
 		OnPropertyChanged(nameof(SourceText));
 		OnPropertyChanged(nameof(ProfileLine));
 		OnPropertyChanged(nameof(IsProfileShared));
+		OnPropertyChanged(nameof(ShowsScope));
+		OnPropertyChanged(nameof(ProfileDisplayName));
+		OnPropertyChanged(nameof(IsEdge));
+		OnPropertyChanged(nameof(ControllerName));
+		OnPropertyChanged(nameof(SeenPadName));
 		OnPropertyChanged(nameof(HideOrRemoveText));
 		OnPropertyChanged(nameof(CanHideOrRemove));
+		OnPropertyChanged(nameof(ShowsHideOrRemove));
 		OnPropertyChanged(nameof(CanRenameProfile));
 		RenameProfileCommand.NotifyCanExecuteChanged();
 		Game?.Profile?.Refresh();

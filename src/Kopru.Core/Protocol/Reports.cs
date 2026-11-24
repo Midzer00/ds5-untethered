@@ -33,7 +33,7 @@ public static class OutputBlock
 	public const byte MuteLedControl = 0x01;
 	public const byte PowerSaveControl = 0x02;
 	public const byte LightbarControl = 0x04;
-	// "Release LEDs" (the Linux hid-playstation driver's valid_flag1 bit 3): hands the LEDs back to the controller's own
+	// "Release LEDs" (public DualSense output report documentation, Flag1 bit 3): hands the LEDs back to the controller's own
 	// defaults, which would undo the mute LED the app shows.
 	public const byte ReleaseLeds = 0x08;
 	public const byte PlayerLedControl = 0x10;
@@ -47,9 +47,8 @@ public static class OutputBlock
 
 	public const byte LightOut = 0x02;
 
-	// Player LED brightness (byte 42) and mute LED (byte 8) values; public DualSense output layout (the Linux
-	// hid-playstation driver's dualsense_output_report_common struct names the bytes; flag2 bit 0 enabling byte 42 and
-	// its 0 high / 1 medium / 2 low scale are the community-documented values).
+	// Player LED brightness (byte 42) and mute LED (byte 8) values per public DualSense output report documentation
+	// (Flag2 bit 0 enables byte 42; 0 high / 1 medium / 2 low).
 	public const byte LedBrightnessHigh = 0;
 	public const byte LedBrightnessMedium = 1;
 	public const byte LedBrightnessLow = 2;

@@ -578,7 +578,7 @@
     <DataTemplate DataType="vm:SetupViewModel"><views:SetupView /></DataTemplate>
     <!-- A picker's or segmented switch's choice without its own item template: its name, read again on a language switch
          (the option lists stay the same objects, so the selection stays) -->
-    <DataTemplate DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+    <DataTemplate DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>
@@ -586,7 +586,7 @@
 
     <Style Selector="Window">
       <Setter Property="Background" Value="{StaticResource Bg0Brush}" />
-      <Setter Property="FontFamily" Value="fonts:Inter#Inter" />
+      <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
     </Style>
 
     <!-- Corner radius scale: pills fully round (half their height), controls and inputs RadiusControl, cards RadiusCard,
@@ -662,6 +662,7 @@
     <!-- Page body: scrolls vertically when the window is too short (pages set their own margins) -->
     <Style Selector="ScrollViewer.page">
       <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+      <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
     </Style>
 
     <!-- Glass panel and the controller stage -->

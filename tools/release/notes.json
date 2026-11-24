@@ -1,4 +1,4 @@
 {
-  "tr": "USB kablosuyla şarj etmek artık sanal kumandayı durdurmuyor. Kumandayı kablo üzerinden çalıştıran deneysel mod, \"Kumanda Rengi\", \"Özel Tetik\" ve yeni \"Canlı\" kartı eklendi.",
-  "en": "Charging over the USB cable no longer stops the virtual controller, plus an experimental mode that runs the controller over the cable. Controller colours, Custom Trigger and a new Live card."
+  "tr": "Kablo ayarı artık \"Kumanda\" sayfasında. Boşta kalınca kapanma ayarı daha anlaşılır, ayarlar yeniden düzenlendi ve uygulama çeviriye hazır.",
+  "en": "Cable setting on the Controller page, clearer idle power-off, settings reorganised and the app ready for translations."
 }

@@ -248,15 +248,20 @@ public sealed class OverviewFitTests
 							Assert.True(r.Height >= 30 && r.Bottom <= live.Bounds.Height - pad.Bottom + 0.5 && r.Right <= live.Bounds.Width - pad.Right + 0.5,
 								$"{at}: {drawing.GetType().Name} {drawing.Name} at {r}");
 						}
-						// The footer line ("Last 60 s" / "Last 10 s") ends on the card's content bottom in both views (above the advice
-						// when there is one).
+						// The footer line ("Last 60 s" / "Last 10 s") ends on the card's content bottom in both views.
 						TextBlock note = live.GetVisualDescendants().OfType<TextBlock>().Single(b => b.IsEffectivelyVisible && b.Name is "ChartNote" or "SignalsNote");
-						if (!(state == "weak" && view == LivePanelViewModel.LinkView))
-						{
-							Assert.InRange(Rect(note, live).Bottom, live.Bounds.Height - pad.Bottom - 1, live.Bounds.Height - pad.Bottom + 0.5);
-						}
+						Assert.InRange(Rect(note, live).Bottom, live.Bounds.Height - pad.Bottom - 1, live.Bounds.Height - pad.Bottom + 0.5);
+						// A weak link: the notice on top of the card in both views, whole, above the card's title.
 						TextBlock advice = live.GetVisualDescendants().OfType<TextBlock>().Single(b => b.Name == "LinkAdvice");
-						Assert.Equal(state == "weak" && view == LivePanelViewModel.LinkView, advice.IsEffectivelyVisible);
+						Assert.Equal(state == "weak", advice.IsEffectivelyVisible);
+						if (advice.IsEffectivelyVisible)
+						{
+							Assert.False(advice.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{at}: the link notice is cut");
+							Rect r = Rect(advice, live);
+							Assert.True(r.Top >= pad.Top - 0.5 && r.Right <= live.Bounds.Width - pad.Right + 0.5, $"{at}: the link notice leaves the card ({r})");
+							TextBlock title = live.GetVisualDescendants().OfType<TextBlock>().First(b => b.IsEffectivelyVisible && b.Classes.Contains("h2"));
+							Assert.True(r.Bottom < Rect(title, live).Top, $"{at}: the link notice runs into the title");
+						}
 						Assert.Equal(state == "good-active" && view == LivePanelViewModel.SignalsView,
 							live.GetVisualDescendants().OfType<Kopru.App.Controls.SignalTrace>().Single(t => t.Name == "MicTrace").IsEffectivelyVisible);
 					}
@@ -389,7 +394,7 @@ public sealed class OverviewFitTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				var fake = new FakeControllerService(animate: false);

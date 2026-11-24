@@ -4,59 +4,45 @@ namespace Kopru.Core.Localization;
 // User-facing texts of the light effects, player LEDs and the mute LED.
 public static partial class Text
 {
-	public static string LightModeLabel(Language? l = null) => Pick(l, $"Işık Modu", $"Light Mode");
-	public static string LightModeStatic(Language? l = null) => Pick(l, $"Sabit", $"Static");
-	public static string LightModeBreathing(Language? l = null) => Pick(l, $"Nefes", $"Breathing");
-	public static string LightModeRainbow(Language? l = null) => Pick(l, $"Gökkuşağı", $"Rainbow");
-	public static string LightModeBattery(Language? l = null) => Pick(l, $"Pil Rengi", $"Battery Colour");
+	public static string LightModeLabel(Language? l = null) => T(l, "Light.ModeLabel");
+	public static string LightModeStatic(Language? l = null) => T(l, "Light.ModeStatic");
+	public static string LightModeBreathing(Language? l = null) => T(l, "Light.ModeBreathing");
+	public static string LightModeRainbow(Language? l = null) => T(l, "Light.ModeRainbow");
+	public static string LightModeBattery(Language? l = null) => T(l, "Light.ModeBattery");
 
-	public static string LightModeStaticHint(Language? l = null) => Pick(l,
-		$"Işık çubuğu seçtiğin renkte sabit yanar.",
-		$"The light bar stays on in the colour you choose.");
+	public static string LightModeStaticHint(Language? l = null) => T(l, "Light.ModeStaticHint");
 
-	public static string LightModeBreathingHint(Language? l = null) => Pick(l,
-		$"Seçtiğin renk yavaşça kısılır ve yeniden parlar.",
-		$"Your colour slowly dims and brightens again.");
+	public static string LightModeBreathingHint(Language? l = null) => T(l, "Light.ModeBreathingHint");
 
-	public static string LightModeRainbowHint(Language? l = null) => Pick(l,
-		$"Işık çubuğu renk çemberinde yavaşça döner.",
-		$"The light bar slowly cycles through the colour wheel.");
+	public static string LightModeRainbowHint(Language? l = null) => T(l, "Light.ModeRainbowHint");
 
-	public static string LightModeBatteryHint(Language? l = null) => Pick(l,
-		$"Yeşil, turuncu ve kırmızı pil seviyesini gösterir; %10'un altında kırmızı yanıp söner.",
-		$"Green, amber and red show the battery level; under 10% red pulses.");
+	public static string LightModeBatteryHint(Language? l = null) => T(l, "Light.ModeBatteryHint");
 
-	public static string BreathingPeriodLabel(Language? l = null) => Pick(l, $"Nefes Süresi", $"Breathing Period");
-	public static string BreathingMinLabel(Language? l = null) => Pick(l, $"En Düşük Parlaklık", $"Lowest Brightness");
-	public static string BreathingMaxLabel(Language? l = null) => Pick(l, $"En Yüksek Parlaklık", $"Highest Brightness");
-	public static string RainbowSpeedLabel(Language? l = null) => Pick(l, $"Hız", $"Speed");
-	public static string SecondsValue(double seconds, Language? l = null) => Pick(l, $"{seconds:0.#} sn", $"{seconds:0.#} s");
-	public static string SpeedValue(double speed, Language? l = null) => Pick(l, $"{speed:F0} / 10", $"{speed:F0} of 10");
+	public static string BreathingPeriodLabel(Language? l = null) => T(l, "Breathing.PeriodLabel");
+	public static string BreathingMinLabel(Language? l = null) => T(l, "Breathing.MinLabel");
+	public static string BreathingMaxLabel(Language? l = null) => T(l, "Breathing.MaxLabel");
+	public static string RainbowSpeedLabel(Language? l = null) => T(l, "Rainbow.SpeedLabel");
+	public static string SecondsValue(double seconds, Language? l = null) => T(l, "Seconds.Value", A("seconds", seconds, "0.#"));
+	public static string SpeedValue(double speed, Language? l = null) => T(l, "Speed.Value", A("speed", speed, "F0"));
 
-	public static string PlayerLedsPatternHint(Language? l = null) => Pick(l,
-		$"Dokunmatik yüzeyin altındaki LED'ler: oyuncu numarası ya da hepsi.",
-		$"The LEDs below the touchpad: a player number or all of them.");
+	public static string PlayerLedsPatternHint(Language? l = null) => T(l, "Player.LedsPatternHint");
 
-	public static string PlayerLedsOff(Language? l = null) => Pick(l, $"Kapalı", $"Off");
-	public static string PlayerLedsAll(Language? l = null) => Pick(l, $"Tümü", $"All");
-	public static string LedBrightnessLabel(Language? l = null) => Pick(l, $"LED Parlaklığı", $"LED Brightness");
-	public static string LedBrightnessLow(Language? l = null) => Pick(l, $"Düşük", $"Low");
-	public static string LedBrightnessMedium(Language? l = null) => Pick(l, $"Orta", $"Medium");
-	public static string LedBrightnessHigh(Language? l = null) => Pick(l, $"Yüksek", $"High");
+	public static string PlayerLedsOff(Language? l = null) => T(l, "Player.LedsOff");
+	public static string PlayerLedsAll(Language? l = null) => T(l, "Player.LedsAll");
+	public static string LedBrightnessLabel(Language? l = null) => T(l, "Led.BrightnessLabel");
+	public static string LedBrightnessLow(Language? l = null) => T(l, "Led.BrightnessLow");
+	public static string LedBrightnessMedium(Language? l = null) => T(l, "Led.BrightnessMedium");
+	public static string LedBrightnessHigh(Language? l = null) => T(l, "Led.BrightnessHigh");
 
 	// The Light page's group of the user's own light (below the Use The Game's Light switch).
-	public static string LightOwnGroup(Language? l = null) => Pick(l, $"Senin Işığın", $"Your Light");
+	public static string LightOwnGroup(Language? l = null) => T(l, "Light.OwnGroup");
 
 	// Why Use The Game's Light does nothing now (Low Power, or the Xbox 360 type).
-	public static string LightOffLowPower(Language? l = null) => Pick(l,
-		$"Düşük Güç açıkken ışık kapalı.",
-		$"The light is off while Low Power is on.");
-	public static string GameLightOffXbox(Language? l = null) => Pick(l,
-		$"Xbox 360 türünde oyunlar ışığı değiştiremez.",
-		$"With the Xbox 360 type, games can't change the light.");
+	public static string LightOffLowPower(Language? l = null) => T(l, "Light.OffLowPower");
+	public static string GameLightOffXbox(Language? l = null) => T(l, "Game.LightOffXbox");
 
 	// The seventh colour swatch: a colour of the user's own, picked on a colour disc or typed as a hex code.
-	public static string ColourCustom(Language? l = null) => Pick(l, $"Özel", $"Custom");
-	public static string ColourWheelLabel(Language? l = null) => Pick(l, $"Renk Diski", $"Colour Wheel");
-	public static string CustomColourHex(Language? l = null) => Pick(l, $"Renk Kodu", $"Colour Code");
+	public static string ColourCustom(Language? l = null) => T(l, "Colour.Custom");
+	public static string ColourWheelLabel(Language? l = null) => T(l, "Colour.WheelLabel");
+	public static string CustomColourHex(Language? l = null) => T(l, "Custom.ColourHex");
 }

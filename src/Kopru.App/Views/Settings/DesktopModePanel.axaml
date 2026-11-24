@@ -37,7 +37,7 @@
         <!-- Which touchpad press right clicks (Off: every press is a left click), a three-step choice like the stick's -->
         <Grid Classes="settingRow stack inline" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding RightClickHint}">
           <StackPanel Classes="text">
-            <TextBlock Classes="label" Text="{Binding RightClickLabel}" />
+            <TextBlock Classes="label" Text="{Binding RightClickLabel}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RightClickLabel}" />
           </StackPanel>
           <ListBox Theme="{StaticResource Segmented}" Name="RightClickChoice" ItemsSource="{Binding RightClicks}" SelectedIndex="{Binding RightClickIndex}"
                    Classes="control wide" AutomationProperties.Name="{Binding RightClickLabel}" AutomationProperties.HelpText="{Binding RightClickHint}" />

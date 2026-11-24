@@ -68,7 +68,7 @@ public class SidebarStatusTests
 			};
 
 			Assert.True(fake.IsConnected);
-			Assert.Equal("Via Bluetooth", vm.DeviceConnection);
+			Assert.Equal("Bluetooth", vm.DeviceConnection);
 
 			fake.CablePluggedIn = true;
 			fake.RaiseStateChanged();
@@ -108,7 +108,7 @@ public class SidebarStatusTests
 				Assert.Contains(nameof(MainWindowViewModel.DeviceConnection), changed);
 				changed.Clear();
 			}
-			Assert.Equal("Via Bluetooth", vm.DeviceConnection);
+			Assert.Equal("Bluetooth", vm.DeviceConnection);
 
 			// A state change that moves nothing raises no property change.
 			fake.RaiseStateChanged();

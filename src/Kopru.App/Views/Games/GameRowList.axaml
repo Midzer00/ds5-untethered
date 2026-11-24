@@ -35,6 +35,10 @@
       <Setter Property="Width" Value="{StaticResource RowPickerWidth}" />
       <Setter Property="c:PopupScrollGuard.Contain" Value="True" />
     </Style>
+    <!-- Drop-down items may be wider than the closed fixed-width row picker so full translated names stay legible -->
+    <Style Selector="ComboBox.rowPicker ComboBoxItem">
+      <Setter Property="MinWidth" Value="220" />
+    </Style>
     <!-- The controller type waiting for the running game: a quiet tinted box above the rows -->
     <Style Selector="Border.pending">
       <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
@@ -172,14 +176,20 @@
                   <ComboBox Classes="rowPicker" Width="{StaticResource RowPadPickerWidth}" ItemsSource="{Binding PadType.Options}" SelectedItem="{Binding PadType.Selected}"
                             ToolTip.Tip="{Binding PadType.Tip}" AutomationProperties.Name="{Binding PadType.Label}">
                     <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                      <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" /></DataTemplate>
                     </ComboBox.ItemTemplate>
+                    <ComboBox.SelectionBoxItemTemplate>
+                      <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                    </ComboBox.SelectionBoxItemTemplate>
                   </ComboBox>
                   <ComboBox Classes="rowPicker" ItemsSource="{Binding Profile.Options}" SelectedItem="{Binding Profile.Selected}"
                             ToolTip.Tip="{Binding Profile.Tip}" AutomationProperties.Name="{Binding Profile.Tip}">
                     <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                      <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
                     </ComboBox.ItemTemplate>
+                    <ComboBox.SelectionBoxItemTemplate>
+                      <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                    </ComboBox.SelectionBoxItemTemplate>
                   </ComboBox>
                 </StackPanel>
               </Grid>

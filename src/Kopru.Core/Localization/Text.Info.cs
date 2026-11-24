@@ -5,57 +5,45 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 	// Card and field labels (Title Case).
-	public static string InfoTitle(Language? l = null) => Pick(l, $"Kumanda Bilgisi", $"Controller Info");
-	public static string InfoModel(Language? l = null) => Pick(l, $"Kumanda Modeli", $"Model");
-	public static string InfoConnection(Language? l = null) => Pick(l, $"Bağlantı", $"Connection");
-	public static string InfoFirmware(Language? l = null) => Pick(l, $"Yazılım Sürümü", $"Firmware Version");
-	public static string InfoHardware(Language? l = null) => Pick(l, $"Donanım Sürümü", $"Hardware Version");
-	public static string InfoBuildDate(Language? l = null) => Pick(l, $"Derleme Tarihi", $"Build Date");
-	public static string InfoAddress(Language? l = null) => Pick(l, $"Bluetooth Adresi", $"Bluetooth Address");
-	public static string InfoConnectedFor(Language? l = null) => Pick(l, $"Bağlantı Süresi", $"Connected For");
-	public static string InfoBattery(Language? l = null) => Pick(l, $"Pil", $"Battery");
-	public static string InfoUnknown(Language? l = null) => Pick(l, $"Bilinmiyor", $"Unknown");
-	public static string InfoCopy(Language? l = null) => Pick(l, $"Ayrıntıları Kopyala", $"Copy Details");
-	public static string InfoCopied(Language? l = null) => Pick(l, $"Kopyalandı", $"Copied");
-	public static string ReconnectController(Language? l = null) => Pick(l, $"Kumandayı Yeniden Bağla", $"Reconnect Controller");
+	public static string InfoTitle(Language? l = null) => T(l, "Info.Title");
+	public static string InfoModel(Language? l = null) => T(l, "Info.Model");
+	public static string InfoConnection(Language? l = null) => T(l, "Info.Connection");
+	public static string InfoFirmware(Language? l = null) => T(l, "Info.Firmware");
+	public static string InfoHardware(Language? l = null) => T(l, "Info.Hardware");
+	public static string InfoBuildDate(Language? l = null) => T(l, "Info.BuildDate");
+	public static string InfoAddress(Language? l = null) => T(l, "Info.Address");
+	public static string InfoConnectedFor(Language? l = null) => T(l, "Info.ConnectedFor");
+	public static string InfoBattery(Language? l = null) => T(l, "Info.Battery");
+	public static string InfoUnknown(Language? l = null) => T(l, "Info.Unknown");
+	public static string InfoCopy(Language? l = null) => T(l, "Info.Copy");
+	public static string InfoCopied(Language? l = null) => T(l, "Info.Copied");
+	public static string ReconnectController(Language? l = null) => T(l, "Reconnect.Controller");
 
 	// Descriptions (sentence case).
-	public static string InfoHint(Language? l = null) => Pick(l,
-		$"Kumandanın kendisinden okunur; adres gizlilik için kısaltılır.",
-		$"Read from the controller itself; the address is shortened for privacy.");
+	public static string InfoHint(Language? l = null) => T(l, "Info.Hint");
 
-	public static string InfoNotConnected(Language? l = null) => Pick(l,
-		$"Kumanda bağlı değil.",
-		$"No controller is connected.");
+	public static string InfoNotConnected(Language? l = null) => T(l, "Info.NotConnected");
 
-	public static string ReconnectHint(Language? l = null) => Pick(l,
-		$"Kumandayla bağlantıyı kapatıp yeniden açar; Bluetooth bağlantısı kopmaz.",
-		$"Closes the connection to the controller and opens it again; Bluetooth stays connected.");
+	public static string ReconnectHint(Language? l = null) => T(l, "Reconnect.Hint");
 
 	// Settings → About: "DualSense · Bluetooth · firmware 06.30 · connected 5 min 03 s".
-	public static string InfoCompact(string model, string connection, string firmware, string duration, Language? l = null) => Pick(l,
-		$"{model} · {connection} · yazılım {firmware} · {duration} bağlı",
-		$"{model} · {connection} · firmware {firmware} · connected {duration}");
+	public static string InfoCompact(string model, string connection, string firmware, string duration, Language? l = null) => T(l, "Info.Compact", A("model", model), A("connection", connection), A("firmware", firmware), A("duration", duration));
 
 	// Durations ("connected for").
-	public static string DurationSeconds(int seconds, Language? l = null) => Pick(l, $"{seconds} sn", $"{seconds} s");
+	public static string DurationSeconds(int seconds, Language? l = null) => T(l, "Duration.Seconds", A("seconds", seconds));
 	public static string DurationMinutesSeconds(int minutes, int seconds, Language? l = null) =>
-		Pick(l, $"{minutes} dk {seconds:00} sn", $"{minutes} min {seconds:00} s");
+		T(l, "Duration.MinutesSeconds", A("minutes", minutes), A("seconds", seconds, "00"));
 	public static string DurationHoursMinutes(int hours, int minutes, Language? l = null) =>
-		Pick(l, $"{hours} sa {minutes:00} dk", $"{hours} h {minutes:00} min");
-	public static string DurationDaysHours(int days, int hours, Language? l = null) => Pick(l, $"{days} g {hours} sa", $"{days} d {hours} h");
+		T(l, "Duration.HoursMinutes", A("hours", hours), A("minutes", minutes, "00"));
+	public static string DurationDaysHours(int days, int hours, Language? l = null) => T(l, "Duration.DaysHours", A("days", days), A("hours", hours));
 
 	// The toast when Bluetooth is lost while the controller is on a cable, and the stuck connection chip.
-	public static string NotifyCableTitle(Language? l = null) => Pick(l, $"Bluetooth Bağlantısı Koptu", $"Bluetooth Connection Lost");
+	public static string NotifyCableTitle(Language? l = null) => T(l, "Notify.CableTitle");
 
-	public static string NotifyCableBody(Language? l = null) => Pick(l,
-		$"Kumanda kabloyla çalışıyor; sanal kumanda durduruldu. Bluetooth geri gelince kendiliğinden yeniden başlar.",
-		$"The controller now works over its cable and the virtual controller was stopped. It starts again by itself when Bluetooth is back.");
+	public static string NotifyCableBody(Language? l = null) => T(l, "Notify.CableBody");
 
 	// Connection value while the controller stays on Bluetooth with its charging cable plugged in.
-	public static string ConnectionBluetoothCable(Language? l = null) => Pick(l, $"Bluetooth · Kablo Takılı", $"Bluetooth · Cable Plugged In");
+	public static string ConnectionBluetoothCable(Language? l = null) => T(l, "Connection.BluetoothCable");
 
-	public static string HealthBridgeStuck(Language? l = null) => Pick(l,
-		$"Gerçek kumanda görünüyor ama sanal kumanda ona bağlanamıyor. Yeniden bağlamayı dene.",
-		$"The controller is there, but the virtual controller can't reach it. Try reconnecting.");
+	public static string HealthBridgeStuck(Language? l = null) => T(l, "Health.BridgeStuck");
 }

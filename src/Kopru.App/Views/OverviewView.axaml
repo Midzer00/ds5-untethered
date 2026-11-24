@@ -38,6 +38,27 @@
       <Setter Property="TextWrapping" Value="NoWrap" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
+    <!-- "Kablolu" is no verdict: the secondary text colour -->
+    <Style Selector="TextBlock.linkWord.wired"><Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" /></Style>
+    <!-- The chart's scale value in its band above the plot -->
+    <Style Selector="TextBlock.axis">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <!-- The link notice's icon: the verdict's colour -->
+    <Style Selector="c|IconSlot.notice"><Setter Property="Stroke" Value="{StaticResource TextSecondaryBrush}" /></Style>
+    <Style Selector="c|IconSlot.notice.warn"><Setter Property="Stroke" Value="{StaticResource IndicatorWaitBrush}" /></Style>
+    <Style Selector="c|IconSlot.notice.poor"><Setter Property="Stroke" Value="{StaticResource DangerBrush}" /></Style>
+    <!-- The hero's state title without a controller -->
+    <Style Selector="TextBlock.state">
+      <Setter Property="FontSize" Value="{StaticResource FontH1}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
     <!-- Signals lanes: the trace, then the names and current values in a narrow column on the right -->
     <Style Selector="Grid.lane">
       <Setter Property="ColumnSpacing" Value="12" />
@@ -121,6 +142,7 @@
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="TextWrapping" Value="NoWrap" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="ToolTip.Tip" Value="{Binding $self.Text}" />
     </Style>
     <Style Selector="ToggleButton TextBlock.tileState">
       <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
@@ -175,7 +197,8 @@
     </Style>
     <Style Selector="Grid.quickRow > TextBlock.label">
       <Setter Property="FontSize" Value="{StaticResource FontBody}" />
-      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -261,13 +284,40 @@
             <TextBlock Text="{Binding BackToGame.Label}" VerticalAlignment="Center" TextWrapping="NoWrap" />
           </StackPanel>
         </Button>
-        <Button Grid.Column="2" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightLarge}" Padding="14,0" Command="{Binding PowerOffCommand}" IsEnabled="{Binding CanPowerOff}"
-                IsVisible="{Binding IsConnected}" ToolTip.Tip="{Binding PowerOffText}">
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
-            <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Power}" />
-            <TextBlock Text="{Binding PowerOffText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
-          </StackPanel>
-        </Button>
+        <!-- Close Game (only while a game is detected as running) just left of Turn Off Controller, in its style. After the close
+             request the button's place says the game is closing; when the game stayed open, it asks whether to end it: Force Close
+             (the one red word) and Cancel -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource GapLarge}">
+          <Button Name="CloseGameButton" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightLarge}" Padding="14,0" Command="{Binding BackToGame.CloseGameCommand}"
+                  IsVisible="{Binding BackToGame.ShowsCloseGame}" ToolTip.Tip="{Binding BackToGame.CloseGameTip}" AutomationProperties.Name="{Binding BackToGame.CloseGameText}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+              <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Cross}" />
+              <TextBlock Text="{Binding BackToGame.CloseGameText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+            </StackPanel>
+          </Button>
+          <TextBlock Name="ClosingGameText" Classes="caption" Text="{Binding BackToGame.ClosingText}" IsVisible="{Binding BackToGame.IsClosing}" VerticalAlignment="Center"
+                     TextWrapping="NoWrap" />
+          <Border Name="ForceCloseAsk" IsVisible="{Binding BackToGame.ConfirmsForceClose}" Background="{StaticResource QuietFillPressedBrush}" BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="1" CornerRadius="10" Height="{StaticResource ControlHeightLarge}" Padding="12,0,4,0" ToolTip.Tip="{Binding BackToGame.ForceCloseQuestion}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Classes="label" Text="{Binding BackToGame.ForceCloseAskText}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="NoWrap" />
+              <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button Name="ForceCloseButton" Theme="{StaticResource QuietButton}" Height="30" Padding="10,0" CornerRadius="8"
+                        Command="{Binding BackToGame.ForceCloseCommand}" Foreground="{StaticResource DangerBrush}" Content="{Binding BackToGame.ForceCloseText}" />
+                <Button Name="KeepGameButton" Theme="{StaticResource QuietButton}" Height="30" Padding="10,0" CornerRadius="8"
+                        Command="{Binding BackToGame.KeepGameCommand}" Content="{Binding BackToGame.CancelText}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <!-- Turn Off Controller steps aside while Close Game asks its question (the title keeps its room) -->
+          <Button Name="PowerOffButton" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightLarge}" Padding="14,0" Command="{Binding PowerOffCommand}" IsEnabled="{Binding CanPowerOff}"
+                  IsVisible="{Binding ShowsPowerOff}" ToolTip.Tip="{Binding PowerOffText}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+              <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Power}" />
+              <TextBlock Text="{Binding PowerOffText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
         <Button Grid.Column="3" Theme="{StaticResource PrimaryButton}" Command="{Binding PrimaryCommand}" IsVisible="{Binding ShowsPrimary}"
                 Content="{Binding PrimaryText}" MinWidth="170" IsEnabled="{Binding CanPrimary}" Name="PrimaryAction"
                 ToolTip.Tip="{Binding PrimaryTip}" ToolTip.ShowOnDisabled="True" />
@@ -277,181 +327,214 @@
            settings (right) stretch to it; neither grows with the window -->
       <Grid Grid.Row="1" ColumnDefinitions="10*,11*" ColumnSpacing="{StaticResource GapLarge}">
         <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource GapLarge}">
-          <!-- Hero: the controller drawing (light in the chosen colour, buttons lit while pressed) and what it is doing -->
+          <!-- Hero: the controller drawing (light in the chosen colour, buttons lit while pressed) beside its name, battery and the
+               type games see, and under both the connection line (the links' icons, the mode, "Deneysel" on the cable). The
+               drawing is as large as the card allows beside the texts (ArtRow). Without a controller: the state, why, the last
+               battery. -->
           <Border Classes="panel">
-            <!-- The drawing gets a fixed, generous column (about 1.35 times its old share); the texts take the rest and wrap -->
-            <Grid ColumnDefinitions="160,*" ColumnSpacing="{StaticResource Gap}">
-              <Viewbox Name="HeroArt" Stretch="Uniform" VerticalAlignment="Center">
-                <Panel Width="204" Height="136" Opacity="{Binding ArtOpacity}">
-                  <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
-                                   PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" />
-                  <c:ControllerInputOverlay Pressed="{Binding LivePressed}" IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" Accent="{StaticResource AccentBrush}" />
-                </Panel>
-              </Viewbox>
+            <Grid RowDefinitions="*,Auto">
+              <c:ArtRow>
+                <Viewbox Name="HeroArt" Stretch="Uniform" MaxWidth="160" MaxHeight="104">
+                  <Panel Width="204" Height="136" Opacity="{Binding ArtOpacity}">
+                    <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+                                     PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" />
+                    <c:ControllerInputOverlay Pressed="{Binding LivePressed}" IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" Accent="{StaticResource AccentBrush}" />
+                  </Panel>
+                </Viewbox>
 
-              <StackPanel Grid.Column="1" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
-                <!-- A game runs: its name (the controller type it sees follows below) -->
-                <StackPanel Spacing="2" IsVisible="{Binding ShowsGame}">
-                  <TextBlock Classes="caption" Text="{Binding GameCaption}" />
-                  <TextBlock Classes="hero" Text="{Binding GameValue}" ToolTip.Tip="{Binding GameValue}" TextWrapping="Wrap" MaxLines="2" />
-                  <StackPanel Classes="heroBattery" IsVisible="{Binding ShowsBattery}" ToolTip.Tip="{Binding BatteryTip}">
-                    <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}" Width="20" Height="10" VerticalAlignment="Center" />
-                    <TextBlock Classes.low="{Binding IsBatteryLow}" Text="{Binding BatteryText}" />
-                  </StackPanel>
-                </StackPanel>
                 <!-- Connected: the controller -->
-                <StackPanel Spacing="2" IsVisible="{Binding ShowsDevice}">
-                  <TextBlock Classes="caption" Text="{Binding DeviceCaption}" />
-                  <TextBlock Classes="hero" Text="{Binding Picker.SelectedName}" ToolTip.Tip="{Binding Picker.SelectedName}" />
-                  <StackPanel Classes="heroBattery" IsVisible="{Binding ShowsBattery}" ToolTip.Tip="{Binding BatteryTip}">
+                <StackPanel Name="HeroPadTexts" VerticalAlignment="Center" HorizontalAlignment="Left" Spacing="6" IsVisible="{Binding !ShowsNoController}">
+                  <StackPanel Spacing="2">
+                    <TextBlock Name="HeroName" Classes="hero" Text="{Binding Picker.SelectedName}" ToolTip.Tip="{Binding Picker.SelectedName}" />
+                    <StackPanel Classes="heroBattery" Margin="0" IsVisible="{Binding ShowsBattery}" ToolTip.Tip="{Binding BatteryTip}">
                       <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}" Width="20" Height="10" VerticalAlignment="Center" />
                       <TextBlock Classes.low="{Binding IsBatteryLow}" Text="{Binding BatteryText}" />
                     </StackPanel>
-                </StackPanel>
-                <!-- While the virtual controller runs: the type games see, what it lacks, and a type held back for the running game -->
-                <StackPanel Spacing="4" IsVisible="{Binding ShowsPadStatus}">
-                  <TextBlock Name="HeroPadStatus" Classes="body" Text="{Binding GameSeesText}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                  </StackPanel>
+                  <!-- While the virtual controller runs: the type games see, what it lacks, and a type held back for the running game -->
+                  <TextBlock Name="HeroPadStatus" Classes="body" Text="{Binding GameSeesText}" FontWeight="SemiBold" MaxWidth="144" HorizontalAlignment="Left"
+                             TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Background="Transparent" ToolTip.Tip="{Binding PadTypeTip}"
+                             IsVisible="{Binding ShowsPadStatus}" />
+                  <TextBlock Classes="caption" Text="{Binding PadLossLine}" IsVisible="{Binding ShowsHeroPadLoss}" MaxWidth="144" HorizontalAlignment="Left" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
                              Background="Transparent" ToolTip.Tip="{Binding PadTypeTip}" />
-                  <TextBlock Classes="caption" Text="{Binding PadLossLine}" IsVisible="{Binding ShowsPadLoss}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
-                             Background="Transparent" ToolTip.Tip="{Binding PadTypeTip}" />
-                  <StackPanel Spacing="4" IsVisible="{Binding HasPendingPadType}">
+                  <StackPanel Spacing="4" MaxWidth="144" HorizontalAlignment="Left" IsVisible="{Binding ShowsHeroPendingPadType}">
                     <TextBlock Classes="caption" Foreground="{StaticResource TextBrush}" Text="{Binding PendingPadLine}" TextWrapping="Wrap" MaxLines="3"
                                TextTrimming="CharacterEllipsis" Background="Transparent" ToolTip.Tip="{Binding PendingPadTip}" />
                     <Button Name="HeroApplyPadType" Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" MinHeight="0" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left"
                             Content="{Binding ApplyPadTypeNowText}" Command="{Binding ApplyPadTypeNowCommand}" ToolTip.Tip="{Binding PendingPadTip}" />
                   </StackPanel>
+                  <!-- Several controllers: the selected one can run its own profile instead of the global settings -->
+                  <StackPanel Spacing="6" IsVisible="{Binding Picker.IsMulti}">
+                    <TextBlock Classes="caption" Text="{Binding Picker.ProfileLabel}" />
+                    <ComboBox ItemsSource="{Binding Picker.ProfileOptions}" SelectedItem="{Binding Picker.SelectedProfile}" MinWidth="144" MaxWidth="186"
+                              HorizontalAlignment="Left" AutomationProperties.Name="{Binding Picker.ProfileLabel}" />
+                  </StackPanel>
                 </StackPanel>
-                <!-- No controller: why, and what to do -->
-                <StackPanel Spacing="6" IsVisible="{Binding ShowsNoController}">
-                  <TextBlock Classes="hero" Text="{Binding NoControllerTitle}" TextWrapping="Wrap" MaxLines="2" />
-                  <TextBlock Classes="body" Text="{Binding NoControllerReason}" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Classes="caption" Text="{Binding LastBatteryText}" IsVisible="{Binding ShowsLastBatteryInHero}" />
+
+                <!-- No controller: the state, why, the last battery and what to press -->
+                <StackPanel Name="HeroStateTexts" Width="180" VerticalAlignment="Center" HorizontalAlignment="Left" Spacing="4" IsVisible="{Binding ShowsNoController}">
+                  <TextBlock Classes="state" Text="{Binding NoControllerTitle}" />
+                  <TextBlock Classes="body" Text="{Binding NoControllerReason}" LineHeight="18" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="caption" Text="{Binding LastBatteryText}" IsVisible="{Binding ShowsLastBatteryInHero}" TextWrapping="NoWrap" />
                   <Button Theme="{StaticResource QuietButton}" Height="{StaticResource ControlHeightSmall}" MinHeight="0" Padding="12,0" FontSize="12.5" HorizontalAlignment="Left" Margin="0,4,0,0"
                           Content="{Binding HeroActionText}" Command="{Binding HeroActionCommand}" IsVisible="{Binding HasHeroAction}" />
                 </StackPanel>
-                <!-- Several controllers: the selected one can run its own profile instead of the global settings -->
-                <StackPanel Spacing="6" IsVisible="{Binding Picker.IsMulti}">
-                  <TextBlock Classes="caption" Text="{Binding Picker.ProfileLabel}" />
-                  <ComboBox ItemsSource="{Binding Picker.ProfileOptions}" SelectedItem="{Binding Picker.SelectedProfile}" MinWidth="150" MaxWidth="240"
-                            HorizontalAlignment="Left" AutomationProperties.Name="{Binding Picker.ProfileLabel}" />
-                </StackPanel>
-              </StackPanel>
+              </c:ArtRow>
+
+              <c:LinkLine Grid.Row="1" Name="HeroLink" Hero="True" Height="20" Margin="0,6,0,0" IsVisible="{Binding ShowsHeroLink}"
+                          Bluetooth="{Binding BluetoothUse}" Usb="{Binding UsbUse}" Text="{Binding HeroLinkText}" TagText="{Binding HeroLinkTag}" ShowsTag="{Binding ShowsHeroLinkTag}" />
             </Grid>
           </Border>
 
-          <!-- Live, in two views picked in the header: Link (the typical delay as the headline beside a small quality gauge in
-               the verdict's colour with its word, the last 60 s as an area chart in that colour, what to do only when something
-               must be done) and Signals (the last 10 s of the triggers, the haptic motors and the live microphone as small
-               scrolling traces). Both views share one cell, so the card keeps its height whichever is shown. Stretched ("fill")
-               only to end on the quick settings' line: the chart takes that bit of height, between its minimum and a cap. -->
+          <!-- Live, in two views picked in the header: Link (the typical delay as the headline, its caption naming the measured
+               link, beside a small quality gauge in the verdict's colour with its word, or on the cable a quiet cable tile with
+               "Kablolu"; the last 60 s as an area chart with its scale's top value in a band above it; what the chart covers and
+               the input rate in one muted line) and Signals (the last 10 s of the triggers, the haptic motors and the live
+               microphone as small scrolling traces). A fair or weak link puts a short notice on top. Both views share one cell,
+               so the card keeps its height whichever is shown. Without live numbers: the chain controller -> virtual controller
+               -> game, a title and one short paragraph. Stretched ("fill") only to end on the quick settings' line. -->
           <Border Grid.Row="1" Classes="panel fill" Name="LiveCard">
-            <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource Gap}">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
-                <TextBlock Classes="h2" Text="{Binding LiveTitle}" VerticalAlignment="Center" />
-                <ListBox Grid.Column="1" Name="LiveViews" Theme="{StaticResource Segmented}" ItemsSource="{Binding Live.Views}" SelectedIndex="{Binding Live.SelectedView}"
-                         IsVisible="{Binding IsLive}" MinWidth="176" AutomationProperties.Name="{Binding LiveTitle}">
-                  <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:TabOption">
-                      <Panel>
-                        <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
-                                   IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
-                        <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
-                                   IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
-                      </Panel>
-                    </DataTemplate>
-                  </ListBox.ItemTemplate>
-                </ListBox>
-              </Grid>
-              <TextBlock Grid.Row="1" Classes="body" Text="{Binding LiveIdle}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center"
-                         TextAlignment="Center" IsVisible="{Binding IsNotLive}" />
-              <Panel Grid.Row="1" IsVisible="{Binding IsLive}">
-                <!-- Link -->
-                <Grid Name="LiveLink" IsVisible="{Binding Live.IsLinkView}" RowSpacing="12">
-                  <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" MinHeight="40" MaxHeight="260" />
-                    <RowDefinition Height="Auto" />
-                  </Grid.RowDefinitions>
-                  <Grid Name="LiveHeadline" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding LatencyTip}" Background="Transparent">
-                    <StackPanel Spacing="0" VerticalAlignment="Center">
-                      <TextBlock Classes="liveBig" Text="{Binding Live.DelayValue}" />
-                      <TextBlock Classes="caption" Text="{Binding Live.DelayCaption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" MinWidth="76">
-                      <c:QualityGauge Name="LinkGauge" Width="76" Height="40" HorizontalAlignment="Center" Level="{Binding LinkLevel}" Classes="quality"
-                                      Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}" Classes.poor="{Binding IsLinkPoor}" />
-                      <TextBlock Name="LinkWord" Classes="linkWord" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}"
-                                 Classes.poor="{Binding IsLinkPoor}" Classes.muted="{Binding IsLinkMeasuring}" Text="{Binding LinkStateText}" />
-                    </StackPanel>
+            <Panel>
+              <Grid IsVisible="{Binding IsLive}" RowDefinitions="Auto,Auto,*">
+                <!-- The notice: a quiet filled row, the verdict's colour on its icon only, the title leading the sentence in -->
+                <Border Name="LinkNotice" Background="{StaticResource QuietFillBrush}" CornerRadius="{StaticResource RadiusSmall}" Padding="8,6" Margin="0,0,0,12"
+                        IsVisible="{Binding ShowsLinkNotice}">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                    <c:IconSlot Data="{x:Static c:IconPaths.Bluetooth}" Size="16" VerticalAlignment="Top" Classes="notice" Classes.warn="{Binding IsLinkBorderline}"
+                                Classes.poor="{Binding IsLinkPoor}" />
+                    <TextBlock Name="LinkAdvice" Grid.Column="1" FontSize="{StaticResource FontCaption}" Foreground="{StaticResource TextSecondaryBrush}" LineHeight="16"
+                               TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis">
+                      <Run Text="{Binding LinkNoticeTitle}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                      <Run Text="{Binding LinkNoticeRest}" />
+                    </TextBlock>
                   </Grid>
-                  <Panel Grid.Row="1" ToolTip.Tip="{Binding Live.GraphTip}" Background="Transparent">
-                    <c:Sparkline Name="LinkChart" Classes="zone" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}" Classes.poor="{Binding IsLinkPoor}"
-                                 Values="{Binding Live.WorstHistory}" Secondary="{Binding Live.TypicalHistory}" Marks="{Binding Live.TroubleMarks}" Capacity="60"
-                                 Maximum="{Binding Live.ChartTop}" Limit="{Binding Live.ShownLimitMs}" Unit="{Binding Live.Unit}"
-                                 LimitBrush="{StaticResource LiveLimitBrush}" LabelBrush="{StaticResource MutedBrush}" />
-                  </Panel>
-                  <!-- One muted line (what the chart covers, and the input rate), then what to do only when something must be done;
-                       one row, so the line ends on the card's bottom like the Signals view's when there is no advice -->
-                  <StackPanel Grid.Row="2" Spacing="8">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                </Border>
+
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+                  <TextBlock Classes="h2" Text="{Binding LiveTitle}" VerticalAlignment="Center" />
+                  <ListBox Grid.Column="1" Name="LiveViews" Theme="{StaticResource Segmented}" ItemsSource="{Binding Live.Views}" SelectedIndex="{Binding Live.SelectedView}"
+                           MinWidth="176" AutomationProperties.Name="{Binding LiveTitle}">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TabOption">
+                        <Panel>
+                          <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                                     IsVisible="{Binding !$parent[ListBoxItem].IsSelected}" />
+                          <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                                     IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                        </Panel>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Grid>
+
+                <Panel Grid.Row="2">
+                  <!-- Link: one flat grid, the gaps are rows of their own (12 px, down to 6 when the card is short), so a low card
+                       keeps its chart readable; the chart takes the spare height -->
+                  <Grid Name="LiveLink" IsVisible="{Binding Live.IsLinkView}">
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="*" MinHeight="6" MaxHeight="12" />
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="*" MinHeight="6" MaxHeight="12" />
+                      <RowDefinition Height="6*" MinHeight="40" MaxHeight="260" />
+                      <RowDefinition Height="*" MinHeight="6" MaxHeight="12" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="1" Name="LiveHeadline" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" ToolTip.Tip="{Binding LatencyTip}" Background="Transparent">
+                      <StackPanel Spacing="0" VerticalAlignment="Center">
+                        <TextBlock Classes="liveBig" Text="{Binding Live.DelayValue}" />
+                        <TextBlock Name="DelayCaption" Classes="caption" Text="{Binding Live.DelayCaption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <!-- The gauge's slot (76 wide): the gauge with its word on Bluetooth; the cable in a quiet tile with "Kablolu" on USB -->
+                      <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" MinWidth="76">
+                        <Panel Height="40">
+                          <c:QualityGauge Name="LinkGauge" Width="76" Height="40" HorizontalAlignment="Center" Level="{Binding LinkLevel}" Classes="quality"
+                                          Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}" Classes.poor="{Binding IsLinkPoor}"
+                                          IsVisible="{Binding !IsLinkWired}" />
+                          <Border Name="WiredTile" Classes="iconTile" HorizontalAlignment="Center" VerticalAlignment="Bottom" IsVisible="{Binding IsLinkWired}">
+                            <c:IconSlot Data="{x:Static c:IconPaths.Cable}" Size="20" Stroke="{StaticResource AccentBrush}" HorizontalAlignment="Center" />
+                          </Border>
+                        </Panel>
+                        <TextBlock Name="LinkWord" Classes="linkWord" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}"
+                                   Classes.poor="{Binding IsLinkPoor}" Classes.muted="{Binding IsLinkMeasuring}" Classes.wired="{Binding IsLinkWired}" Text="{Binding LinkStateText}" />
+                      </StackPanel>
+                    </Grid>
+                    <!-- The chart with its scale's top value in a band of its own above the plot (never over the data or the limit line) -->
+                    <Panel Grid.Row="3" ToolTip.Tip="{Binding Live.GraphTip}" Background="Transparent">
+                      <c:Sparkline Name="LinkChart" Classes="zone" Classes.good="{Binding IsLinkGood}" Classes.warn="{Binding IsLinkBorderline}" Classes.poor="{Binding IsLinkPoor}"
+                                   Margin="0,6,0,0" Values="{Binding Live.WorstHistory}" Secondary="{Binding Live.TypicalHistory}" Marks="{Binding Live.TroubleMarks}" Capacity="60"
+                                   Maximum="{Binding Live.ChartTop}" Limit="{Binding Live.ShownLimitMs}" Unit="{Binding Live.Unit}"
+                                   LimitBrush="{StaticResource LiveLimitBrush}" LabelBrush="Transparent" />
+                      <TextBlock Name="ChartScale" Classes="axis" Text="{Binding Live.ChartTopText}" HorizontalAlignment="Right" />
+                    </Panel>
+                    <!-- One muted line: what the chart covers, and the input rate -->
+                    <Grid Grid.Row="5" ColumnDefinitions="*,Auto" ColumnSpacing="10">
                       <TextBlock Name="ChartNote" Classes="caption" Text="{Binding Live.GraphCaption}" TextWrapping="NoWrap" />
                       <TextBlock Grid.Column="1" Name="LiveRate" Classes="caption" Text="{Binding Live.RateValue}" IsVisible="{Binding Live.HasRate}" TextWrapping="NoWrap"
                                  ToolTip.Tip="{Binding Live.RateLabel}" />
                     </Grid>
-                    <TextBlock Name="LinkAdvice" Classes="caption" Text="{Binding LinkAdvice}" IsVisible="{Binding HasLinkAdvice}" TextWrapping="Wrap"
-                               MaxLines="3" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                </Grid>
+                  </Grid>
 
-                <!-- Signals: one lane per group, its trace left and its names with the current values right; the lanes grow up to
-                     a cap and the muted footer line stays on the card's bottom, as in the Link view -->
-                <Grid Name="LiveSignals" IsVisible="{Binding Live.IsSignalsView}" RowDefinitions="*,Auto" RowSpacing="10" Background="Transparent"
-                      ToolTip.Tip="{Binding Live.SignalsTip}">
-                <Grid RowSpacing="10">
-                  <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
-                    <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
-                    <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
-                  </Grid.RowDefinitions>
-                  <Grid Classes="lane" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Live.TriggersTip}">
-                    <c:SignalTrace Name="TriggerTrace" Mode="Areas" Primary="{Binding Live.L2Trace}" Secondary="{Binding Live.R2Trace}" Revision="{Binding Live.SignalRevision}"
-                                   PrimaryBrush="{StaticResource LivePinkBrush}" SecondaryBrush="{StaticResource LiveBlueBrush}" />
-                    <StackPanel Grid.Column="1" Classes="laneValues">
-                      <StackPanel Classes="laneValue">
-                        <TextBlock Classes="laneName" Foreground="{StaticResource LivePinkBrush}" Text="{Binding Live.L2Label}" />
-                        <TextBlock Classes="laneNumber" Text="{Binding Live.L2Text}" />
-                      </StackPanel>
-                      <StackPanel Classes="laneValue">
-                        <TextBlock Classes="laneName" Foreground="{StaticResource LiveBlueBrush}" Text="{Binding Live.R2Label}" />
-                        <TextBlock Classes="laneNumber" Text="{Binding Live.R2Text}" />
-                      </StackPanel>
-                    </StackPanel>
+                  <!-- Signals: one lane per group, its trace left and its names with the current values right; the lanes grow up to
+                       a cap and the muted footer line stays on the card's bottom, as in the Link view -->
+                  <Grid Name="LiveSignals" IsVisible="{Binding Live.IsSignalsView}" RowDefinitions="*,Auto" RowSpacing="10" Margin="0,12,0,0" Background="Transparent"
+                        ToolTip.Tip="{Binding Live.SignalsTip}">
+                    <Grid RowSpacing="10">
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
+                        <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
+                        <RowDefinition Height="*" MinHeight="34" MaxHeight="80" />
+                      </Grid.RowDefinitions>
+                      <Grid Classes="lane" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Live.TriggersTip}">
+                        <c:SignalTrace Name="TriggerTrace" Mode="Areas" Primary="{Binding Live.L2Trace}" Secondary="{Binding Live.R2Trace}" Revision="{Binding Live.SignalRevision}"
+                                       PrimaryBrush="{StaticResource LivePinkBrush}" SecondaryBrush="{StaticResource LiveBlueBrush}" />
+                        <StackPanel Grid.Column="1" Classes="laneValues">
+                          <StackPanel Classes="laneValue">
+                            <TextBlock Classes="laneName" Foreground="{StaticResource LivePinkBrush}" Text="{Binding Live.L2Label}" />
+                            <TextBlock Classes="laneNumber" Text="{Binding Live.L2Text}" />
+                          </StackPanel>
+                          <StackPanel Classes="laneValue">
+                            <TextBlock Classes="laneName" Foreground="{StaticResource LiveBlueBrush}" Text="{Binding Live.R2Label}" />
+                            <TextBlock Classes="laneNumber" Text="{Binding Live.R2Text}" />
+                          </StackPanel>
+                        </StackPanel>
+                      </Grid>
+                      <Grid Grid.Row="1" Classes="lane" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Live.HapticsTip}">
+                        <c:SignalTrace Name="HapticsTrace" Mode="Mirrored" Primary="{Binding Live.HapticsLeftTrace}" Secondary="{Binding Live.HapticsRightTrace}"
+                                       Revision="{Binding Live.SignalRevision}" PrimaryBrush="{StaticResource LiveVioletBrush}" SecondaryBrush="{StaticResource LiveTealBrush}" />
+                        <StackPanel Grid.Column="1" Classes="laneValues">
+                          <TextBlock Classes="laneTitle" Text="{Binding Live.HapticsLabel}" />
+                          <StackPanel Classes="laneValue">
+                            <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveVioletBrush}" Text="{Binding Live.HapticsLeftText}" />
+                            <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveTealBrush}" Text="{Binding Live.HapticsRightText}" />
+                          </StackPanel>
+                        </StackPanel>
+                      </Grid>
+                      <Grid Grid.Row="2" Classes="lane" ColumnDefinitions="*,Auto" IsVisible="{Binding Live.HasMic}">
+                        <c:SignalTrace Name="MicTrace" Mode="Envelope" Primary="{Binding Live.MicTrace}" Revision="{Binding Live.SignalRevision}"
+                                       PrimaryBrush="{StaticResource LiveAmberBrush}" />
+                        <StackPanel Grid.Column="1" Classes="laneValues">
+                          <TextBlock Classes="laneTitle" Text="{Binding Live.MicLabel}" />
+                          <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveAmberBrush}" Text="{Binding Live.MicText}" />
+                        </StackPanel>
+                      </Grid>
+                    </Grid>
+                    <!-- One muted line: what the traces cover -->
+                    <TextBlock Grid.Row="1" Name="SignalsNote" Classes="caption" Text="{Binding Live.SignalsCaption}" TextWrapping="NoWrap" />
                   </Grid>
-                  <Grid Grid.Row="1" Classes="lane" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Live.HapticsTip}">
-                    <c:SignalTrace Name="HapticsTrace" Mode="Mirrored" Primary="{Binding Live.HapticsLeftTrace}" Secondary="{Binding Live.HapticsRightTrace}"
-                                   Revision="{Binding Live.SignalRevision}" PrimaryBrush="{StaticResource LiveVioletBrush}" SecondaryBrush="{StaticResource LiveTealBrush}" />
-                    <StackPanel Grid.Column="1" Classes="laneValues">
-                      <TextBlock Classes="laneTitle" Text="{Binding Live.HapticsLabel}" />
-                      <StackPanel Classes="laneValue">
-                        <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveVioletBrush}" Text="{Binding Live.HapticsLeftText}" />
-                        <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveTealBrush}" Text="{Binding Live.HapticsRightText}" />
-                      </StackPanel>
-                    </StackPanel>
-                  </Grid>
-                  <Grid Grid.Row="2" Classes="lane" ColumnDefinitions="*,Auto" IsVisible="{Binding Live.HasMic}">
-                    <c:SignalTrace Name="MicTrace" Mode="Envelope" Primary="{Binding Live.MicTrace}" Revision="{Binding Live.SignalRevision}"
-                                   PrimaryBrush="{StaticResource LiveAmberBrush}" />
-                    <StackPanel Grid.Column="1" Classes="laneValues">
-                      <TextBlock Classes="laneTitle" Text="{Binding Live.MicLabel}" />
-                      <TextBlock Classes="laneNumber" Foreground="{StaticResource LiveAmberBrush}" Text="{Binding Live.MicText}" />
-                    </StackPanel>
-                  </Grid>
-                </Grid>
-                  <!-- One muted line: what the traces cover -->
-                  <TextBlock Grid.Row="1" Name="SignalsNote" Classes="caption" Text="{Binding Live.SignalsCaption}" TextWrapping="NoWrap" />
-                </Grid>
-              </Panel>
-            </Grid>
+                </Panel>
+              </Grid>
+
+              <!-- No live numbers: the card keeps its title; under it one block centred in the room that is left: the chain (not
+                   connected: the three steps), then a title and one short paragraph, why and what happens next -->
+              <Grid Name="LiveState" IsVisible="{Binding IsNotLive}" RowDefinitions="Auto,*">
+                <TextBlock Classes="h2" Text="{Binding LiveTitle}" />
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                  <c:ChainDiagram Name="StateChain" Spec="{Binding StateChain}" />
+                  <TextBlock Name="StateHeading" Classes="h2" Margin="0,20,0,0" Text="{Binding StateHeading}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Name="StateText" Classes="body" Margin="0,6,0,0" Text="{Binding StateText}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </Panel>
           </Border>
         </Grid>
 

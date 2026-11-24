@@ -1,0 +1,3 @@
+# Known flaky tests, one per line. A failure of these is reported in TestResults/summary.json as knownFlaky.
+Kopru.Core.Tests.BridgeHostTests.EnterWired_WhenTheAudioOutputStaysMissing_SlowsTheRetryAfterTenTries
+Kopru.Core.Tests.BridgeHostTests.EnterWired_WhenTheAudioOpenThrows_AsksAgain_AndLogsEachReasonOnce

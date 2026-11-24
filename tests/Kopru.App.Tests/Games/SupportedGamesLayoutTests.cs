@@ -27,7 +27,7 @@ public sealed class SupportedGamesLayoutTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach ((double width, double height, string size) in PageSizeRenderTests.Sizes)
@@ -102,7 +102,7 @@ public sealed class SupportedGamesLayoutTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach ((double width, double height, string size) in new[] { PageSizeRenderTests.Sizes[0], PageSizeRenderTests.Sizes[^1] })
@@ -181,7 +181,7 @@ public sealed class SupportedGamesLayoutTests
 		List<string> problems = [];
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach ((double width, double height) in FitCheck.Matrix)

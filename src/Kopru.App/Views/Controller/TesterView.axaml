@@ -225,11 +225,11 @@
           <TextBlock Classes="caption" Text="{Binding MotionNeedsFull}" IsVisible="{Binding ShowsMotionNote}" />
           <Grid Classes="motionAxes" ColumnDefinitions="*,14,*" RowDefinitions="Auto,Auto" IsVisible="{Binding !ShowsMotionNote}">
             <StackPanel Spacing="2">
-              <TextBlock Classes="section" Text="{Binding GyroLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="section" Text="{Binding GyroLabel}" ToolTip.Tip="{Binding GyroLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
               <ItemsControl ItemsSource="{Binding Gyro}" />
             </StackPanel>
             <StackPanel Classes="accel" Spacing="2">
-              <TextBlock Classes="section" Text="{Binding AccelLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="section" Text="{Binding AccelLabel}" ToolTip.Tip="{Binding AccelLabel}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
               <ItemsControl ItemsSource="{Binding Accel}" />
             </StackPanel>
           </Grid>

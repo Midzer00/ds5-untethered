@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Kopru.App.Controls;
 using Kopru.Core.Games;
 using Kopru.Core.Localization;
 
@@ -60,6 +61,33 @@ public sealed class CustomTriggerFeel : ObservableObject
 	public bool IsResistance => Value.Effect == FallbackTrigger.Feedback;
 	public bool IsWeapon => Value.Effect == FallbackTrigger.Weapon;
 	public bool IsVibration => Value.Effect == FallbackTrigger.Vibration;
+
+	// The trigger's own card labels it by the button's name (L2 / R2), the same in every language.
+	public string TriggerKey => _left ? "L2" : "R2";
+	// The effect picker's label inside the card.
+	public string EffectLabel => Text.CustomTriggerEffectLabel();
+	// What "Oyunun Efekti" reads on the travel diagram when there is no custom effect.
+	public string GameEffectWord => Text.CustomTriggerGameEffect();
+
+	// The game panel's travel diagram (TriggerTravel) reads the shown effect and where it sits through these.
+	public TriggerTravelEffect TravelEffect => Value.Effect switch
+	{
+		FallbackTrigger.Feedback => TriggerTravelEffect.Resistance,
+		FallbackTrigger.Weapon => TriggerTravelEffect.Weapon,
+		FallbackTrigger.Vibration => TriggerTravelEffect.Vibration,
+		_ => TriggerTravelEffect.Game
+	};
+
+	// Where the shown effect starts; the weapon's block also ends at WeaponEnd, the rest run to the travel's end.
+	public double ShownStart => Value.Effect switch
+	{
+		FallbackTrigger.Feedback => ResistanceStart,
+		FallbackTrigger.Weapon => WeaponStart,
+		FallbackTrigger.Vibration => VibrationStart,
+		_ => 0
+	};
+
+	public double ShownEnd => IsWeapon ? WeaponEnd : 100;
 
 	public double ResistanceStart
 	{

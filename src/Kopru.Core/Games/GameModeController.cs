@@ -133,6 +133,43 @@ public sealed partial class GameModeController
 		}
 	}
 
+	// Asks the active game's main window to close (like its close button). Only the detected active game, and only when key is
+	// its key: anything else returns false and touches nothing.
+	public bool RequestCloseActiveGame(string key)
+	{
+		ForegroundGame? game = ActiveIfKey(key);
+		if (game == null || game.ProcessId <= 0)
+		{
+			return false;
+		}
+		lock (gate)
+		{
+			closeAsked = game.ProcessId;
+		}
+		return watcher.RequestClose(game);
+	}
+
+	// The last resort after RequestCloseActiveGame did not end the game: ends that one process (never its children). Refused
+	// unless key is the active game's, it still runs and a close was requested for it before.
+	public bool EndActiveGame(string key)
+	{
+		ForegroundGame? game = ActiveIfKey(key);
+		bool asked;
+		lock (gate)
+		{
+			asked = game != null && closeAsked == game.ProcessId && game.ProcessId > 0;
+		}
+		return asked && watcher.End(game!);
+	}
+
+	private int closeAsked;
+
+	private ForegroundGame? ActiveIfKey(string key)
+	{
+		ForegroundGame? game = ActiveGame;
+		return game != null && string.Equals(game.Key, key, StringComparison.OrdinalIgnoreCase) ? game : null;
+	}
+
 	// Whether the foreground window was a known game at the last Tick (about once a second). Unlike ActiveGame, false
 	// while the game still runs behind another window. Lock-free (read on the input thread).
 	public bool IsGameInFront => gameInFront != null;

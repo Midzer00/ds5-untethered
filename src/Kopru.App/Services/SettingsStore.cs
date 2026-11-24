@@ -8,7 +8,7 @@ using Microsoft.Win32;
 
 namespace Kopru.App.Services;
 
-// Everything the user can change, as saved to settings.json. Language: "tr", "en" or null (follow Windows).
+// Everything the user can change, as saved to settings.json. Language: a shipped BCP-47 code ("tr", "en", …) or null (follow Windows).
 public sealed class AppSettings
 {
 	public string? Language { get; set; }

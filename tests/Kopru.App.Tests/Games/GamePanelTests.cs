@@ -208,7 +208,7 @@ public sealed class GamePanelTests
 		List<string> problems = [];
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				// The matrix and the owner's window: 2593x1575 pixels at 225 % Windows scaling, 1152x700 in layout units.

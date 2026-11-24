@@ -187,15 +187,16 @@ public sealed class UiPolish2Tests
 			// A section title like the Light group beside it, then the row.
 			TextBlock title = Assert.Single(audio.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Classes.Contains("section"));
 			Assert.Equal(Text.AudioHapticsSection(), title.Text);
-			Assert.Equal([title, row], audio.Children.Where(c => c.IsVisible).Take(2));
+			// The title first; after the drawing and its sentence the switch's row is the card's first row.
+			Assert.Equal([title, row], audio.Children.Where(c => c.IsVisible && (c == title || c is Grid)).Take(2));
 			// Off: the switch shows it, no status line.
 			Assert.False(toggle.IsChecked);
 			Assert.False(status.IsEffectivelyVisible);
-			// The hint comes right after the row, then Strength, Sensitivity and Sound Range.
+			// The drawing's sentence, the row, the hint right after it, then Strength, Sensitivity and Sound Range.
 			List<string> order = audio.GetVisualDescendants().OfType<TextBlock>()
 				.Where(t => t.IsEffectivelyVisible && (t.Classes.Contains("label") || t.Classes.Contains("caption")))
 				.Select(t => t.Text ?? string.Empty).ToList();
-			Assert.Equal([Text.AudioHapticsLabel(), Text.AudioHapticsRumbleNote(), Text.AudioHapticsStrengthLabel(), Text.AudioHapticsSensitivityLabel(), Text.AudioHapticsBandLabel()], order);
+			Assert.Equal([Text.GatePlotCaption(), Text.AudioHapticsLabel(), Text.AudioHapticsRumbleNote(), Text.AudioHapticsStrengthLabel(), Text.AudioHapticsSensitivityLabel(), Text.AudioHapticsBandLabel()], order);
 			// On: what it is doing is a caption under the name, never the row's label.
 			toggle.IsChecked = true;
 			Settle(window);

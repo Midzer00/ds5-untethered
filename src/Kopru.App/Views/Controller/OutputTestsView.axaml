@@ -41,16 +41,6 @@
           </ListBox>
         </Grid>
         <Border Classes="divider" />
-        <!-- How strong the games' trigger effects are (the same setting as on Supported Games and in Quick Settings) -->
-        <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-          <TextBlock Classes="label" Text="{Binding Triggers.StrengthLabel}" />
-          <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
-            <Slider x:Name="TriggerStrength" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Settings.TriggerStrength}"
-                    VerticalAlignment="Center" AutomationProperties.Name="{Binding Triggers.StrengthLabel}" />
-            <TextBlock Grid.Column="1" Classes="value" Text="{Binding Settings.TriggerStrengthText}" />
-          </Grid>
-        </Grid>
-        <Border Classes="divider" />
         <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
           <TextBlock Classes="label" Text="{Binding LightLabel}" />
           <ItemsControl Grid.Column="1" ItemsSource="{Binding Swatches}" HorizontalAlignment="Right">

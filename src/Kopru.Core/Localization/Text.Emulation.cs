@@ -4,79 +4,55 @@ namespace Kopru.Core.Localization;
 // User-facing texts of the per-game controller type (DualSense, or an emulated Xbox 360 or DualShock 4 controller).
 public static partial class Text
 {
-	public static string PadTypeLabel(Language? l = null) => Pick(l, $"Kumanda Türü", $"Controller Type");
+	public static string PadTypeLabel(Language? l = null) => T(l, "Pad.TypeLabel");
 
-	public static string PadModeXboxTitle(Language? l = null) => Pick(l, $"Xbox 360 Modu", $"Xbox 360 Mode");
+	public static string PadModeXboxTitle(Language? l = null) => T(l, "Pad.ModeXboxTitle");
 
-	public static string PadModeDualShock4Title(Language? l = null) => Pick(l, $"DualShock 4 Modu", $"DualShock 4 Mode");
+	public static string PadModeDualShock4Title(Language? l = null) => T(l, "Pad.ModeDualShock4Title");
 
-	public static string PadModeDualSenseTitle(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
+	public static string PadModeDualSenseTitle(Language? l = null) => T(l, "Pad.ModeDualSenseTitle");
 
-	public static string PadModeDualSenseBody(Language? l = null) => Pick(l,
-		$"Kumanda yeniden DualSense olarak görünüyor.",
-		$"The controller appears as a DualSense again.");
+	public static string PadModeDualSenseBody(Language? l = null) => T(l, "Pad.ModeDualSenseBody");
 
 	// The controller type model (the one per-game choice; PadTypeLabel above is its label).
-	public static string PadTypeGameHint(Language? l = null) => Pick(l,
-		$"Bu oyunun gördüğü kumanda. Emin değilsen Otomatik'te bırak.",
-		$"The controller this game sees. If unsure, leave it on Automatic.");
+	public static string PadTypeGameHint(Language? l = null) => T(l, "Pad.TypeGameHint");
 
-	public static string PadTypeDefaultLabel(Language? l = null) => Pick(l, $"Varsayılan Kumanda Türü", $"Default Controller Type");
+	public static string PadTypeDefaultLabel(Language? l = null) => T(l, "Pad.TypeDefaultLabel");
 
-	public static string PadTypeDefaultHint(Language? l = null) => Pick(l,
-		$"Hakkında bilgi olmayan oyunlarda kullanılır.",
-		$"Used for games we know nothing about.");
+	public static string PadTypeDefaultHint(Language? l = null) => T(l, "Pad.TypeDefaultHint");
 
-	public static string PadChoiceAutoPerGame(Language? l = null) => Pick(l, $"Otomatik (Oyuna Göre)", $"Automatic (Per Game)");
+	public static string PadChoiceAutoPerGame(Language? l = null) => T(l, "Pad.ChoiceAutoPerGame");
 
 	// A game's Automatic choice with what it gives the game now ("Otomatik (Xbox 360)"); type: the product name.
-	public static string PadChoiceAutoFor(string type, Language? l = null) => Pick(l, $"Otomatik ({type})", $"Automatic ({type})");
+	public static string PadChoiceAutoFor(string type, Language? l = null) => T(l, "Pad.ChoiceAutoFor", A("type", type));
 
 	// What Automatic means on a game's picker: the best controller for the game; with a default type set, that type for a
 	// game we know nothing about.
-	public static string PadTypeAutoLine(Language? l = null) => Pick(l,
-		$"Oyuna En Uygun Kumandayı Seçer",
-		$"Picks The Best Controller For The Game");
+	public static string PadTypeAutoLine(Language? l = null) => T(l, "Pad.TypeAutoLine");
 
-	public static string PadTypeAutoDefaultLine(Language? l = null) => Pick(l,
-		$"Oyuna en uygun kumandayı seçer; oyun hakkında bilgi yoksa Varsayılan Kumanda Türü'nü kullanır.",
-		$"Picks the best controller for the game; for a game we know nothing about, uses the Default Controller Type.");
+	public static string PadTypeAutoDefaultLine(Language? l = null) => T(l, "Pad.TypeAutoDefaultLine");
 
-	public static string PadChoiceAutoLine(Language? l = null) => Pick(l,
-		$"Her oyun kendi seçimini kullanır; seçim yoksa oyuna en uygun kumanda.",
-		$"Each game uses its own choice; without one, the best controller for the game.");
+	public static string PadChoiceAutoLine(Language? l = null) => T(l, "Pad.ChoiceAutoLine");
 
-	public static string PadTypeDualSenseLine(Language? l = null) => Pick(l,
-		$"Her şey çalışır: oyunun haptiği, tetikleri, ışığı, hoparlörü ve mikrofonu.",
-		$"Everything works: the game's haptics, triggers, light, speaker and microphone.");
+	public static string PadTypeDualSenseLine(Language? l = null) => T(l, "Pad.TypeDualSenseLine");
 
-	public static string PadTypeDualShock4Line(Language? l = null) => Pick(l,
-		$"Sadece PS4 kumandasını tanıyan eski oyunlar için: titreşim ve ışık var; adaptif tetik, oyun haptiği ve hoparlör yok.",
-		$"For older games that only know the PS4 controller: rumble and light work; no adaptive triggers, game haptics or speaker.");
+	public static string PadTypeDualShock4Line(Language? l = null) => T(l, "Pad.TypeDualShock4Line");
 
-	public static string PadTypeXboxLine(Language? l = null) => Pick(l,
-		$"PlayStation kumandasını hiç tanımayan oyunlar için: sadece titreşim var; dokunmatik yüzey ve hareket sensörü de yok.",
-		$"For games that don't know PlayStation controllers at all: rumble only; no touchpad or motion sensor either.");
+	public static string PadTypeXboxLine(Language? l = null) => T(l, "Pad.TypeXboxLine");
 
 	// type: the product name (DualSense, DualShock 4, Xbox 360).
-	public static string GameSees(string type, Language? l = null) => Pick(l, $"Oyun Şunu Görüyor: {type}", $"The Game Sees: {type}");
+	public static string GameSees(string type, Language? l = null) => T(l, "Game.Sees", A("type", type));
 
 	// A controller type change while the game runs waits for the game to restart.
-	public static string PadTypeDeferred(Language? l = null) => Pick(l, $"Oyunu Yeniden Başlatınca Geçerli Olur", $"Applies When You Restart The Game");
+	public static string PadTypeDeferred(Language? l = null) => T(l, "Pad.TypeDeferred");
 
-	public static string PadTypeDeferredHint(Language? l = null) => Pick(l,
-		$"Oyun açıkken kumanda türü değişirse oyun kumandayı kaybedebilir.",
-		$"If the controller type changes while the game is open, the game may lose the controller.");
+	public static string PadTypeDeferredHint(Language? l = null) => T(l, "Pad.TypeDeferredHint");
 
-	public static string PadTypeApplyNow(Language? l = null) => Pick(l, $"Şimdi Uygula", $"Apply Now");
+	public static string PadTypeApplyNow(Language? l = null) => T(l, "Pad.TypeApplyNow");
 
 	// The controller type toast while a type waits for the running game to restart.
-	public static string PadToastPendingBody(Language? l = null) => Pick(l,
-		$"Oyunu yeniden başlatınca geçerli olur.",
-		$"Applies when you restart the game.");
+	public static string PadToastPendingBody(Language? l = null) => T(l, "Pad.ToastPendingBody");
 
 	// After a live swap of the virtual controller.
-	public static string PadSwapRestartHint(Language? l = null) => Pick(l,
-		$"Oyun kumandayı görmüyorsa oyunu yeniden başlat.",
-		$"If the game does not see the controller, restart the game.");
+	public static string PadSwapRestartHint(Language? l = null) => T(l, "Pad.SwapRestartHint");
 }

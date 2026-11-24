@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-15",
+  "updated": "2026-11-24",
   "games": [
     {
       "name": "007 First Light",
@@ -293,7 +293,13 @@
       "haptics": true,
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
-      "notes": "Steam app 1938090: Modern Warfare II, Warzone, Black Ops 6 and Modern Warfare III install into Call of Duty HQ and run as cod.exe, so they are one entry; Modern Warfare III has adaptive triggers only. Not named \"Call of Duty\": Call of Duty (2003) installs into a folder of that name"
+      "notes": "Steam app 1938090: Modern Warfare II, Warzone, Black Ops 6 and Modern Warfare III install into Call of Duty HQ and run as cod.exe, so they are one entry; Modern Warfare III has adaptive triggers only. Not named \"Call of Duty\": Call of Duty (2003) installs into a folder of that name",
+      "aliases": [
+        "Call of Duty: Black Ops 6",
+        "Call of Duty: Modern Warfare II",
+        "Call of Duty: Modern Warfare III",
+        "Call of Duty: Warzone 2.0"
+      ]
     },
     {
       "name": "Call of Duty: Black Ops Cold War",
@@ -948,6 +954,15 @@
       "notes": "Wired USB only on PC per publisher; relayed by DS5 Untethered"
     },
     {
+      "name": "Godbreakers",
+      "exe": [],
+      "steamAppId": 2687400,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
+    },
+    {
       "name": "Granblue Fantasy: Relink",
       "exe": [
         "granblue_fantasy_relink.exe"
@@ -1381,6 +1396,15 @@
       "adaptiveTriggers": true,
       "exeConfidence": "medium",
       "notes": "Added from PCGamingWiki; exe name from Steam's launch options"
+    },
+    {
+      "name": "Mistfall Hunter",
+      "exe": [],
+      "steamAppId": 3282300,
+      "haptics": true,
+      "adaptiveTriggers": false,
+      "exeConfidence": null,
+      "notes": "Added from PCGamingWiki; exe name unknown"
     },
     {
       "name": "Mixtape",

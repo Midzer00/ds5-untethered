@@ -9,8 +9,8 @@ namespace Kopru.Core.Bridge;
 // non-zero value nobody takes back would vibrate the controller until it is turned off. It stops when:
 //  - a game report with the rumble bits sets the motors to zero (a report without the bits leaves them as they are: the
 //    bits are latched state, and games may send their light or triggers in reports of their own);
-//  - on the virtual DualSense, a report without the rumble bits came and none with them followed for BitsOffHold (Steam
-//    Input / SDL stop rumble by leaving the bits out; while rumble runs they send every report with the bits);
+//  - on the virtual DualSense, a report without the rumble bits came and none with them followed for BitsOffHold (some
+//    game input layers stop rumble by leaving the bits out; while rumble runs they send every report with the bits);
 //  - no game report carried the rumble for the hold limit: RumbleHoldLimit on the virtual DualSense, whose senders resend
 //    their state; LongRumbleHoldLimit on the Xbox 360, Xbox Series and DualShock 4 pads, where an XInput game may set a
 //    rumble once;
@@ -22,7 +22,7 @@ namespace Kopru.Core.Bridge;
 public sealed partial class ControllerBridge
 {
 	// Virtual DualSense: no game report carrying the rumble for this long and the rumble fades out. Games that rumble
-	// resend the motors far more often (every frame, or at least on every change; SDL / Steam resend a held rumble every
+	// resend the motors far more often (every frame, or at least on every change; Steam Input resends a held rumble every
 	// 2 s), so only a sender that went away leaves a non-zero value standing this long.
 	public static readonly TimeSpan RumbleHoldLimit = TimeSpan.FromSeconds(10);
 

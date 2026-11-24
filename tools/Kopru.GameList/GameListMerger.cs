@@ -25,6 +25,11 @@ public sealed class GameEntry
 	[JsonPropertyName("steamInstallDir")]
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public string? SteamInstallDir { get; set; }
+
+	// Additional PCGamingWiki titles covered by this single entry (kept as is; written only when set).
+	[JsonPropertyName("aliases")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<string>? Aliases { get; set; }
 }
 
 public sealed class GameListFile
@@ -71,11 +76,26 @@ public static class GameListMerger
 
 		foreach (GameEntry entry in current.Games)
 		{
-			WikiGame? match = entry.SteamAppId is long id && byId.TryGetValue(id, out WikiGame? a) ? a
+			var matched = new List<WikiGame>();
+			WikiGame? primary = entry.SteamAppId is long id && byId.TryGetValue(id, out WikiGame? a) ? a
 				: byName.TryGetValue(Key(entry.Name), out WikiGame? b) ? b : null;
-			if (match == null || !used.Add(match))
+			if (primary != null && used.Add(primary))
 			{
-				if (prune && match == null)
+				matched.Add(primary);
+			}
+			if (entry.Aliases != null)
+			{
+				foreach (string alias in entry.Aliases)
+				{
+					if (byName.TryGetValue(Key(alias), out WikiGame? aliasMatch) && used.Add(aliasMatch))
+					{
+						matched.Add(aliasMatch);
+					}
+				}
+			}
+			if (matched.Count == 0)
+			{
+				if (prune && primary == null)
 				{
 					removed.Add(entry.Name);
 				}
@@ -85,18 +105,22 @@ public static class GameListMerger
 				}
 				continue;
 			}
-			if (entry.Haptics != match.Haptics || entry.AdaptiveTriggers != match.AdaptiveTriggers || (entry.SteamAppId == null && match.SteamAppId != null))
+			bool haptics = matched.Any(m => m.Haptics);
+			bool triggers = matched.Any(m => m.AdaptiveTriggers);
+			long? steamId = matched.FirstOrDefault(m => m.SteamAppId != null)?.SteamAppId;
+			if (entry.Haptics != haptics || entry.AdaptiveTriggers != triggers || (entry.SteamAppId == null && steamId != null))
 			{
 				changed.Add(entry.Name);
 			}
-			entry.Haptics = match.Haptics;
-			entry.AdaptiveTriggers = match.AdaptiveTriggers;
-			entry.SteamAppId ??= match.SteamAppId;
+			entry.Haptics = haptics;
+			entry.AdaptiveTriggers = triggers;
+			entry.SteamAppId ??= steamId;
 			result.Add(entry);
 		}
 		foreach (WikiGame game in wiki.Where(w => !used.Contains(w) && (w.Haptics || w.AdaptiveTriggers)))
 		{
-			if (result.Any(e => Key(e.Name) == Key(game.Name)))
+			string gameKey = Key(game.Name);
+			if (result.Any(e => Key(e.Name) == gameKey || (e.Aliases?.Any(a => Key(a) == gameKey) ?? false)))
 			{
 				continue;
 			}

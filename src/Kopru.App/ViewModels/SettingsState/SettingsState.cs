@@ -43,7 +43,7 @@ public sealed partial class SettingsState : ViewModelBase
 				Kopru.Core.Diagnostics.AppLog.Write("settings: moved to one game profile (DualSense Mode switch removed)");
 			}
 			_loading = true;
-			Localizer.Chosen = saved.Language switch { "tr" => Language.Turkish, "en" => Language.English, _ => null };
+			Localizer.Chosen = Localizer.FromCode(saved.Language);
 			GameHapticsLevel = saved.GameHapticsLevel;
 			RumbleLevel = saved.RumbleLevel;
 			TriggerStrength = Math.Clamp(saved.TriggerStrength, 0, 100);
@@ -168,6 +168,7 @@ public sealed partial class SettingsState : ViewModelBase
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(IdlePowerOffText))]
+	[NotifyPropertyChangedFor(nameof(IdleTimerActive))]
 	private double _idlePowerOffMinutes = 15;
 
 	[ObservableProperty]
@@ -293,12 +294,13 @@ public sealed partial class SettingsState : ViewModelBase
 	public string FallbackStrengthText => Text.PercentValue(Math.Round(FallbackStrength));
 	public string BrightnessText => Text.PercentValue(Math.Round(Brightness));
 	public string IdlePowerOffText => IdlePowerOffMinutes < 0.5 ? Text.Never() : Text.Minutes(Math.Round(IdlePowerOffMinutes));
+	public bool IdleTimerActive => IdlePowerOffMinutes >= 0.5;
 
 	protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)
 	{
 		base.OnPropertyChanged(e);
 		if (_loading || _applyingProfile || string.IsNullOrEmpty(e.PropertyName) || e.PropertyName.EndsWith("Text", StringComparison.Ordinal)
-			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity) or nameof(ActiveProfileName) or nameof(ActiveProfileLine)
+			|| e.PropertyName is nameof(LightColor) or nameof(LightIntensity) or nameof(ActiveProfileName) or nameof(ActiveProfileLine) or nameof(IdleTimerActive)
 			|| MicStateNames.Contains(e.PropertyName) || PadStateNames.Contains(e.PropertyName) || AudioHapticsStateNames.Contains(e.PropertyName))
 		{
 			return;
@@ -358,7 +360,7 @@ public sealed partial class SettingsState : ViewModelBase
 
 	public AppSettings ToAppSettings() => WithUpdates(WithInstalledGames(WithLight(new AppSettings
 	{
-		Language = Localizer.Chosen switch { Language.Turkish => "tr", Language.English => "en", _ => null },
+		Language = Localizer.Chosen is { } chosen ? Localizer.Code(chosen) : null,
 		GameHapticsLevel = GameHapticsLevel,
 		RumbleLevel = RumbleLevel,
 		TriggerStrength = TriggerStrength,

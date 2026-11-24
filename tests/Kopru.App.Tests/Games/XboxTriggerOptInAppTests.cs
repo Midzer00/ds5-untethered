@@ -137,9 +137,10 @@ public sealed class XboxTriggerOptInAppTests
 
 	// The switch has its own Triggers card in the Controllers tab's right column, under DSX Mod Support, styled like the other
 	// switch cards: the section label over a panel, the title with a muted Experimental tag, one description line, the switch
-	// on the right. The old Experimental card under the profiles is gone; Haptics sits there instead. On and off both fit.
+	// The Xbox Trigger Rumble (Experimental) switch lives on Haptics & Triggers (Classic Rumble card), with its title,
+	// muted Experimental tag, short description and switch on the right, and is no longer on Settings → Devices & Profiles.
 	[AvaloniaFact]
-	public void SettingsCard_IsInTheRightColumn_WithTitleTagLineAndSwitch_AndFits()
+	public void HapticsPage_XboxTriggerRumbleRow_WithTitleTagLineAndSwitch_AndGoneFromSettings()
 	{
 		Language? before = Localizer.Chosen;
 		try
@@ -148,8 +149,7 @@ public sealed class XboxTriggerOptInAppTests
 			{
 				Localizer.Chosen = language;
 				(MainWindowViewModel vm, FakeControllerService fake) = SettingsFitTests.FullCase(code);
-				SettingsViewModel page = vm.SettingsPage;
-				Assert.Equal(code == "tr" ? "Tetikler" : "Triggers", page.TriggersGroupLabel);
+				OtherGamesViewModel page = vm.OtherGames;
 				Assert.Equal(code == "tr" ? "Xbox Tetik Titreşimi" : "Xbox Trigger Rumble", page.XboxTriggerRumbleTitle);
 				Assert.Equal(code == "tr" ? "Deneysel" : "Experimental", page.ExperimentalTag);
 				Assert.Equal(code == "tr"
@@ -167,28 +167,16 @@ public sealed class XboxTriggerOptInAppTests
 					vm.OpenSettingsAt(SettingsViewModel.ControllersTab);
 					FitCheck.Settle(window);
 					Assert.Empty(SettingsFitTests.Check(window));
+					SettingsView settingsView = window.GetVisualDescendants().OfType<SettingsView>().Single();
+					List<Control> settingsControls = settingsView.GetVisualDescendants().OfType<Control>().ToList();
+					Assert.DoesNotContain(settingsControls, c => c.Name is "ExperimentalPanel" or "XboxTriggerRumblePanel" or "XboxTriggerRumbleRow" or "XboxTriggerRumbleSwitch" or "HapticsPanel" or "PauseHapticsRow");
+
+					vm.Navigate(vm.OtherGames);
+					FitCheck.Settle(window);
 					List<Control> all = window.GetVisualDescendants().OfType<Control>().ToList();
-					Assert.DoesNotContain(all, c => c.Name == "ExperimentalPanel");
-
-					// Its own card: a section label over the panel, like DSX Mod Support's, below it in the same column.
-					Border panel = all.OfType<Border>().Single(b => b.Name == "XboxTriggerRumblePanel");
-					Border mods = all.OfType<Border>().Single(b => b.Name == "ModsPanel");
-					Border haptics = all.OfType<Border>().Single(b => b.Name == "HapticsPanel");
-					DockPanel card = Assert.IsType<DockPanel>(panel.GetVisualParent());
-					Assert.Contains("card", card.Classes);
-					Assert.Equal(1, SettingsLayout.GetColumn(card));
-					TextBlock section = card.Children.OfType<TextBlock>().Single(t => t.Classes.Contains("section"));
-					Assert.Equal(page.TriggersGroupLabel, section.Text);
-					Assert.True(section.IsEffectivelyVisible);
-					Rect panelBox = FitCheck.Bounds(panel, window), modsBox = FitCheck.Bounds(mods, window), hapticsBox = FitCheck.Bounds(haptics, window);
-					Assert.True(panelBox.Top > modsBox.Bottom, $"{code} {width}: not under DSX Mod Support");
-					Assert.Equal(modsBox.Left, panelBox.Left, 1);
-					Assert.Equal(modsBox.Width, panelBox.Width, 1);
-					Assert.True(hapticsBox.Right < panelBox.Left, $"{code} {width}: Haptics not in the left column");
-
-					// The row: title with the muted tag beside it, the description line, the switch on the right.
+					Border card = all.OfType<Border>().Single(b => b.Name == "ClassicRumbleCard");
 					Grid row = all.OfType<Grid>().Single(g => g.Name == "XboxTriggerRumbleRow");
-					Assert.Same(panel, row.GetVisualAncestors().OfType<Border>().First());
+					Assert.Same(card, row.GetVisualAncestors().OfType<Border>().First());
 					Assert.Equal(page.XboxTriggerRumbleHint, ToolTip.GetTip(row));
 					TextBlock title = all.OfType<TextBlock>().Single(t => t.Name == "XboxTriggerRumbleTitle");
 					TextBlock tag = all.OfType<TextBlock>().Single(t => t.Name == "XboxTriggerRumbleTag");
@@ -198,28 +186,20 @@ public sealed class XboxTriggerOptInAppTests
 					Assert.Contains("caption", tag.Classes);
 					Assert.Equal(KeepLastWords.Apply(page.XboxTriggerRumbleShort), line.Text);
 					Assert.All(new[] { title, tag, line }, t => Assert.True(t.IsEffectivelyVisible));
+					Rect cardBox = FitCheck.Bounds(card, window);
 					Rect titleBox = FitCheck.Bounds(title, window), tagBox = FitCheck.Bounds(tag, window), lineBox = FitCheck.Bounds(line, window);
 					Assert.True(tagBox.Left > titleBox.Right && Math.Abs(tagBox.Center.Y - titleBox.Center.Y) < 4, $"{code} {width}: the tag is not beside the title");
 					Assert.True(lineBox.Top >= titleBox.Bottom, $"{code} {width}: the line is not under the title");
 					ToggleSwitch toggle = all.OfType<ToggleSwitch>().Single(t => t.Name == "XboxTriggerRumbleSwitch");
 					Assert.Equal(page.XboxTriggerRumbleLabel, Avalonia.Automation.AutomationProperties.GetName(toggle));
 					Rect toggleBox = FitCheck.Bounds(toggle, window);
-					Assert.True(toggleBox.Left > Math.Max(tagBox.Right, lineBox.Right) && toggleBox.Right <= panelBox.Right, $"{code} {width}: the switch is not on the right");
+					Assert.True(toggleBox.Left > Math.Max(tagBox.Right, lineBox.Right) && toggleBox.Right <= cardBox.Right, $"{code} {width}: the switch is not on the right");
 					Assert.False(toggle.IsChecked);
-					if (code == "tr")
-					{
-						Save(window, $"optin2-settings-off-{width}x{height}-tr.png");
-					}
 
-					// On: the setting is on and the tab still fits; off from elsewhere: the switch follows.
+					// On: the setting is on; off from elsewhere: the switch follows.
 					toggle.IsChecked = true;
 					Assert.True(fake.Games.XboxTriggerRumbleOn);
 					FitCheck.Settle(window);
-					Assert.Empty(SettingsFitTests.Check(window));
-					if (code == "tr")
-					{
-						Save(window, $"optin2-settings-on-{width}x{height}-tr.png");
-					}
 					fake.Games.XboxTriggerRumbleOn = false;
 					Dispatcher.UIThread.RunJobs();
 					Assert.False(toggle.IsChecked);
@@ -328,12 +308,12 @@ public sealed class XboxTriggerOptInAppTests
 						Save(window, "optin3-games-on-tr.png");
 					}
 
-					// The Settings card shows it on; off there, the Games switch follows.
-					vm.OpenSettingsAt(SettingsViewModel.ControllersTab);
+					// Haptics & Triggers shows it on; off there, the Games switch follows.
+					vm.Navigate(vm.OtherGames);
 					FitCheck.Settle(window);
-					ToggleSwitch settingsToggle = window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "XboxTriggerRumbleSwitch");
-					Assert.True(settingsToggle.IsChecked);
-					settingsToggle.IsChecked = false;
+					ToggleSwitch hapticsToggle = window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "XboxTriggerRumbleSwitch");
+					Assert.True(hapticsToggle.IsChecked);
+					hapticsToggle.IsChecked = false;
 					Dispatcher.UIThread.RunJobs();
 					Assert.False(service.Games.XboxTriggerRumbleOn);
 					Assert.False(toggle.IsChecked);

@@ -34,7 +34,7 @@ public class PageLayoutTests
 		Assert.Equal(Text.NavController(), vm.Controller.Title);
 		Assert.Same(vm.Sticks.Triggers, vm.Triggers);
 		Assert.Same(vm.Triggers, vm.Tester.Triggers);
-		Assert.Equal(["Test", Text.TesterOutputs(), Text.RemapTab()], vm.Controller.Tabs.Select(t => t.Name));
+		Assert.Equal(["Test", Text.ControllerTabDeviceTests(), Text.RemapTab()], vm.Controller.Tabs.Select(t => t.Name));
 		Assert.True(vm.Controller.IsTestTab);
 		vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
 		// Nothing selected (-1) and a tab that does not exist are ignored.
@@ -78,10 +78,15 @@ public class PageLayoutTests
 				}
 			}
 			foreach (string label in new[] { Text.InnerDeadzoneLabel(), Text.OuterDeadzoneLabel(), Text.TriggerStartLabel(), Text.TriggerEndLabel(),
-				Text.DriftCalibration(), Text.AntiDeadzoneLabel(), Text.ResponseCurveLabel(), Text.TriggerStrength(), Text.TesterTriggerEffects() })
+				Text.DriftCalibration(), Text.AntiDeadzoneLabel(), Text.ResponseCurveLabel(), Text.TesterTriggerEffects() })
 			{
 				Assert.True(seen.GetValueOrDefault(label) == 1, $"{label}: {seen.GetValueOrDefault(label)} tabs");
 			}
+			Assert.Equal(0, seen.GetValueOrDefault(Text.TriggerStrength()));
+			Assert.DoesNotContain(page.GetVisualDescendants().OfType<Slider>(), s => s.Name == "TriggerStrength");
+			Assert.Equal("Tests & Cable", vm.Controller.Tabs[ControllerPageViewModel.OutputsTab].Name);
+			Localizer.Chosen = Language.Turkish;
+			Assert.Equal("Testler ve Kablo", vm.Controller.Tabs[ControllerPageViewModel.OutputsTab].Name);
 			window.Close();
 		}
 		finally

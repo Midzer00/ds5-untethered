@@ -1,26 +1,38 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels"
              xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.GamePanelView" x:DataType="vm:GamePanelViewModel">
-  <!-- One game's settings (see GamePanelViewModel), shown in the Games page's pop-up: its picture, name and source; Play or
-       Back To Game, Hide/Remove and Close always on top; under them a segmented switch of three segments, one shown at a
-       time in one host as tall as the tallest of them (the code-behind), so the pop-up keeps its size:
-       Game: the start file, controller type, profile (and Back To Default for a profile of its own) and the game's light,
-       one column; Vibration: the game's own haptics and classic rumble left, sound to haptics right; Triggers: the game's
-       trigger strength and trigger rumble left, Custom Trigger right (two columns stack where the pop-up is narrow, which
-       then scrolls). Segments 2 and 3 start with the profile they edit, or show "Settings For This Game" on the default profile.
-       Every setting is one row: its label left, its control right in a column of one width (PanelControlWidth), so pickers,
-       sliders (with their value) and switches line up; groups have a section title like Settings. -->
+  <!-- One game's settings (see GamePanelViewModel), shown in the Games page's pop-up, direction B ("every tab draws what its
+       settings do"). On top one band: the picture, the name with its source and a state chip under it, the actions
+       (Play or Back To Game, Close Game while it runs, Hide/Remove) and the panel's own close (a cross). Under it the
+       segment switch (Game, Vibration, Triggers) with, on the two profile tabs, the profile they edit at its right. Then
+       the shown segment:
+       Game: one card, the chain game -> virtual controller -> controller (dashed while the game is not running: set,
+       waiting; a solid accent line while it runs: applied now) and under each node the settings that change it.
+       Vibration: two cards, the game's own haptics and the classic rumble drawn as levels left; sound to haptics with its
+       threshold over the sound right.
+       Triggers: a card per trigger with its travel and the custom effect drawn on it, and under both the game's own
+       trigger strength and Try.
+       Every setting row: its label left, its control right in a column of one width (PanelControlWidth). -->
   <UserControl.Resources>
     <x:Double x:Key="PanelControlWidth">196</x:Double>
     <!-- A segmented choice's option, in the item's colour (muted, bright while selected) -->
     <DataTemplate x:Key="SegmentText" x:DataType="vm:LabelledChoice">
-      <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" />
+      <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}"
+                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center"
+                 ToolTip.Tip="{Binding Name}" />
     </DataTemplate>
-    <!-- Sound to haptics: its section title, one row named after the setting with its switch (the switch shows on or off; while on, what it is
-         doing now is a caption under the name), the note that the game's own rumble is separate, then the strength and the
-         sensitivity (with their values) and Bass | All Sound (greyed out while the engine cannot capture the sound) -->
+    <!-- Sound to haptics (the Vibration tab's right card): its title, the sound with the threshold Sensitivity puts on it and
+         the haptics made from it, the sentence under the drawing, the switch (what it is doing now as a caption under its
+         name while on), the note that the game's own rumble is separate, then strength, sensitivity and Bass | Full Sound
+         (greyed out while the engine cannot capture the sound) -->
     <DataTemplate x:Key="AudioSection" x:DataType="vm:GamePanelViewModel">
-      <StackPanel Classes="group" Name="PanelAudio">
-        <TextBlock Classes="section" Text="{Binding AudioSectionTitle}" />
+      <StackPanel Name="PanelAudio" Spacing="4">
+        <TextBlock Classes="section" Text="{Binding AudioSectionTitle}" Margin="0,0,0,4" />
+        <Border Classes="preview">
+          <c:GatePlot Height="112" Name="PanelGatePlot" IsOn="{Binding AudioGateOn}" Sensitivity="{Binding AudioHaptics.Sensitivity}" Strength="{Binding AudioHaptics.Strength}"
+                      IsFullSound="{Binding AudioHaptics.BandIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}"
+                      SoundWord="{Binding GateSoundWord}" ThresholdWord="{Binding GateThresholdWord}" HapticsWord="{Binding GateHapticsWord}" />
+        </Border>
+        <TextBlock Classes="caption" Text="{Binding GatePlotCaptionText}" TextWrapping="Wrap" Margin="0,2,0,2" />
         <!-- The switch is never greyed out (it can always be turned off, and on again to try once more) -->
         <Grid Classes="panelRow" Name="PanelAudioRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding AudioHint}">
           <StackPanel Spacing="2" VerticalAlignment="Center">
@@ -31,7 +43,7 @@
                         AutomationProperties.Name="{Binding AudioTitle}" />
         </Grid>
         <TextBlock Classes="caption" Text="{Binding AudioRumbleNote}" TextWrapping="Wrap" />
-        <StackPanel Classes="group" IsEnabled="{Binding AudioHaptics.Available}">
+        <StackPanel Spacing="4" IsEnabled="{Binding AudioHaptics.Available}">
           <Grid Classes="panelRow" ColumnDefinitions="*,Auto">
             <TextBlock Classes="label" Text="{Binding AudioStrengthLabel}" />
             <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
@@ -58,15 +70,8 @@
         </StackPanel>
       </StackPanel>
     </DataTemplate>
-    <!-- Segments 2 and 3 start with the profile they edit: its name (a caption, not a setting) and, when other games use the
-         same profile, that these settings are shared with them -->
-    <DataTemplate x:Key="ScopeRow" x:DataType="vm:GamePanelViewModel">
-      <StackPanel Name="PanelScope" Spacing="2">
-        <TextBlock Classes="caption" Text="{Binding ProfileLine}" TextWrapping="Wrap" />
-        <TextBlock Classes="caption" Text="{Binding SharedText}" IsVisible="{Binding IsProfileShared}" TextWrapping="Wrap" />
-      </StackPanel>
-    </DataTemplate>
-    <!-- On the default profile, segments 2 and 3 show one box with the state, what the button does and the button -->
+    <!-- On the default profile, the Vibration and Triggers segments show one box with the state, what the button does and
+         the button -->
     <DataTemplate x:Key="OwnSettingsOffer" x:DataType="vm:GamePanelViewModel">
       <Border Classes="offer">
         <StackPanel Spacing="12">
@@ -110,7 +115,7 @@
       <Setter Property="Padding" Value="12,0" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
     </Style>
-    <!-- A square icon button at the control column's right end (the profile's actions, removing the start file) -->
+    <!-- A square icon button (the profile's actions, removing the start file, the panel's close) -->
     <Style Selector="Button.square">
       <Setter Property="Width" Value="{StaticResource ControlHeight}" />
       <Setter Property="MinWidth" Value="0" />
@@ -121,6 +126,9 @@
     </Style>
     <Style Selector="ComboBox.panelControl">
       <Setter Property="c:PopupScrollGuard.Contain" Value="True" />
+    </Style>
+    <Style Selector="ComboBox#PanelPadType ComboBoxItem, ComboBox#PanelProfile ComboBoxItem, ComboBox.panelControl ComboBoxItem">
+      <Setter Property="MinWidth" Value="220" />
     </Style>
     <Style Selector="Grid.sliderValue">
       <Setter Property="ColumnSpacing" Value="{StaticResource GapSmall}" />
@@ -138,13 +146,6 @@
     <Style Selector="Grid.panelRow > ToggleSwitch /template/ ContentPresenter#PART_OnContentPresenter, Grid.panelRow > ToggleSwitch /template/ ContentPresenter#PART_OffContentPresenter">
       <Setter Property="Margin" Value="0" />
     </Style>
-    <!-- A group of rows under its section title (the title as on the Settings tabs) -->
-    <Style Selector="StackPanel.group">
-      <Setter Property="Spacing" Value="4" />
-    </Style>
-    <Style Selector="StackPanel.group > TextBlock.section">
-      <Setter Property="Margin" Value="0,0,0,2" />
-    </Style>
     <!-- The segment switch: the selected segment's name bold, the others regular (the other label see-through) -->
     <Style Selector="ListBox#PanelTabs TextBlock.tabBold">
       <Setter Property="Opacity" Value="0" />
@@ -155,238 +156,432 @@
     <Style Selector="ListBox#PanelTabs ListBoxItem:selected TextBlock.tabRegular">
       <Setter Property="Opacity" Value="0" />
     </Style>
-    <!-- The default profile's offer (segments 2 and 3): one quiet box instead of loose lines -->
+    <!-- The default profile's offer (Vibration, Triggers): one quiet box instead of loose lines -->
     <Style Selector="Border.offer">
       <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
       <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
       <Setter Property="Padding" Value="16" />
     </Style>
+    <!-- A card of the panel: the app's panel on the dialog, denser than a page card -->
+    <Style Selector="Border.panel.mock">
+      <Setter Property="Padding" Value="16,12,16,14" />
+    </Style>
+    <!-- A drawing's stage inside a card: the app's stage fill, the small radius, no outline -->
+    <Style Selector="Border.preview">
+      <Setter Property="Background" Value="{StaticResource StageBrush}" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}" />
+      <Setter Property="Padding" Value="12,10" />
+    </Style>
+    <!-- A small read-only chip (the state under the name, the controller node's profile and light, L2 / R2): the quiet fill,
+         a hairline, fully round, its words centred in it -->
+    <Style Selector="Border.tag">
+      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.tag TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FontCaption}" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- The state chip while the game runs: like a checked chip (accent tint, accent hairline, bright words) -->
+    <Style Selector="Border.tag.on">
+      <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AccentTintEdgeBrush}" />
+    </Style>
+    <Style Selector="Border.tag.on TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- A chain node's icon tile (its icon bright while the chain is live) -->
+    <Style Selector="Border.tile">
+      <Setter Property="Width" Value="64" />
+      <Setter Property="Height" Value="64" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Background" Value="{StaticResource Surface2Brush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.tile > c|IconSlot">
+      <Setter Property="Size" Value="28" />
+      <Setter Property="Stroke" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.tile.live > c|IconSlot">
+      <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
+    </Style>
+    <!-- A chain node's words under its picture, centred on it -->
+    <Style Selector="StackPanel.node > TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+    <Style Selector="StackPanel.node > TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- The settings under one chain node: one control width, centred on the node -->
+    <Style Selector="StackPanel.under">
+      <Setter Property="Spacing" Value="6" />
+      <Setter Property="Width" Value="196" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="c|GameChainLines">
+      <Setter Property="LiveBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="IdleBrush" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="c|LevelPlot">
+      <Setter Property="MeterBrush" Value="{StaticResource MeterBrush}" />
+      <Setter Property="TintBrush" Value="{StaticResource AccentTintBrush}" />
+      <Setter Property="ReferenceBrush" Value="{StaticResource MutedBrush}" />
+      <Setter Property="AxisBrush" Value="{StaticResource IndicatorOffBrush}" />
+      <Setter Property="HairlineBrush" Value="{StaticResource BorderBrush}" />
+      <Setter Property="WordBrush" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="c|GatePlot">
+      <Setter Property="TraceBrush" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="ThresholdBrush" Value="{StaticResource MutedBrush}" />
+      <Setter Property="TintBrush" Value="{StaticResource AccentTintBrush}" />
+      <Setter Property="MeterBrush" Value="{StaticResource MeterBrush}" />
+      <Setter Property="AxisBrush" Value="{StaticResource IndicatorOffBrush}" />
+      <Setter Property="WordBrush" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="MutedWordBrush" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="c|TriggerTravel">
+      <Setter Property="TintBrush" Value="{StaticResource AccentTintBrush}" />
+      <Setter Property="EffectBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="TrackBrush" Value="{StaticResource IndicatorOffBrush}" />
+      <Setter Property="ReferenceBrush" Value="{StaticResource MutedBrush}" />
+      <Setter Property="WordBrush" Value="{StaticResource TextBrush}" />
+      <Setter Property="MutedWordBrush" Value="{StaticResource MutedBrush}" />
+      <Setter Property="ForceWordBrush" Value="{StaticResource TextSecondaryBrush}" />
+    </Style>
   </UserControl.Styles>
-  <Grid RowDefinitions="Auto,Auto,*">
-    <!-- The game: picture, name, where it comes from, its actions under them; Close (shown whatever the segment) -->
-    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Gap}" Margin="0,0,0,20">
-      <c:GameThumbnail Source="{Binding Game.Image, FallbackValue={x:Null}}" Name="PanelPicture" Width="88" Height="41" CornerRadius="{StaticResource RadiusSmall}" VerticalAlignment="Center" />
-      <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-        <TextBlock Name="PanelTitle" Classes="h2" Text="{Binding Game.Name, FallbackValue=''}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
-        <TextBlock Classes="caption" Text="{Binding SourceText}" TextWrapping="Wrap" />
-        <!-- Play (where we know how), or Back To Game while this game runs (the Overview's button), and Hide or Remove -->
-        <StackPanel Name="PanelActions" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" Margin="0,8,0,0">
-          <Button Name="PanelPlayButton" Theme="{StaticResource PrimaryButton}" Height="{StaticResource ControlHeight}" Padding="16,0" IsVisible="{Binding Game.ShowsPlay, FallbackValue=False}"
-                  Command="{Binding PlayCommand}" Content="{Binding Game.PlayText, FallbackValue=''}" ToolTip.Tip="{Binding Game.PlayTip, FallbackValue=''}" />
-          <Button Name="PanelBackToGameButton" Theme="{StaticResource PrimaryButton}" Height="{StaticResource ControlHeight}" Padding="14,0" IsVisible="{Binding Game.IsRunning, FallbackValue=False}"
-                  Command="{Binding BackToGameCommand}" ToolTip.Tip="{Binding Game.BackToGameTip, FallbackValue=''}"
-                  AutomationProperties.Name="{Binding BackToGameText}" AutomationProperties.HelpText="{Binding Game.BackToGameTip, FallbackValue=''}">
-            <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
-              <c:IconSlot Data="{x:Static c:IconPaths.Back}" Stroke="White" />
-              <TextBlock Text="{Binding BackToGameText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
-            </StackPanel>
-          </Button>
-          <Button Name="PanelHideButton" Theme="{StaticResource QuietButton}" Padding="16,0" IsVisible="{Binding CanHideOrRemove}"
-                  Command="{Binding HideOrRemoveCommand}" Content="{Binding HideOrRemoveText}" />
+  <!-- As tall on every segment (MinHeight; the dialog keeps its size), 26 px in from the dialog's edge on both sides -->
+  <Grid RowDefinitions="Auto,Auto,*" MinHeight="564" Margin="0,0,12,0">
+    <!-- One band: picture | name, under it the source and the state chip (or, while closing the game, what is happening) |
+         the actions | the panel's own close -->
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="16" Margin="0,0,0,16">
+      <c:GameThumbnail Source="{Binding Game.Image, FallbackValue={x:Null}}" Name="PanelPicture" Width="137" Height="64" CornerRadius="10" VerticalAlignment="Top" />
+      <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+        <TextBlock Name="PanelTitle" Classes="h1" Text="{Binding Game.Name, FallbackValue=''}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="{Binding Game.Name, FallbackValue=''}" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Classes="caption" Text="{Binding SourceText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+          <Border Classes="tag" Classes.on="{Binding IsGameRunning}" Name="PanelStateChip">
+            <TextBlock Text="{Binding StateText}" />
+          </Border>
+          <TextBlock Name="PanelClosingText" Classes="caption" Text="{Binding ClosingText}" IsVisible="{Binding IsClosing}" VerticalAlignment="Center" TextWrapping="NoWrap" />
         </StackPanel>
       </StackPanel>
-      <Button Grid.Column="2" Name="ClosePanelButton" Theme="{StaticResource QuietButton}" Padding="14,0" VerticalAlignment="Top"
-              Command="{Binding CloseCommand}" Content="{Binding CloseText}" />
+      <!-- Not running: Play (primary) and Hide. Running: Back To Game (primary, in Play's place), Close Game and Hide. Close
+           Game's question (the game stayed open after it was asked to close): in Close Game's place, with Force Close (the
+           one red word) and Cancel -->
+      <StackPanel Grid.Column="2" Name="PanelActions" Orientation="Horizontal" Spacing="{StaticResource GapSmall}" VerticalAlignment="Center">
+        <Button Name="PanelPlayButton" Theme="{StaticResource PrimaryButton}" Height="{StaticResource ControlHeight}" Padding="16,0" IsVisible="{Binding Game.ShowsPlay, FallbackValue=False}"
+                Command="{Binding PlayCommand}" Content="{Binding Game.PlayText, FallbackValue=''}" ToolTip.Tip="{Binding Game.PlayTip, FallbackValue=''}" />
+        <Button Name="PanelBackToGameButton" Theme="{StaticResource PrimaryButton}" Height="{StaticResource ControlHeight}" Padding="14,0" IsVisible="{Binding Game.IsRunning, FallbackValue=False}"
+                Command="{Binding BackToGameCommand}" ToolTip.Tip="{Binding Game.BackToGameTip, FallbackValue=''}"
+                AutomationProperties.Name="{Binding BackToGameText}" AutomationProperties.HelpText="{Binding Game.BackToGameTip, FallbackValue=''}">
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+            <c:IconSlot Data="{x:Static c:IconPaths.Back}" Size="20" Stroke="White" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding BackToGameText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+          </StackPanel>
+        </Button>
+        <Button Name="PanelCloseGameButton" Theme="{StaticResource QuietButton}" Padding="12,0,14,0" IsVisible="{Binding ShowsCloseGame}"
+                Command="{Binding CloseGameCommand}" AutomationProperties.Name="{Binding CloseGameText}">
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+            <c:IconSlot Data="{x:Static c:IconPaths.Power}" Size="16" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding CloseGameText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+          </StackPanel>
+        </Button>
+        <Border Name="PanelForceAsk" IsVisible="{Binding ConfirmsForceClose}" Background="{StaticResource QuietFillPressedBrush}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1" CornerRadius="10" Height="{StaticResource ControlHeight}" Padding="12,0,3,0" ToolTip.Tip="{Binding ForceCloseQuestion}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Name="PanelForceQuestion" Classes="label" Text="{Binding ForceCloseAskText}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="NoWrap" />
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <Button Name="PanelForceCloseButton" Theme="{StaticResource QuietButton}" Height="26" Padding="10,0" CornerRadius="8"
+                      Command="{Binding ForceCloseCommand}" Foreground="{StaticResource DangerBrush}" Content="{Binding ForceCloseText}" />
+              <Button Name="PanelKeepGameButton" Theme="{StaticResource QuietButton}" Height="26" Padding="10,0" CornerRadius="8"
+                      Command="{Binding KeepGameCommand}" Content="{Binding CancelText}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Button Name="PanelHideButton" Theme="{StaticResource QuietButton}" Padding="16,0" IsVisible="{Binding ShowsHideOrRemove}"
+                Command="{Binding HideOrRemoveCommand}" Content="{Binding HideOrRemoveText}" />
+      </StackPanel>
+      <Button Grid.Column="3" Name="ClosePanelButton" Theme="{StaticResource QuietButton}" Classes="square" Command="{Binding CloseCommand}" VerticalAlignment="Center"
+              ToolTip.Tip="{Binding ClosePanelTip}" AutomationProperties.Name="{Binding ClosePanelTip}">
+        <c:IconSlot Data="{x:Static c:IconPaths.Cross}" Size="16" Stroke="{StaticResource TextBrush}" />
+      </Button>
     </Grid>
-    <!-- The segments (the app's tab switch, as on Settings and Controller); Ctrl+Tab and Ctrl+Shift+Tab switch them too -->
-    <ListBox Grid.Row="1" Name="PanelTabs" Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedSegment}"
-             HorizontalAlignment="Left" MinWidth="480" Margin="0,0,0,16" AutomationProperties.Name="{Binding TabsLabel}">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:TabOption">
-          <!-- Regular, and semibold while selected: both labels always laid out (one see-through), so every segment is as wide
-               as its bold name whichever is selected and the switch never changes width -->
-          <Panel>
-            <TextBlock Classes="tabRegular" Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
-                       HorizontalAlignment="Center" />
-            <TextBlock Classes="tabBold" Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
-                       HorizontalAlignment="Center" />
-          </Panel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <!-- The segments (the app's tab switch, as on Settings and Controller); Ctrl+Tab and Ctrl+Shift+Tab switch them too. On
+         Vibration and Triggers with a profile of the game's own, the profile they edit at the right -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="0,0,0,14">
+      <ListBox Name="PanelTabs" Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedSegment}"
+               HorizontalAlignment="Left" Width="420" AutoScrollToSelectedItem="False" AutomationProperties.Name="{Binding TabsLabel}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:TabOption">
+            <!-- Regular, and semibold while selected: both labels always laid out (one see-through), so every segment is as wide
+                 as its bold name whichever is selected -->
+            <Panel>
+              <TextBlock Classes="tabRegular" Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="Normal" TextWrapping="NoWrap"
+                         HorizontalAlignment="Center" />
+              <TextBlock Classes="tabBold" Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" FontWeight="SemiBold" TextWrapping="NoWrap"
+                         HorizontalAlignment="Center" />
+            </Panel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <StackPanel Grid.Column="1" Name="PanelScope" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center"
+                  IsVisible="{Binding ShowsScope}">
+        <c:IconSlot Data="{x:Static c:IconPaths.Profile}" Size="14" Stroke="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+        <TextBlock Classes="caption" Text="{Binding ProfileLine}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxWidth="240" />
+        <TextBlock Classes="caption" Text="{Binding ProfileSharedShortText}" ToolTip.Tip="{Binding SharedText}" IsVisible="{Binding IsProfileShared}"
+                   VerticalAlignment="Center" TextWrapping="NoWrap" />
+      </StackPanel>
+    </Grid>
     <ScrollViewer Grid.Row="2" Name="PanelScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-      <!-- The three segments in one host, one shown at a time; its MinHeight is the tallest one's height, and it keeps room
-           for the scroll bar only where the segments stack (code-behind) -->
+      <!-- The three segments in one host, one shown at a time; its MinHeight is the tallest one's height (code-behind) -->
       <Panel Name="SegmentHost" VerticalAlignment="Top">
 
-        <!-- 1. Game: the start file (for games we can't start, or instead of our way), controller type and profile with its
-             actions and name field, Back To Default while the game has a profile of its own, then the game's light -->
-        <StackPanel Name="GameSegment" Classes="group single" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding IsGameSegment}">
-          <!-- Like a picker: a folder and "Choose File…", or the chosen file's name (click to change) with a remove button
-               at the row's end -->
-          <Grid Classes="panelRow" Name="StartFileRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding StartFileTip}">
-            <TextBlock Classes="label" Text="{Binding StartFileLabel}" />
-            <Button Grid.Column="1" Name="ChooseStartFileButton" Classes="panelControl field" Theme="{StaticResource QuietButton}" IsVisible="{Binding HasNoStartFile}"
-                    Command="{Binding ChooseStartFileCommand}" ToolTip.Tip="{Binding StartFileHint}" AutomationProperties.Name="{Binding ChooseStartFileText}">
-              <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Folder}" Size="16" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding StartFilePickText}" VerticalAlignment="Center" TextWrapping="NoWrap" />
-              </StackPanel>
-            </Button>
-            <Grid Grid.Column="1" Name="StartFileControl" Classes="panelControl" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}" IsVisible="{Binding HasStartFile}">
-              <Button Name="ChangeStartFileButton" Classes="field" Theme="{StaticResource QuietButton}" HorizontalAlignment="Stretch" MinWidth="0"
-                      Command="{Binding ChooseStartFileCommand}" ToolTip.Tip="{Binding StartFileTip}" AutomationProperties.Name="{Binding ChangeStartFileText}">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapSmall}">
-                  <c:IconSlot Data="{x:Static c:IconPaths.Folder}" Size="16" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Name="StartFileName" Text="{Binding StartFileName}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+        <!-- 1. Game: the chain and under each node its settings -->
+        <StackPanel Name="GameSegment" VerticalAlignment="Top" IsVisible="{Binding IsGameSegment}">
+          <Border Classes="panel mock" Name="PanelChain">
+            <StackPanel>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Classes="section" Text="{Binding ChainTitle}" />
+                <TextBlock Grid.Column="1" Name="PanelApplyState" Classes="caption" Text="{Binding ApplyStateText}" />
+              </Grid>
+              <!-- Three equal nodes, their pictures in a box of one height so the links run through every picture's middle;
+                   the links are drawn behind them (GameChainLines) -->
+              <Panel Name="ChainRow" Margin="0,12,0,0">
+                <c:GameChainLines IsLive="{Binding IsGameRunning}" />
+                <Grid ColumnDefinitions="*,*,*">
+                  <StackPanel Classes="node" Spacing="2">
+                    <Panel Height="104">
+                      <Border Classes="tile" Classes.live="{Binding IsGameRunning}" Name="ChainGameNode">
+                        <c:IconSlot Data="{x:Static c:IconPaths.Screen}" />
+                      </Border>
+                    </Panel>
+                    <TextBlock Classes="caption" Text="{Binding NodeGameText}" Margin="0,6,0,0" />
+                    <TextBlock Classes="label" Text="{Binding Game.Name, FallbackValue=''}" TextTrimming="CharacterEllipsis" MaxWidth="220" ToolTip.Tip="{Binding Game.Name, FallbackValue=''}" />
+                    <TextBlock Classes="caption" Text="{Binding StateText}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Classes="node" Spacing="2">
+                    <Panel Height="104">
+                      <Border Classes="tile" Classes.live="{Binding IsGameRunning}" Name="ChainPadNode">
+                        <c:IconSlot Data="{x:Static c:IconPaths.Bridge}" />
+                      </Border>
+                    </Panel>
+                    <TextBlock Classes="caption" Text="{Binding GameSeesText}" Margin="0,6,0,0" />
+                    <TextBlock Classes="label" Name="ChainSeenPad" Text="{Binding SeenPadName}" />
+                    <TextBlock Classes="caption" Text="{Binding NodeVirtualText}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Classes="node" Spacing="2">
+                    <Panel Height="104">
+                      <c:ControllerArt Width="156" Height="104" HorizontalAlignment="Center" VerticalAlignment="Center" IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}"
+                                       LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
+                                       PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" />
+                    </Panel>
+                    <TextBlock Classes="caption" Text="{Binding NodeControllerText}" Margin="0,6,0,0" />
+                    <TextBlock Classes="label" Text="{Binding ControllerName}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,4,0,0">
+                      <Border Classes="tag">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:IconSlot Data="{x:Static c:IconPaths.Profile}" Size="14" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                          <TextBlock Name="ChainProfileChip" Text="{Binding ProfileDisplayName}" TextTrimming="CharacterEllipsis" MaxWidth="110" />
+                        </StackPanel>
+                      </Border>
+                      <Border Classes="tag">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:IconSlot Data="{x:Static c:IconPaths.Light}" Size="14" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                          <TextBlock Name="ChainLightChip" Text="{Binding LightChipText}" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </StackPanel>
                 </Grid>
-              </Button>
-              <Button Grid.Column="1" Name="RemoveStartFileButton" Classes="square" Theme="{StaticResource QuietButton}" Command="{Binding RemoveStartFileCommand}"
-                      ToolTip.Tip="{Binding RemoveStartFileText}" AutomationProperties.Name="{Binding RemoveStartFileText}">
-                <c:IconSlot Data="{x:Static c:IconPaths.Cross}" Size="16" Stroke="{StaticResource TextBrush}" />
-              </Button>
-            </Grid>
-          </Grid>
-          <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Game.PadType.Tip, FallbackValue=''}">
-            <TextBlock Classes="label" Text="{Binding PadTypeLabel}" />
-            <ComboBox Grid.Column="1" Name="PanelPadType" Classes="panelControl" ItemsSource="{Binding Game.PadType.Options, FallbackValue={x:Null}}"
-                      SelectedItem="{Binding Game.PadType.Selected, FallbackValue={x:Null}}" AutomationProperties.Name="{Binding PadTypeLabel}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </Grid>
-          <!-- The profile (switches live while the game runs) and its actions: New Profile, Rename, Duplicate -->
-          <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Game.Profile.Tip, FallbackValue=''}">
-            <TextBlock Classes="label" Text="{Binding ProfileLabel}" />
-            <!-- Picker and actions share the control column: the picker from its left edge, the actions at its right end
-                 (like the start file's remove button) -->
-            <Grid Grid.Column="1" Name="PanelProfileControl" Classes="panelControl" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
-              <ComboBox Name="PanelProfile" HorizontalAlignment="Stretch" c:PopupScrollGuard.Contain="True" ItemsSource="{Binding Game.Profile.Options, FallbackValue={x:Null}}"
-                        SelectedItem="{Binding Game.Profile.Selected, FallbackValue={x:Null}}" AutomationProperties.Name="{Binding ProfileLabel}">
-                <ComboBox.ItemTemplate>
-                  <!-- A long name ends in "…" in the fixed-width picker; the full name is its tooltip -->
-                  <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <Button Grid.Column="1" Name="PanelProfileActions" Classes="square" Theme="{StaticResource QuietButton}"
-                      ToolTip.Tip="{Binding ProfileActionsText}" AutomationProperties.Name="{Binding ProfileActionsText}">
-                <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
-                  <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
-                  <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+              </Panel>
+              <Border Classes="divider" Margin="0,18,0,16" />
+              <!-- The settings under the nodes, label above control: start file, controller type, profile -->
+              <Grid ColumnDefinitions="*,*,*">
+                <StackPanel Name="StartFileRow" Classes="under" ToolTip.Tip="{Binding StartFileTip}">
+                  <TextBlock Classes="label" Text="{Binding StartFileLabel}" />
+                  <Button Name="ChooseStartFileButton" Classes="field" Theme="{StaticResource QuietButton}" HorizontalAlignment="Stretch" IsVisible="{Binding HasNoStartFile}"
+                          Command="{Binding ChooseStartFileCommand}" ToolTip.Tip="{Binding StartFileHint}" AutomationProperties.Name="{Binding ChooseStartFileText}">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource GapSmall}">
+                      <c:IconSlot Data="{x:Static c:IconPaths.Folder}" Size="16" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding StartFilePickText}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Button>
+                  <Grid Name="StartFileControl" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}" IsVisible="{Binding HasStartFile}">
+                    <Button Name="ChangeStartFileButton" Classes="field" Theme="{StaticResource QuietButton}" HorizontalAlignment="Stretch" MinWidth="0"
+                            Command="{Binding ChooseStartFileCommand}" ToolTip.Tip="{Binding StartFileTip}" AutomationProperties.Name="{Binding ChangeStartFileText}">
+                      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource GapSmall}">
+                        <c:IconSlot Data="{x:Static c:IconPaths.Folder}" Size="16" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Name="StartFileName" Text="{Binding StartFileName}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </Button>
+                    <Button Grid.Column="1" Name="RemoveStartFileButton" Classes="square" Theme="{StaticResource QuietButton}" Command="{Binding RemoveStartFileCommand}"
+                            ToolTip.Tip="{Binding RemoveStartFileText}" AutomationProperties.Name="{Binding RemoveStartFileText}">
+                      <c:IconSlot Data="{x:Static c:IconPaths.Cross}" Size="16" Stroke="{StaticResource TextBrush}" />
+                    </Button>
+                  </Grid>
+                  <TextBlock Classes="caption" Text="{Binding StartFileHint}" TextWrapping="Wrap" />
                 </StackPanel>
-                <Button.Flyout>
-                  <MenuFlyout Placement="BottomEdgeAlignedRight">
-                    <MenuItem Name="PanelNewProfile" Header="{Binding NewProfileText}" Command="{Binding NewProfileCommand}" />
-                    <MenuItem Name="PanelRenameProfile" Header="{Binding RenameProfileText}" Command="{Binding RenameProfileCommand}" />
-                    <MenuItem Name="PanelDuplicateProfile" Header="{Binding DuplicateProfileText}" Command="{Binding DuplicateProfileCommand}" />
-                  </MenuFlyout>
-                </Button.Flyout>
-              </Button>
-            </Grid>
-          </Grid>
-          <!-- The new or renamed profile's name (the game's name to start with, selected): Enter saves, Esc cancels -->
-          <Grid Classes="panelRow" Name="ProfileNameRow" ColumnDefinitions="*,Auto" IsVisible="{Binding IsNaming}">
-            <TextBlock Classes="label" Text="{Binding NamingLabel}" />
-            <TextBox Grid.Column="1" Name="ProfileNameBox" Classes="panelControl" Text="{Binding ProfileName}" MaxLength="40"
-                     AutomationProperties.Name="{Binding NamingLabel}">
-              <TextBox.KeyBindings>
-                <KeyBinding Gesture="Enter" Command="{Binding SaveProfileNameCommand}" />
-              </TextBox.KeyBindings>
-            </TextBox>
-          </Grid>
-          <Grid Classes="panelRow" Name="ProfileNameButtons" ColumnDefinitions="*,Auto" IsVisible="{Binding IsNaming}">
-            <Grid Grid.Column="1" Classes="panelControl" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource GapSmall}">
-              <Button Classes="panelControl" Name="SaveProfileNameButton" Theme="{StaticResource PrimaryButton}" Width="NaN" HorizontalAlignment="Stretch"
-                      Command="{Binding SaveProfileNameCommand}" Content="{Binding SaveText}" />
-              <Button Grid.Column="1" Classes="panelControl" Theme="{StaticResource QuietButton}" Width="NaN" HorizontalAlignment="Stretch"
-                      Command="{Binding CancelProfileNameCommand}" Content="{Binding CancelText}" />
-            </Grid>
-          </Grid>
-          <!-- Back to the default profile (the game's own profile is kept for later) -->
-          <Grid Classes="panelRow" Name="ResetRow" ColumnDefinitions="*,Auto" IsVisible="{Binding HasOwnProfile}" ToolTip.Tip="{Binding ResetHint}">
-            <TextBlock Classes="label" Text="{Binding ResetRowLabel}" />
-            <Button Grid.Column="1" Name="ResetButton" Classes="panelControl" Theme="{StaticResource QuietButton}" Command="{Binding ResetToDefaultCommand}"
-                    Content="{Binding ResetText}" ToolTip.Tip="{Binding ResetHint}" />
-          </Grid>
-          <!-- The game's light (the profile's setting, so on the default profile the offer to give the game its own settings,
-               as on the other tabs) -->
-          <StackPanel Name="PanelLight" Classes="group" Margin="0,12,0,0">
-            <TextBlock Classes="section" Text="{Binding LightGroupLabel}" />
-            <ContentControl Name="PanelLightOffer" Content="{Binding}" ContentTemplate="{StaticResource OwnSettingsOffer}" IsVisible="{Binding UsesDefault}" />
-            <Grid Classes="panelRow" Name="PanelLightRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.LightHint}" IsVisible="{Binding HasOwnProfile}">
-              <TextBlock Classes="label" Text="{Binding Feel.LightLabel}" />
-              <ToggleSwitch Grid.Column="1" Name="PanelLightSwitch" IsChecked="{Binding Feel.LightFromGame}" OnContent="{x:Null}" OffContent="{x:Null}"
-                            AutomationProperties.Name="{Binding Feel.LightLabel}" />
-            </Grid>
-          </StackPanel>
+                <StackPanel Grid.Column="1" Classes="under" ToolTip.Tip="{Binding Game.PadType.Tip, FallbackValue=''}">
+                  <TextBlock Classes="label" Text="{Binding PadTypeLabel}" />
+                  <ComboBox Name="PanelPadType" HorizontalAlignment="Stretch" c:PopupScrollGuard.Contain="True" ItemsSource="{Binding Game.PadType.Options, FallbackValue={x:Null}}"
+                            SelectedItem="{Binding Game.PadType.Selected, FallbackValue={x:Null}}" AutomationProperties.Name="{Binding PadTypeLabel}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Line}" TextWrapping="NoWrap" /></DataTemplate>
+                    </ComboBox.ItemTemplate>
+                    <ComboBox.SelectionBoxItemTemplate>
+                      <DataTemplate x:DataType="vm:PadTypeOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                    </ComboBox.SelectionBoxItemTemplate>
+                  </ComboBox>
+                  <TextBlock Classes="caption" Text="{Binding PadTypeHint}" TextWrapping="Wrap" />
+                </StackPanel>
+                <!-- The profile with its actions; with a profile of the game's own the game's light and Back To Default under it,
+                     on the default profile the offer to give the game its own settings -->
+                <StackPanel Grid.Column="2" Name="PanelLight" Classes="under" ToolTip.Tip="{Binding Game.Profile.Tip, FallbackValue=''}">
+                  <TextBlock Classes="label" Text="{Binding ProfileLabel}" />
+                  <Grid Name="PanelProfileControl" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapSmall}">
+                    <ComboBox Name="PanelProfile" HorizontalAlignment="Stretch" c:PopupScrollGuard.Contain="True" ItemsSource="{Binding Game.Profile.Options, FallbackValue={x:Null}}"
+                              SelectedItem="{Binding Game.Profile.Selected, FallbackValue={x:Null}}" AutomationProperties.Name="{Binding ProfileLabel}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProfileOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Column="1" Name="PanelProfileActions" Classes="square" Theme="{StaticResource QuietButton}"
+                            ToolTip.Tip="{Binding ProfileActionsText}" AutomationProperties.Name="{Binding ProfileActionsText}">
+                      <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+                        <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+                        <Ellipse Width="4" Height="4" Fill="{StaticResource TextBrush}" />
+                      </StackPanel>
+                      <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                          <MenuItem Name="PanelNewProfile" Header="{Binding NewProfileText}" Command="{Binding NewProfileCommand}" />
+                          <MenuItem Name="PanelRenameProfile" Header="{Binding RenameProfileText}" Command="{Binding RenameProfileCommand}" />
+                          <MenuItem Name="PanelDuplicateProfile" Header="{Binding DuplicateProfileText}" Command="{Binding DuplicateProfileCommand}" />
+                        </MenuFlyout>
+                      </Button.Flyout>
+                    </Button>
+                  </Grid>
+                  <Grid Classes="panelRow" Name="PanelLightRow" ColumnDefinitions="*,Auto" ColumnSpacing="8" ToolTip.Tip="{Binding Feel.LightHint}" IsVisible="{Binding HasOwnProfile}">
+                    <TextBlock Classes="label" Text="{Binding Feel.LightLabel}" />
+                    <ToggleSwitch Grid.Column="1" Name="PanelLightSwitch" IsChecked="{Binding Feel.LightFromGame}" OnContent="{x:Null}" OffContent="{x:Null}"
+                                  AutomationProperties.Name="{Binding Feel.LightLabel}" />
+                  </Grid>
+                  <Panel Name="ResetRow" IsVisible="{Binding HasOwnProfile}" ToolTip.Tip="{Binding ResetHint}">
+                    <Button Name="ResetButton" Theme="{StaticResource QuietButton}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            Command="{Binding ResetToDefaultCommand}" Content="{Binding ResetText}" ToolTip.Tip="{Binding ResetHint}" />
+                  </Panel>
+                  <StackPanel Name="PanelLightOffer" Spacing="6" IsVisible="{Binding UsesDefault}">
+                    <Button Name="OwnSettingsButton" Theme="{StaticResource QuietButton}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            Command="{Binding UseOwnSettingsCommand}" Content="{Binding OwnSettingsText}" />
+                    <TextBlock Classes="caption" Text="{Binding OwnSettingsHint}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+              <!-- The new or renamed profile's name (the game's name to start with, selected): Enter saves, Esc cancels -->
+              <Grid Name="ProfileNameRow" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{StaticResource GapSmall}" Margin="0,12,0,0" IsVisible="{Binding IsNaming}">
+                <TextBlock Classes="label" Text="{Binding NamingLabel}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Name="ProfileNameBox" Width="{StaticResource PanelControlWidth}" Text="{Binding ProfileName}" MaxLength="40"
+                         AutomationProperties.Name="{Binding NamingLabel}">
+                  <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding SaveProfileNameCommand}" />
+                  </TextBox.KeyBindings>
+                </TextBox>
+                <Button Grid.Column="2" Name="SaveProfileNameButton" Theme="{StaticResource PrimaryButton}" Padding="16,0" Command="{Binding SaveProfileNameCommand}" Content="{Binding SaveText}" />
+                <Button Grid.Column="3" Name="CancelProfileNameButton" Theme="{StaticResource QuietButton}" Padding="16,0" Command="{Binding CancelProfileNameCommand}" Content="{Binding CancelText}" />
+              </Grid>
+            </StackPanel>
+          </Border>
         </StackPanel>
 
-        <!-- 2. Vibration: everything that makes the controller vibrate. The profile, then the game's own haptics (supported
-             games) and classic rumble left, sound to haptics right -->
-        <StackPanel Name="VibrationSegment" Spacing="16" VerticalAlignment="Top" IsVisible="{Binding IsVibrationSegment}">
-          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ScopeRow}" IsVisible="{Binding HasOwnProfile}" />
+        <!-- 2. Vibration: the game's own haptics (supported games) and the classic rumble as levels left, sound to haptics
+             right; on the default profile the offer to give the game its own settings -->
+        <StackPanel Name="VibrationSegment" VerticalAlignment="Top" IsVisible="{Binding IsVibrationSegment}">
           <ContentControl Classes="single" Content="{Binding}" ContentTemplate="{StaticResource OwnSettingsOffer}" HorizontalAlignment="Left" IsVisible="{Binding UsesDefault}" />
           <Grid Name="VibrationColumns" IsVisible="{Binding HasOwnProfile}">
-            <StackPanel Name="VibrationLeft" Spacing="16">
-              <StackPanel Name="PanelGameEffects" Classes="group" IsVisible="{Binding IsSupported}">
-                <TextBlock Classes="section" Text="{Binding Feel.GameCardTitle}" />
-              <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.GameHapticsHint}">
-                <TextBlock Classes="label" Text="{Binding Feel.GameHapticsLabel}" />
-                <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
-                  <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.GameHapticsLevel}" AutomationProperties.Name="{Binding Feel.GameHapticsLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.GameHapticsText}" />
-                </Grid>
-              </Grid>
+            <Border Classes="panel mock fill" Name="VibrationLeftCard">
+              <StackPanel Name="VibrationLeft" Spacing="4">
+                <StackPanel Name="PanelGameEffects" Spacing="4" IsVisible="{Binding IsSupported}">
+                  <TextBlock Classes="section" Text="{Binding Feel.GameCardTitle}" Margin="0,0,0,4" />
+                  <Border Classes="preview">
+                    <c:LevelPlot Height="76" Name="PanelHapticsPlot" Kind="Haptics" Maximum="300" Level="{Binding Feel.GameHapticsLevel}" />
+                  </Border>
+                  <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.GameHapticsHint}" Margin="0,2,0,0">
+                    <TextBlock Classes="label" Text="{Binding Feel.GameHapticsLabel}" />
+                    <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
+                      <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.GameHapticsLevel}" AutomationProperties.Name="{Binding Feel.GameHapticsLabel}" />
+                      <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.GameHapticsText}" />
+                    </Grid>
+                  </Grid>
+                  <Border Classes="divider" Margin="0,8,0,8" />
+                </StackPanel>
+                <StackPanel Name="PanelClassicRumble" Spacing="4">
+                  <TextBlock Classes="section" Text="{Binding ClassicRumbleTitle}" Margin="0,0,0,4" />
+                  <Border Classes="preview">
+                    <Panel>
+                      <c:LevelPlot Height="64" Name="PanelRumbleSoftPlot" Kind="Soft" Maximum="200" Level="{Binding Feel.RumbleLevel}"
+                                   IsVisible="{Binding Feel.FeelIndex, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter=1}" />
+                      <c:LevelPlot Height="64" Name="PanelRumblePunchyPlot" Kind="Punchy" Maximum="200" Level="{Binding Feel.RumbleLevel}"
+                                   IsVisible="{Binding Feel.FeelIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}" />
+                    </Panel>
+                  </Border>
+                  <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.RumbleHint}" Margin="0,2,0,0">
+                    <TextBlock Classes="label" Text="{Binding Feel.RumbleLabel}" />
+                    <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
+                      <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.RumbleLevel}" AutomationProperties.Name="{Binding Feel.RumbleLabel}" />
+                      <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.RumbleText}" />
+                    </Grid>
+                  </Grid>
+                  <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.FeelHint}">
+                    <TextBlock Classes="label" Text="{Binding Feel.FeelLabel}" />
+                    <ListBox Grid.Column="1" Classes="panelControl" Theme="{StaticResource Segmented}" ItemsSource="{Binding Feel.FeelChoices}"
+                             SelectedIndex="{Binding Feel.FeelIndex}" ItemTemplate="{StaticResource SegmentText}" AutoScrollToSelectedItem="False"
+                             AutomationProperties.Name="{Binding Feel.FeelLabel}" />
+                  </Grid>
+                </StackPanel>
               </StackPanel>
-              <StackPanel Name="PanelClassicRumble" Classes="group">
-                <TextBlock Classes="section" Text="{Binding Feel.RumbleCardTitle}" />
-              <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.RumbleHint}">
-                <TextBlock Classes="label" Text="{Binding Feel.RumbleLabel}" />
-                <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
-                  <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.RumbleLevel}" AutomationProperties.Name="{Binding Feel.RumbleLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.RumbleText}" />
-                </Grid>
-              </Grid>
-              <Grid Classes="panelRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.FeelHint}">
-                <TextBlock Classes="label" Text="{Binding Feel.FeelLabel}" />
-                <ListBox Grid.Column="1" Classes="panelControl" Theme="{StaticResource Segmented}" ItemsSource="{Binding Feel.FeelChoices}"
-                         SelectedIndex="{Binding Feel.FeelIndex}" ItemTemplate="{StaticResource SegmentText}" AutoScrollToSelectedItem="False"
-                         AutomationProperties.Name="{Binding Feel.FeelLabel}" />
-              </Grid>
-              </StackPanel>
-            </StackPanel>
-            <ContentControl Name="VibrationRight" Content="{Binding}" ContentTemplate="{StaticResource AudioSection}" />
+            </Border>
+            <Border Classes="panel mock fill" Name="VibrationRight">
+              <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AudioSection}" />
+            </Border>
           </Grid>
         </StackPanel>
 
-        <!-- 3. Triggers: the profile, then the strength of the game's own trigger effects (supported games) and the Xbox
-             Series pad's trigger rumble (while shown) left, Custom Trigger right; with nothing on the left, Custom Trigger
-             takes the left column (code-behind) -->
-        <StackPanel Name="TriggersSegment" Spacing="16" VerticalAlignment="Top" IsVisible="{Binding IsTriggersSegment}">
-          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ScopeRow}" IsVisible="{Binding HasOwnProfile}" />
+        <!-- 3. Triggers: a card per trigger (its travel with the custom effect on it, then the effect and its sliders); under
+             both the game's own trigger strength (supported games) left and Try right (with nothing for the left, Try takes
+             the whole width: code-behind), or with Trigger Rumble shown one card with all three -->
+        <StackPanel Name="TriggersSegment" VerticalAlignment="Top" IsVisible="{Binding IsTriggersSegment}">
           <ContentControl Classes="single" Content="{Binding}" ContentTemplate="{StaticResource OwnSettingsOffer}" HorizontalAlignment="Left" IsVisible="{Binding UsesDefault}" />
-          <Grid Name="TriggersColumns" IsVisible="{Binding HasOwnProfile}">
-            <StackPanel Name="TriggersLeft" Spacing="16" IsVisible="{Binding HasGameTriggerSettings}">
-              <StackPanel Name="PanelGameTriggers" Classes="group">
-                <TextBlock Classes="section" Text="{Binding Feel.GameCardTitle}" />
-              <Grid Classes="panelRow" Name="PanelTriggerStrengthRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.TriggerHint}" IsVisible="{Binding IsSupported}">
-                <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" />
-                <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
-                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" AutomationProperties.Name="{Binding Feel.TriggerLabel}" />
-                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" />
-                </Grid>
-              </Grid>
-              <!-- Trigger Rumble (only the Xbox Series type sends it; the tooltip says so), while the experimental setting is on -->
-              <Grid Classes="panelRow" Name="PanelTriggerRumbleRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.TriggerRumbleHint}"
-                    IsVisible="{Binding Feel.ShowsTriggerRumble}">
-                <TextBlock Classes="label" Text="{Binding Feel.TriggerRumbleLabel}" />
-                <ComboBox Grid.Column="1" Name="PanelTriggerRumble" Classes="panelControl" ItemsSource="{Binding Feel.TriggerRumbleChoices}" SelectedIndex="{Binding Feel.TriggerRumbleIndex}"
-                          AutomationProperties.Name="{Binding Feel.TriggerRumbleLabel}" />
-              </Grid>
-              </StackPanel>
-            </StackPanel>
-            <StackPanel Name="TriggersRight" Spacing="16">
-              <!-- Custom Trigger: an effect per trigger over whatever the game sends (Game's Effect: the game's own), and Try for
-                   both triggers' custom effects. The column keeps the room of its tallest state (three rows on both triggers, the code-behind measures it), so
-                   the pop-up keeps one height; the blocks show only their rows and the spare room stays at the bottom -->
-              <StackPanel Name="PanelCustomTrigger" Classes="group">
-                <TextBlock Classes="section" Text="{Binding CustomTriggerTitle}" ToolTip.Tip="{Binding CustomTriggerHint}" />
-                <!-- Left trigger: its effect, then only that effect's rows -->
-                <StackPanel Name="PanelLeftTriggerBlock" Classes="group" DataContext="{Binding Feel.LeftTrigger}" x:DataType="vm:CustomTriggerFeel">
+          <StackPanel Name="TriggersColumns" Spacing="12" IsVisible="{Binding HasOwnProfile}">
+            <!-- The cards keep the room of their tallest state (four rows, the code-behind measures it), so the footer stays put -->
+            <Grid Name="PanelCustomTrigger" ColumnDefinitions="*,*" ColumnSpacing="12" ToolTip.Tip="{Binding CustomTriggerHint}">
+              <Border Classes="panel mock fill">
+                <StackPanel Name="PanelLeftTriggerBlock" Spacing="4" DataContext="{Binding Feel.LeftTrigger}" x:DataType="vm:CustomTriggerFeel">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <c:IconSlot Data="{x:Static c:IconPaths.Trigger}" Size="18" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="h2" Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="2" Classes="tag"><TextBlock Text="{Binding TriggerKey}" /></Border>
+                  </Grid>
+                  <Border Classes="preview" Margin="0,6,0,2" Padding="12,8,12,6">
+                    <c:TriggerTravel Name="PanelLeftTravel" EffectKind="{Binding TravelEffect}" Start="{Binding ShownStart}" End="{Binding ShownEnd}" Force="{Binding Force}"
+                                     Frequency="{Binding Frequency}" StartWord="{Binding StartLabel}" EndWord="{Binding EndLabel}" ForceWord="{Binding ForceLabel}" GameWord="{Binding GameEffectWord}" />
+                  </Border>
                   <Grid Classes="panelRow" Name="PanelLeftTriggerHeader" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Hint}">
-                    <TextBlock Classes="label" Text="{Binding Label}" FontWeight="SemiBold" />
+                    <TextBlock Classes="label" Text="{Binding EffectLabel}" />
                     <ComboBox Grid.Column="1" Name="PanelLeftTriggerEffect" Classes="panelControl" ItemsSource="{Binding Choices}" SelectedIndex="{Binding EffectIndex}"
                               AutomationProperties.Name="{Binding Label}" />
                   </Grid>
@@ -433,11 +628,20 @@
                     </Grid>
                   </Grid>
                 </StackPanel>
-                <!-- Right trigger: its effect, then only that effect's rows (16 px above it with a line in the middle set it apart from the left one) -->
-                <Border Classes="divider" Margin="0,4" />
-                <StackPanel Name="PanelRightTriggerBlock" Classes="group" DataContext="{Binding Feel.RightTrigger}" x:DataType="vm:CustomTriggerFeel">
+              </Border>
+              <Border Grid.Column="1" Classes="panel mock fill" Name="TriggersRight">
+                <StackPanel Name="PanelRightTriggerBlock" Spacing="4" DataContext="{Binding Feel.RightTrigger}" x:DataType="vm:CustomTriggerFeel">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <c:IconSlot Data="{x:Static c:IconPaths.Trigger}" Size="18" Stroke="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="h2" Text="{Binding Label}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="2" Classes="tag"><TextBlock Text="{Binding TriggerKey}" /></Border>
+                  </Grid>
+                  <Border Classes="preview" Margin="0,6,0,2" Padding="12,8,12,6">
+                    <c:TriggerTravel Name="PanelRightTravel" EffectKind="{Binding TravelEffect}" Start="{Binding ShownStart}" End="{Binding ShownEnd}" Force="{Binding Force}"
+                                     Frequency="{Binding Frequency}" StartWord="{Binding StartLabel}" EndWord="{Binding EndLabel}" ForceWord="{Binding ForceLabel}" GameWord="{Binding GameEffectWord}" />
+                  </Border>
                   <Grid Classes="panelRow" Name="PanelRightTriggerHeader" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Hint}">
-                    <TextBlock Classes="label" Text="{Binding Label}" FontWeight="SemiBold" />
+                    <TextBlock Classes="label" Text="{Binding EffectLabel}" />
                     <ComboBox Grid.Column="1" Name="PanelRightTriggerEffect" Classes="panelControl" ItemsSource="{Binding Choices}" SelectedIndex="{Binding EffectIndex}"
                               AutomationProperties.Name="{Binding Label}" />
                   </Grid>
@@ -484,15 +688,56 @@
                     </Grid>
                   </Grid>
                 </StackPanel>
-                <!-- Try both triggers' custom effects (only while one is set) -->
-                <Grid Classes="panelRow" Name="TryCustomTriggerRow" ColumnDefinitions="*,Auto">
-                  <Button Grid.Column="1" Name="TryCustomTriggerButton" Classes="panelControl" Theme="{StaticResource QuietButton}"
+              </Border>
+            </Grid>
+            <Grid Name="TriggersFooter" ColumnDefinitions="*,*" ColumnSpacing="12" IsVisible="{Binding !Feel.ShowsTriggerRumble}">
+              <Border Classes="panel mock fill" Name="TriggersLeftCard" Padding="16,10" IsVisible="{Binding IsSupported}">
+                <StackPanel Name="TriggersLeft" VerticalAlignment="Center">
+                  <Grid Classes="panelRow" Name="PanelTriggerStrengthRow" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Feel.TriggerHint}">
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                      <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" />
+                      <TextBlock Classes="caption" Text="{Binding GameEffectsShortText}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Grid Grid.Column="1" Classes="panelControl sliderValue" ColumnDefinitions="*,Auto">
+                      <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" AutomationProperties.Name="{Binding Feel.TriggerLabel}" />
+                      <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" />
+                    </Grid>
+                  </Grid>
+                </StackPanel>
+              </Border>
+              <!-- Try both triggers' custom effects (only while one is set) -->
+              <Border Grid.Column="1" Classes="panel mock fill" Name="TryCard" Padding="16,10">
+                <Grid Name="TryCustomTriggerRow" ColumnDefinitions="*,Auto" ColumnSpacing="12" MinHeight="36" VerticalAlignment="Center">
+                  <TextBlock Classes="caption" Text="{Binding TryShortText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" Name="TryCustomTriggerButton" Theme="{StaticResource QuietButton}" Width="96" VerticalAlignment="Center" HorizontalContentAlignment="Center"
                           Command="{Binding TryCustomTriggersCommand}" IsEnabled="{Binding CanTryCustomTriggers}" Content="{Binding TryText}" ToolTip.Tip="{Binding TryHint}"
-                          AutomationProperties.HelpText="{Binding TryHint}" />
+                          AutomationProperties.Name="{Binding TryText}" AutomationProperties.HelpText="{Binding TryHint}" />
                 </Grid>
-              </StackPanel>
-            </StackPanel>
-          </Grid>
+              </Border>
+            </Grid>
+            <!-- With the Trigger Rumble picker showing (only the Xbox Series type sends it; the tooltip says so; while the
+                 experimental setting is on): one card with the strength, the picker and Try side by side (Try's sentence is
+                 its tooltip) -->
+            <Border Classes="panel mock" Name="TriggersRumbleCard" Padding="16,10" IsVisible="{Binding Feel.ShowsTriggerRumble}">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10" MinHeight="36">
+                <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsSupported}"
+                           ToolTip.Tip="{Binding Feel.TriggerHint}" />
+                <Grid Grid.Column="1" Classes="sliderValue" ColumnDefinitions="*,Auto" MinWidth="150" Margin="0,0,10,0" VerticalAlignment="Center" IsVisible="{Binding IsSupported}">
+                  <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" AutomationProperties.Name="{Binding Feel.TriggerLabel}" />
+                  <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" VerticalAlignment="Center" />
+                </Grid>
+                <Grid Grid.Column="2" Name="PanelTriggerRumbleRow" ColumnDefinitions="Auto,Auto" ColumnSpacing="10" Margin="0,0,10,0" VerticalAlignment="Center"
+                      ToolTip.Tip="{Binding Feel.TriggerRumbleHint}">
+                  <TextBlock Classes="label" Text="{Binding Feel.TriggerRumbleLabel}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                  <ComboBox Grid.Column="1" Name="PanelTriggerRumble" Width="140" c:PopupScrollGuard.Contain="True" ItemsSource="{Binding Feel.TriggerRumbleChoices}"
+                            SelectedIndex="{Binding Feel.TriggerRumbleIndex}" AutomationProperties.Name="{Binding Feel.TriggerRumbleLabel}" />
+                </Grid>
+                <Button Grid.Column="3" Name="TryCustomTriggerButtonWide" Theme="{StaticResource QuietButton}" Width="96" VerticalAlignment="Center" HorizontalContentAlignment="Center"
+                        Command="{Binding TryCustomTriggersCommand}" IsEnabled="{Binding CanTryCustomTriggers}" Content="{Binding TryText}" ToolTip.Tip="{Binding TryHint}"
+                        AutomationProperties.Name="{Binding TryText}" AutomationProperties.HelpText="{Binding TryHint}" />
+              </Grid>
+            </Border>
+          </StackPanel>
         </StackPanel>
       </Panel>
     </ScrollViewer>

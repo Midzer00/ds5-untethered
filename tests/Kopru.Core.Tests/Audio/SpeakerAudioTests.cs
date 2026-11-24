@@ -9,11 +9,24 @@ namespace Kopru.Core.Tests;
 
 internal sealed class FakeOpusEncoder : IOpusEncoder
 {
+	private readonly object gate = new();
+
 	public List<short[]> Frames { get; } = [];
+
+	public short[][] Snapshot()
+	{
+		lock (gate)
+		{
+			return Frames.ToArray();
+		}
+	}
 
 	public int Encode(ReadOnlySpan<short> pcm, Span<byte> output)
 	{
-		Frames.Add(pcm.ToArray());
+		lock (gate)
+		{
+			Frames.Add(pcm.ToArray());
+		}
 		output.Fill(0xAB);
 		return output.Length;
 	}

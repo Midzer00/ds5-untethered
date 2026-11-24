@@ -99,32 +99,32 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- One controller: the drawing beside its name (with the pencil to rename it) and the battery -->
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" IsVisible="{Binding !Picker.IsMulti}">
               <c:ControllerArt IsEdge="{Binding IsEdge}" Look="{Binding Settings.ActiveLook}" LightColor="{Binding Settings.Live.Color}" LightIntensity="{Binding Settings.Live.Intensity}"
                                PlayerLedMask="{Binding Settings.Live.PlayerLedMask}" PlayerLedLevel="{Binding Settings.Live.PlayerLedLevel}" Width="62" Height="42" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                 <!-- The controller's name (the user's or the model's) with a pencil to rename it -->
-                <views:ControllerNameEditor DataContext="{Binding Picker.NameEditor}" />
-                <TextBlock Text="{Binding DeviceConnection}" Classes="caption" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                <views:ControllerNameEditor DataContext="{Binding Picker.NameEditor}" MinHeight="24" />
+                <StackPanel Name="SidebarBattery" Orientation="Horizontal" Spacing="8" Height="16" Background="Transparent" ToolTip.Tip="{Binding BatteryRowTip}">
+                  <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}"
+                                  Width="22" Height="11" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding BatteryRowText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                </StackPanel>
               </StackPanel>
             </Grid>
+            <!-- The link: its icons and its name across the card (the selected controller's, also with several) -->
+            <c:LinkLine x:Name="SidebarLink" Height="16" Bluetooth="{Binding Overview.BluetoothUse}" Usb="{Binding Overview.UsbUse}" Text="{Binding DeviceConnection}" />
             <Border Classes="divider" />
-            <!-- The battery, then the virtual controller on one line: its name on the left, its state beside it on the right (a line of
-                 its own, so no language or state ever needs an ellipsis); the details in the tooltips -->
-            <StackPanel Spacing="8">
-              <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent" ToolTip.Tip="{Binding BatteryRowTip}">
-                <c:BatteryGlyph Level="{Binding BatteryPercent}" IsCharging="{Binding IsCharging}" IsKnown="{Binding HasBattery}"
-                                Width="22" Height="11" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding BatteryRowText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="NoWrap" VerticalAlignment="Center" />
-              </StackPanel>
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Background="Transparent" ToolTip.Tip="{Binding Overview.VirtualStatusTip}">
-                <TextBlock x:Name="VirtualLabel" Text="{Binding Overview.VirtualLabel}" Classes="caption" Foreground="{StaticResource TextBrush}"
-                           TextWrapping="Wrap" VerticalAlignment="Center" />
-                <TextBlock x:Name="VirtualState" Grid.Column="1" Text="{Binding Overview.VirtualStateText}" Classes="caption virtualState"
-                           Classes.on="{Binding Overview.IsVirtualStateOn}" Classes.problem="{Binding Overview.IsVirtualStateProblem}" TextWrapping="NoWrap"
-                           VerticalAlignment="Center" />
-              </Grid>
-            </StackPanel>
+            <!-- The virtual controller on one line: its name on the left, its state beside it on the right (a line of its own, so no
+                 language or state ever needs an ellipsis); the details in the tooltip -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Background="Transparent" ToolTip.Tip="{Binding Overview.VirtualStatusTip}">
+              <TextBlock x:Name="VirtualLabel" Text="{Binding Overview.VirtualLabel}" Classes="caption" Foreground="{StaticResource TextBrush}"
+                         TextWrapping="Wrap" VerticalAlignment="Center" />
+              <TextBlock x:Name="VirtualState" Grid.Column="1" Text="{Binding Overview.VirtualStateText}" Classes="caption virtualState"
+                         Classes.on="{Binding Overview.IsVirtualStateOn}" Classes.problem="{Binding Overview.IsVirtualStateProblem}" TextWrapping="NoWrap"
+                         VerticalAlignment="Center" />
+            </Grid>
             <!-- The controller type games see (what it lacks in the tooltip); a type held back for the running game, with "apply now" -->
             <StackPanel Spacing="6" Margin="0,-2,0,0">
               <TextBlock x:Name="PadStatus" Text="{Binding Overview.GameSeesText}" Classes="caption" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"

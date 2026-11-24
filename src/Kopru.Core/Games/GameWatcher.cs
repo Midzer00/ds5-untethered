@@ -53,6 +53,12 @@ public interface IProcessSource
 
 	// The process with its full exe path when it can be read.
 	ProcessInfo WithPath(ProcessInfo process) => process;
+
+	// Asks the process's main window to close (like its close button); false when there is none or it is not that process.
+	bool RequestClose(ProcessInfo process) => false;
+
+	// Ends that one process (never its children); false when it does not run any more or is not that exe.
+	bool End(ProcessInfo process) => false;
 }
 
 // What the watcher reads about a process beyond its exe name, to recognise a list game whose exe name is unknown (faked
@@ -74,6 +80,11 @@ public interface IGameWatcher
 
 	// Whether the game's process still runs.
 	bool IsRunning(ForegroundGame game);
+
+	// Closes the game's process: the main window is asked first; End is the last resort. Both touch that process only.
+	bool RequestClose(ForegroundGame game) => false;
+
+	bool End(ForegroundGame game) => false;
 
 	// Running apps that could be added as games.
 	IReadOnlyList<ProcessInfo> RunningApps() => [];
@@ -234,6 +245,12 @@ public sealed class GameWatcher(GameCatalog catalog, IProcessSource? processes =
 			return known.Game;
 		}
 	}
+
+	public bool RequestClose(ForegroundGame game) => game.ProcessId > 0 && IsRunning(game)
+		&& processes.RequestClose(new ProcessInfo(game.ProcessId, game.Exe, game.Path));
+
+	public bool End(ForegroundGame game) => game.ProcessId > 0 && IsRunning(game)
+		&& processes.End(new ProcessInfo(game.ProcessId, game.Exe, game.Path));
 
 	public bool IsRunning(ForegroundGame game)
 	{
@@ -680,6 +697,41 @@ public sealed class SystemProcessSource : IProcessSource, IProcessDetails
 		finally
 		{
 			CloseHandle(handle);
+		}
+	}
+
+	public bool RequestClose(ProcessInfo process)
+	{
+		if (process.Id <= 0 || process.Id == Environment.ProcessId || !IsRunning(process))
+		{
+			return false;
+		}
+		try
+		{
+			using Process p = Process.GetProcessById(process.Id);
+			return p.CloseMainWindow();
+		}
+		catch (Exception e) when (e is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception)
+		{
+			return false;
+		}
+	}
+
+	public bool End(ProcessInfo process)
+	{
+		if (process.Id <= 0 || process.Id == Environment.ProcessId || !IsRunning(process))
+		{
+			return false;
+		}
+		try
+		{
+			using Process p = Process.GetProcessById(process.Id);
+			p.Kill(false);
+			return true;
+		}
+		catch (Exception e) when (e is InvalidOperationException or ArgumentException or System.ComponentModel.Win32Exception or NotSupportedException)
+		{
+			return false;
 		}
 	}
 

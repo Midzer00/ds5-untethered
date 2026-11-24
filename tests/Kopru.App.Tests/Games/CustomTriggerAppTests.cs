@@ -148,35 +148,38 @@ public class CustomTriggerAppTests
 		List<string> Labels(string side) => Block(side).GetVisualDescendants().OfType<Grid>().Where(g => g.Classes.Contains("panelRow") && g.IsEffectivelyVisible)
 			.Select(g => g.Children.OfType<TextBlock>().First().Text ?? string.Empty).ToList();
 		string start = Text.CustomTriggerStart(), end = Text.CustomTriggerEnd(), force = Text.CustomTriggerForce(), frequency = Text.FallbackFrequency();
-		Assert.Equal([Text.CustomTriggerLeft()], Labels("Left"));
-		Assert.Equal([Text.CustomTriggerRight()], Labels("Right"));
-		// The blocks show only their rows (no holes): on Game's Effect the right header follows the left one closely, and
-		// Try ends the column inside the room it keeps.
+		string effect = Text.CustomTriggerEffectLabel();
+		Assert.Equal([effect], Labels("Left"));
+		Assert.Equal([effect], Labels("Right"));
+		// A card per trigger, side by side, each showing only its rows; the cards keep the room of the tallest state, so Try
+		// (in the footer under them) never moves.
 		Avalonia.Rect RectOf(string name) => FitCheck.Bounds(view.GetVisualDescendants().OfType<Control>().Single(c => c.Name == name), window);
+		double tryTop = RectOf("TryCustomTriggerRow").Top;
 		void NoHoles(string at)
 		{
 			FitCheck.Settle(window);
-			Avalonia.Rect column = RectOf("PanelCustomTrigger"), tryRow = RectOf("TryCustomTriggerRow"), right = RectOf("PanelRightTriggerBlock");
-			Assert.True(tryRow.Top >= right.Bottom && tryRow.Top - right.Bottom < 8, $"{at}: Try {tryRow} after the right block {right}");
-			Assert.True(tryRow.Bottom <= column.Bottom + 0.5, $"{at}: Try {tryRow} outside the column {column}");
+			Avalonia.Rect cards = RectOf("PanelCustomTrigger"), tryRow = RectOf("TryCustomTriggerRow"), right = RectOf("PanelRightTriggerBlock");
+			Assert.True(right.Bottom <= cards.Bottom + 0.5, $"{at}: the right block {right} outside the cards {cards}");
+			Assert.True(tryRow.Top >= cards.Bottom, $"{at}: Try {tryRow} not under the cards {cards}");
+			Assert.Equal(tryTop, tryRow.Top, 0.5);
 		}
 		NoHoles("game's effect");
-		Assert.True(RectOf("PanelRightTriggerHeader").Top - RectOf("PanelLeftTriggerHeader").Bottom < 48, "the right header sits right under the left one");
+		Assert.Equal(RectOf("PanelLeftTriggerHeader").Top, RectOf("PanelRightTriggerHeader").Top, 0.5);
 		panel.Feel.LeftTrigger.EffectIndex = 1;
 		panel.Feel.RightTrigger.EffectIndex = 2;
 		FitCheck.Settle(window);
 		NoHoles("resistance and weapon");
-		Assert.Equal([Text.CustomTriggerLeft(), start, force], Labels("Left"));
-		Assert.Equal([Text.CustomTriggerRight(), start, end, force], Labels("Right"));
+		Assert.Equal([effect, start, force], Labels("Left"));
+		Assert.Equal([effect, start, end, force], Labels("Right"));
 		panel.Feel.LeftTrigger.EffectIndex = 3;
 		FitCheck.Settle(window);
-		Assert.Equal([Text.CustomTriggerLeft(), start, force, frequency], Labels("Left"));
+		Assert.Equal([effect, start, force, frequency], Labels("Left"));
 		NoHoles("vibration and weapon");
 		// The tallest state fills the room the column keeps.
 		panel.Feel.RightTrigger.EffectIndex = 3;
 		FitCheck.Settle(window);
 		NoHoles("vibration and vibration");
-		Assert.True(RectOf("PanelCustomTrigger").Bottom - RectOf("TryCustomTriggerRow").Bottom < 2, "the tallest state fills the kept room");
+		Assert.True(RectOf("PanelCustomTrigger").Bottom - RectOf("PanelRightTriggerBlock").Bottom < 16, "the tallest state fills the kept room");
 		Assert.True(view.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "TryCustomTriggerButton").IsEffectivelyEnabled);
 		window.Close();
 

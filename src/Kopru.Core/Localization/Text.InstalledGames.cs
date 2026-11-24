@@ -6,55 +6,53 @@ namespace Kopru.Core.Localization;
 // User-facing texts of the "Installed" list on the supported games page.
 public static partial class Text
 {
-	public static string InstalledFilterAll(Language? l = null) => Pick(l, $"Tümü", $"All");
+	public static string InstalledFilterAll(Language? l = null) => T(l, "Installed.FilterAll");
 
-	public static string InstalledFilterCount(int count, Language? l = null) => Pick(l, $"Yüklü ({count})", $"Installed ({count})");
+	public static string InstalledFilterCount(int count, Language? l = null) => T(l, "Installed.FilterCount", A("count", count));
 
-	public static string InstalledFilterLabel(Language? l = null) => Pick(l, $"Gösterilen Oyunlar", $"Games Shown");
+	public static string InstalledFilterLabel(Language? l = null) => T(l, "Installed.FilterLabel");
 
 	// The plain mark on an installed game's row (and the segment before the first scan has finished).
-	public static string InstalledMark(Language? l = null) => Pick(l, $"Yüklü", $"Installed");
+	public static string InstalledMark(Language? l = null) => T(l, "Installed.Mark");
 
 	// The mark's tooltip: where the game was found (the folder follows).
 	public static string InstalledFrom(InstalledSource source, Language? l = null) => source switch
 	{
-		InstalledSource.Steam => Pick(l, $"Steam ile yüklü", $"Installed with Steam"),
-		InstalledSource.Epic => Pick(l, $"Epic Games ile yüklü", $"Installed with Epic Games"),
-		InstalledSource.Registry => Pick(l, $"Yüklü programlarda bulundu", $"Found in installed programs"),
-		InstalledSource.Folder => Pick(l, $"Oyun klasöründe bulundu", $"Found in a game folder"),
-		_ => Pick(l, $"Daha önce bu klasörden açıldı", $"Opened from this folder before")
+		InstalledSource.Steam => T(l, "Installed.From.Steam"),
+		InstalledSource.Epic => T(l, "Installed.From.Epic"),
+		InstalledSource.Registry => T(l, "Installed.From.Registry"),
+		InstalledSource.Folder => T(l, "Installed.From.Folder"),
+		_ => T(l, "Installed.From.OpenedBefore")
 	};
 
-	public static string InstalledEmpty(Language? l = null) => Pick(l, $"Bu bilgisayarda oyun bulunamadı.", $"No games were found on this PC.");
+	public static string InstalledEmpty(Language? l = null) => T(l, "Installed.Empty");
 
 	// The "Installed" view's one line under the list: a game that was not found is added by hand.
-	public static string InstalledAddHint(Language? l = null) => Pick(l, $"Oyununu bulamadık mı? Oyun Ekle ile ekle.", $"Can't find your game? Add it with Add Game.");
+	public static string InstalledAddHint(Language? l = null) => T(l, "Installed.AddHint");
 
-	public static string HideGame(Language? l = null) => Pick(l, $"Gizle", $"Hide");
+	public static string HideGame(Language? l = null) => T(l, "Hide.Game");
 
-	public static string HideGameTip(Language? l = null) => Pick(l, $"Oyun değilse listeden kaldırın", $"Not a game? Take it off the list");
+	public static string HideGameTip(Language? l = null) => T(l, "Hide.GameTip");
 
-	public static string HiddenGamesHeader(Language? l = null) => Pick(l, $"Gizlenen Oyunlar", $"Hidden Games");
+	public static string HiddenGamesHeader(Language? l = null) => T(l, "Hidden.GamesHeader");
 
-	public static string ShowGameAgain(Language? l = null) => Pick(l, $"Göster", $"Show");
+	public static string ShowGameAgain(Language? l = null) => T(l, "Show.GameAgain");
 
-	public static string InstalledSearching(Language? l = null) => Pick(l, $"Oyunlar aranıyor…", $"Looking for games…");
+	public static string InstalledSearching(Language? l = null) => T(l, "Installed.Searching");
 
-	public static string ScanGamesAgain(Language? l = null) => Pick(l, $"Yeniden Tara", $"Scan Again");
+	public static string ScanGamesAgain(Language? l = null) => T(l, "Scan.GamesAgain");
 
-	public static string ScanningGames(Language? l = null) => Pick(l, $"Taranıyor…", $"Scanning…");
+	public static string ScanningGames(Language? l = null) => T(l, "Scanning.Games");
 
-	public static string GameFolders(Language? l = null) => Pick(l, $"Klasörler", $"Folders");
+	public static string GameFolders(Language? l = null) => T(l, "Game.Folders");
 
-	public static string AddGameFolder(Language? l = null) => Pick(l, $"Klasör Ekle", $"Add Folder");
+	public static string AddGameFolder(Language? l = null) => T(l, "Add.GameFolder");
 
-	public static string ChooseGameFolder(Language? l = null) => Pick(l, $"Oyun Klasörü Seç", $"Choose Game Folder");
+	public static string ChooseGameFolder(Language? l = null) => T(l, "Choose.GameFolder");
 
-	public static string RemoveGameFolder(Language? l = null) => Pick(l, $"Klasörü Kaldır", $"Remove Folder");
+	public static string RemoveGameFolder(Language? l = null) => T(l, "Remove.GameFolder");
 
-	public static string NoGameFolders(Language? l = null) => Pick(l, $"Eklenen klasör yok.", $"No folders added.");
+	public static string NoGameFolders(Language? l = null) => T(l, "No.GameFolders");
 
-	public static string GameFoldersHint(Language? l = null) => Pick(l,
-		$"Steam, Epic Games, GOG ve disklerdeki Games ya da Oyunlar klasörleri kendiliğinden taranır. Oyunlarınız başka bir yerdeyse klasörünü ekleyin.",
-		$"Steam, Epic Games, GOG and the Games folders on your drives are searched by themselves. If your games are somewhere else, add their folder.");
+	public static string GameFoldersHint(Language? l = null) => T(l, "Game.FoldersHint");
 }

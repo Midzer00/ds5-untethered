@@ -6,8 +6,7 @@ namespace Kopru.Core.Virtual;
 
 // The wired Xbox 360 controller's interrupt reports and the DualSense <-> Xbox 360 conversions.
 //
-// Input (interrupt IN 0x81, 20 bytes), public layout as documented by the Linux xpad driver and the "XBox 360 controller
-// USB protocol" notes (free60): 0 type 0x00, 1 length 0x14, 2 buttons (0x01 up, 0x02 down, 0x04 left, 0x08 right,
+// Input (interrupt IN 0x81, 20 bytes), public wired Xbox 360 USB protocol layout: 0 type 0x00, 1 length 0x14, 2 buttons (0x01 up, 0x02 down, 0x04 left, 0x08 right,
 // 0x10 start, 0x20 back, 0x40 left stick, 0x80 right stick), 3 buttons (0x01 LB, 0x02 RB, 0x04 guide, 0x10 A, 0x20 B,
 // 0x40 X, 0x80 Y), 4 LT, 5 RT (0..255), 6 LX, 8 LY, 10 RX, 12 RY (signed 16-bit little-endian, Y up), 14..19 zero.
 // Output (interrupt OUT 0x01): rumble 00 08 00 <large motor> <small motor> 00 00 00; LED 01 03 <pattern> (ignored).

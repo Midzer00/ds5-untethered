@@ -5,28 +5,27 @@ namespace Kopru.Core.Localization;
 // FallbackFrequency and TryAction are shared with other places).
 public static partial class Text
 {
-	public static string CustomTriggerSection(Language? l = null) => Pick(l, $"Özel Tetik", $"Custom Trigger");
+	public static string CustomTriggerSection(Language? l = null) => T(l, "Custom.TriggerSection");
 
-	public static string CustomTriggerLeft(Language? l = null) => Pick(l, $"Sol Tetik", $"Left Trigger");
+	public static string CustomTriggerLeft(Language? l = null) => T(l, "Custom.TriggerLeft");
 
-	public static string CustomTriggerRight(Language? l = null) => Pick(l, $"Sağ Tetik", $"Right Trigger");
+	public static string CustomTriggerRight(Language? l = null) => T(l, "Custom.TriggerRight");
 
 	// The picker's first choice: nothing over the game's own effect.
-	public static string CustomTriggerGameEffect(Language? l = null) => Pick(l, $"Oyunun Efekti", $"Game's Effect");
+	public static string CustomTriggerGameEffect(Language? l = null) => T(l, "Custom.TriggerGameEffect");
 
-	public static string CustomTriggerResistance(Language? l = null) => Pick(l, $"Direnç", $"Resistance");
+	public static string CustomTriggerResistance(Language? l = null) => T(l, "Custom.TriggerResistance");
 
-	public static string CustomTriggerStart(Language? l = null) => Pick(l, $"Başlangıç", $"Start");
+	public static string CustomTriggerStart(Language? l = null) => T(l, "Custom.TriggerStart");
 
-	public static string CustomTriggerEnd(Language? l = null) => Pick(l, $"Bitiş", $"End");
+	public static string CustomTriggerEnd(Language? l = null) => T(l, "Custom.TriggerEnd");
 
-	public static string CustomTriggerForce(Language? l = null) => Pick(l, $"Güç", $"Force");
+	public static string CustomTriggerForce(Language? l = null) => T(l, "Custom.TriggerForce");
 
-	public static string CustomTriggerHint(Language? l = null) => Pick(l,
-		$"Oyun ne gönderirse göndersin seçilen efekt bu tetikte kalır. Oyunun Efekti seçilirse oyunun kendi tetik efekti kullanılır.",
-		$"The chosen effect stays on this trigger whatever the game sends. Game's Effect leaves the game's own effect.");
+	// The effect picker's label inside a trigger's own card (the card is already named after the trigger).
+	public static string CustomTriggerEffectLabel(Language? l = null) => T(l, "Custom.TriggerEffectLabel");
 
-	public static string CustomTriggerTryHint(Language? l = null) => Pick(l,
-		$"Kumandanın iki tetiğindeki özel efektleri kısa süreliğine çalıştırır.",
-		$"Plays both triggers' custom effects for a moment.");
+	public static string CustomTriggerHint(Language? l = null) => T(l, "Custom.TriggerHint");
+
+	public static string CustomTriggerTryHint(Language? l = null) => T(l, "Custom.TriggerTryHint");
 }

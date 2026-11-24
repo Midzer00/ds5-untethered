@@ -33,7 +33,7 @@ public sealed class ControllerTestFitTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				var service = new FakeControllerService(animate: false);
@@ -81,7 +81,7 @@ public sealed class ControllerTestFitTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				var vm = new MainWindowViewModel(new FakeControllerService(animate: false));
@@ -129,7 +129,7 @@ public sealed class ControllerTestFitTests
 	internal static void Settle(Window window) => FitCheck.Settle(window);
 
 	// What is wrong with the Test tab as laid out now.
-	internal static IEnumerable<string> Check(Window window)
+	internal static IEnumerable<string> Check(Window window, bool allowVerticalSafetyNet = false)
 	{
 		ControllerView page = window.GetVisualDescendants().OfType<ControllerView>().Single(v => v.IsEffectivelyVisible);
 		ScrollViewer scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First();
@@ -141,7 +141,7 @@ public sealed class ControllerTestFitTests
 		// lies inside its card, and no text is cut off.
 		List<(string Name, Rect Rect)> blocks = [("status", FitCheck.Bounds(tab.GetVisualDescendants().OfType<WrapPanel>().First(), column))];
 		blocks.AddRange(cards.Children.Select((c, i) => ($"card {i}", FitCheck.Bounds(c, column))));
-		return FitCheck.Scrolls(scroll, cards.IsWide ? "wide" : "stacked")
+		return FitCheck.Scrolls(scroll, cards.IsWide ? "wide" : "stacked", allowVerticalSafetyNet)
 			.Concat(FitCheck.Apart(blocks, FitCheck.Bounds(column, column)))
 			.Concat(cards.Children.SelectMany(card => FitCheck.Inside(card, column)))
 			.Concat(FitCheck.CutText(tab));

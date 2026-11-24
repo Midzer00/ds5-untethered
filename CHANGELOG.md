@@ -6,6 +6,15 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.2.2 — 2026-11-24
+
+- The cable setting, When The Cable Is Plugged In, moved to the Controller page, on the new Tests & Cable tab (formerly Output Tests). The extra Trigger Strength slider there is gone; it stays on Haptics And Triggers, the Overview and a game's settings.
+- Settings > General > Power: the idle slider is now Idle Time, and Turn Off The Controller sits right under it, so it is clear the controller is turned off once that time has passed. Your saved settings are unchanged.
+- Settings: the Controllers tab is now Devices & Profiles. Pause Haptics In Silence and Xbox Trigger Rumble (Experimental) moved to the Haptics And Triggers page.
+- Overview: the Microphone tile mutes and unmutes the selected microphone and shows On, Muted or Off In Settings.
+- Ready for translations: every text of the app now lives in language files, and long translated labels wrap or shorten with a tooltip instead of being cut off. Volunteers can add a language; see [TRANSLATING.md](docs/TRANSLATING.md).
+- The supported games list knows more alternative titles.
+
 ### 0.2.1 — 2026-11-23
 
 - New cable setting, When The Cable Is Plugged In (Settings > Notifications > Cable). Charge Only (the default): plugging in the USB cable to charge no longer stops the virtual controller; it stays on Bluetooth with every feature working, and games still see one controller. Use The Cable (Experimental): while the cable is in, input, light, triggers, speaker and microphone go over the cable; Bluetooth stays connected and takes over again when you unplug.
@@ -99,6 +108,15 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.2.2 — 24.11.2026
+
+- "Kablo Takılınca" ayarı artık "Kumanda" sayfasındaki "Testler ve Kablo" sekmesinde (eski adı "Çıkış Testleri"). Buradaki "Tetik Gücü" kaydırıcısı kaldırıldı. "Tetik Gücü" ayarına "Titreşim ve Tetikler" ve "Genel Bakış" sayfalarından veya oyun ayarlarından ulaşabilirsiniz.
+- "Ayarlar > Genel > Güç" bölümündeki kaydırıcının adı artık "Boşta Kalma Süresi". "Kumandayı Kapat" seçeneği hemen altında yer alıyor. Böylece kumandanın bu süre dolunca kapanacağı daha net anlaşılıyor. Kayıtlı ayarlar korunuyor.
+- Ayarlardaki "Kumandalar" sekmesinin adı artık "Cihazlar ve Profiller". "Sessizlikte Haptiği Durdur" ve "Xbox Tetik Titreşimi (Deneysel)" ayarları "Titreşim ve Tetikler" sayfasına taşındı.
+- "Genel Bakış" sayfasındaki "Mikrofon" kutucuğundan seçili mikrofonu sessize alabilir ve sesini açabilirsiniz. Kutucuk mikrofonun durumunu "Açık", "Sessiz" veya "Ayarlarda Kapalı" olarak gösteriyor.
+- Uygulama çeviriye hazır. Tüm metinler artık dil dosyalarında yer alıyor. Uzun etiketler alt satıra geçiyor ya da kısaltılıyor ve tam metin araç ipucunda gösteriliyor. Gönüllü olarak yeni bir dil eklemek için [TRANSLATING.md](docs/TRANSLATING.md) dosyasına bakabilirsiniz.
+- Desteklenen oyunlar listesi artık oyunları daha fazla alternatif adla tanıyor.
 
 ### 0.2.1 — 23.11.2026
 

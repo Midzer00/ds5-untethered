@@ -83,7 +83,7 @@ public sealed class GamePanelSegmentsTests
 			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
 			{
 				Localizer.Chosen = language;
-				foreach ((double width, double height) in new[] { (1100.0, 700.0), (1152.0, 700.0) })
+				foreach ((double width, double height) in new[] { (1100.0, 700.0), (1152.0, 700.0), (960.0, 640.0) })
 				{
 					(MainWindowViewModel vm, MainWindow window) = await GamePanelTests.OpenPanel("supported", code, width, height);
 					vm.Settings.XboxTriggerRumbleOn = true;
@@ -196,7 +196,9 @@ public sealed class GamePanelSegmentsTests
 		(GamePanelView view, _) = Find(window);
 		panel.SelectedSegment = GamePanelViewModel.TriggersSegment;
 		FitCheck.Settle(window);
-		bool CaptionShown() => view.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == Text.ProfileSharedByGames() && t.IsEffectivelyVisible);
+		// Beside the profile line right of the switch: the short form, the full sentence as its tooltip.
+		bool CaptionShown() => view.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == Text.ProfileSharedShort() && t.IsEffectivelyVisible
+			&& Equals(ToolTip.GetTip(t), Text.ProfileSharedByGames()));
 		Assert.False(panel.IsProfileShared);
 		Assert.False(CaptionShown());
 
@@ -242,7 +244,7 @@ public sealed class GamePanelSegmentsTests
 						panel.SelectedSegment = segment;
 						FitCheck.Settle(window);
 						widths.Add(Math.Round(tabs.Bounds.Width, 1));
-						if (tabs.Bounds.Width < 480 - 0.5)
+						if (tabs.Bounds.Width < 420 - 0.5)
 						{
 							problems.Add($"{at}: the switch is {tabs.Bounds.Width:F1} wide");
 						}
@@ -287,7 +289,7 @@ public sealed class GamePanelSegmentsTests
 			FitCheck.Settle(window);
 			foreach (Control c in view.GetVisualDescendants().OfType<Control>().Where(c => c.IsEffectivelyVisible && c.TemplatedParent == null
 				&& c is Slider or ComboBox or ToggleSwitch or ListBox or Button && c != tabs && c.Name is not ("ClosePanelButton" or "PanelPlayButton"
-				or "PanelBackToGameButton" or "PanelHideButton")))
+				or "PanelBackToGameButton" or "PanelHideButton" or "PanelCloseGameButton" or "PanelForceCloseButton" or "PanelKeepGameButton")))
 			{
 				string name = Avalonia.Automation.AutomationProperties.GetName(c) is { Length: > 0 } n ? n : c.Name ?? c.GetType().Name;
 				(where.TryGetValue(name, out HashSet<int>? set) ? set : where[name] = []).Add(segment);
@@ -306,12 +308,12 @@ public sealed class GamePanelSegmentsTests
 		In(GamePanelViewModel.VibrationSegment, Text.GameHapticsLevel(), Text.RumbleLevel(), Text.RumbleFeelLabel(), Text.AudioHapticsLabel(),
 			Text.AudioHapticsStrengthLabel(), Text.AudioHapticsSensitivityLabel(), Text.AudioHapticsBandLabel());
 		In(GamePanelViewModel.TriggersSegment, Text.TriggerStrength(), Text.TriggerRumbleLabel(), Text.CustomTriggerLeft(), Text.CustomTriggerRight(),
-			Text.CustomTriggerStart(), Text.CustomTriggerEnd(), Text.CustomTriggerForce(), Text.FallbackFrequency(), "TryCustomTriggerButton");
+			Text.CustomTriggerStart(), Text.CustomTriggerEnd(), Text.CustomTriggerForce(), Text.FallbackFrequency(), Text.TryAction());
 	}
 
-	// Triggers for an unsupported game without trigger rumble: nothing for the left column, so Custom Trigger takes it.
+	// Triggers for an unsupported game without trigger rumble: nothing for the footer's left card, so Try takes the width.
 	[AvaloniaFact]
-	public async Task Triggers_WithNothingOnTheLeft_CustomTriggerTakesTheLeftColumn()
+	public async Task Triggers_WithNothingOnTheLeft_TryTakesTheFooter()
 	{
 		(MainWindowViewModel vm, MainWindow window) = await GamePanelTests.OpenPanel("unsupported", "en", 1152, 700);
 		GamePanelViewModel panel = vm.SupportedGames.Panel;
@@ -320,15 +322,17 @@ public sealed class GamePanelSegmentsTests
 		FitCheck.Settle(window);
 		(GamePanelView view, _) = Find(window);
 		Assert.False(Named(view, "TriggersLeft").IsEffectivelyVisible);
-		double left = FitCheck.Bounds(Named(view, "TriggersColumns"), window).Left;
-		Assert.Equal(left, FitCheck.Bounds(Named(view, "TriggersRight"), window).Left, 0.5);
+		Rect columns = FitCheck.Bounds(Named(view, "TriggersColumns"), window);
+		Rect tryCard = FitCheck.Bounds(Named(view, "TryCard"), window);
+		Assert.Equal(columns.Left, tryCard.Left, 0.5);
+		Assert.Equal(columns.Right, tryCard.Right, 0.5);
 
-		// Trigger rumble shown: it takes the left column, Custom Trigger goes right.
+		// Trigger rumble shown: one footer card with the picker and Try, under the trigger cards.
 		vm.Settings.XboxTriggerRumbleOn = true;
 		FitCheck.Settle(window);
 		Assert.True(panel.HasGameTriggerSettings);
-		Assert.True(Named(view, "TriggersLeft").IsEffectivelyVisible);
-		Assert.True(FitCheck.Bounds(Named(view, "TriggersRight"), window).Left > left + 100);
+		Assert.True(Named(view, "PanelTriggerRumbleRow").IsEffectivelyVisible);
+		Assert.True(FitCheck.Bounds(Named(view, "PanelTriggerRumbleRow"), window).Top >= FitCheck.Bounds(Named(view, "PanelCustomTrigger"), window).Bottom);
 		panel.SelectedSegment = GamePanelViewModel.GameSegment;
 		window.Close();
 	}

@@ -4,48 +4,26 @@ namespace Kopru.Core.Localization;
 // User-facing texts of power-off, measured latency and the diagnostics export.
 public static partial class Text
 {
-	public static string PowerOffDone(Language? l = null) => Pick(l,
-		$"Kumanda kapatıldı.",
-		$"The controller was turned off.");
+	public static string PowerOffDone(Language? l = null) => T(l, "Power.OffDone");
 
-	public static string PowerOffFailed(Language? l = null) => Pick(l,
-		$"Kumanda kapatılamadı. ø tuşunu 10 saniye basılı tutarak kapatabilirsin.",
-		$"Could not turn off the controller. Hold the ø button for 10 seconds to turn it off.");
+	public static string PowerOffFailed(Language? l = null) => T(l, "Power.OffFailed");
 
-	public static string PowerOffIdle(double minutes, Language? l = null) => Pick(l,
-		$"Kumanda {minutes:F0} dakika kullanılmadığı için kapatıldı.",
-		$"The controller was turned off after {minutes:F0} {En(minutes, "minute", "minutes")} without use.");
+	public static string PowerOffIdle(double minutes, Language? l = null) => T(l, "Power.OffIdle", A("minutes", minutes, "F0"));
 
-	public static string PowerOffWhenIdleSetting(Language? l = null) => Pick(l,
-		$"Kullanılmadığında Kumandayı Kapat",
-		$"Turn Off The Controller When Idle");
+	public static string PowerOffWhenIdleSetting(Language? l = null) => T(l, "Power.OffWhenIdleSetting");
 
 	// "Pause Haptics In Silence" (Settings, General, Power).
-	public static string PauseHapticsInSilence(Language? l = null) => Pick(l,
-		$"Sessizlikte Haptiği Durdur",
-		$"Pause Haptics In Silence");
+	public static string PauseHapticsInSilence(Language? l = null) => T(l, "Pause.HapticsInSilence");
 
-	public static string PauseHapticsInSilenceShort(Language? l = null) => Pick(l,
-		$"Oyun sessizken haptik gönderilmez.",
-		$"No haptics are sent while the game is silent.");
+	public static string PauseHapticsInSilenceShort(Language? l = null) => T(l, "Pause.HapticsInSilenceShort");
 
-	public static string PauseHapticsInSilenceHint(Language? l = null) => Pick(l,
-		$"Oyun sessizken kumandaya haptik gönderilmez; pil ve işlemciden tasarruf eder, ilk vuruş birkaç ms gecikebilir.",
-		$"Sends no haptics to the controller while the game is silent; saves battery and CPU, the first hit after silence may come a few ms later.");
+	public static string PauseHapticsInSilenceHint(Language? l = null) => T(l, "Pause.HapticsInSilenceHint");
 
-	public static string LatencyValue(double p50, double p99, double relay, Language? l = null) => Pick(l,
-		$"Bağlantı gecikmesi {p50:F1} ms (en kötü {p99:F1} ms), aktarım {relay:F2} ms",
-		$"Link delay {p50:F1} ms (worst {p99:F1} ms), relay {relay:F2} ms");
+	public static string LatencyValue(double p50, double p99, double relay, Language? l = null) => T(l, "Latency.Value", A("p50", p50, "F1"), A("p99", p99, "F1"), A("relay", relay, "F2"));
 
-	public static string LatencyUnknown(Language? l = null) => Pick(l,
-		$"Gecikme ölçülüyor…",
-		$"Measuring latency…");
+	public static string LatencyUnknown(Language? l = null) => T(l, "Latency.Unknown");
 
-	public static string DiagnosticsSaved(string path, Language? l = null) => Pick(l,
-		$"Tanılama dosyası kaydedildi: {path}",
-		$"Diagnostics file saved: {path}");
+	public static string DiagnosticsSaved(string path, Language? l = null) => T(l, "Diagnostics.Saved", A("path", path));
 
-	public static string DiagnosticsFailed(string detail, Language? l = null) => Pick(l,
-		$"Tanılama dosyası oluşturulamadı: {detail}",
-		$"Could not create the diagnostics file: {detail}");
+	public static string DiagnosticsFailed(string detail, Language? l = null) => T(l, "Diagnostics.Failed", A("detail", detail));
 }

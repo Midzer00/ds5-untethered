@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
+using Kopru.App.Views;
 using Kopru.Core.Bridge;
 using Kopru.Core.Localization;
 
@@ -57,5 +61,45 @@ public class PauseHapticsAppTests
 		Assert.Equal("Pause Haptics In Silence", Text.PauseHapticsInSilence(Language.English));
 		Assert.Equal("Sessizlikte Haptiği Durdur", Text.PauseHapticsInSilence(Language.Turkish));
 		Assert.StartsWith("Oyun sessizken kumandaya haptik gönderilmez", Text.PauseHapticsInSilenceHint(Language.Turkish), StringComparison.Ordinal);
+		Assert.Equal("Devices & Profiles", Text.SettingsTabDevices(Language.English));
+		Assert.Equal("Cihazlar ve Profiller", Text.SettingsTabDevices(Language.Turkish));
+	}
+
+	[AvaloniaFact]
+	public void Switch_IsOnHapticsAndTriggers_AndGoneFromSettings_InBothLanguages()
+	{
+		foreach (Language language in new[] { Language.English, Language.Turkish })
+		{
+			Language? before = Localizer.Chosen;
+			try
+			{
+				Localizer.Chosen = language;
+				var fake = new FakeControllerService(animate: false);
+				var settings = new SettingsState(fake);
+
+				var hapticsVm = new OtherGamesViewModel(fake, settings);
+				var hapticsWindow = new Window { Content = new OtherGamesView { DataContext = hapticsVm }, Width = 1100, Height = 700 };
+				hapticsWindow.Show();
+				FitCheck.Settle(hapticsWindow);
+				ToggleSwitch hapticsSwitch = hapticsWindow.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "PauseHapticsSwitch");
+				Assert.True(hapticsSwitch.IsEffectivelyVisible);
+				hapticsSwitch.IsChecked = true;
+				Assert.True(settings.PauseHapticsInSilence);
+				hapticsWindow.Close();
+
+				var settingsVm = new SettingsViewModel(fake, settings) { SelectedTab = SettingsViewModel.ControllersTab };
+				Assert.Equal(Text.SettingsTabDevices(language), settingsVm.Tabs[SettingsViewModel.ControllersTab].Name);
+				var settingsWindow = new Window { Content = new SettingsView { DataContext = settingsVm }, Width = 1100, Height = 700 };
+				settingsWindow.Show();
+				FitCheck.Settle(settingsWindow);
+				Assert.Empty(settingsWindow.GetVisualDescendants().OfType<Grid>().Where(g => g.Name == "PauseHapticsRow"));
+				Assert.Empty(settingsWindow.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.Name == "PauseHapticsSwitch"));
+				settingsWindow.Close();
+			}
+			finally
+			{
+				Localizer.Chosen = before;
+			}
+		}
 	}
 }

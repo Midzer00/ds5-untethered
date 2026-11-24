@@ -55,7 +55,7 @@ public sealed partial class LivePanelViewModel : ViewModelBase
 	public string GraphCaption => Text.LiveLast60s();
 	public string SignalsCaption => Text.LiveLast10s();
 	public string GraphTip => Text.LinkGraphTip();
-	public string DelayCaption => Text.LiveTypicalDelay();
+	public string DelayCaption => _service.IsWired ? Text.LiveTypicalDelayWired() : Text.LiveTypicalDelayBluetooth();
 	public double LimitMs => LinkLimits.PoorDelayMs;
 	public string Unit => "ms";
 	public string L2Label => "L2";
@@ -85,16 +85,21 @@ public sealed partial class LivePanelViewModel : ViewModelBase
 	// that range.
 	public double ChartTop { get; private set; } = ChartTopFor([]);
 	public double ShownLimitMs => LimitMs <= ChartTop ? LimitMs : 0;
+	// The scale's top value ("10 ms"), in a band of its own above the plot (never over the data or the limit line).
+	public string ChartTopText => ChartTop.ToString("0.#", Localizer.Culture(Localizer.Current)) + " ms";
 
 	// Round ceilings for the chart, so the axis reads well ("10 ms", "20 ms", ...).
 	private static readonly double[] NiceTops = [10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200, 300, 500, 1000];
 
 	// The top of the scale for these samples: about 1.2 times the highest, rounded up to a round value, never under 10 ms.
-	public static double ChartTopFor(IReadOnlyList<double> values)
+	public static double ChartTopFor(IReadOnlyList<double> values, bool wired = false)
 	{
-		double want = Math.Max(10, 1.2 * values.Where(v => !double.IsNaN(v)).DefaultIfEmpty(0).Max());
-		return NiceTops.FirstOrDefault(n => n >= want, Math.Ceiling(want / 500) * 500);
+		double want = Math.Max(wired ? 2 : 10, 1.2 * values.Where(v => !double.IsNaN(v)).DefaultIfEmpty(0).Max());
+		return (wired ? WiredTops : NiceTops).FirstOrDefault(n => n >= want, Math.Ceiling(want / 500) * 500);
 	}
+
+	// The cable's delay is a millisecond or two: its chart starts at 2 ms instead of 10 so the line is not flat.
+	private static readonly double[] WiredTops = [2, 3, 4, 5, 6, 8, .. NiceTops];
 
 	// Signals: one ring per series (0..1) and a revision that changes when what they show changed.
 	public SignalRing L2Trace { get; } = new(SignalSamples);
@@ -207,9 +212,9 @@ public sealed partial class LivePanelViewModel : ViewModelBase
 		WorstHistory = [.. seconds.Select(s => s.WorstMs)];
 		TypicalHistory = [.. seconds.Select(s => s.TypicalMs)];
 		TroubleMarks = [.. seconds.Select(s => s.HasTrouble)];
-		ChartTop = ChartTopFor([.. WorstHistory, .. TypicalHistory]);
-		foreach (string p in new[] { nameof(WorstHistory), nameof(TypicalHistory), nameof(TroubleMarks), nameof(ChartTop), nameof(ShownLimitMs),
-			nameof(RateValue), nameof(HasRate), nameof(DelayValue) })
+		ChartTop = ChartTopFor([.. WorstHistory, .. TypicalHistory], _service.IsWired);
+		foreach (string p in new[] { nameof(WorstHistory), nameof(TypicalHistory), nameof(TroubleMarks), nameof(ChartTop), nameof(ChartTopText), nameof(ShownLimitMs),
+			nameof(RateValue), nameof(HasRate), nameof(DelayValue), nameof(DelayCaption) })
 		{
 			OnPropertyChanged(p);
 		}

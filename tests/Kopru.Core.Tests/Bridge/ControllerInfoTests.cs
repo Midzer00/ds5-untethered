@@ -134,10 +134,11 @@ public class ControllerInfoTests
 	}
 
 	[Theory]
-	[InlineData(Language.Turkish, "Kumanda Bilgisi", "Yazılım Sürümü: 06.30 (0x0110002A)", "Bağlantı Süresi: 5 dk 03 sn", "Pil: %70")]
-	[InlineData(Language.English, "Controller Info", "Firmware Version: 06.30 (0x0110002A)", "Connected For: 5 min 03 s", "Battery: 70%")]
-	public void CopyText_HasEveryField_AndOnlyTheMaskedAddress(Language l, string title, string firmware, string duration, string battery)
+	[InlineData("tr", "Kumanda Bilgisi", "Yazılım Sürümü: 06.30 (0x0110002A)", "Bağlantı Süresi: 5 dk 03 sn", "Pil: %70")]
+	[InlineData("en", "Controller Info", "Firmware Version: 06.30 (0x0110002A)", "Connected For: 5 min 03 s", "Battery: 70%")]
+	public void CopyText_HasEveryField_AndOnlyTheMaskedAddress(string code, string title, string firmware, string duration, string battery)
 	{
+		Language l = new(code);
 		ControllerDetails d = ControllerDetails.Read(new InfoFeatureLink(Transport.Bluetooth, Features()));
 		string text = d.CopyText(TimeSpan.FromSeconds(303), new BatteryStatus(70, ChargeState.Discharging), l);
 		string[] lines = text.Split(Environment.NewLine);
@@ -161,17 +162,17 @@ public class ControllerInfoTests
 	}
 
 	[Theory]
-	[InlineData(45, Language.Turkish, "45 sn")]
-	[InlineData(45, Language.English, "45 s")]
-	[InlineData(303, Language.Turkish, "5 dk 03 sn")]
-	[InlineData(303, Language.English, "5 min 03 s")]
-	[InlineData(7500, Language.Turkish, "2 sa 05 dk")]
-	[InlineData(7500, Language.English, "2 h 05 min")]
-	[InlineData(97200, Language.Turkish, "1 g 3 sa")]
-	[InlineData(97200, Language.English, "1 d 3 h")]
-	[InlineData(-5, Language.English, "0 s")]
-	public void ConnectedFor_FormatsPerLanguage(int seconds, Language l, string expected) =>
-		Assert.Equal(expected, ConnectedFor.Format(TimeSpan.FromSeconds(seconds), l));
+	[InlineData(45, "tr", "45 sn")]
+	[InlineData(45, "en", "45 s")]
+	[InlineData(303, "tr", "5 dk 03 sn")]
+	[InlineData(303, "en", "5 min 03 s")]
+	[InlineData(7500, "tr", "2 sa 05 dk")]
+	[InlineData(7500, "en", "2 h 05 min")]
+	[InlineData(97200, "tr", "1 g 3 sa")]
+	[InlineData(97200, "en", "1 d 3 h")]
+	[InlineData(-5, "en", "0 s")]
+	public void ConnectedFor_FormatsPerLanguage(int seconds, string code, string expected) =>
+		Assert.Equal(expected, ConnectedFor.Format(TimeSpan.FromSeconds(seconds), new Language(code)));
 
 	// USB <-> Bluetooth switch.
 

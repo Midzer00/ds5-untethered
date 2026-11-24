@@ -27,7 +27,7 @@ public sealed class LightFitTests
 		string? fitDir = Environment.GetEnvironmentVariable("KOPRU_FIT_RENDER_DIR") is { Length: > 0 } d ? d : null;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach (bool lowPower in new[] { false, true })

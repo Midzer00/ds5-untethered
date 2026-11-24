@@ -93,8 +93,7 @@ public sealed record RemapSettings
 
 // Rewrites buttons and sticks of the 63-byte input body in place. Immutable after construction; Apply allocates nothing.
 //
-// Body layout (public DualSense layout; Linux drivers/hid/hid-playstation.c, struct dualsense_input_report and the
-// DS_BUTTONS* defines, minus the report ID byte):
+// Body layout (public DualSense input report documentation, offsets after the report ID byte):
 //   0 LX, 1 LY, 2 RX, 3 RY (0..255, center ~128; Y grows downwards), 4 L2 analog, 5 R2 analog, 6 sequence,
 //   7 buttons[0]: low nibble = D-pad hat (0 N, 1 NE, 2 E, 3 SE, 4 S, 5 SW, 6 W, 7 NW, 8 released),
 //                 0x10 Square, 0x20 Cross, 0x40 Circle, 0x80 Triangle

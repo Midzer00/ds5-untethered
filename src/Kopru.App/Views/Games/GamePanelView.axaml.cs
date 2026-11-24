@@ -19,10 +19,10 @@ namespace Kopru.App.Views;
 // segments anywhere in the pop-up; the keyboard then stays on the switch.
 public partial class GamePanelView : UserControl
 {
-	// From this width Rumble And Triggers shows its two columns side by side (and nothing scrolls); below it they stack and
-	// the segments scroll.
-	public const double TwoColumnWidth = 720;
-	public const double ColumnGap = 32;
+	// From this width Vibration shows its two cards side by side (and nothing scrolls); below it they stack and the
+	// segments scroll.
+	public const double TwoColumnWidth = 640;
+	public const double ColumnGap = 12;
 	// The one-column segments (Game, Sound And Light) and the default profile's offer: this wide at most, from the left.
 	public const double SingleColumnWidth = 520;
 
@@ -119,15 +119,12 @@ public partial class GamePanelView : UserControl
 		{
 			IsTwoColumns = wide;
 			Columns(VibrationColumns, VibrationRight, wide);
-			Columns(TriggersColumns, TriggersRight, wide);
 			ArrangeTriggers();
 			PanelScroll.VerticalScrollBarVisibility = wide ? Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
 			SegmentHost.Margin = wide ? default : new Thickness(0, 0, NarrowScrollRoom, 0);
-			PanelPicture.Width = wide ? 160 : 88;
-			PanelPicture.Height = wide ? 75 : 41;
 		}
 		double single = Math.Max(0, Math.Min(SingleColumnWidth, width - SegmentHost.Margin.Left - SegmentHost.Margin.Right));
-		IEnumerable<Layoutable> singles = new Layoutable[] { GameSegment }
+		IEnumerable<Layoutable> singles = Array.Empty<Layoutable>()
 			.Concat(VibrationSegment.Children.Concat(TriggersSegment.Children).OfType<ContentControl>().Where(c => c.Classes.Contains("single")));
 		foreach (Layoutable part in singles)
 		{
@@ -135,13 +132,13 @@ public partial class GamePanelView : UserControl
 		}
 	}
 
-	// Triggers: with nothing for its left column (an unsupported game and no trigger rumble), Custom Trigger takes the
-	// left column instead of leaving it empty; otherwise it is the right one (or the lower one where the columns stack).
+	// Triggers' footer: with nothing for its left card (an unsupported game), Try takes the whole width instead of leaving
+	// a hole; otherwise it is the right card.
 	private void ArrangeTriggers()
 	{
-		bool left = _model?.HasGameTriggerSettings ?? true;
-		Grid.SetColumn(TriggersRight, left && IsTwoColumns ? 1 : 0);
-		Grid.SetRow(TriggersRight, left && !IsTwoColumns ? 1 : 0);
+		bool left = _model?.IsSupported ?? true;
+		Grid.SetColumn(TryCard, left ? 1 : 0);
+		Grid.SetColumnSpan(TryCard, left ? 1 : 2);
 	}
 
 	// Room right of the segments for the scroll bar, where they stack and scroll.
@@ -228,11 +225,12 @@ public partial class GamePanelView : UserControl
 		}
 	}
 
-	// Custom Trigger's column keeps the room of its tallest state: three rows on both triggers (Weapon or Vibration),
-	// measured with those rows shown for the measure only. Its blocks then show just their rows; the rest stays at the bottom.
+	// The trigger cards keep the room of their tallest state: four rows on both triggers (Weapon or Vibration), measured
+	// with those rows shown for the measure only. The cards then show just their rows; the rest stays at the bottom, so
+	// the footer under them never moves.
 	private void UpdateCustomTriggerRoom(double hostWidth)
 	{
-		double width = IsTwoColumns ? (hostWidth - ColumnGap) / 2 : hostWidth;
+		double width = hostWidth;
 		List<Grid> rows = PanelCustomTrigger.GetLogicalDescendants().OfType<Grid>()
 			.Where(g => g.Classes.Contains("resistance") || g.Classes.Contains("weapon") || g.Classes.Contains("vibration") || g.Classes.Contains("force")).ToList();
 		Dictionary<Grid, bool> shown = rows.ToDictionary(r => r, r => r.IsVisible);

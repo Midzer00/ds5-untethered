@@ -5,5 +5,5 @@ namespace Kopru.Core.Localization;
 // and its choices. Product names stay the same in every language.
 public static partial class Text
 {
-	public static string PadChoiceAuto(Language? l = null) => Pick(l, $"Otomatik", $"Automatic");
+	public static string PadChoiceAuto(Language? l = null) => T(l, "Pad.ChoiceAuto");
 }

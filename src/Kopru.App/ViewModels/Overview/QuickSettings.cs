@@ -27,6 +27,9 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 					OnPropertyChanged(nameof(LowPowerOn));
 					OnPropertyChanged(nameof(CanEditOverridden));
 					OnSpeakerStateChanged();
+					OnPropertyChanged(nameof(MicFeatureOff));
+					OnPropertyChanged(nameof(MicStateText));
+					OnPropertyChanged(nameof(MicTip));
 					break;
 				case nameof(SettingsState.GameHapticsLevel):
 					OnPropertyChanged(nameof(HapticsIndex));
@@ -50,12 +53,16 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 				case nameof(SettingsState.MicLive):
 					OnPropertyChanged(nameof(MicTile));
 					break;
+				case nameof(SettingsState.MicEnabled):
+				case nameof(SettingsState.ControllerMicSelected):
 				case nameof(SettingsState.MicStateText):
 				case nameof(SettingsState.CanPressMic):
 				case nameof(SettingsState.MicButtonMode):
+					OnPropertyChanged(nameof(MicFeatureOff));
 					OnPropertyChanged(nameof(MicStateText));
 					OnPropertyChanged(nameof(CanPressMic));
 					OnPropertyChanged(nameof(MicButtonModeIndex));
+					OnPropertyChanged(nameof(MicTip));
 					break;
 			}
 		};
@@ -168,7 +175,10 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 		}
 	}
 
-	public string MicStateText => Settings.MicStateText;
+	// True when the controller microphone feature itself is turned off in Settings → Audio (outside Low Power).
+	public bool MicFeatureOff => Settings.ControllerMicSelected && !Settings.MicEnabled && !Settings.LowPowerOn;
+
+	public string MicStateText => MicFeatureOff ? Text.QuickMicOffInSettings() : Settings.MicStateText;
 
 	public bool CanPressMic => Settings.CanPressMic;
 
@@ -224,7 +234,9 @@ public sealed partial class QuickSettingsViewModel : ViewModelBase
 	public string MouseModeTip => Text.QuickMouseModeTip();
 	public string SpeakerTip => Overridden(Text.QuickSpeakerTip());
 	// Low Power holds the controller microphone off (a selected PC microphone can still be muted).
-	public string MicTip => Settings.ControllerMicSelected ? Overridden(Text.QuickMicTileTip()) : Text.QuickMicTileTip();
+	public string MicTip => MicFeatureOff
+		? Text.QuickMicOffInSettingsTip()
+		: Settings.ControllerMicSelected ? Overridden(Text.QuickMicTileTip()) : Text.QuickMicTileTip();
 	public string HapticsTip => Overridden(Text.QuickHapticsTip());
 	public string TriggerTip => Overridden(Text.QuickTriggerTip());
 	public string LightTip => Overridden(Text.QuickLightTip());

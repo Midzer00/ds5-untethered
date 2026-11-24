@@ -6,7 +6,7 @@ namespace Kopru.Core.Virtual;
 
 // A wired Xbox 360 controller made of software, served over USB/IP, for games that don't know the DualSense. Windows binds
 // its in-box XUSB driver (xusb22) to VID 045E PID 028E, so no extra driver is needed. The descriptors are the public
-// ones of the wired controller (as listed by lsusb dumps and the Linux xpad driver's notes); only interface 0 is used:
+// ones of the wired controller (per public Xbox 360 USB descriptor documentation); only interface 0 is used:
 // interrupt IN 0x81 carries the 20-byte input report, interrupt OUT 0x01 rumble and LED reports. The other interfaces
 // (headset, plug-in module, security) are described but never answer, like a real pad with nothing plugged in.
 public sealed class VirtualXbox360 : IVirtualPad

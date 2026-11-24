@@ -31,7 +31,7 @@ public sealed class SettingsFitTests
 		string? fitDir = Environment.GetEnvironmentVariable("KOPRU_FIT_RENDER_DIR") is { Length: > 0 } d ? d : null;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				(MainWindowViewModel vm, FakeControllerService _) = FullCase(code);
@@ -87,7 +87,7 @@ public sealed class SettingsFitTests
 		string? fitDir = Environment.GetEnvironmentVariable("KOPRU_FIT_RENDER_DIR") is { Length: > 0 } d ? d : null;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach (string state in new[] { "low-power", "dualshock4" })
@@ -145,7 +145,7 @@ public sealed class SettingsFitTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach (Kopru.Core.Mods.DsxStatus status in new Kopru.Core.Mods.DsxStatus[]
@@ -186,7 +186,7 @@ public sealed class SettingsFitTests
 	public void Tabs_AreNamed_AndTheSelectionIsKept()
 	{
 		var vm = new MainWindowViewModel(new FakeControllerService(animate: false));
-		Assert.Equal([Text.General(), Text.ControllersSection(), Text.SettingsTabAudio(), Text.SettingsTabShortcuts(), Text.DesktopModeSection(),
+		Assert.Equal([Text.General(), Text.SettingsTabDevices(), Text.SettingsTabAudio(), Text.SettingsTabShortcuts(), Text.DesktopModeSection(),
 			Text.GroupNotifications()], vm.SettingsPage.Tabs.Select(t => t.Name));
 		Assert.True(vm.SettingsPage.IsGeneralTab);
 		vm.Navigate(vm.SettingsPage);
@@ -222,7 +222,7 @@ public sealed class SettingsFitTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				(MainWindowViewModel vm, FakeControllerService _) = FullCase(code);
@@ -316,7 +316,7 @@ public sealed class SettingsFitTests
 		List<TaskCompletionSource> stalled = [];
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach (string state in new[] { "idle", "ready", "confirm", "downloading", "error", "zip" })
@@ -437,7 +437,7 @@ public sealed class SettingsFitTests
 	}
 
 	// What is wrong with the shown Settings tab as laid out now.
-	internal static IEnumerable<string> Check(Window window)
+	internal static IEnumerable<string> Check(Window window, bool allowVerticalSafetyNet = false)
 	{
 		SettingsView page = window.GetVisualDescendants().OfType<SettingsView>().Single(v => v.IsEffectivelyVisible);
 		ScrollViewer scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First();
@@ -449,7 +449,7 @@ public sealed class SettingsFitTests
 		List<(string Name, Rect Rect)> blocks = [("tabs", FitCheck.Bounds(tabs, column))];
 		blocks.AddRange(shown.Select((c, i) => ($"card {i}", FitCheck.Bounds(c, column))));
 		string arrangement = (cards.IsTwoColumns ? "two columns" : "one column") + (cards.IsNarrow ? ", narrow" : "");
-		IEnumerable<string> problems = FitCheck.Scrolls(scroll, arrangement)
+		IEnumerable<string> problems = FitCheck.Scrolls(scroll, arrangement, allowVerticalSafetyNet)
 			.Concat(FitCheck.Apart(blocks, FitCheck.Bounds(column, column)))
 			.Concat(shown.SelectMany(card => FitCheck.Inside(card, column)))
 			.Concat(FitCheck.CutText(page));

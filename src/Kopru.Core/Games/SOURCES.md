@@ -13,8 +13,8 @@ Not verified: executable names. No exe was confirmed against a source (PCGW game
 <!-- gamelist:start -->
 ## Last automatic refresh (tools/Kopru.GameList)
 
-2026-11-09: read 223 games via PCGamingWiki MediaWiki API (action=parse of the two list pages); flags follow the PCGamingWiki lists (true, limited and hackable all count as listed).
-Added 149, removed 0, flags changed 8. New entries have no exe name yet ("Added from PCGamingWiki; exe name unknown"); fill them in by hand.
+2026-11-24: read 225 games via PCGamingWiki MediaWiki API (action=parse of the two list pages); flags follow the PCGamingWiki lists (true, limited and hackable all count as listed).
+Added 2, removed 0, flags changed 0. New entries have no exe name yet ("Added from PCGamingWiki; exe name unknown"); fill them in by hand.
 
 - https://www.pcgamingwiki.com/wiki/List_of_games_that_support_Dualsense_haptic_feedback
 - https://www.pcgamingwiki.com/wiki/List_of_games_that_support_PlayStation_adaptive_triggers

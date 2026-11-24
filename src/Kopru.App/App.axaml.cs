@@ -15,7 +15,23 @@ public partial class App : Application
 {
 	private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
 
-	public override void Initialize() => AvaloniaXamlLoader.Load(this);
+	public override void Initialize()
+	{
+		AvaloniaXamlLoader.Load(this);
+		Resources["AppFontFamily"] = AppFonts.ForLanguage(Kopru.Core.Localization.Localizer.Current);
+		Kopru.Core.Localization.Localizer.LanguageChanged += lang =>
+		{
+			void Apply() => Resources["AppFontFamily"] = AppFonts.ForLanguage(lang);
+			if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+			{
+				Apply();
+			}
+			else
+			{
+				Avalonia.Threading.Dispatcher.UIThread.Post(Apply);
+			}
+		};
+	}
 
 	public override void OnFrameworkInitializationCompleted()
 	{

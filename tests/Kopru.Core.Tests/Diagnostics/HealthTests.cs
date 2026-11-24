@@ -28,7 +28,18 @@ public class HealthTests
 		BridgeError error = BridgeError.None, SteamInputResult? steam = null, bool? allowed = null, bool? hidden = null) =>
 		new(pads ?? [BtPad], started, state, error, steam, allowed, hidden);
 
-	public static TheoryData<Language> Languages => new() { Language.Turkish, Language.English };
+	public static TheoryData<string> Languages
+	{
+		get
+		{
+			var data = new TheoryData<string>();
+			foreach (Language lang in Localizer.Available)
+			{
+				data.Add(lang.Code);
+			}
+			return data;
+		}
+	}
 
 	// Connection sub-states.
 
@@ -62,8 +73,9 @@ public class HealthTests
 
 	[Theory]
 	[MemberData(nameof(Languages))]
-	public void Connection_EveryKind_HasLabelAndReason(Language l)
+	public void Connection_EveryKind_HasLabelAndReason(string code)
 	{
+		Language l = new(code);
 		foreach (ConnectionKind kind in Enum.GetValues<ConnectionKind>())
 		{
 			ConnectionState s = new(kind);
@@ -220,8 +232,9 @@ public class HealthTests
 
 	[Theory]
 	[MemberData(nameof(Languages))]
-	public void EveryChip_HasLabelAndReason(Language l)
+	public void EveryChip_HasLabelAndReason(string code)
 	{
+		Language l = new(code);
 		HealthReport report = HealthReport.Build(Env(), Run(), Now, l);
 		Assert.Equal(Enum.GetValues<HealthChipKind>().Length, report.Chips.Count);
 		Assert.All(report.Chips, c => Assert.False(string.IsNullOrWhiteSpace(c.Label) || string.IsNullOrWhiteSpace(c.Reason)));

@@ -6,9 +6,7 @@ using System.Text;
 namespace Kopru.Core.Hid;
 
 // Feature report 0x20 ("firmware info", 64 bytes; byte 0 is the report ID, over Bluetooth the last 4 bytes are a CRC).
-// Public layout, as parsed by the Linux kernel's hid-playstation driver (dualsense_get_firmware_info:
-// hw_version = le32 at 24, fw_version = le32 at 28, update_version = le16 at 44) and as documented in the community
-// DualSense data-structure notes (build date/time are the firmware's C __DATE__ / __TIME__ strings):
+// Public DualSense feature report documentation (build date/time are the firmware's C __DATE__ / __TIME__ strings):
 //   1..11  build date, ASCII "Mmm dd yyyy" (day padded with a space, e.g. "Jun  5 2023")
 //   12..19 build time, ASCII "hh:mm:ss"
 //   24..27 hardware info/version, le32
@@ -71,8 +69,8 @@ public sealed record FirmwareInfo(DateTime? BuildTime, string BuildText, uint Ha
 }
 
 // Feature report 0x09 ("pairing info", 20 bytes): bytes 1..6 are the controller's own Bluetooth address, least
-// significant byte first (Linux hid-playstation dualsense_get_mac_address copies &buf[1], 6 bytes, and prints it
-// reversed). Readable over USB and Bluetooth; the same controller reports the same address on both.
+// significant byte first (public DualSense feature report documentation, verified on hardware). Readable over USB and
+// Bluetooth; the same controller reports the same address on both.
 public static class PairingInfo
 {
 	public const byte ReportId = 0x09;

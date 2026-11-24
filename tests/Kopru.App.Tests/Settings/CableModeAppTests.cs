@@ -11,7 +11,7 @@ using Kopru.Core.Profiles;
 
 namespace Kopru.App.Tests;
 
-// "When The Cable Is Plugged In" (Settings, Notifications tab, its own card): Charge Only by default — wired mode is
+// "When The Cable Is Plugged In" (Controller page, Outputs tab, its own card): Charge Only by default — wired mode is
 // opt-in (an app setting: saved, pushed, not per profile); the service applies it to the cable switch live.
 public class CableModeAppTests
 {
@@ -149,7 +149,7 @@ public class CableModeAppTests
 	{
 		var fake = new FakeControllerService(animate: false);
 		var settings = new SettingsState(fake);
-		var vm = new SettingsViewModel(fake, settings);
+		var vm = new ControllerPageViewModel(fake, settings, live: false);
 
 		Assert.Equal(2, vm.CableModes.Count);
 		Assert.Equal(CableMode.Wired, vm.CableModes[0].Mode);
@@ -197,10 +197,10 @@ public class CableModeAppTests
 		Assert.Equal("Cable", Text.CardCable(Language.English));
 	}
 
-	// The row is on the Notifications tab in its own card (the only tab with room; the General and Controllers tabs
-	// are full): the picker renders there and is visible in both languages.
+	// The row is on the Controller page (Outputs tab) in its own card and no longer on Settings → Notifications:
+	// the picker renders on the Controller page and is visible in both languages.
 	[AvaloniaFact]
-	public void Picker_IsOnTheNotificationsTab_InBothLanguages()
+	public void Picker_IsOnTheControllerPage_InBothLanguages()
 	{
 		foreach (Language language in new[] { Language.Turkish, Language.English })
 		{
@@ -209,9 +209,12 @@ public class CableModeAppTests
 			{
 				Localizer.Chosen = language;
 				var fake = new FakeControllerService(animate: false);
-				var vm = new SettingsViewModel(fake, new SettingsState(fake));
-				vm.SelectedTab = SettingsViewModel.NotificationsTab;
-				var window = new Window { Content = new SettingsView { DataContext = vm }, Width = 1100, Height = 900 };
+				var settings = new SettingsState(fake);
+				var vm = new ControllerPageViewModel(fake, settings, live: false)
+				{
+					SelectedTab = ControllerPageViewModel.OutputsTab,
+				};
+				var window = new Window { Content = new ControllerView { DataContext = vm }, Width = 1100, Height = 700 };
 				window.Show();
 				FitCheck.Settle(window);
 
@@ -222,6 +225,16 @@ public class CableModeAppTests
 				Assert.Contains(texts, t => t.Text == Text.CardCable(language));
 				Assert.Contains(texts, t => t.Text == Text.CableModeLabel(language));
 				window.Close();
+
+				var settingsVm = new SettingsViewModel(fake, settings)
+				{
+					SelectedTab = SettingsViewModel.NotificationsTab,
+				};
+				var settingsWindow = new Window { Content = new SettingsView { DataContext = settingsVm }, Width = 1100, Height = 700 };
+				settingsWindow.Show();
+				FitCheck.Settle(settingsWindow);
+				Assert.Empty(settingsWindow.GetVisualDescendants().OfType<ComboBox>().Where(c => c.Name == "CableModePicker"));
+				settingsWindow.Close();
 			}
 			finally
 			{

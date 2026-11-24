@@ -24,8 +24,28 @@ public sealed partial class OverviewViewModel : PageViewModel
 	private Avalonia.Threading.DispatcherTimer? _sampleTimer;
 	private bool _syncingProfile;
 
-	// "Back To Game" in the header while a known game runs (set by the main window's view model; null in a bare page).
-	public GameReturn? BackToGame { get; set; }
+	// "Back To Game" and "Close Game" in the header while a known game runs (set by the main window's view model; null in a
+	// bare page).
+	public GameReturn? BackToGame
+	{
+		get => _backToGame;
+		set
+		{
+			_backToGame = value;
+			if (value != null)
+			{
+				value.PropertyChanged += (_, e) =>
+				{
+					if (e.PropertyName is nameof(GameReturn.ConfirmsForceClose) or "" or null)
+					{
+						OnPropertyChanged(nameof(ShowsPowerOff));
+					}
+				};
+			}
+		}
+	}
+
+	private GameReturn? _backToGame;
 
 	public OverviewViewModel(IControllerService service, SettingsState settings)
 	{
@@ -106,7 +126,14 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public string StatusLine => IsOnCable ? Connection.Label()
 		: !_service.IsConnected
 		? (IsBridgeRunning && Blocking == null ? Text.OverviewWaitingController() : Connection.Label())
-		: HasWarning || HasProblemChip ? Text.OverallAttention()
+		: StatusState + " · " + ConnectionLabel;
+
+	// The one connection label (Bluetooth / Bluetooth · Cable Plugged In / USB Cable (Experimental)), the same words as the sidebar's.
+	public string ConnectionLabel => _service.IsWired ? Text.ConnectionWired()
+		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable()
+		: "Bluetooth";
+
+	private string StatusState => HasWarning || HasProblemChip ? Text.OverallAttention()
 		: IsRunning && HasGame ? Text.OverviewPlaying(GameValue)
 		: IsRunning ? Text.BridgeStateRunning()
 		: IsWaiting ? Text.BridgeStateWaiting()
@@ -272,7 +299,8 @@ public sealed partial class OverviewViewModel : PageViewModel
 	{
 		if (name is nameof(SettingsState.PadStatus) or nameof(SettingsState.CurrentPadType) or nameof(SettingsState.HasPendingPadType))
 		{
-			foreach (string p in new[] { nameof(GameSeesText), nameof(PadLossLine), nameof(HasPadLoss), nameof(ShowsPadLoss), nameof(PadTypeTip), nameof(HasPendingPadType), nameof(PendingPadLine) })
+			foreach (string p in new[] { nameof(GameSeesText), nameof(PadLossLine), nameof(HasPadLoss), nameof(ShowsPadLoss), nameof(PadTypeTip), nameof(HasPendingPadType), nameof(PendingPadLine),
+				nameof(ShowsHeroPadLoss), nameof(ShowsHeroPendingPadType) })
 			{
 				OnPropertyChanged(p);
 			}
@@ -327,7 +355,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 	// How the link feels (LinkQualityMonitor), as a word in its colour beside the delay headline (Live.DelayValue), and
 	// one short sentence on what to do only when the player must do something.
 	public LinkQuality LinkState => _service.LinkQuality?.State ?? LinkQuality.Measuring;
-	public string LinkStateText => LinkWord(LinkState);
+	public string LinkStateText => IsWired ? Text.LinkWired() : LinkWord(LinkState);
 	public string LinkAdvice => LinkState switch
 	{
 		LinkQuality.Borderline => Text.LinkAdviceBorderline(),
@@ -335,12 +363,15 @@ public sealed partial class OverviewViewModel : PageViewModel
 		_ => string.Empty
 	};
 	public bool HasLinkAdvice => LinkAdvice.Length > 0;
-	public bool IsLinkGood => LinkState == LinkQuality.Good;
-	public bool IsLinkBorderline => LinkState == LinkQuality.Borderline;
-	public bool IsLinkPoor => LinkState == LinkQuality.Poor;
-	public bool IsLinkMeasuring => LinkState == LinkQuality.Measuring;
+	// On the cable there is no verdict: the word says "Wired" and the gauge stays unlit.
+	private bool IsWired => _service.IsWired;
+	public bool IsLinkGood => !IsWired && LinkState == LinkQuality.Good;
+	public bool IsLinkBorderline => !IsWired && LinkState == LinkQuality.Borderline;
+	public bool IsLinkPoor => !IsWired && LinkState == LinkQuality.Poor;
+	public bool IsLinkMeasuring => !IsWired && LinkState == LinkQuality.Measuring;
+	public bool IsLinkMuted => IsWired || LinkState == LinkQuality.Measuring;
 	// The quality gauge: three pieces lit for Good, two for Fair, one for Weak, none while measuring.
-	public int LinkLevel => LinkState switch
+	public int LinkLevel => IsWired ? 0 : LinkState switch
 	{
 		LinkQuality.Good => 3,
 		LinkQuality.Borderline => 2,
@@ -600,11 +631,6 @@ public sealed class LanguageOption(Language? language, Func<string> name) : Labe
 	public Language? Language { get; } = language;
 }
 
-public sealed class CableModeOption(CableMode mode, Func<string> name) : LabelledChoice(name)
-{
-	public CableMode Mode { get; } = mode;
-}
-
 public sealed partial class SettingsViewModel : PageViewModel
 {
 	private readonly IControllerService _service;
@@ -618,20 +644,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 		Info = new ControllerInfoViewModel(service);
 		// Language names are shown in their own language (endonyms) on purpose.
 		Languages = BuildLanguages();
-		_selectedLanguage = Languages.First(o => o.Language == Localizer.Chosen);
-		CableModes =
-		[
-			new CableModeOption(CableMode.Wired, () => Text.CableModeWired()),
-			new CableModeOption(CableMode.ChargeOnly, () => Text.CableModeChargeOnly()),
-		];
-		_selectedCableMode = CableModes.First(o => o.Mode == Settings.CableMode);
-		Settings.PropertyChanged += (_, e) =>
-		{
-			if (e.PropertyName == nameof(SettingsState.CableMode))
-			{
-				SelectedCableMode = CableModes.First(o => o.Mode == Settings.CableMode);
-			}
-		};
+		_selectedLanguage = Languages.FirstOrDefault(o => o.Language == Localizer.Chosen) ?? Languages[0];
 		_service.StateChanged += (_, _) => RunOnUi(() => OnPropertyChanged(nameof(HeadphonesPlugged)));
 		InitMic();
 		InitDsx();
@@ -639,7 +652,6 @@ public sealed partial class SettingsViewModel : PageViewModel
 
 	public SettingsState Settings { get; }
 	public IReadOnlyList<LanguageOption> Languages { get; }
-	public IReadOnlyList<CableModeOption> CableModes { get; }
 	public override string Title => Text.NavSettings();
 	public string GeneralLabel => Text.General();
 	public string LanguageLabel => Text.LanguageLabel();
@@ -671,14 +683,10 @@ public sealed partial class SettingsViewModel : PageViewModel
 	public string PowerOffWhenIdleLabel => Text.PowerOffWhenIdleSetting();
 	public string PowerOffWhenIdleHint => Text.PowerOffWhenIdleHint();
 	public string HapticsGroupLabel => Text.CardHaptics();
-	public string CableGroupLabel => Text.CardCable();
 	public string PauseHapticsLabel => Text.PauseHapticsInSilence();
 	public string PauseHapticsHint => Text.PauseHapticsInSilenceHint();
 	public string AutoLowPowerLabel => Text.AutoLowPower();
 	public string AutoLowPowerHint => Text.AutoLowPowerHint();
-	public string CableModeLabel => Text.CableModeLabel();
-	public string CableModeShort => Text.CableModeShort();
-	public string CableModeHint => Text.CableModeHint();
 	public string KeepInTrayLabel => Text.KeepInTray();
 	public string KeepInTrayHint => Text.KeepInTrayHint();
 	public string NotificationsLabel => Text.GroupNotifications();
@@ -722,11 +730,6 @@ public sealed partial class SettingsViewModel : PageViewModel
 	[ObservableProperty]
 	private LanguageOption _selectedLanguage;
 
-	// The cable behaviour choice (Settings.CableMode both ways; a cleared selection while the language switch
-	// rebuilds nothing is ignored, as with the language picker).
-	[ObservableProperty]
-	private CableModeOption _selectedCableMode;
-
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasToolResult))]
 	private string _toolResult = string.Empty;
@@ -734,8 +737,7 @@ public sealed partial class SettingsViewModel : PageViewModel
 	private static IReadOnlyList<LanguageOption> BuildLanguages() =>
 	[
 		new(null, () => Text.LanguageFollowSystem()),
-		new(Language.Turkish, () => "Türkçe"),
-		new(Language.English, () => "English"),
+		.. Localizer.Available.Select(lang => new LanguageOption(lang, () => lang.NativeName)),
 	];
 
 	partial void OnSelectedLanguageChanged(LanguageOption value)
@@ -743,14 +745,6 @@ public sealed partial class SettingsViewModel : PageViewModel
 		if (value != null)
 		{
 			Localizer.Chosen = value.Language;
-		}
-	}
-
-	partial void OnSelectedCableModeChanged(CableModeOption value)
-	{
-		if (value != null && value.Mode != Settings.CableMode)
-		{
-			Settings.CableMode = value.Mode;
 		}
 	}
 

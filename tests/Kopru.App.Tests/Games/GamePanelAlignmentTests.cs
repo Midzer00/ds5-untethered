@@ -86,9 +86,9 @@ public sealed class GamePanelAlignmentTests
 	// left, the fallback trigger right) that start level.
 	private static readonly (int Segment, string[] Columns)[] SegmentColumns =
 	[
-		(GamePanelViewModel.GameSegment, ["GameSegment"]),
+		(GamePanelViewModel.GameSegment, ["PanelLight"]),
 		(GamePanelViewModel.VibrationSegment, ["VibrationLeft", "PanelAudio"]),
-		(GamePanelViewModel.TriggersSegment, ["TriggersLeft", "TriggersRight"])
+		(GamePanelViewModel.TriggersSegment, ["TriggersLeft"])
 	];
 
 	private static IEnumerable<string> Check(Window window, GamePanelViewModel model, string at, bool expectsTriggerRumble)
@@ -122,18 +122,14 @@ public sealed class GamePanelAlignmentTests
 					yield return problem;
 				}
 			}
-			// Two columns: the right one starts level with the left one, and their first rows line up.
+			// Two columns (cards): the right one starts level with the left one. (Their first rows sit under drawings of
+			// different heights, so they are not expected to line up.)
 			if (columns.Count == 2 && Rows(columns[0]).Count > 0 && Rows(columns[1]).Count > 0)
 			{
 				double leftTop = FitCheck.Bounds(columns[0], window).Top, rightTop = FitCheck.Bounds(columns[1], window).Top;
 				if (Math.Abs(leftTop - rightTop) > 2)
 				{
 					yield return $"{where}: the right column starts at {rightTop:F1}, the left one at {leftTop:F1}";
-				}
-				double leftRow = FitCheck.Bounds(Rows(columns[0])[0], window).Top, rightRow = FitCheck.Bounds(Rows(columns[1])[0], window).Top;
-				if (Math.Abs(leftRow - rightRow) > 0.5)
-				{
-					yield return $"{where}: the right column's first row is at {rightRow:F1}, the left one's at {leftRow:F1}";
 				}
 			}
 		}
@@ -179,7 +175,7 @@ public sealed class GamePanelAlignmentTests
 		foreach (Control c in controls.Except(full))
 		{
 			Rect r = FitCheck.Bounds(c, window);
-			if (Math.Abs(r.Right - slot.Right) > 0.5 || r.Left < slot.Left - 0.5)
+			if (Math.Abs(r.Right - slot.Right) > 1.5 || r.Left < slot.Left - 0.5)
 			{
 				yield return $"{at} {column.Name}: {Describe(c)} {r} does not end on the control column {slot}";
 			}

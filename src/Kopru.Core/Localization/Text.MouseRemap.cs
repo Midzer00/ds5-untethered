@@ -6,33 +6,27 @@ namespace Kopru.Core.Localization;
 // User-facing texts of mouse mode's pointer stick choice and button mapping.
 public static partial class Text
 {
-	public static string DesktopPointerStick(Language? l = null) => Pick(l, $"İmleç Analoğu", $"Pointer Stick");
+	public static string DesktopPointerStick(Language? l = null) => T(l, "Desktop.PointerStick");
 
-	public static string DesktopPointerStickHint(Language? l = null) => Pick(l,
-		$"Seçilen analog imleci taşır, diğeri sayfayı kaydırır.",
-		$"The chosen stick moves the pointer; the other one scrolls.");
+	public static string DesktopPointerStickHint(Language? l = null) => T(l, "Desktop.PointerStickHint");
 
-	public static string DesktopStickLeft(Language? l = null) => Pick(l, $"Sol Analog", $"Left Stick");
+	public static string DesktopStickLeft(Language? l = null) => T(l, "Desktop.StickLeft");
 
-	public static string DesktopStickRight(Language? l = null) => Pick(l, $"Sağ Analog", $"Right Stick");
+	public static string DesktopStickRight(Language? l = null) => T(l, "Desktop.StickRight");
 
-	public static string DesktopButtonsTitle(Language? l = null) => Pick(l, $"Tuş Atamaları", $"Button Mapping");
+	public static string DesktopButtonsTitle(Language? l = null) => T(l, "Desktop.ButtonsTitle");
 
-	public static string DesktopButtonsNote(Language? l = null) => Pick(l,
-		$"Dokunmatik yüzey, ø tuşu ve mikrofon tuşu değişmez.",
-		$"Touchpad, the ø button and Mute stay as they are.");
+	public static string DesktopButtonsNote(Language? l = null) => T(l, "Desktop.ButtonsNote");
 
-	public static string DesktopRightClick(Language? l = null) => Pick(l, $"Sağ Tık", $"Right Click");
+	public static string DesktopRightClick(Language? l = null) => T(l, "Desktop.RightClick");
 
-	public static string DesktopRightClickHint(Language? l = null) => Pick(l,
-		$"Dokunmatik yüzeye hangi basışın sağ tık olacağı. Kapalıyken her basış sol tık.",
-		$"Which touchpad press right clicks. Off: every press is a left click.");
+	public static string DesktopRightClickHint(Language? l = null) => T(l, "Desktop.RightClickHint");
 
 	public static string DesktopRightClickOption(TouchpadRightClick mode, Language? l = null) => mode switch
 	{
-		TouchpadRightClick.RightSide => Pick(l, $"Sağ Taraf", $"Right Side"),
-		TouchpadRightClick.TwoFingers => Pick(l, $"İki Parmak", $"Two Fingers"),
-		_ => Pick(l, $"Kapalı", $"Off")
+		TouchpadRightClick.RightSide => T(l, "Desktop.RightClickOption.RightSide"),
+		TouchpadRightClick.TwoFingers => T(l, "Desktop.RightClickOption.TwoFingers"),
+		_ => T(l, "Desktop.RightClickOption.Off")
 	};
 
 	// The touchpad's gestures; the tap and press part follows the Right Click choice.
@@ -40,46 +34,44 @@ public static partial class Text
 	{
 		string clicks = mode switch
 		{
-			TouchpadRightClick.RightSide => Pick(l, $"dokunmak sol tık; sol yarıya basmak sol tık, sağ yarıya basmak sağ tık", $"tap to left click; press the left half to left click, the right half to right click"),
-			TouchpadRightClick.TwoFingers => Pick(l, $"tek parmakla dokunmak ya da basmak sol tık, iki parmakla sağ tık", $"tap or press with one finger to left click, with two to right click"),
-			_ => Pick(l, $"dokunmak ya da basmak sol tık", $"tap or press to left click")
+			TouchpadRightClick.RightSide => T(l, "Desktop.TouchpadHint.RightSide"),
+			TouchpadRightClick.TwoFingers => T(l, "Desktop.TouchpadHint.TwoFingers"),
+			_ => T(l, "Desktop.TouchpadHint.Off")
 		};
-		return Pick(l,
-			$"Dokunmatik yüzey: tek parmak imleci taşır, iki parmak yukarı/aşağı kaydırır; {clicks}. ø + Seçenekler fare modunu açıp kapatır.",
-			$"Touchpad: one finger moves the pointer, two fingers up/down scroll; {clicks}. ø + Options turns mouse mode on and off.");
+		return T(l, "Desktop.TouchpadHint", A("clicks", clicks));
 	}
 
 	public static string DesktopActionName(MouseAction action, Language? l = null) => action switch
 	{
-		MouseAction.LeftClick => Pick(l, $"Sol Tık", $"Left Click"),
-		MouseAction.RightClick => Pick(l, $"Sağ Tık", $"Right Click"),
-		MouseAction.MiddleClick => Pick(l, $"Orta Tık", $"Middle Click"),
+		MouseAction.LeftClick => T(l, "Desktop.ActionName.LeftClick"),
+		MouseAction.RightClick => T(l, "Desktop.ActionName.RightClick"),
+		MouseAction.MiddleClick => T(l, "Desktop.ActionName.MiddleClick"),
 		MouseAction.Enter => "Enter",
 		MouseAction.Escape => "Esc",
 		MouseAction.Tab => "Tab",
-		MouseAction.Space => Pick(l, $"Boşluk", $"Space"),
-		MouseAction.Backspace => Pick(l, $"Geri Sil", $"Backspace"),
+		MouseAction.Space => T(l, "Desktop.ActionName.Space"),
+		MouseAction.Backspace => T(l, "Desktop.ActionName.Backspace"),
 		MouseAction.Delete => "Delete",
-		MouseAction.ArrowUp => Pick(l, $"Yukarı Ok", $"Arrow Up"),
-		MouseAction.ArrowDown => Pick(l, $"Aşağı Ok", $"Arrow Down"),
-		MouseAction.ArrowLeft => Pick(l, $"Sol Ok", $"Arrow Left"),
-		MouseAction.ArrowRight => Pick(l, $"Sağ Ok", $"Arrow Right"),
+		MouseAction.ArrowUp => T(l, "Desktop.ActionName.ArrowUp"),
+		MouseAction.ArrowDown => T(l, "Desktop.ActionName.ArrowDown"),
+		MouseAction.ArrowLeft => T(l, "Desktop.ActionName.ArrowLeft"),
+		MouseAction.ArrowRight => T(l, "Desktop.ActionName.ArrowRight"),
 		MouseAction.PageUp => "Page Up",
 		MouseAction.PageDown => "Page Down",
-		MouseAction.WindowsKey => Pick(l, $"Windows Tuşu", $"Windows Key"),
-		MouseAction.OnScreenKeyboard => Pick(l, $"Ekran Klavyesi", $"Screen Keyboard"),
-		MouseAction.NextWindow => Pick(l, $"Sonraki Pencere", $"Next Window"),
-		MouseAction.PreviousWindow => Pick(l, $"Önceki Pencere", $"Previous Window"),
-		MouseAction.Back => Pick(l, $"Geri", $"Back"),
-		MouseAction.Forward => Pick(l, $"İleri", $"Forward"),
-		MouseAction.Copy => Pick(l, $"Kopyala", $"Copy"),
-		MouseAction.Paste => Pick(l, $"Yapıştır", $"Paste"),
-		MouseAction.VolumeUp => Pick(l, $"Sesi Artır", $"Volume Up"),
-		MouseAction.VolumeDown => Pick(l, $"Sesi Azalt", $"Volume Down"),
-		MouseAction.MuteSound => Pick(l, $"Sesi Kapat", $"Mute Sound"),
-		MouseAction.PlayPause => Pick(l, $"Oynat/Duraklat", $"Play/Pause"),
-		MouseAction.NextTrack => Pick(l, $"Sonraki Parça", $"Next Track"),
-		MouseAction.PreviousTrack => Pick(l, $"Önceki Parça", $"Previous Track"),
-		_ => Pick(l, $"Yok", $"None")
+		MouseAction.WindowsKey => T(l, "Desktop.ActionName.WindowsKey"),
+		MouseAction.OnScreenKeyboard => T(l, "Desktop.ActionName.OnScreenKeyboard"),
+		MouseAction.NextWindow => T(l, "Desktop.ActionName.NextWindow"),
+		MouseAction.PreviousWindow => T(l, "Desktop.ActionName.PreviousWindow"),
+		MouseAction.Back => T(l, "Desktop.ActionName.Back"),
+		MouseAction.Forward => T(l, "Desktop.ActionName.Forward"),
+		MouseAction.Copy => T(l, "Desktop.ActionName.Copy"),
+		MouseAction.Paste => T(l, "Desktop.ActionName.Paste"),
+		MouseAction.VolumeUp => T(l, "Desktop.ActionName.VolumeUp"),
+		MouseAction.VolumeDown => T(l, "Desktop.ActionName.VolumeDown"),
+		MouseAction.MuteSound => T(l, "Desktop.ActionName.MuteSound"),
+		MouseAction.PlayPause => T(l, "Desktop.ActionName.PlayPause"),
+		MouseAction.NextTrack => T(l, "Desktop.ActionName.NextTrack"),
+		MouseAction.PreviousTrack => T(l, "Desktop.ActionName.PreviousTrack"),
+		_ => T(l, "Desktop.ActionName.None")
 	};
 }

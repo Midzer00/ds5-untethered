@@ -5,74 +5,53 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 	// Live card.
-	public static string LinkGood(Language? l = null) => Pick(l, $"İyi", $"Good");
-	public static string LinkBorderline(Language? l = null) => Pick(l, $"Orta", $"Fair");
-	public static string LinkPoor(Language? l = null) => Pick(l, $"Zayıf", $"Weak");
-	public static string LinkMeasuring(Language? l = null) => Pick(l, $"Ölçülüyor", $"Measuring");
+	public static string LinkGood(Language? l = null) => T(l, "Link.Good");
+	public static string LinkBorderline(Language? l = null) => T(l, "Link.Borderline");
+	public static string LinkPoor(Language? l = null) => T(l, "Link.Poor");
+	public static string LinkMeasuring(Language? l = null) => T(l, "Link.Measuring");
+
+	// On the USB cable there is no radio link to grade: the word under the gauge says so instead of "Measuring" for ever.
+	public static string LinkWired(Language? l = null) => T(l, "Link.Wired");
+
+	// The live card's caption under the delay while the cable is the link.
+	public static string LiveTypicalDelayWired(Language? l = null) => T(l, "Live.TypicalDelayWired");
 	// What to do, only when the player must do something (Borderline, Weak).
-	public static string LinkAdviceBorderline(Language? l = null) => Pick(l,
-		$"Ara sıra gecikme var: kumandayı adaptöre yaklaştır.",
-		$"Some delay now and then: move the controller closer to the adapter.");
-	public static string LinkAdvicePoor(Language? l = null) => Pick(l,
-		$"Gecikme hissedilir: yaklaş, adaptörü USB uzatma kablosuyla öne al, 2,4 GHz cihazlardan uzak tut.",
-		$"You can feel the delay: move closer, bring the adapter forward on a USB extension cable, away from 2.4 GHz devices.");
-	public static string LinkGraphTip(Language? l = null) => Pick(l,
-		$"Son 60 saniye. Renkli alan her saniyenin en yüksek gecikmesini, ince çizgi tipik gecikmeyi gösterir. Kesikli çizginin üstünde gecikme hissedilir. Alttaki küçük işaretler, rapor kaybı veya duraklama yaşanan saniyeleri gösterir.",
-		$"The last 60 seconds. Coloured area: the worst delay of each second; thin line: the typical delay. Above the dashed line you can feel it; the small ticks below mark seconds with lost reports or a pause.");
+	public static string LinkAdviceBorderline(Language? l = null) => T(l, "Link.AdviceBorderline");
+	public static string LinkAdvicePoor(Language? l = null) => T(l, "Link.AdvicePoor");
+	public static string LinkGraphTip(Language? l = null) => T(l, "Link.GraphTip");
 
 	// Warning toast and its switch.
-	public static string NotifyLinkTitle(Language? l = null) => Pick(l, $"Bağlantı Zayıf", $"Weak Link");
-	public static string NotifyLinkBody(Language? l = null) => Pick(l, $"Adaptöre yaklaşın", $"Move closer to the adapter");
-	public static string NotifyLinkSetting(Language? l = null) => Pick(l, $"Zayıf Bağlantı", $"Weak Link");
-	public static string NotifyLinkHint(Language? l = null) => Pick(l,
-		$"Bağlantı gecikmeyi hissettirecek kadar uzun süre zayıflarsa, her seferinde bir kez.",
-		$"If the link stays weak long enough to feel the delay, once each time.");
+	public static string NotifyLinkTitle(Language? l = null) => T(l, "Notify.LinkTitle");
+	public static string NotifyLinkBody(Language? l = null) => T(l, "Notify.LinkBody");
+	public static string NotifyLinkSetting(Language? l = null) => T(l, "Notify.LinkSetting");
+	public static string NotifyLinkHint(Language? l = null) => T(l, "Notify.LinkHint");
 
 	// Adapter test explanation.
-	public static string AdapterHeadlineSuitable(Language? l = null) => Pick(l,
-		$"Uygun: titreşim ve tetikler için yeterince hızlı.",
-		$"Suitable: fast enough for haptics and triggers.");
-	public static string AdapterHeadlineBorderline(Language? l = null) => Pick(l,
-		$"Sınırda: çalışır, ama ara sıra gecikme ya da kesik titreşim olabilir.",
-		$"Borderline: it works, but expect some delay or choppy vibration now and then.");
-	public static string AdapterHeadlineUnsuitable(Language? l = null) => Pick(l,
-		$"Uygun değil: gecikmeyi ve kesik titreşimi hissedebilirsiniz.",
-		$"Not suitable: you may feel delay and choppy vibration.");
-	public static string AdapterHeadlineNoData(Language? l = null) => Pick(l,
-		$"Ölçülemedi: kumandadan veri gelmedi.",
-		$"Could not measure: no data came from the controller.");
-	public static string AdapterHeadlineIncomplete(Language? l = null) => Pick(l,
-		$"Ölçüm yarım kaldı: kumanda test sırasında veri göndermeyi bıraktı (uykuya geçti, kapandı ya da uzaklaştı).",
-		$"The measurement is incomplete: the controller stopped sending during the test (it slept, turned off or moved away).");
-	public static string AdapterAdviceRetry(Language? l = null) => Pick(l,
-		$"Kumandanın açık ve adaptöre birkaç metre yakın olduğundan emin olup testi tekrarlayın.",
-		$"Make sure the controller is on and within a few metres of the adapter, then run the test again.");
-	public static string AdapterAdvicePlacement(Language? l = null) => Pick(l,
-		$"Adaptörü öndeki bir USB 2.0 girişine ya da kısa bir USB uzatma kablosuyla masanın üstüne alın; USB 3.0 (mavi) girişlerden ve kablosuz mouse, klavye, kulaklık alıcıları gibi 2,4 GHz cihazlardan uzak tutun.",
-		$"Move the adapter to a front USB 2.0 port or onto a short USB extension cable on the desk, away from USB 3.0 (blue) ports and 2.4 GHz devices such as wireless mouse, keyboard and headset receivers.");
-	public static string AdapterAdviceDistance(Language? l = null) => Pick(l,
-		$"Kumandayı birkaç metre içinde tutup testi tekrarlayın; sonuç değişmezse Bluetooth 5 ya da daha yeni bir adaptör deneyin.",
-		$"Keep the controller within a few metres and test again; if nothing changes, try a Bluetooth 5 or newer adapter.");
+	public static string AdapterHeadlineSuitable(Language? l = null) => T(l, "Adapter.HeadlineSuitable");
+	public static string AdapterHeadlineBorderline(Language? l = null) => T(l, "Adapter.HeadlineBorderline");
+	public static string AdapterHeadlineUnsuitable(Language? l = null) => T(l, "Adapter.HeadlineUnsuitable");
+	public static string AdapterHeadlineNoData(Language? l = null) => T(l, "Adapter.HeadlineNoData");
+	public static string AdapterHeadlineIncomplete(Language? l = null) => T(l, "Adapter.HeadlineIncomplete");
+	public static string AdapterAdviceRetry(Language? l = null) => T(l, "Adapter.AdviceRetry");
+	public static string AdapterAdvicePlacement(Language? l = null) => T(l, "Adapter.AdvicePlacement");
+	public static string AdapterAdviceDistance(Language? l = null) => T(l, "Adapter.AdviceDistance");
 
-	public static string AdapterStatusOk(Language? l = null) => Pick(l, $"Tamam", $"OK");
-	public static string AdapterStatusBorderline(Language? l = null) => Pick(l, $"Sınırda", $"Borderline");
-	public static string AdapterStatusBad(Language? l = null) => Pick(l, $"Kötü", $"Bad");
+	public static string AdapterStatusOk(Language? l = null) => T(l, "Adapter.StatusOk");
+	public static string AdapterStatusBorderline(Language? l = null) => T(l, "Adapter.StatusBorderline");
+	public static string AdapterStatusBad(Language? l = null) => T(l, "Adapter.StatusBad");
 
-	public static string AdapterMeasuredRate(double rate, Language? l = null) => Pick(l, $"Saniyede {rate:F0} rapor", $"{rate:F0} reports a second");
-	public static string AdapterNeedRate(double min, Language? l = null) => Pick(l, $"en az {min:F0} gerekli", $"at least {min:F0} needed");
-	public static string AdapterMeasuredDelay(double ms, Language? l = null) => Pick(l, $"En kötü gecikme {ms:F1} ms", $"Worst delay {ms:F1} ms");
-	public static string AdapterNeedDelay(double ms, Language? l = null) => Pick(l, $"{ms:F0} ms'nin altında olmalı", $"should stay under {ms:F0} ms");
-	public static string AdapterMeasuredNoLoss(Language? l = null) => Pick(l, $"Kayıp rapor yok", $"No lost reports");
-	public static string AdapterMeasuredLoss(double percent, Language? l = null) => Pick(l, $"Kayıp rapor %{percent:F1}", $"Lost reports {percent:F1}%");
-	public static string AdapterNeedLoss(double percent, Language? l = null) => Pick(l, $"en çok %{percent:F1}", $"at most {percent:F1}%");
-	public static string AdapterMeasuredGaps(int gaps, double ms, Language? l = null) => Pick(l, $"{gaps} kez {ms:F0} ms'den uzun kesinti", $"{gaps} {En(gaps, "gap", "gaps")} longer than {ms:F0} ms");
-	public static string AdapterNeedGaps(int count, double seconds, Language? l = null) => Pick(l, $"{seconds:F0} saniyede {count}'ten az olmalı", $"fewer than {count} in {seconds:F0} {En(seconds, "second", "seconds")}");
-	public static string AdapterMeasuredHaptics(double rate, Language? l = null) => Pick(l, $"Titreşim akışı saniyede {rate:F0}", $"Vibration stream {rate:F0} a second");
-	public static string AdapterNeedHaptics(double rate, Language? l = null) => Pick(l, $"en az {rate:F0} gerekli", $"at least {rate:F0} needed");
-	public static string AdapterMeasuredSlowdown(double idle, double load, Language? l = null) => Pick(l,
-		$"Titreşimle {idle:F0} → {load:F0} rapor/sn", $"With vibration {idle:F0} → {load:F0} reports/s");
-	public static string AdapterNeedSlowdown(double percent, Language? l = null) => Pick(l, $"en az %{percent:F0}'ı kalmalı", $"should keep at least {percent:F0}%");
-	public static string AdapterLongGaps(int gaps, Language? l = null) => Pick(l,
-		$"Kumanda verisi {gaps} kez uzun süre kesildi.",
-		$"Controller data stopped for a long moment {gaps} {En(gaps, "time", "times")}.");
+	public static string AdapterMeasuredRate(double rate, Language? l = null) => T(l, "Adapter.MeasuredRate", A("rate", rate, "F0"));
+	public static string AdapterNeedRate(double min, Language? l = null) => T(l, "Adapter.NeedRate", A("min", min, "F0"));
+	public static string AdapterMeasuredDelay(double ms, Language? l = null) => T(l, "Adapter.MeasuredDelay", A("ms", ms, "F1"));
+	public static string AdapterNeedDelay(double ms, Language? l = null) => T(l, "Adapter.NeedDelay", A("ms", ms, "F0"));
+	public static string AdapterMeasuredNoLoss(Language? l = null) => T(l, "Adapter.MeasuredNoLoss");
+	public static string AdapterMeasuredLoss(double percent, Language? l = null) => T(l, "Adapter.MeasuredLoss", A("percent", percent, "F1"));
+	public static string AdapterNeedLoss(double percent, Language? l = null) => T(l, "Adapter.NeedLoss", A("percent", percent, "F1"));
+	public static string AdapterMeasuredGaps(int gaps, double ms, Language? l = null) => T(l, "Adapter.MeasuredGaps", A("gaps", gaps), A("ms", ms, "F0"));
+	public static string AdapterNeedGaps(int count, double seconds, Language? l = null) => T(l, "Adapter.NeedGaps", A("count", count), A("seconds", seconds, "F0"));
+	public static string AdapterMeasuredHaptics(double rate, Language? l = null) => T(l, "Adapter.MeasuredHaptics", A("rate", rate, "F0"));
+	public static string AdapterNeedHaptics(double rate, Language? l = null) => T(l, "Adapter.NeedHaptics", A("rate", rate, "F0"));
+	public static string AdapterMeasuredSlowdown(double idle, double load, Language? l = null) => T(l, "Adapter.MeasuredSlowdown", A("idle", idle, "F0"), A("load", load, "F0"));
+	public static string AdapterNeedSlowdown(double percent, Language? l = null) => T(l, "Adapter.NeedSlowdown", A("percent", percent, "F0"));
+	public static string AdapterLongGaps(int gaps, Language? l = null) => T(l, "Adapter.LongGaps", A("gaps", gaps));
 }

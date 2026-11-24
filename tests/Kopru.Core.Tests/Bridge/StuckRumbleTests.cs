@@ -8,7 +8,7 @@ using Kopru.Core.Virtual;
 
 namespace Kopru.Core.Tests;
 
-// Classic rumble never outlives the game: the rumble bits left out with none following (Steam Input / SDL's stop), no
+// Classic rumble never outlives the game: the rumble bits left out with none following (how some game input layers stop rumble), no
 // rumble report for the pad's hold limit (fade, then zero), the active game exiting, the host releasing the pad and the
 // bridge stopping all zero the motors, with one log line each; a report without the bits alone never cuts a rumble.
 public class StuckRumbleTests
@@ -72,7 +72,7 @@ public class StuckRumbleTests
 	{
 		using Rig rig = new();
 		rig.Rumble(200, 100);
-		// Steam Input / SDL stop: the bits left out, motor bytes 0. The motors stay for now.
+		// Rumble stop by clearing the rumble bits (motor bytes 0). The motors stay for now.
 		GameLightTests.SendOutput(rig.Pad, b => OutputBlock.SetLightbar(b, 1, 2, 3));
 		Assert.Equal(((byte)200, (byte)100), rig.Bridge.Motors);
 

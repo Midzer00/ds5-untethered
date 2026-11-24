@@ -52,7 +52,7 @@ public sealed record GyroSettings
 // Adds the gyro turn rate to the right stick of the 63-byte input body. Keeps state (smoothing, toggle), so feed it from
 // one thread; Apply allocates nothing.
 //
-// Body offsets (Linux drivers/hid/hid-playstation.c, struct dualsense_input_report minus the report ID):
+// Body offsets (public DualSense input report documentation, offsets after the report ID):
 //   15..20 gyro[3]  int16 little endian: X = pitch, Y = yaw, Z = roll
 //   21..26 accel[3] int16 little endian
 // Units: raw, uncalibrated counts of the IMU at its +-2000 deg/s range, about 16.4 counts per deg/s (32768 / 2000).

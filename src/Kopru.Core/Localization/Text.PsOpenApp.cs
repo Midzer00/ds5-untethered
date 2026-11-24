@@ -4,19 +4,13 @@ namespace Kopru.Core.Localization;
 // "PS: Open The App" and "Also In Games" (Settings, Controller Shortcuts group).
 public static partial class Text
 {
-	public static string PsOpenApp(Language? l = null) => Pick(l, $"ø: Uygulamayı Aç", $"ø: Open The App");
+	public static string PsOpenApp(Language? l = null) => T(l, "Ps.OpenApp");
 
-	public static string PsOpenAppHint(Language? l = null) => Pick(l,
-		$"ø tuşuna kısa basınca DS5 Untethered Fare Modu açık olarak öne gelir, yeniden basınca saat yanındaki simgeye çekilir. Oyun açıkken ne olacağını \"Oyunda Da Aç\" belirler. Uzun basış her zaman oyuna gider. Sanal kumanda çalışırken geçerli.",
-		$"A short ø button press brings DS5 Untethered to the front with Mouse Mode on; another press sends it back to the icon next to the clock. \"Also In Games\" decides what happens while a game is open. A long press always goes to the game. Works while the virtual controller is running.");
+	public static string PsOpenAppHint(Language? l = null) => T(l, "Ps.OpenAppHint");
 
-	public static string PsOpenAppInGames(Language? l = null) => Pick(l, $"Oyunda Da Aç", $"Also In Games");
+	public static string PsOpenAppInGames(Language? l = null) => T(l, "Ps.OpenAppInGames");
 
-	public static string PsOpenAppInGamesShort(Language? l = null) => Pick(l,
-		$"Oyun açıkken de ø tuşuna kısa basmak uygulamayı açar.",
-		$"A short ø button press opens the app in games too.");
+	public static string PsOpenAppInGamesShort(Language? l = null) => T(l, "Ps.OpenAppInGamesShort");
 
-	public static string PsOpenAppInGamesHint(Language? l = null) => Pick(l,
-		$"Açıkken oyun sırasında ø tuşuna kısa basınca uygulama öne gelir ve bu basış oyuna gitmez; yeniden basınca uygulama gizlenir ve oyun öne döner. Kapalıyken oyun açıkken ø tuşu oyuna gider.",
-		$"On: in a game, a short ø button press brings the app up and the press does not reach the game; another press hides the app and brings the game back. Off: in a game, the ø button goes to the game.");
+	public static string PsOpenAppInGamesHint(Language? l = null) => T(l, "Ps.OpenAppInGamesHint");
 }

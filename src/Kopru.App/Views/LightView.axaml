@@ -195,7 +195,7 @@
                 </ListBox>
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Margin="0,2,0,0">
                   <TextBlock Classes="label" Text="{Binding LedBrightnessLabel}" VerticalAlignment="Center" />
-                  <ListBox Grid.Column="1" Name="LedBrightnessChoice" Theme="{StaticResource Segmented}" Width="{StaticResource ControlWidthCompact}" AutoScrollToSelectedItem="False"
+                  <ListBox Grid.Column="1" Name="LedBrightnessChoice" Theme="{StaticResource Segmented}" MinWidth="{StaticResource ControlWidthCompact}" AutoScrollToSelectedItem="False"
                            ItemsSource="{Binding LedLevels}" SelectedItem="{Binding SelectedLedLevel}" AutomationProperties.Name="{Binding LedBrightnessLabel}">
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>

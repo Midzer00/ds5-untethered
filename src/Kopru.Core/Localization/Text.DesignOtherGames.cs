@@ -5,58 +5,44 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 
-	public static string OtherGamesRumbleTryHint(Language? l = null) => Pick(l,
-		$"Bu ayarlarla kısa bir titreşim çalar; Sol ve Sağ Haptik yalnızca o tarafı dener.",
-		$"Plays a short rumble with these settings; Left and Right Haptics try one side only.");
+	public static string OtherGamesRumbleTryHint(Language? l = null) => T(l, "Other.GamesRumbleTryHint");
 
-	public static string OtherGamesTriggerTryHint(Language? l = null) => Pick(l,
-		$"Seçili efekti kısa bir süre L2 ve R2'ye uygular.",
-		$"Puts the chosen effect on L2 and R2 for a moment.");
+	public static string OtherGamesTriggerTryHint(Language? l = null) => T(l, "Other.GamesTriggerTryHint");
 
 	// The one game profile's cards (FallbackTriggerLabel/Hint in Text.Ui are the fallback row) and the pages.
-	public static string GameEffectsCard(Language? l = null) => Pick(l, $"Oyunun Kendi Efektleri", $"The Game's Own Effects");
+	public static string GameEffectsCard(Language? l = null) => T(l, "Game.EffectsCard");
 
-	public static string GameEffectsCardHint(Language? l = null) => Pick(l,
-		$"DualSense'i destekleyen oyunların gönderdiği haptik ve tetik efektlerinin gücü.",
-		$"How strong the haptics and trigger effects sent by DualSense games feel.");
+	public static string GameEffectsCardHint(Language? l = null) => T(l, "Game.EffectsCardHint");
 
-	public static string ClassicRumbleCard(Language? l = null) => Pick(l, $"Xbox ve DS4 Titreşimi", $"Xbox And DS4 Rumble");
+	public static string ClassicRumbleCard(Language? l = null) => T(l, "Classic.RumbleCard");
 
-	public static string ClassicRumbleCardHint(Language? l = null) => Pick(l,
-		$"Genel profil: Xbox ve DS4 türünde, ya da oyun yalnızca klasik titreşim gönderdiğinde bu ayarlar kullanılır.",
-		$"General profile: used with the Xbox and DS4 types, or when a game sends only classic rumble.");
+	public static string ClassicRumbleCardHint(Language? l = null) => T(l, "Classic.RumbleCardHint");
 
-	public static string PageGames(Language? l = null) => Pick(l, $"Oyunlar", $"Games");
+	public static string PageGames(Language? l = null) => T(l, "Page.Games");
 
-	public static string PageHapticsTriggers(Language? l = null) => Pick(l, $"Titreşim ve Tetikler", $"Haptics And Triggers");
+	public static string PageHapticsTriggers(Language? l = null) => T(l, "Page.HapticsTriggers");
 
-	public static string PageHapticsTriggersIntro(Language? l = null) => Pick(l,
-		$"Oyunun efektleri aynen geçer; oyun efekt göndermezse Xbox ve DS4 Titreşimi devreye girer.",
-		$"The game's own effects pass through; where it sends none, Xbox And DS4 Rumble takes over.");
+	public static string PageHapticsTriggersIntro(Language? l = null) => T(l, "Page.HapticsTriggersIntro");
 
 	// The games not in the supported list: the Games page's second view, and the link to it on Haptics And Triggers.
-	public static string UnsupportedGamesTitle(Language? l = null) => Pick(l, $"Desteklenmeyen Oyunlar", $"Unsupported Games");
+	public static string UnsupportedGamesTitle(Language? l = null) => T(l, "Unsupported.GamesTitle");
 
-	public static string UnsupportedGamesHint(Language? l = null) => Pick(l,
-		$"Bu oyunlar seçtiğin profilin Xbox ve DS4 Titreşimi ayarlarını kullanır.",
-		$"These games use the Xbox And DS4 Rumble settings of the profile you pick.");
+	public static string UnsupportedGamesHint(Language? l = null) => T(l, "Unsupported.GamesHint");
 
 	// The Games page's main switch.
-	public static string SupportedView(Language? l = null) => Pick(l, $"Desteklenen", $"Supported");
+	public static string SupportedView(Language? l = null) => T(l, "Supported.View");
 
-	public static string UnsupportedViewCount(int count, Language? l = null) => Pick(l, $"Desteklenmeyen ({count})", $"Unsupported ({count})");
+	public static string UnsupportedViewCount(int count, Language? l = null) => T(l, "Unsupported.ViewCount", A("count", count));
 
 	// Starting a game from the list.
-	public static string PlayGame(Language? l = null) => Pick(l, $"Oyna", $"Play");
+	public static string PlayGame(Language? l = null) => T(l, "Play.Game");
 
-	public static string PlayGameTip(Language? l = null) => Pick(l, $"Oyunu başlatır.", $"Starts the game.");
+	public static string PlayGameTip(Language? l = null) => T(l, "Play.GameTip");
 
-	public static string GameLaunchFailedTitle(Language? l = null) => Pick(l, $"Oyun Başlatılamadı", $"Couldn't Start The Game");
+	public static string GameLaunchFailedTitle(Language? l = null) => T(l, "Game.LaunchFailedTitle");
 
-	public static string GameLaunchFailedBody(string game, Language? l = null) => Pick(l, $"{game} başlatılamadı.", $"{game} couldn't be started.");
+	public static string GameLaunchFailedBody(string game, Language? l = null) => T(l, "Game.LaunchFailedBody", A("game", game));
 
 	// The tooltip of "Profil: …" on the Haptics And Triggers page.
-	public static string EditingProfileTip(Language? l = null) => Pick(l,
-		$"Buradaki ayarlar bu profile kaydedilir. Oyunlar sayfasında her oyuna ayrı profil seçebilirsin.",
-		$"These settings are saved to this profile. On the Games page you can pick a profile for each game.");
+	public static string EditingProfileTip(Language? l = null) => T(l, "Editing.ProfileTip");
 }

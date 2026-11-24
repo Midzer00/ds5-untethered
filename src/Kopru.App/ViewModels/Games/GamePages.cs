@@ -206,7 +206,8 @@ public sealed partial class SupportedGamesViewModel : GameModePageViewModel
 		_images = images;
 		_installedGames = installed;
 		_now = now ?? (() => DateTimeOffset.Now);
-		Panel = new GamePanelViewModel(settings, () => service.Games.ActiveGame?.Key, service.TestTriggers);
+		Panel = new GamePanelViewModel(settings, () => service.Games.ActiveGame?.Key, service.TestTriggers,
+			() => service.Kind == ControllerKind.DualSenseEdge, new GameCloser(service.Games));
 		// A start file chosen or cleared: the rows read "Oyna" again.
 		settings.PropertyChanged += (_, e) =>
 		{
@@ -669,6 +670,14 @@ public sealed partial class OtherGamesViewModel : GameModePageViewModel
 	public string RightText => Text.TestHapticsRight();
 	public string RumbleTryHint => Text.OtherGamesRumbleTryHint();
 	public string TriggerTryHint => Text.OtherGamesTriggerTryHint();
+	public string PauseHapticsLabel => Text.PauseHapticsInSilence();
+	public string PauseHapticsShort => Text.PauseHapticsInSilenceShort();
+	public string PauseHapticsHint => Text.PauseHapticsInSilenceHint();
+	public string ExperimentalTag => Text.ExperimentalTag();
+	public string XboxTriggerRumbleTitle => Text.XboxTriggerRumbleTitle();
+	public string XboxTriggerRumbleLabel => Text.XboxTriggerRumbleSetting();
+	public string XboxTriggerRumbleShort => Text.XboxTriggerRumbleSettingShort();
+	public string XboxTriggerRumbleHint => Text.XboxTriggerRumbleSettingHint();
 	[RelayCommand]
 	private void TestRumble() => Service.TestRumble();
 
@@ -677,4 +686,12 @@ public sealed partial class OtherGamesViewModel : GameModePageViewModel
 
 	[RelayCommand]
 	private void TestHaptics(HapticSide side) => Service.TestHaptics(side);
+}
+
+// The panel's Close Game, over the game mode controller (which only touches the detected active game).
+internal sealed class GameCloser(Kopru.Core.Games.GameModeController games) : IGameCloser
+{
+	public bool RequestClose(string key) => games.RequestCloseActiveGame(key);
+
+	public bool End(string key) => games.EndActiveGame(key);
 }

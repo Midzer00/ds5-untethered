@@ -134,7 +134,7 @@ public sealed class UiPolishLayoutTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach ((double width, double height) in Sizes)
@@ -150,8 +150,8 @@ public sealed class UiPolishLayoutTests
 					// Custom Trigger with Weapon and Vibration, so its column has every kind of row.
 					model.Feel.LeftTrigger.EffectIndex = 2;
 					model.Feel.RightTrigger.EffectIndex = 3;
-					foreach ((int segment, string column) in new[] { (GamePanelViewModel.GameSegment, "GameSegment"), (GamePanelViewModel.VibrationSegment, "VibrationLeft"),
-						(GamePanelViewModel.VibrationSegment, "PanelAudio"), (GamePanelViewModel.TriggersSegment, "TriggersRight") })
+					foreach ((int segment, string column) in new[] { (GamePanelViewModel.VibrationSegment, "VibrationLeft"),
+						(GamePanelViewModel.VibrationSegment, "PanelAudio"), (GamePanelViewModel.TriggersSegment, "PanelLeftTriggerBlock"), (GamePanelViewModel.TriggersSegment, "PanelRightTriggerBlock") })
 					{
 						model.SelectedSegment = segment;
 						Settle(window);
@@ -181,7 +181,7 @@ public sealed class UiPolishLayoutTests
 					ComboBox profile = panel.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "PanelProfile");
 					Button more = panel.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "PanelProfileActions");
 					Rect typeBox = FitCheck.Bounds(type, window), profileBox = FitCheck.Bounds(profile, window), moreBox = FitCheck.Bounds(more, window);
-					if (Math.Abs(typeBox.Left - profileBox.Left) > 0.5 || Math.Abs(typeBox.Right - moreBox.Right) > 0.5)
+					if (profileBox.Left < typeBox.Right || moreBox.Right < profileBox.Right || Math.Abs(typeBox.Top - profileBox.Top) > 0.5)
 					{
 						problems.Add($"{at}: type picker {typeBox}, profile picker {profileBox} and its actions {moreBox} do not share the control column");
 					}
@@ -223,7 +223,7 @@ public sealed class UiPolishLayoutTests
 		Assert.Equal(Kopru.Core.Profiles.ProfileBook.MaxNameLength, name.Length);
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				foreach ((double width, double height) in new[] { (1152.0, 700.0), (1100.0, 700.0) })
@@ -241,7 +241,8 @@ public sealed class UiPolishLayoutTests
 					ComboBox profile = panel.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "PanelProfile");
 					Button actions = panel.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "PanelProfileActions");
 					Rect typeRect = FitCheck.Bounds(type, window), profileRect = FitCheck.Bounds(profile, window), actionsRect = FitCheck.Bounds(actions, window);
-					if (Math.Abs(typeRect.Left - profileRect.Left) > 0.5 || Math.Abs(typeRect.Right - actionsRect.Right) > 0.5)
+					// The profile column sits right of the type column (three columns under the chain): the picker and its actions fill it.
+					if (profileRect.Left < typeRect.Right || actionsRect.Right < profileRect.Right)
 					{
 						problems.Add($"{at}: profile picker {profileRect} and its actions {actionsRect} do not span the type picker {typeRect}");
 					}
@@ -362,7 +363,7 @@ public sealed class UiPolishLayoutTests
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				action(code);

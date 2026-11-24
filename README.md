@@ -154,7 +154,7 @@ DS5 Untethered is free and stays free. If it is useful to you, you can support i
 - **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the ø button.
   If the app shows "Not Paired", hold Create and the ø button until the light blinks, then pair it.
 - **The controller is plugged in with a USB cable.** While Bluetooth is connected the cable only charges: the
-  virtual controller keeps running and games still see one controller (Settings > Notifications > Cable). If
+  virtual controller keeps running and games still see one controller (Controller > Tests & Cable). If
   Bluetooth drops while the cable is in, the app stops the virtual controller ("Bluetooth Connection Lost") and
   games use the wired controller; it starts again by itself when Bluetooth is back.
 - **SmartScreen warns when you start the installer.** The build is not signed: choose "More info", then "Run anyway".
@@ -192,7 +192,7 @@ Done and tested in code, not yet verified on hardware:
   10 21H2 the app uses Xbox 360 instead.
 - Stopping rumble that keeps going after a game closes; fewer microphone dropouts (adaptive buffer, lost-packet
   concealment).
-- The app: setup page, Overview, Games, Haptics And Triggers, one Controller page (Test, Output Tests, Remap and
+- The app: setup page, Overview, Games, Haptics And Triggers, one Controller page (Test, Tests & Cable, Remap and
   Gyro), Light, Settings, the icon next to the clock and notifications; the bridge is shown as the "Virtual
   Controller" and starts by itself (stop it in Settings > General or from the menu of its icon next to the clock).
   The controller pictures show the real colour of the controller's light.
@@ -220,6 +220,10 @@ Not done yet:
 - A Bluetooth adapter
 - [usbip-win2](https://github.com/vadimgrn/usbip-win2)
 - [HidHide](https://github.com/nefarius/HidHide)
+
+### Translating
+
+The app's texts live in `src/Kopru.Core/Localization/strings/`. To add a language, see [docs/TRANSLATING.md](docs/TRANSLATING.md).
 
 ### Building
 
@@ -397,7 +401,7 @@ Hata bildirimleri, öneriler ve kod katkıları da projenin gelişmesine yardım
 - **Kumanda Windows'ta eşleşmiş ama uygulama "Bağlı Değil" gösteriyor.** Kumanda kapalı ya da uykuda: PS tuşuna basın.
   Uygulama "Eşleşmemiş" gösteriyorsa Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
 - **Kumanda USB kablosuyla takılı.** Bluetooth bağlıyken kablo yalnızca şarj eder: sanal kumanda çalışmaya devam
-  eder ve oyunlar yine tek kumanda görür (Ayarlar > Bildirimler > Kablo). Kablo takılıyken Bluetooth koparsa
+  eder ve oyunlar yine tek kumanda görür (Kumanda > Testler ve Kablo). Kablo takılıyken Bluetooth koparsa
   uygulama sanal kumandayı durdurur ("Bluetooth Bağlantısı Koptu") ve oyunlar kablolu kumandayı kullanır; Bluetooth
   geri gelince sanal kumanda kendiliğinden yeniden başlar.
 - **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Uygulamada kod imzası yok: "Ek bilgi"ye, ardından "Yine de
@@ -437,8 +441,8 @@ Otomatik testleri tamamlanan, donanım doğrulaması bekleyenler:
   sürümlerde bunun yerine Xbox 360 türü kullanılır.
 - Oyun kapandıktan sonra süren titreşimin durdurulması; mikrofonun daha az kesilmesi (bağlantıya göre ayarlanan ses tamponu ve kayıp
   ses paketlerinin telafi edilmesi).
-- Uygulama: kurulum sayfası, Genel Bakış, Oyunlar, Titreşim ve Tetikler, tek bir Kumanda sayfası (Test, Çıkış
-  Testleri, Tuş Atama ve Gyro), Işık, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda"
+- Uygulama: kurulum sayfası, Genel Bakış, Oyunlar, Titreşim ve Tetikler, tek bir Kumanda sayfası (Test, Testler ve
+  Kablo, Tuş Atama ve Gyro), Işık, Ayarlar, saat yanındaki simge ve bildirimler. Köprü arayüzde "Sanal Kumanda"
   adıyla görünür ve kendiliğinden başlar (Ayarlar > Genel'den ya da saat yanındaki simgenin menüsünden durdurulur).
   Kumanda görselleri kumandanın ışığını gerçek rengiyle gösterir.
 - Oyun başına Kumanda Türü (DualSense, DualShock 4, Xbox Series ya da Xbox 360): DualSense destekleyen oyunların kendi
@@ -467,6 +471,10 @@ Henüz yapılmadı:
 - Bluetooth adaptörü
 - [usbip-win2](https://github.com/vadimgrn/usbip-win2)
 - [HidHide](https://github.com/nefarius/HidHide)
+
+### Çeviri
+
+Uygulamanın metinleri `src/Kopru.Core/Localization/strings/` klasöründe. Yeni bir dil eklemek için [docs/TRANSLATING.md](docs/TRANSLATING.md) rehberine bakın.
 
 ### Derleme
 

@@ -60,7 +60,7 @@ public sealed class ControllerLookFitTests : IDisposable
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				MainWindowViewModel vm = Start(code, out FakeControllerService fake);
@@ -287,7 +287,7 @@ public sealed class ControllerLookFitTests : IDisposable
 		using IDisposable pack = PadPack.Override(ManyVariants());
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				MainWindowViewModel vm = Start(code, out _);
@@ -359,7 +359,7 @@ public sealed class ControllerLookFitTests : IDisposable
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				MainWindowViewModel vm = Start(code, out FakeControllerService fake, edge: true);
@@ -452,7 +452,7 @@ public sealed class ControllerLookFitTests : IDisposable
 		Language? before = Localizer.Chosen;
 		try
 		{
-			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			foreach ((Language language, string code) in FitCheck.ShippedLanguages())
 			{
 				Localizer.Chosen = language;
 				MainWindowViewModel vm = Start(code, out FakeControllerService fake);

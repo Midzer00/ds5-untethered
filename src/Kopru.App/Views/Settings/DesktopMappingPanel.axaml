@@ -15,6 +15,9 @@
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Padding" Value="10,0,0,0" />
     </Style>
+    <Style Selector="StackPanel.mapRow > ComboBox ComboBoxItem">
+      <Setter Property="MinWidth" Value="220" />
+    </Style>
   </UserControl.Styles>
   <!-- Mouse mode's button mapping: the title with Reset To Default, the buttons with their action pickers, what can't change -->
   <DockPanel Classes="card">
@@ -38,6 +41,9 @@
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:MouseActionOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
                   </ComboBox.ItemTemplate>
+                  <ComboBox.SelectionBoxItemTemplate>
+                    <DataTemplate x:DataType="vm:MouseActionOption"><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                  </ComboBox.SelectionBoxItemTemplate>
                 </ComboBox>
               </StackPanel>
             </DataTemplate>

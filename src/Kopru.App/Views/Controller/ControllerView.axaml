@@ -213,7 +213,7 @@
                 AutomationProperties.Name="{Binding Look.AccessibleName}" AutomationProperties.HelpText="{Binding Look.ChangeTip}">
           <StackPanel>
             <Image Name="LookIcon" Classes="lookIcon" Source="/Assets/look-icon.png" />
-            <TextBlock Name="LookTileTitle" Classes="lookCardTitle" Text="{Binding Look.Label}" />
+            <TextBlock Name="LookTileTitle" Classes="lookCardTitle" Text="{Binding Look.Label}" ToolTip.Tip="{Binding Look.Label}" />
             <TextBlock Name="LookName" Classes="lookCardName" Text="{Binding Look.CurrentName}" ToolTip.Tip="{Binding Look.CurrentName}" />
           </StackPanel>
         </Button>
@@ -224,7 +224,29 @@
       </Panel>
 
       <Panel IsVisible="{Binding IsOutputsTab}">
-        <v:OutputTestsView DataContext="{Binding Test}" />
+        <StackPanel Spacing="{StaticResource GapLarge}">
+          <v:OutputTestsView DataContext="{Binding Test}" />
+          <!-- Cable: what the controller's cable does while it is in (talk to the controller over it, experimental; or
+               charge only). -->
+          <Border Classes="panel" Name="CablePanel">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="h2" Text="{Binding CableGroupLabel}" Margin="0,0,0,6" />
+              <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="CableModeRow" Background="Transparent" ToolTip.Tip="{Binding CableModeHint}">
+                <StackPanel Classes="text">
+                  <TextBlock Classes="label" Text="{Binding CableModeLabel}" />
+                  <TextBlock Classes="body" Text="{Binding CableModeShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Classes="control wide" Name="CableModePicker" ItemsSource="{Binding CableModes}" SelectedItem="{Binding SelectedCableMode}"
+                          HorizontalAlignment="Right"
+                          AutomationProperties.Name="{Binding CableModeLabel}" AutomationProperties.HelpText="{Binding CableModeHint}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CableModeOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
       </Panel>
 
       <Panel IsVisible="{Binding IsRemapTab}">

@@ -204,17 +204,17 @@ public partial class BridgeTests
 		FakeOpusEncoder encoder = new();
 		session.Speaker = new SpeakerAudioSender(encoder);
 
-		byte[] audio = HapticsConverterTests.Audio(480, ch1: HapticsConverterTests.Tone(440, 0.5), ch2: HapticsConverterTests.Tone(440, 0.5),
+		// Push enough audio in one burst to exceed PrefillSamples (2400 @ 45 kHz = 2560 @ 48 kHz) immediately so
+		// the session emits 0x36 speaker reports right away instead of draining haptics into 0x32 reports while
+		// waiting for StoppedAfterTakes.
+		byte[] audio = HapticsConverterTests.Audio(4800, ch1: HapticsConverterTests.Tone(440, 0.5), ch2: HapticsConverterTests.Tone(440, 0.5),
 			ch3: HapticsConverterTests.Tone(100, 0.5), ch4: HapticsConverterTests.Tone(100, 0.5));
-		for (int i = 0; i < 5; i++)
-		{
-			SendAudio(pad, audio);
-		}
+		SendAudio(pad, audio);
 
-		Assert.Equal(5 * audio.Length, bridge.SpeakerBytes);
+		Assert.Equal(audio.Length, bridge.SpeakerBytes);
 		// Haptics ride in the speaker reports.
 		WaitUntil(() => link.Writes.Any(w => w[0] == SpeakerReports.ReportId && w.AsSpan(13, 64).ToArray().Any(s => s != 0)));
-		Assert.Contains(encoder.Frames.SelectMany(f => f), s => Math.Abs((int)s) > 1000); // the 440 Hz tone, not the haptics
+		Assert.Contains(encoder.Snapshot().SelectMany(f => f), s => Math.Abs((int)s) > 1000); // the 440 Hz tone, not the haptics
 	}
 
 	// Whether a sound reached the speaker channels is logged with the speaker off too (the test that tells the game's

@@ -5,95 +5,83 @@ namespace Kopru.Core.Localization;
 // translated and live in the view model.
 public static partial class Text
 {
-	public static string TesterSourceBridge(Language? l = null) => Pick(l, $"Canlı · Sanal Kumanda", $"Live · Virtual Controller");
+	public static string TesterSourceBridge(Language? l = null) => T(l, "Tester.SourceBridge");
 
-	public static string TesterSourceDirect(Language? l = null) => Pick(l, $"Doğrudan Okuma", $"Direct Read");
+	public static string TesterSourceDirect(Language? l = null) => T(l, "Tester.SourceDirect");
 
-	public static string TesterNoInput(Language? l = null) => Pick(l, $"Giriş Yok", $"No Input");
+	public static string TesterNoInput(Language? l = null) => T(l, "Tester.NoInput");
 
-	public static string TesterNoInputHint(Language? l = null) => Pick(l,
-		$"Kumandadan giriş gelmiyor. Bluetooth ile bağlı olduğundan emin ol.",
-		$"No input from the controller. Make sure it is connected over Bluetooth.");
+	public static string TesterNoInputHint(Language? l = null) => T(l, "Tester.NoInputHint");
 
-	public static string TesterDirectHint(Language? l = null) => Pick(l,
-		$"Sanal kumanda kapalı olduğu için gerçek kumanda yalnızca okunuyor; ona hiçbir şey gönderilmiyor.",
-		$"The virtual controller is off, so the controller is only read; nothing is sent to it.");
+	public static string TesterDirectHint(Language? l = null) => T(l, "Tester.DirectHint");
 
-	public static string TesterLeftStick(Language? l = null) => Pick(l, $"Sol Analog", $"Left Stick");
+	public static string TesterLeftStick(Language? l = null) => T(l, "Tester.LeftStick");
 
-	public static string TesterRightStick(Language? l = null) => Pick(l, $"Sağ Analog", $"Right Stick");
+	public static string TesterRightStick(Language? l = null) => T(l, "Tester.RightStick");
 
-	public static string TesterStickHint(Language? l = null) => Pick(l,
-		$"Gri nokta ham konum, mavi nokta ayarlarınla oyuna giden konum.",
-		$"The grey dot is the raw position, the blue dot what games receive with your settings.");
+	public static string TesterStickHint(Language? l = null) => T(l, "Tester.StickHint");
 
-	public static string TesterNoTouch(Language? l = null) => Pick(l, $"Dokunma Yok", $"No Touch");
+	public static string TesterNoTouch(Language? l = null) => T(l, "Tester.NoTouch");
 
-	public static string TesterMotion(Language? l = null) => Pick(l, $"Hareket Sensörleri", $"Motion Sensors");
+	public static string TesterMotion(Language? l = null) => T(l, "Tester.Motion");
 
-	public static string TesterGyro(Language? l = null) => Pick(l, $"Jiroskop", $"Gyroscope");
+	public static string TesterGyro(Language? l = null) => T(l, "Tester.Gyro");
 
-	public static string TesterAccel(Language? l = null) => Pick(l, $"İvmeölçer", $"Accelerometer");
+	public static string TesterAccel(Language? l = null) => T(l, "Tester.Accel");
 
-	public static string TesterMotionNeedsFull(Language? l = null) => Pick(l,
-		$"Hareket ve dokunma verisi kumanda tam rapora geçince görünür.",
-		$"Motion and touch data appear once the controller sends full reports.");
+	public static string TesterMotionNeedsFull(Language? l = null) => T(l, "Tester.MotionNeedsFull");
 
-	public static string TesterBattery(Language? l = null) => Pick(l, $"Pil", $"Battery");
+	public static string TesterBattery(Language? l = null) => T(l, "Tester.Battery");
 
-	public static string TesterConnection(Language? l = null) => Pick(l, $"Bağlantı", $"Connection");
+	public static string TesterConnection(Language? l = null) => T(l, "Tester.Connection");
 
-	public static string TesterReportRate(Language? l = null) => Pick(l, $"Rapor Hızı", $"Report Rate");
+	public static string TesterReportRate(Language? l = null) => T(l, "Tester.ReportRate");
 
-	public static string TesterSource(Language? l = null) => Pick(l, $"Kaynak", $"Source");
+	public static string TesterSource(Language? l = null) => T(l, "Tester.Source");
 
-	public static string TesterOutputs(Language? l = null) => Pick(l, $"Çıkış Testleri", $"Output Tests");
+	public static string TesterOutputs(Language? l = null) => T(l, "Tester.Outputs");
 
-	public static string TesterOutputsHint(Language? l = null) => Pick(l,
-		$"Bir test çalışırken canlı okuma kısa bir süre durabilir.",
-		$"Live reading may pause briefly while a test runs.");
+	public static string TesterOutputsHint(Language? l = null) => T(l, "Tester.OutputsHint");
 
-	public static string TesterHaptics(Language? l = null) => Pick(l, $"Titreşim", $"Haptics");
+	public static string TesterHaptics(Language? l = null) => T(l, "Tester.Haptics");
 
-	public static string TesterLeft(Language? l = null) => Pick(l, $"Sol", $"Left");
+	public static string TesterLeft(Language? l = null) => T(l, "Tester.Left");
 
-	public static string TesterRight(Language? l = null) => Pick(l, $"Sağ", $"Right");
+	public static string TesterRight(Language? l = null) => T(l, "Tester.Right");
 
-	public static string TesterTriggerEffects(Language? l = null) => Pick(l, $"Tetik Efektleri", $"Trigger Effects");
+	public static string TesterTriggerEffects(Language? l = null) => T(l, "Tester.TriggerEffects");
 
-	public static string TesterLightColour(Language? l = null) => Pick(l, $"Işık Rengi", $"Light Colour");
+	public static string TesterLightColour(Language? l = null) => T(l, "Tester.LightColour");
 
 	// Two lines on purpose (the card is narrow; a free wrap leaves one word alone on the second line).
-	public static string TesterCalibrationHint(Language? l = null) => Pick(l,
-		$"Kumandayı bırak,\nçubuklara 3 saniye dokunma.",
-		$"Put the controller down and\nleave the sticks for 3 seconds.");
+	public static string TesterCalibrationHint(Language? l = null) => T(l, "Tester.CalibrationHint");
 
-	public static string TesterSquare(Language? l = null) => Pick(l, $"Kare", $"Square");
+	public static string TesterSquare(Language? l = null) => T(l, "Tester.Square");
 
-	public static string TesterCross(Language? l = null) => Pick(l, $"Çarpı", $"Cross");
+	public static string TesterCross(Language? l = null) => T(l, "Tester.Cross");
 
-	public static string TesterCircle(Language? l = null) => Pick(l, $"Daire", $"Circle");
+	public static string TesterCircle(Language? l = null) => T(l, "Tester.Circle");
 
-	public static string TesterTriangle(Language? l = null) => Pick(l, $"Üçgen", $"Triangle");
+	public static string TesterTriangle(Language? l = null) => T(l, "Tester.Triangle");
 
-	public static string TesterUp(Language? l = null) => Pick(l, $"Yukarı", $"Up");
+	public static string TesterUp(Language? l = null) => T(l, "Tester.Up");
 
-	public static string TesterDown(Language? l = null) => Pick(l, $"Aşağı", $"Down");
+	public static string TesterDown(Language? l = null) => T(l, "Tester.Down");
 
-	public static string TesterCreate(Language? l = null) => Pick(l, $"Oluştur", $"Create");
+	public static string TesterCreate(Language? l = null) => T(l, "Tester.Create");
 
-	public static string TesterOptions(Language? l = null) => Pick(l, $"Seçenekler", $"Options");
+	public static string TesterOptions(Language? l = null) => T(l, "Tester.Options");
 
-	public static string TesterTouchClick(Language? l = null) => Pick(l, $"Yüzey Tıklama", $"Pad Click");
+	public static string TesterTouchClick(Language? l = null) => T(l, "Tester.TouchClick");
 
-	public static string TesterMute(Language? l = null) => Pick(l, $"Sessiz", $"Mute");
+	public static string TesterMute(Language? l = null) => T(l, "Tester.Mute");
 
-	public static string TesterLeftFn(Language? l = null) => Pick(l, $"Sol Fn", $"Left Fn");
+	public static string TesterLeftFn(Language? l = null) => T(l, "Tester.LeftFn");
 
-	public static string TesterRightFn(Language? l = null) => Pick(l, $"Sağ Fn", $"Right Fn");
+	public static string TesterRightFn(Language? l = null) => T(l, "Tester.RightFn");
 
-	public static string TesterLeftPaddle(Language? l = null) => Pick(l, $"Sol Arka", $"Left Back");
+	public static string TesterLeftPaddle(Language? l = null) => T(l, "Tester.LeftPaddle");
 
-	public static string TesterRightPaddle(Language? l = null) => Pick(l, $"Sağ Arka", $"Right Back");
+	public static string TesterRightPaddle(Language? l = null) => T(l, "Tester.RightPaddle");
 
 }

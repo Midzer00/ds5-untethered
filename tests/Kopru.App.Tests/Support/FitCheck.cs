@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
+using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Kopru.App.Controls;
+using Kopru.Core.Localization;
 
 namespace Kopru.App.Tests;
 
@@ -13,6 +17,12 @@ namespace Kopru.App.Tests;
 // no text cut off.
 internal static class FitCheck
 {
+	// Every shipped language discovered from embedded strings/<code>.json resources.
+	public static IReadOnlyList<(Language Language, string Code)> ShippedLanguages() =>
+		Localizer.Available.Select(l => (l, l.Code)).ToArray();
+
+	// The three required review sizes: design size, owner's window (225% DPI layout units), and minimum window.
+	public static readonly (double Width, double Height)[] ReviewSizes = [(1100, 700), (1152, 700), (960, 640)];
 	// The window's minimum, common screens, ultra-wide, tall, 4:3.
 	public static readonly (double Width, double Height)[] Matrix =
 	[
@@ -35,11 +45,19 @@ internal static class FitCheck
 		Dispatcher.UIThread.RunJobs();
 	}
 
-	public static IEnumerable<string> Scrolls(ScrollViewer scroll, string arrangement)
+	public static IEnumerable<string> Scrolls(ScrollViewer scroll, string arrangement, bool allowVerticalSafetyNet = false)
 	{
+		if (scroll.Extent.Width > scroll.Viewport.Width + 0.5)
+		{
+			yield return $"scrolls horizontally: extent {scroll.Extent.Width:F1} > viewport {scroll.Viewport.Width:F1} ({arrangement})";
+		}
 		if (scroll.Extent.Height > scroll.Viewport.Height + 0.5)
 		{
-			yield return $"scrolls: extent {scroll.Extent.Height:F1} > viewport {scroll.Viewport.Height:F1} ({arrangement})";
+			bool hasBar = scroll.VerticalScrollBarVisibility is ScrollBarVisibility.Auto or ScrollBarVisibility.Visible;
+			if (!allowVerticalSafetyNet || !hasBar)
+			{
+				yield return $"scrolls: extent {scroll.Extent.Height:F1} > viewport {scroll.Viewport.Height:F1} ({arrangement})";
+			}
 		}
 	}
 
@@ -82,17 +100,73 @@ internal static class FitCheck
 		}
 	}
 
-	// No visible text under `root` is trimmed, narrower than it wants to be or wider than its box (one that does not wrap).
+	// No visible text under `root` is cut off: trimmed text with a matching full-text ToolTip is allowed; otherwise
+	// any collapsed line, narrow box or overflowing layout fails.
 	public static IEnumerable<string> CutText(Visual root)
 	{
 		foreach (TextBlock text in root.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)))
 		{
-			if (text.TextLayout.TextLines.Any(l => l.HasCollapsed) || text.Bounds.Width + 0.5 < text.DesiredSize.Width - text.Margin.Left - text.Margin.Right
-				|| text.TextLayout.Width > text.Bounds.Width - text.Padding.Left - text.Padding.Right + 0.5)
+			if (IsTextCutOff(text))
 			{
 				yield return $"text cut off: \"{text.Text}\"";
 			}
 		}
+	}
+
+	public static bool IsTextCutOff(TextBlock text)
+	{
+		double availableWidth = text.Bounds.Width - text.Padding.Left - text.Padding.Right;
+		if (text.TextTrimming != TextTrimming.None && HasMatchingToolTip(text))
+		{
+			// Intentional ellipsis with a matching full-text ToolTip: fits as long as the ellipsized text stays inside its box.
+			return text.Bounds.Width <= 0 || text.TextLayout.Width > availableWidth + 0.5;
+		}
+		return text.TextLayout.TextLines.Any(l => l.HasCollapsed)
+			|| text.Bounds.Width + 0.5 < text.DesiredSize.Width - text.Margin.Left - text.Margin.Right
+			|| text.TextLayout.Width > availableWidth + 0.5;
+	}
+
+	public static bool HasMatchingToolTip(TextBlock text)
+	{
+		string? fullText = text.Text;
+		if (string.IsNullOrEmpty(fullText))
+		{
+			return false;
+		}
+		if (ToolTipMatches(ToolTip.GetTip(text), fullText))
+		{
+			return true;
+		}
+		foreach (Visual ancestor in text.GetVisualAncestors())
+		{
+			if (ancestor is Window or UserControl or ScrollViewer)
+			{
+				break;
+			}
+			if (ancestor is Control control && ToolTipMatches(ToolTip.GetTip(control), fullText))
+			{
+				return true;
+			}
+			if (ancestor is ComboBox or Button or ToggleButton or ListBoxItem or TabItem)
+			{
+				break;
+			}
+		}
+		return false;
+	}
+
+	private static bool ToolTipMatches(object? tip, string expected)
+	{
+		if (tip is string s)
+		{
+			return s.Contains(expected, StringComparison.Ordinal);
+		}
+		if (tip is ILogical logical)
+		{
+			return logical.GetSelfAndLogicalDescendants().OfType<TextBlock>()
+				.Any(t => !string.IsNullOrEmpty(t.Text) && t.Text.Contains(expected, StringComparison.Ordinal));
+		}
+		return false;
 	}
 
 	// Inside a ScrollViewer that is itself inside `card`.

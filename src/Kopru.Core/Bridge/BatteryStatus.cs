@@ -13,7 +13,7 @@ public enum ChargeState
 }
 
 // Battery from the DualSense input body (63 bytes; byte 1 of USB report 0x01, byte 2 of Bluetooth report 0x31).
-// Public DualSense input layout (as documented by the Linux hid-playstation driver's input report struct): the status
+// Public DualSense input report documentation: the status
 // byte is body offset 52 (USB report byte 53, Bluetooth 0x31 report byte 54). Its low nibble is the battery level in
 // steps of 10 % (0..10, larger values clamp to 100 %), its high nibble the charging state: 0 discharging, 1 charging,
 // 2 fully charged, anything else an error (charging halted).

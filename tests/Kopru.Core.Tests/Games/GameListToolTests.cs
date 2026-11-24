@@ -144,4 +144,55 @@ public class GameListToolTests
 		Assert.DoesNotContain("2026-11-16", twice);
 		Assert.StartsWith("# Sources", twice);
 	}
+
+	[Fact]
+	public void Merge_AliasesCoverMultipleWikiTitles_WithoutReAddingOrPruning()
+	{
+		const string hubJson = """
+			{
+			  "version": 1,
+			  "updated": "2026-11-01",
+			  "games": [
+			    {
+			      "name": "Nebula Hub",
+			      "exe": ["nebula.exe"],
+			      "steamAppId": 999001,
+			      "haptics": true,
+			      "adaptiveTriggers": true,
+			      "exeConfidence": "medium",
+			      "notes": "One launcher covers all chapters",
+			      "aliases": [
+			        "Nebula: First Light",
+			        "Nebula: Starfall II",
+			        "Nebula: Frontier 2.0"
+			      ]
+			    }
+			  ]
+			}
+			""";
+		IReadOnlyList<WikiGame> wiki =
+		[
+			new("Nebula: First Light", Haptics: true, AdaptiveTriggers: false),
+			new("Nebula: Starfall 2", Haptics: false, AdaptiveTriggers: true),
+			new("Nebula: Frontier 2.0", Haptics: true, AdaptiveTriggers: true),
+			new("Unrelated Quest", Haptics: true, AdaptiveTriggers: false, SteamAppId: 999002),
+		];
+
+		MergeResult result = GameListMerger.Merge(GameListFile.Parse(hubJson), wiki, "2026-11-24", prune: true);
+
+		Assert.Equal(["Unrelated Quest"], result.Added);
+		Assert.Empty(result.Removed);
+		Assert.Empty(result.Changed);
+		GameEntry hub = Assert.Single(result.File.Games, g => g.Name == "Nebula Hub");
+		Assert.Equal(["nebula.exe"], hub.Exe);
+		Assert.True(hub.Haptics);
+		Assert.True(hub.AdaptiveTriggers);
+		Assert.Equal(["Nebula: First Light", "Nebula: Starfall II", "Nebula: Frontier 2.0"], hub.Aliases);
+
+		string json = result.File.ToJson();
+		Assert.Contains("\"aliases\"", json);
+		GameListFile reparsed = GameListFile.Parse(json);
+		Assert.Equal(hub.Aliases, reparsed.Games.Single(g => g.Name == "Nebula Hub").Aliases);
+		Assert.Null(reparsed.Games.Single(g => g.Name == "Unrelated Quest").Aliases);
+	}
 }

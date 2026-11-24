@@ -5,206 +5,126 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 	// Chip names (Title Case).
-	public static string HealthChipDriver(Language? l = null) => Pick(l, $"Sürücü", $"Driver");
-	public static string HealthChipHiding(Language? l = null) => Pick(l, $"Gizleme", $"Hiding");
-	public static string HealthChipSteamInput(Language? l = null) => Pick(l, $"Steam Girişi", $"Steam Input");
-	public static string HealthChipAdapter(Language? l = null) => Pick(l, $"Adaptör", $"Adapter");
-	public static string HealthChipBridge(Language? l = null) => Pick(l, $"Sanal Kumanda", $"Virtual Controller");
+	public static string HealthChipDriver(Language? l = null) => T(l, "Health.ChipDriver");
+	public static string HealthChipHiding(Language? l = null) => T(l, "Health.ChipHiding");
+	public static string HealthChipSteamInput(Language? l = null) => T(l, "Health.ChipSteamInput");
+	public static string HealthChipAdapter(Language? l = null) => T(l, "Health.ChipAdapter");
+	public static string HealthChipBridge(Language? l = null) => T(l, "Health.ChipBridge");
 
 	// Connection states (Title Case labels).
-	public static string ConnectionBluetoothOff(Language? l = null) => Pick(l, $"Bluetooth Kapalı", $"Bluetooth Off");
-	public static string ConnectionNoRadio(Language? l = null) => Pick(l, $"Bluetooth Yok", $"No Bluetooth");
-	public static string ConnectionNeverPaired(Language? l = null) => Pick(l, $"Eşleşmemiş", $"Not Paired");
-	public static string ConnectionPairedNotConnected(Language? l = null) => Pick(l, $"Bağlı Değil", $"Not Connected");
-	public static string ConnectionOnBluetooth(Language? l = null) => Pick(l, $"Bluetooth ile Bağlı", $"Connected over Bluetooth");
-	public static string ConnectionOnUsb(Language? l = null) => Pick(l, $"Kabloyla Bağlı", $"Connected by Cable");
+	public static string ConnectionBluetoothOff(Language? l = null) => T(l, "Connection.BluetoothOff");
+	public static string ConnectionNoRadio(Language? l = null) => T(l, "Connection.NoRadio");
+	public static string ConnectionNeverPaired(Language? l = null) => T(l, "Connection.NeverPaired");
+	public static string ConnectionPairedNotConnected(Language? l = null) => T(l, "Connection.PairedNotConnected");
+	public static string ConnectionOnBluetooth(Language? l = null) => T(l, "Connection.OnBluetooth");
+	public static string ConnectionOnUsb(Language? l = null) => T(l, "Connection.OnUsb");
 
 	// Connection explanations (sentence case).
-	public static string ConnectionBluetoothOffReason(Language? l = null) => Pick(l,
-		$"Bluetooth kapalı. Windows ayarlarından aç.",
-		$"Bluetooth is off. Turn it on in Windows settings.");
+	public static string ConnectionBluetoothOffReason(Language? l = null) => T(l, "Connection.BluetoothOffReason");
 
-	public static string ConnectionNoRadioReason(Language? l = null) => Pick(l,
-		$"Bu bilgisayarda Bluetooth adaptörü bulunamadı.",
-		$"No Bluetooth adapter was found on this PC.");
+	public static string ConnectionNoRadioReason(Language? l = null) => T(l, "Connection.NoRadioReason");
 
-	public static string ConnectionNeverPairedReason(Language? l = null) => Pick(l,
-		$"Windows'ta eşleşmiş bir DualSense yok. Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştir.",
-		$"No DualSense is paired with Windows. Hold Create and the ø button until the light blinks, then pair it.");
+	public static string ConnectionNeverPairedReason(Language? l = null) => T(l, "Connection.NeverPairedReason");
 
-	public static string ConnectionPairedNotConnectedReason(Language? l = null) => Pick(l,
-		$"Kumanda eşleşmiş ama kapalı ya da uykuda. Açmak için ø tuşuna bas.",
-		$"The controller is paired but off or asleep. Press the ø button to turn it on.");
+	public static string ConnectionPairedNotConnectedReason(Language? l = null) => T(l, "Connection.PairedNotConnectedReason");
 
-	public static string ConnectionBluetoothReason(Language? l = null) => Pick(l,
-		$"Kumanda Bluetooth ile bağlı.",
-		$"The controller is connected over Bluetooth.");
+	public static string ConnectionBluetoothReason(Language? l = null) => T(l, "Connection.BluetoothReason");
 
-	public static string ConnectionUsbReason(Language? l = null) => Pick(l,
-		$"Kumanda kabloyla bağlı; oyunlar onu zaten kablolu görüyor, sanal kumandaya gerek yok. Kablosuz oynamak için kabloyu çıkar.",
-		$"The controller is connected by cable; games already see it as wired, so the virtual controller isn't needed. Unplug it to play wirelessly.");
+	public static string ConnectionUsbReason(Language? l = null) => T(l, "Connection.UsbReason");
 
 	// Driver chip.
-	public static string HealthDriverOk(string version, Language? l = null) => Pick(l,
-		$"usbip-win2 {version} kurulu.",
-		$"usbip-win2 {version} is installed.");
+	public static string HealthDriverOk(string version, Language? l = null) => T(l, "Health.DriverOk", A("version", version));
 
-	public static string HealthDriverMissing(Language? l = null) => Pick(l,
-		$"usbip-win2 kurulu değil; sanal kumanda onsuz çalışamaz.",
-		$"usbip-win2 isn't installed; the virtual controller can't run without it.");
+	public static string HealthDriverMissing(Language? l = null) => T(l, "Health.DriverMissing");
 
-	public static string HealthDriverServiceMissing(Language? l = null) => Pick(l,
-		$"usbip-win2 kurulu ama sürücü hizmeti yok. Yeniden kur.",
-		$"usbip-win2 is installed but its driver service is missing. Reinstall it.");
+	public static string HealthDriverServiceMissing(Language? l = null) => T(l, "Health.DriverServiceMissing");
 
-	public static string HealthRestartPending(Language? l = null) => Pick(l,
-		$"Kurulumu bitirmek için bilgisayarı yeniden başlat.",
-		$"Restart the PC to finish the installation.");
+	public static string HealthRestartPending(Language? l = null) => T(l, "Health.RestartPending");
 
-	public static string VersionUnknown(Language? l = null) => Pick(l, $"(sürüm bilinmiyor)", $"(version unknown)");
+	public static string VersionUnknown(Language? l = null) => T(l, "Version.Unknown");
 
 	// Hiding chip.
-	public static string HealthHidingMissing(Language? l = null) => Pick(l,
-		$"HidHide kurulu değil; sanal kumanda onsuz başlamaz, yoksa oyunlar iki kumanda görürdü.",
-		$"HidHide isn't installed; the virtual controller won't start without it, or games would see two controllers.");
+	public static string HealthHidingMissing(Language? l = null) => T(l, "Health.HidingMissing");
 
-	public static string HealthHidingDriverMissing(Language? l = null) => Pick(l,
-		$"HidHide kurulu ama sürücüsü yok. Yeniden kur.",
-		$"HidHide is installed but its driver is missing. Reinstall it.");
+	public static string HealthHidingDriverMissing(Language? l = null) => T(l, "Health.HidingDriverMissing");
 
-	public static string HealthHidingReady(Language? l = null) => Pick(l,
-		$"HidHide hazır; sanal kumanda çalışınca gerçek kumanda gizlenir.",
-		$"HidHide is ready; the real controller is hidden while the virtual controller runs.");
+	public static string HealthHidingReady(Language? l = null) => T(l, "Health.HidingReady");
 
-	public static string HealthHidingActive(Language? l = null) => Pick(l,
-		$"Gerçek kumanda diğer uygulamalardan gizli.",
-		$"The real controller is hidden from other apps.");
+	public static string HealthHidingActive(Language? l = null) => T(l, "Health.HidingActive");
 
-	public static string HealthHidingAppNotAllowed(Language? l = null) => Pick(l,
-		$"Uygulama HidHide izin listesine eklenemedi. Sanal kumandayı yeniden başlat.",
-		$"The app couldn't be added to the HidHide allow list. Restart the virtual controller.");
+	public static string HealthHidingAppNotAllowed(Language? l = null) => T(l, "Health.HidingAppNotAllowed");
 
-	public static string HealthHidingNotHidden(Language? l = null) => Pick(l,
-		$"Gerçek kumanda gizlenemedi; oyunlar iki kumanda görebilir.",
-		$"The real controller couldn't be hidden; games may see two controllers.");
+	public static string HealthHidingNotHidden(Language? l = null) => T(l, "Health.HidingNotHidden");
 
 	// Steam Input chip.
-	public static string HealthSteamUnknown(Language? l = null) => Pick(l,
-		$"Steam Girişi durumu okunamadı.",
-		$"The Steam Input setting couldn't be read.");
+	public static string HealthSteamUnknown(Language? l = null) => T(l, "Health.SteamUnknown");
 
-	public static string HealthSteamNotChecked(Language? l = null) => Pick(l,
-		$"Steam çalışmıyor; kontrol edilmedi.",
-		$"Steam isn't running; not checked.");
+	public static string HealthSteamNotChecked(Language? l = null) => T(l, "Health.SteamNotChecked");
 
-	public static string HealthSteamNotInstalled(Language? l = null) => Pick(l,
-		$"Steam kurulu değil.",
-		$"Steam isn't installed.");
+	public static string HealthSteamNotInstalled(Language? l = null) => T(l, "Health.SteamNotInstalled");
 
-	public static string HealthSteamOff(Language? l = null) => Pick(l,
-		$"Steam Girişi kapalı; titreşim ve tetikler oyuna ulaşır.",
-		$"Steam Input is off; haptics and triggers reach the game.");
+	public static string HealthSteamOff(Language? l = null) => T(l, "Health.SteamOff");
 
-	public static string HealthSteamOnGlobally(Language? l = null) => Pick(l,
-		$"Steam Girişi PlayStation kumandaları için açık; yerel titreşimi engelleyebilir.",
-		$"Steam Input is on for PlayStation controllers; it can block native haptics.");
+	public static string HealthSteamOnGlobally(Language? l = null) => T(l, "Health.SteamOnGlobally");
 
-	public static string HealthSteamOnForApp(Language? l = null) => Pick(l,
-		$"Steam Girişi bu oyun için açık; yerel titreşimi engelleyebilir.",
-		$"Steam Input is on for this game; it can block native haptics.");
+	public static string HealthSteamOnForApp(Language? l = null) => T(l, "Health.SteamOnForApp");
 
 	// Adapter chip.
-	public static string HealthAdapterNeverTested(Language? l = null) => Pick(l,
-		$"Adaptör henüz test edilmedi.",
-		$"The adapter hasn't been tested yet.");
+	public static string HealthAdapterNeverTested(Language? l = null) => T(l, "Health.AdapterNeverTested");
 
-	public static string HealthAdapterNoData(Language? l = null) => Pick(l,
-		$"Son testte ölçüm alınamadı. Tekrar dene.",
-		$"The last test couldn't measure anything. Try again.");
+	public static string HealthAdapterNoData(Language? l = null) => T(l, "Health.AdapterNoData");
 
-	public static string HealthAdapterResult(string verdict, string when, Language? l = null) => Pick(l,
-		$"Son test: {verdict} · {when}",
-		$"Last test: {verdict} · {when}");
+	public static string HealthAdapterResult(string verdict, string when, Language? l = null) => T(l, "Health.AdapterResult", A("verdict", verdict), A("when", when));
 
 	// Bridge chip.
-	public static string HealthBridgeStopped(Language? l = null) => Pick(l,
-		$"Sanal kumanda durduruldu.",
-		$"The virtual controller is stopped.");
+	public static string HealthBridgeStopped(Language? l = null) => T(l, "Health.BridgeStopped");
 
-	public static string HealthBridgeWaiting(Language? l = null) => Pick(l,
-		$"Sanal kumanda, gerçek kumandayı bekliyor.",
-		$"The virtual controller is waiting for the real controller.");
+	public static string HealthBridgeWaiting(Language? l = null) => T(l, "Health.BridgeWaiting");
 
-	public static string HealthBridgeConnecting(Language? l = null) => Pick(l,
-		$"Sanal kumanda bağlanıyor.",
-		$"The virtual controller is connecting.");
+	public static string HealthBridgeConnecting(Language? l = null) => T(l, "Health.BridgeConnecting");
 
-	public static string HealthBridgeRunning(Language? l = null) => Pick(l,
-		$"Sanal kumanda çalışıyor.",
-		$"The virtual controller is running.");
+	public static string HealthBridgeRunning(Language? l = null) => T(l, "Health.BridgeRunning");
 
-	public static string HealthBridgeLastError(string reason, Language? l = null) => Pick(l,
-		$"Son hata: {reason}",
-		$"Last error: {reason}");
+	public static string HealthBridgeLastError(string reason, Language? l = null) => T(l, "Health.BridgeLastError", A("reason", reason));
 
 	// "Why disabled".
-	public static string CannotStartDriver(Language? l = null) => Pick(l,
-		$"Önce usbip-win2 sürücüsünü kur.",
-		$"Install the usbip-win2 driver first.");
+	public static string CannotStartDriver(Language? l = null) => T(l, "Cannot.StartDriver");
 
-	public static string CannotStartHidHide(Language? l = null) => Pick(l,
-		$"Önce HidHide'ı kur; o olmadan oyunlar iki kumanda görür.",
-		$"Install HidHide first; without it games see two controllers.");
+	public static string CannotStartHidHide(Language? l = null) => T(l, "Cannot.StartHidHide");
 
-	public static string CannotStartNoRadio(Language? l = null) => Pick(l,
-		$"Sanal kumanda için bir Bluetooth adaptörü gerekli.",
-		$"The virtual controller needs a Bluetooth adapter.");
+	public static string CannotStartNoRadio(Language? l = null) => T(l, "Cannot.StartNoRadio");
 
-	public static string CannotStartBluetoothOff(Language? l = null) => Pick(l,
-		$"Önce Bluetooth'u aç.",
-		$"Turn on Bluetooth first.");
+	public static string CannotStartBluetoothOff(Language? l = null) => T(l, "Cannot.StartBluetoothOff");
 
-	public static string CannotStartNotPaired(Language? l = null) => Pick(l,
-		$"Önce kumandayı Windows'ta eşleştir.",
-		$"Pair the controller with Windows first.");
+	public static string CannotStartNotPaired(Language? l = null) => T(l, "Cannot.StartNotPaired");
 
-	public static string CannotStartUsb(Language? l = null) => Pick(l,
-		$"Kumanda kabloyla bağlıyken sanal kumandaya gerek yok.",
-		$"The virtual controller isn't needed while the controller is on a cable.");
+	public static string CannotStartUsb(Language? l = null) => T(l, "Cannot.StartUsb");
 
-	public static string CannotTestNoController(Language? l = null) => Pick(l,
-		$"Test için kumandayı Bluetooth ile bağla.",
-		$"Connect the controller over Bluetooth to test it.");
+	public static string CannotTestNoController(Language? l = null) => T(l, "Cannot.TestNoController");
 
-	public static string CannotTestUsb(Language? l = null) => Pick(l,
-		$"Testler yalnızca Bluetooth bağlantısında çalışır.",
-		$"Tests only work over Bluetooth.");
+	public static string CannotTestUsb(Language? l = null) => T(l, "Cannot.TestUsb");
 
 	// Last-known battery, e.g. "Son: %62 · 2 sa önce".
-	public static string LastKnownBattery(int percent, string when, Language? l = null) => Pick(l,
-		$"Son: %{percent} · {when}",
-		$"Last: {percent}% · {when}");
+	public static string LastKnownBattery(int percent, string when, Language? l = null) => T(l, "Last.KnownBattery", A("percent", percent), A("when", when));
 
-	public static string LastKnownBatteryCharging(int percent, string when, Language? l = null) => Pick(l,
-		$"Son: %{percent} (şarj oluyordu) · {when}",
-		$"Last: {percent}% (was charging) · {when}");
+	public static string LastKnownBatteryCharging(int percent, string when, Language? l = null) => T(l, "Last.KnownBatteryCharging", A("percent", percent), A("when", when));
 
 	// Fix buttons (Title Case) and short chip states.
-	public static string FixInstallDriver(Language? l = null) => Pick(l, $"Sürücüyü Kur", $"Install Driver");
-	public static string FixInstallHidHide(Language? l = null) => Pick(l, $"HidHide'ı Kur", $"Install HidHide");
-	public static string FixSteamInputHelp(Language? l = null) => Pick(l, $"Steam Girişi Yardımı", $"Steam Input Help");
-	public static string FixRunAdapterTest(Language? l = null) => Pick(l, $"Adaptörü Test Et", $"Test Adapter");
-	public static string FixOpenBluetooth(Language? l = null) => Pick(l, $"Bluetooth'u Aç", $"Turn On Bluetooth");
-	public static string FixRestartBridge(Language? l = null) => Pick(l, $"Sanal Kumandayı Yeniden Başlat", $"Restart Virtual Controller");
-	public static string HealthLevelOk(Language? l = null) => Pick(l, $"Sorun Yok", $"No Issue");
-	public static string HealthLevelWarning(Language? l = null) => Pick(l, $"Dikkat", $"Attention");
-	public static string HealthLevelError(Language? l = null) => Pick(l, $"Sorun Var", $"Problem");
-	public static string HealthLevelUnknown(Language? l = null) => Pick(l, $"Belirsiz", $"Unknown");
+	public static string FixInstallDriver(Language? l = null) => T(l, "Fix.InstallDriver");
+	public static string FixInstallHidHide(Language? l = null) => T(l, "Fix.InstallHidHide");
+	public static string FixSteamInputHelp(Language? l = null) => T(l, "Fix.SteamInputHelp");
+	public static string FixRunAdapterTest(Language? l = null) => T(l, "Fix.RunAdapterTest");
+	public static string FixOpenBluetooth(Language? l = null) => T(l, "Fix.OpenBluetooth");
+	public static string FixRestartBridge(Language? l = null) => T(l, "Fix.RestartBridge");
+	public static string HealthLevelOk(Language? l = null) => T(l, "Health.LevelOk");
+	public static string HealthLevelWarning(Language? l = null) => T(l, "Health.LevelWarning");
+	public static string HealthLevelError(Language? l = null) => T(l, "Health.LevelError");
+	public static string HealthLevelUnknown(Language? l = null) => T(l, "Health.LevelUnknown");
 
 	// Relative time.
-	public static string TimeJustNow(Language? l = null) => Pick(l, $"az önce", $"just now");
-	public static string TimeMinutesAgo(int minutes, Language? l = null) => Pick(l, $"{minutes} dk önce", $"{minutes} min ago");
-	public static string TimeHoursAgo(int hours, Language? l = null) => Pick(l, $"{hours} sa önce", $"{hours} h ago");
-	public static string TimeYesterday(Language? l = null) => Pick(l, $"dün", $"yesterday");
-	public static string TimeDaysAgo(int days, Language? l = null) => Pick(l, $"{days} gün önce", $"{days} {En(days, "day", "days")} ago");
+	public static string TimeJustNow(Language? l = null) => T(l, "Time.JustNow");
+	public static string TimeMinutesAgo(int minutes, Language? l = null) => T(l, "Time.MinutesAgo", A("minutes", minutes));
+	public static string TimeHoursAgo(int hours, Language? l = null) => T(l, "Time.HoursAgo", A("hours", hours));
+	public static string TimeYesterday(Language? l = null) => T(l, "Time.Yesterday");
+	public static string TimeDaysAgo(int days, Language? l = null) => T(l, "Time.DaysAgo", A("days", days));
 }

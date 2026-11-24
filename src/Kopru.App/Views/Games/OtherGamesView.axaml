@@ -1,7 +1,24 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:s="using:Kopru.App.Services" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.OtherGamesView" x:DataType="vm:OtherGamesViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" xmlns:s="using:Kopru.App.Services" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.OtherGamesView" x:DataType="vm:OtherGamesViewModel">
   <!-- "Titreşim ve Tetikler": the active profile's settings in two cards, the game's own effects and classic rumble (used
        where the game sends nothing); classic rumble ends with a row of try buttons; a link to the unsupported games -->
   <UserControl.Styles>
+    <Style Selector="StackPanel.page">
+      <Setter Property="Margin" Value="32,8" />
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="Padding" Value="20,8" />
+    </Style>
+    <Style Selector="StackPanel.cardHeader">
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="Grid.settingRow">
+      <Setter Property="MinHeight" Value="34" />
+    </Style>
+    <Style Selector="Grid.settingRow > StackPanel">
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="Spacing" Value="1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <Style Selector="Grid.settingRow TextBlock.body">
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -16,7 +33,7 @@
     </Style>
   </UserControl.Styles>
   <ScrollViewer Classes="page" Name="PageScroll">
-    <StackPanel Spacing="16" Classes="page">
+    <StackPanel Spacing="8" Classes="page">
       <!-- Header: title and intro, the profile these settings are saved to on the right -->
       <Grid Classes="pageHeader" ColumnDefinitions="*,Auto">
         <StackPanel Spacing="4">
@@ -47,7 +64,7 @@
               <TextBlock Classes="label" Text="{Binding Feel.GameHapticsLabel}" />
               <TextBlock Classes="body" Text="{Binding Feel.GameHapticsHint}" />
             </StackPanel>
-            <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
               <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.GameHapticsLevel}" />
               <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.GameHapticsText}" />
             </Grid>
@@ -58,10 +75,19 @@
               <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" />
               <TextBlock Classes="body" Text="{Binding Feel.TriggerHint}" />
             </StackPanel>
-            <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
               <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" />
               <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" />
             </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="PauseHapticsRow" ToolTip.Tip="{Binding PauseHapticsHint}">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="{Binding PauseHapticsLabel}" />
+              <TextBlock Classes="body" Text="{Binding PauseHapticsShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" Name="PauseHapticsSwitch" IsChecked="{Binding Settings.PauseHapticsInSilence}" OnContent="{x:Null}" OffContent="{x:Null}"
+                          AutomationProperties.Name="{Binding PauseHapticsLabel}" AutomationProperties.HelpText="{Binding PauseHapticsHint}" />
           </Grid>
         </StackPanel>
       </Border>
@@ -83,7 +109,7 @@
               <TextBlock Classes="label" Text="{Binding Feel.RumbleLabel}" />
               <TextBlock Classes="body" Text="{Binding Feel.RumbleHint}" />
             </StackPanel>
-            <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
               <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.RumbleLevel}" />
               <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.RumbleText}" />
             </Grid>
@@ -113,6 +139,18 @@
                       IsEnabled="{Binding Feel.HasFallback}" ToolTip.Tip="{Binding Feel.FallbackStrengthHint}" AutomationProperties.Name="{Binding Feel.FallbackStrengthLabel}" />
               <TextBlock Grid.Column="2" Classes="value" Text="{Binding Feel.FallbackStrengthText}" IsEnabled="{Binding Feel.HasFallback}" />
             </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="XboxTriggerRumbleRow" ToolTip.Tip="{Binding XboxTriggerRumbleHint}">
+            <StackPanel Spacing="2">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="label" Name="XboxTriggerRumbleTitle" Text="{Binding XboxTriggerRumbleTitle}" />
+                <TextBlock Classes="caption" Name="XboxTriggerRumbleTag" Text="{Binding ExperimentalTag}" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Classes="body" Name="XboxTriggerRumbleLine" Text="{Binding XboxTriggerRumbleShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" Name="XboxTriggerRumbleSwitch" IsChecked="{Binding Settings.XboxTriggerRumbleOn}" OnContent="{x:Null}" OffContent="{x:Null}"
+                          AutomationProperties.Name="{Binding XboxTriggerRumbleLabel}" AutomationProperties.HelpText="{Binding XboxTriggerRumbleHint}" />
           </Grid>
           <!-- Trigger Rumble: how the Xbox Series pad's trigger rumble feels on the adaptive triggers (only that type sends it;
                shown while the experimental Xbox Trigger Rumble setting is on) -->

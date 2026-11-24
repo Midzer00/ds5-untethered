@@ -195,4 +195,78 @@ public sealed class LanguageSwitchAppTests
 		root.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)).Select(t => t.Text!);
 
 	private static string Code(Language? language) => language == null ? "system" : Localizer.Code(language.Value);
+
+	[AvaloniaFact]
+	public void SettingsPickerAndState_AreDataDriven_AndUnknownCodeFallsBackToAutomatic()
+	{
+		Language? before = Localizer.Chosen;
+		try
+		{
+			// Unknown language code in saved settings becomes Automatic (null).
+			var unknownStore = new MemorySettingsStore(new AppSettings { Language = "unknown-lang" });
+			var vmUnknown = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(unknownStore));
+			Assert.Null(Localizer.Chosen);
+			Assert.Null(vmUnknown.SettingsPage.SelectedLanguage.Language);
+			Assert.Null(vmUnknown.Settings.ToAppSettings().Language);
+
+			// Pseudo-locale code in saved settings is also rejected (becomes Automatic).
+			var qpsStore = new MemorySettingsStore(new AppSettings { Language = "qps" });
+			_ = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(qpsStore));
+			Assert.Null(Localizer.Chosen);
+
+			// Shipped languages (including a newly added JSON bundle) appear in the picker with their native @name and round-trip.
+			using (StringCatalog.WithOverride("de", """{ "@name": "Deutsch", "Nav.Overview": "Übersicht" }"""))
+			{
+				var deStore = new MemorySettingsStore(new AppSettings { Language = "de" });
+				var vmDe = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(deStore));
+				Language de = new("de");
+				Assert.Equal(de, Localizer.Chosen);
+				LanguageOption option = Assert.Single(vmDe.SettingsPage.Languages, o => o.Language == de);
+				Assert.Equal("Deutsch", option.Name);
+				Assert.Same(option, vmDe.SettingsPage.SelectedLanguage);
+				Assert.Equal("de", vmDe.Settings.ToAppSettings().Language);
+				Assert.Equal("Übersicht", vmDe.Overview.Title);
+			}
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
+	}
+
+	[AvaloniaFact]
+	public void PadLoss_RespectsTurkishCasing_AndPreservesTranslatorCasing()
+	{
+		Language? before = Localizer.Chosen;
+		try
+		{
+			using (StringCatalog.WithOverride("tr", """
+			{
+			  "@name": "Türkçe",
+			  "Pad.TypeDualShock4Line": "Eski oyunlar: ışık ve titreşim var.",
+			  "Pad.TypeXboxLine": "Eski oyunlar: iz ve titreşim var."
+			}
+			"""))
+			{
+				Localizer.Chosen = Language.Turkish;
+				Assert.Equal("Işık ve titreşim var.", OverviewViewModel.PadLoss(Kopru.Core.Virtual.VirtualPadType.DualShock4));
+				Assert.Equal("İz ve titreşim var.", OverviewViewModel.PadLoss(Kopru.Core.Virtual.VirtualPadType.Xbox360));
+			}
+
+			using (StringCatalog.WithOverride("fr", """
+			{
+			  "@name": "Français",
+			  "Pad.TypeDualShock4Line": "Anciens jeux : vibrations et lumière fonctionnent."
+			}
+			"""))
+			{
+				Localizer.Chosen = new Language("fr");
+				Assert.Equal("Vibrations et lumière fonctionnent.", OverviewViewModel.PadLoss(Kopru.Core.Virtual.VirtualPadType.DualShock4));
+			}
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
+	}
 }

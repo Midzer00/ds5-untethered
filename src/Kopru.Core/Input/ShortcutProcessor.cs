@@ -66,7 +66,7 @@ public static class PsTapRule
 // Apply is called on the input thread only; Enabled and the Triggered handlers may be touched from any thread.
 // Triggered is raised on the input thread: handlers must be short (post the work elsewhere).
 //
-// Body offsets (Linux hid-playstation dualsense_input_report minus the report ID): 7 = buttons[0] (low nibble the D-pad
+// Body offsets (public DualSense input report documentation, offsets after the report ID): 7 = buttons[0] (low nibble the D-pad
 // hat 0 up .. 7 up-left, 8 none; 0x10 square, 0x80 triangle), 9 = buttons[2] (0x01 PS).
 public sealed class ShortcutProcessor
 {

@@ -29,6 +29,39 @@ $durationsFile = Join-Path $resultsRoot 'durations.json'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kopru-test-" + $PID)
 $realTimeFilter = 'Category=RealTime'
 $wall = [Diagnostics.Stopwatch]::StartNew()
+# The code under test is what HEAD was when the run started (commits made during the run don't count).
+$startCommit = "$(& git -C $root rev-parse HEAD 2>$null)".Trim()
+$startBranch = "$(& git -C $root rev-parse --abbrev-ref HEAD 2>$null)".Trim()
+$startDirty = @(& git -C $root status --porcelain --untracked-files=no 2>$null).Count -gt 0
+
+# Machine-readable result of the run (TestResults\summary.json), written on success and on failure.
+function Write-Summary([int]$coreFailed, [int]$corePassed, [int]$appFailed, [int]$appPassed, [string[]]$failedTests) {
+	try {
+		$flakyFile = Join-Path $PSScriptRoot 'test-flaky.txt'
+		$flaky = @()
+		if (Test-Path $flakyFile) {
+			$flaky = @(Get-Content $flakyFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+		}
+		$names = @($failedTests | Where-Object { $_ })
+		$summary = [ordered]@{
+			commit = $startCommit
+			branch = $startBranch
+			uncommittedChanges = $startDirty
+			finishedAt = (Get-Date).ToString('o')
+			coreFailed = $coreFailed
+			corePassed = $corePassed
+			appFailed = $appFailed
+			appPassed = $appPassed
+			failedTests = $names
+			knownFlaky = @($names | Where-Object { $flaky -contains $_ })
+		}
+		$dir = Join-Path $root 'TestResults'
+		New-Item -ItemType Directory -Force $dir | Out-Null
+		($summary | ConvertTo-Json -Depth 4) | Set-Content (Join-Path $dir 'summary.json') -Encoding UTF8
+	} catch {
+		Write-Host "summary.json yazılamadı: $($_.Exception.Message)"
+	}
+}
 
 if ($Shards -le 0) {
 	$Shards = [Math]::Max(1, [Math]::Min(8, [int][Math]::Floor([Environment]::ProcessorCount / 2)))
@@ -38,6 +71,7 @@ if (-not $NoBuild) {
 	& dotnet build (Join-Path $root 'Kopru.sln') --no-incremental -c $Configuration -nologo -v q
 	if ($LASTEXITCODE -ne 0) {
 		Write-Host 'Derleme başarısız.'
+		Write-Summary 0 0 0 0 @()
 		exit 1
 	}
 }
@@ -49,6 +83,7 @@ function Get-TestList([string]$project) {
 	if ($LASTEXITCODE -ne 0 -or $tests.Count -eq 0) {
 		$listing | Write-Host
 		Write-Host "Testler listelenemedi: $project"
+		Write-Summary 0 0 0 0 @()
 		exit 1
 	}
 	return , $tests
@@ -150,6 +185,7 @@ function Format-Duration([TimeSpan]$t) {
 
 $failed = $false
 $failures = New-Object System.Collections.Generic.List[string]
+$failedNames = New-Object System.Collections.Generic.List[string]
 $ran = @{ App = (New-Object System.Collections.Generic.List[string]); Core = (New-Object System.Collections.Generic.List[string]) }
 $totals = @{ App = @{ Failed = 0; Passed = 0; Total = 0 }; Core = @{ Failed = 0; Passed = 0; Total = 0 } }
 $appClassSeconds = @{}
@@ -177,6 +213,7 @@ foreach ($run in $runs) {
 		if ($null -eq $result) { continue }
 		if ($result.outcome -ne 'Passed' -and $result.outcome -ne 'NotExecuted') {
 			$message = "$($result.Output.ErrorInfo.Message)".Trim() -split "`r?`n" | Select-Object -First 1
+			$failedNames.Add([string]$result.testName)
 			$failures.Add("$($run.Label)  $($result.testName)$(if ($message) { "  ($message)" })")
 		}
 		$ran[$kind].Add($result.testName)
@@ -225,5 +262,6 @@ if (-not $failed -and $appClassSeconds.Count -gt 0) {
 }
 
 Write-Host ("Süre: {0} ({1} App parçası), sonuçlar: {2}" -f (Format-Duration $wall.Elapsed), $Shards, $resultsRoot)
+Write-Summary $totals.Core.Failed $totals.Core.Passed $totals.App.Failed $totals.App.Passed $failedNames.ToArray()
 if ($failed) { exit 1 }
 exit 0

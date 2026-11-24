@@ -50,18 +50,17 @@ public readonly record struct TouchPoint(bool Active, byte Id, int X, int Y)
 
 // Everything the controller reports in one input report, for the controller test page.
 //
-// Input body layout (63 bytes; USB report 0x01 from byte 1, Bluetooth report 0x31 from byte 2). Source: the public
-// DualSense input report layout as documented by the Linux hid-playstation driver (struct dualsense_input_report) and
-// SDL's hidapi_ps5 driver (Edge buttons); offsets below are body offsets:
+// Input body layout (63 bytes; USB report 0x01 from byte 1, Bluetooth report 0x31 from byte 2). Source: public
+// DualSense and DualSense Edge input report documentation; offsets below are body offsets:
 //   0 LX, 1 LY, 2 RX, 3 RY (0..255, 128 centre, Y down), 4 L2, 5 R2 (0..255), 6 sequence
 //   7 buttons0: low nibble D-pad hat (0 up, 1 up-right, ... 7 up-left, 8 released); 0x10 square, 0x20 cross,
 //     0x40 circle, 0x80 triangle
 //   8 buttons1: 0x01 L1, 0x02 R1, 0x04 L2, 0x08 R2, 0x10 create, 0x20 options, 0x40 L3, 0x80 R3
-//   9 buttons2: 0x01 PS, 0x02 touchpad click, 0x04 mute; Edge (SDL): 0x10 left Fn, 0x20 right Fn, 0x40 left paddle,
+//   9 buttons2: 0x01 PS, 0x02 touchpad click, 0x04 mute; Edge: 0x10 left Fn, 0x20 right Fn, 0x40 left paddle,
 //     0x80 right paddle (not verified on hardware)
 //   15/17/19 gyro X/Y/Z (s16 LE, pitch/yaw/roll), 21/23/25 accelerometer X/Y/Z (s16 LE), 27 sensor timestamp (u32 LE)
 //   32 touch point 1, 36 touch point 2 (4 bytes each, see TouchPoint), 52 battery/charging status (see BatteryStatus)
-// The short Bluetooth report 0x01 (before the pad is switched to full reports; SDL's PS5SimpleStatePacket_t):
+// The short Bluetooth report 0x01 (before the pad is switched to full reports; public simple-report layout):
 //   1 LX, 2 LY, 3 RX, 4 RY, 5-7 buttons0..2 (same bits; byte 7's high bits are a counter), 8 L2, 9 R2.
 public sealed record InputSnapshot(
 	byte LeftX, byte LeftY, byte RightX, byte RightY, byte L2, byte R2, PadButtons Buttons,

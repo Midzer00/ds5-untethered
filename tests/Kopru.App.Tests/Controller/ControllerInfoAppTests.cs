@@ -798,10 +798,12 @@ public class ControllerInfoAppTests
 		Assert.True(service.IsBridgeRunning);
 		time.Advance(RealControllerService.CableResumeDelay);
 		service.DeviceTick();
-		WaitUntil(() => !service.IsBridgeRunning);
+		// StopForCable runs StopBridgeAsync (including RestoreHidingAsync) and then raises CableConnected;
+		// waiting on the notice guarantees the stop and restore have both finished before checking hiding calls.
+		WaitUntil(() => { lock (notices) return notices.Any(n => n.Kind == ServiceNoticeKind.CableConnected); });
+		Assert.False(service.IsBridgeRunning);
 		Assert.True(service.IsPausedForCable);
 		Assert.Equal("restore", Calls(hiding)[^1]);
-		WaitUntil(() => { lock (notices) return notices.Any(n => n.Kind == ServiceNoticeKind.CableConnected); });
 	}
 
 	// A wired link that cannot be opened yet leaves the bridge on Bluetooth; the twin stays hidden and the entry is

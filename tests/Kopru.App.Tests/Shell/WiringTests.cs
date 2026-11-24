@@ -162,7 +162,7 @@ public class WiringTests
 		WithLanguage(Language.English, () =>
 		{
 			(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
-			Assert.Equal(("1.2 ms", "Typical Delay"), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayCaption));
+			Assert.Equal(("1.2 ms", "Typical Delay · Bluetooth"), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayCaption));
 			Assert.StartsWith(Text.LatencyValue(1.2, 3.4, 0.05), vm.Overview.LatencyTip);
 			fake.Latency = null;
 			Assert.Equal("\u2014", vm.Overview.Live.DelayValue);
@@ -171,7 +171,7 @@ public class WiringTests
 		WithLanguage(Language.Turkish, () =>
 		{
 			(MainWindowViewModel vm, _) = NewViewModel();
-			Assert.Equal(("1,2 ms", "Tipik Gecikme"), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayCaption));
+			Assert.Equal(("1,2 ms", "Tipik Gecikme · Bluetooth"), (vm.Overview.Live.DelayValue, vm.Overview.Live.DelayCaption));
 		});
 	}
 

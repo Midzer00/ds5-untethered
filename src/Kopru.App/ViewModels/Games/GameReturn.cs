@@ -105,11 +105,99 @@ public sealed partial class GameReturn : ViewModelBase
 		Return?.Invoke(reason, process);
 	}
 
+	// "Oyunu Kapat" in the Overview's header (left of "Kumandayı Kapat"), only while a game is detected as running: the same
+	// two steps as the game panel's (GamePanelViewModel.CloseGame). The game's main window is asked to close; only when the
+	// game is still there after GamePanelViewModel.CloseWait the button's place asks whether to end it (Force Close, the only
+	// destructive step, or Cancel). Only the detected active game is ever touched: the closer checks the key against
+	// GameModeController's active game. Never offered without a closer (set by the main window's view model).
+	public IGameCloser? Closer
+	{
+		get => _closer;
+		set
+		{
+			_closer = value;
+			OnPropertyChanged(nameof(ShowsCloseGame));
+		}
+	}
+
+	private IGameCloser? _closer;
+	private int _closeRound;
+
+	// The wait after the close request (tests pass their own).
+	public Func<TimeSpan, Task> Delay { get; set; } = Task.Delay;
+
+	[CommunityToolkit.Mvvm.ComponentModel.ObservableProperty]
+	[CommunityToolkit.Mvvm.ComponentModel.NotifyPropertyChangedFor(nameof(ShowsCloseGame), nameof(IsClosing), nameof(ConfirmsForceClose))]
+	private CloseGameStep _closeStep;
+
+	public bool ShowsCloseGame => IsGameRunning && _closer != null && CloseStep == CloseGameStep.None;
+	public bool IsClosing => IsGameRunning && CloseStep == CloseGameStep.Waiting;
+	public bool ConfirmsForceClose => IsGameRunning && CloseStep == CloseGameStep.Confirm;
+	public string CloseGameText => Text.CloseGame();
+	public string CloseGameTip => GameName is { } name ? GameModeText.Join(Text.CloseGame(), name) : Text.CloseGame();
+	public string ClosingText => Text.ClosingGame();
+	public string ForceCloseQuestion => Text.ForceCloseQuestion();
+	public string ForceCloseText => Text.ForceClose();
+	public string ForceCloseAskText => Text.ForceCloseAsk();
+	public string CancelText => Text.ProfileCancel();
+
+	private void ResetClose()
+	{
+		_closeRound++;
+		CloseStep = CloseGameStep.None;
+	}
+
+	[RelayCommand]
+	private async Task CloseGame()
+	{
+		if (_closer == null || _service.Games.ActiveGame is not { } game || CloseStep != CloseGameStep.None)
+		{
+			return;
+		}
+		int round = ++_closeRound;
+		CloseStep = CloseGameStep.Waiting;
+		AppLog.Write($"close game asked from the overview ({game.Name})");
+		if (!_closer.RequestClose(game.Key))
+		{
+			// Nothing to ask (no window): straight to the question.
+			CloseStep = CloseGameStep.Confirm;
+			return;
+		}
+		await Delay(GamePanelViewModel.CloseWait);
+		if (round != _closeRound)
+		{
+			return;
+		}
+		CloseStep = string.Equals(_service.Games.ActiveGame?.Key, game.Key, StringComparison.OrdinalIgnoreCase) ? CloseGameStep.Confirm : CloseGameStep.None;
+	}
+
+	[RelayCommand]
+	private void ForceClose()
+	{
+		if (_closer != null && _service.Games.ActiveGame is { } game && CloseStep == CloseGameStep.Confirm)
+		{
+			_closer.End(game.Key);
+		}
+		ResetClose();
+	}
+
+	[RelayCommand]
+	private void KeepGame() => ResetClose();
+
 	private void Refresh()
 	{
+		// The game ended (by itself or after the request): nothing left to close or ask.
+		if (!IsGameRunning && CloseStep != CloseGameStep.None)
+		{
+			ResetClose();
+		}
 		OnPropertyChanged(nameof(IsGameRunning));
 		OnPropertyChanged(nameof(ToolTip));
 		OnPropertyChanged(nameof(GameName));
+		OnPropertyChanged(nameof(ShowsCloseGame));
+		OnPropertyChanged(nameof(IsClosing));
+		OnPropertyChanged(nameof(ConfirmsForceClose));
+		OnPropertyChanged(nameof(CloseGameTip));
 	}
 
 	private bool SafeFullScreen()

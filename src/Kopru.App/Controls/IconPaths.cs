@@ -37,9 +37,17 @@ public static class IconPaths
 	public static Geometry Plus { get; } = Geometry.Parse("M12,6 V18 M6,12 H18");
 	// A cross: remove.
 	public static Geometry Cross { get; } = Geometry.Parse("M7,7 L17,17 M17,7 L7,17");
+	// A screen on a stand: the game (a program on the PC), in the game panel's settings chain.
+	public static Geometry Screen { get; } = Geometry.Parse("M3.5,5 H20.5 V16 H3.5 Z M12,16 V19.5 M8.5,19.5 H15.5");
 	// A heart outline: support (GitHub Sponsors).
 	public static Geometry Heart { get; } = Geometry.Parse("M12,19.5 C12,19.5 3.5,14.6 3.5,9 C3.5,6.4 5.4,4.5 7.9,4.5 C9.7,4.5 11.2,5.5 12,7.1 C12.8,5.5 14.3,4.5 16.1,4.5 C18.6,4.5 20.5,6.4 20.5,9 C20.5,14.6 12,19.5 12,19.5 Z");
 	// A five-pointed star outline: star the project on GitHub.
 	public static Geometry Star { get; } = Geometry.Parse("M12,3.5 L14.6,8.9 L20.5,9.6 L16.1,13.6 L17.3,19.5 L12,16.6 L6.7,19.5 L7.9,13.6 L3.5,9.6 L9.4,8.9 Z");
+	// The Bluetooth rune: the link over the radio (the connection lines on the Overview and in the sidebar).
+	public static Geometry Bluetooth { get; } = Geometry.Parse("M7,7.5 L17,16.5 L12,21 V3 L17,7.5 L7,16.5");
+	// A USB plug on its cable: the link over the USB cable.
+	public static Geometry Cable { get; } = Geometry.Parse("M9.5,3 H14.5 V7.5 H9.5 Z M7.5,7.5 H16.5 V12.5 C16.5,15 14.5,17 12,17 C9.5,17 7.5,15 7.5,12.5 Z M12,17 V21.5");
+	// The controller's ø button the way the texts and the drawing show it: a ring with a slash.
+	public static Geometry PsButton { get; } = Geometry.Parse("M12,6 A6,6 0 1 1 11.99,6 Z M6.5,18.5 L17.5,5.5");
 	public static Geometry Battery { get; } = Geometry.Parse("M4,7.5 H17 C18.1,7.5 19,8.4 19,9.5 V14.5 C19,15.6 18.1,16.5 17,16.5 H4 C2.9,16.5 2,15.6 2,14.5 V9.5 C2,8.4 2.9,7.5 4,7.5 Z M22,10.5 V13.5 M5.5,10.5 V13.5 M9,10.5 V13.5");
 }

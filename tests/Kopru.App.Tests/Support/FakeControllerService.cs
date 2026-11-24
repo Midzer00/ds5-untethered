@@ -60,7 +60,7 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 	public string Warning { get; set; } = string.Empty;
 	public double BatteryPercent { get; set; } = 78;
 	public bool IsCharging { get; set; }
-	public double InputRateHz { get; private set; } = 998;
+	public double InputRateHz { get; set; } = 998;
 	public double LatencyMs { get; private set; } = 4.2;
 	public bool IsBridgeRunning { get; private set; }
 	public bool IsHapticsActive => IsGameConnected;
@@ -397,12 +397,19 @@ public sealed class FakeGameWatcher : IGameWatcher
 
 	public FakeProcessSource Source => _source;
 
+	// The games it recognises (the sample catalog unless a test swaps it).
+	public GameCatalog Catalog { get => _inner.Catalog; set => _inner.Catalog = value; }
+
 	// The exe's process ends (it is no longer in front either).
 	public void Exit(string exe) => _source.Exit(exe);
 
 	public ForegroundGame? Poll() => _inner.Poll();
 
 	public bool IsRunning(ForegroundGame game) => _inner.IsRunning(game);
+
+	public bool RequestClose(ForegroundGame game) => _inner.RequestClose(game);
+
+	public bool End(ForegroundGame game) => _inner.End(game);
 
 	public IReadOnlyList<ProcessInfo> RunningApps() => _inner.RunningApps();
 
@@ -448,4 +455,28 @@ public sealed class FakeProcessSource : IProcessSource
 	public bool IsRunning(ProcessInfo process) => _running.Values.Any(p => p.Id == process.Id);
 
 	public IReadOnlyList<ProcessInfo> WindowedApps() => _running.Values.ToList();
+
+	// Close Game: what was asked (process ids), whether a close request makes the game leave, and what was ended.
+	public List<int> CloseRequests { get; } = [];
+
+	public List<int> Ended { get; } = [];
+
+	public bool LeavesOnCloseRequest { get; set; }
+
+	public bool RequestClose(ProcessInfo process)
+	{
+		CloseRequests.Add(process.Id);
+		if (LeavesOnCloseRequest)
+		{
+			Exit(process.Exe);
+		}
+		return true;
+	}
+
+	public bool End(ProcessInfo process)
+	{
+		Ended.Add(process.Id);
+		Exit(process.Exe);
+		return true;
+	}
 }

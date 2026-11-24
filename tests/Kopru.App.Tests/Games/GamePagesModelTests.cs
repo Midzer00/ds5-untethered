@@ -117,7 +117,11 @@ public sealed class GamePagesModelTests
 		vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
 		FitCheck.Settle(window);
 		OtherGamesView haptics = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
-		Assert.Empty(haptics.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null));
+		string[] hapticsSwitches = haptics.GetVisualDescendants().OfType<ToggleSwitch>()
+			.Where(t => t.TemplatedParent == null)
+			.Select(t => t.Name ?? string.Empty)
+			.ToArray();
+		Assert.Equal(["PauseHapticsSwitch", "XboxTriggerRumbleSwitch"], hapticsSwitches);
 		Assert.Empty(haptics.GetVisualDescendants().OfType<GameRowList>());
 		string[] cards = haptics.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("panel")).Select(b => b.Name ?? string.Empty).ToArray();
 		Assert.Equal(["GameEffectsCard", "ClassicRumbleCard"], cards);

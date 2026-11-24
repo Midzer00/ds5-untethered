@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 namespace Kopru.Core.Input;
 
-// The DualSense Edge back paddles in the 63-byte input body (byte 9, buttons2; bit values from SDL's public PS5 HIDAPI
-// driver documentation, not verified on hardware): 0x40 left paddle, 0x80 right paddle. The Fn buttons (0x10 left,
+// The DualSense Edge back paddles in the 63-byte input body (byte 9, buttons2; bit values from public DualSense Edge
+// input report documentation, not verified on hardware): 0x40 left paddle, 0x80 right paddle. The Fn buttons (0x10 left,
 // 0x20 right) are reserved for future use: never consumed or changed here.
 //
 // Runs after the standard button remap. Each paddle's bit is cleared, then a pressed paddle presses its target: itself

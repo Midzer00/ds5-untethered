@@ -169,7 +169,9 @@ public class AudioPickersAppTests
 		Settle();
 		Assert.False(s.MicEnabled);
 		Assert.False(q.MicTile);
-		Assert.Equal(Text.QuickStateOff(), q.MicStateText);
+		Assert.True(q.MicFeatureOff);
+		Assert.Equal(Text.QuickMicOffInSettings(), q.MicStateText);
+		Assert.Equal(Text.QuickMicOffInSettingsTip(), q.MicTip);
 		Assert.False(fake.Settings.Mic.IsLive);
 		Assert.Equal((Text.MicToastTitle(MicPress.ControllerOff, MicButtonMode.TurnOff), Text.MicToastBody(MicPress.ControllerOff)), toasts.Last());
 
@@ -401,6 +403,47 @@ public class AudioPickersAppTests
 				}
 
 				window.Close();
+			}
+			finally
+			{
+				Localizer.Chosen = before;
+			}
+		}
+	}
+
+	[AvaloniaFact]
+	public void MicTile_LabelTooltipAndOffInSettingsState_InBothLanguages()
+	{
+		foreach (Language language in new[] { Language.English, Language.Turkish })
+		{
+			Language? before = Localizer.Chosen;
+			try
+			{
+				Localizer.Chosen = language;
+				(MainWindowViewModel vm, _) = Create();
+				QuickSettingsViewModel q = vm.Overview.Quick;
+
+				Assert.Equal(language == Language.English ? "Microphone" : "Mikrofon", q.MicLabel);
+				// Controller mic feature starts off in Settings → Audio: tile is not highlighted and shows that state and tooltip.
+				Assert.False(vm.Settings.MicEnabled);
+				Assert.False(q.MicTile);
+				Assert.True(q.MicFeatureOff);
+				Assert.Equal(language == Language.English ? "Off In Settings" : "Ayarlarda Kapalı", q.MicStateText);
+				Assert.Equal(Text.QuickMicOffInSettingsTip(language), q.MicTip);
+
+				// Once enabled in Settings → Audio, tile is highlighted as active and shows On + mute tooltip.
+				vm.Settings.MicEnabled = true;
+				Settle();
+				Assert.True(q.MicTile);
+				Assert.False(q.MicFeatureOff);
+				Assert.Equal(Text.QuickStateOn(language), q.MicStateText);
+				Assert.Equal(Text.QuickMicTileTip(language), q.MicTip);
+
+				// While muted, tile is not highlighted and shows Muted / Sessiz.
+				vm.Settings.MicMuted = true;
+				Settle();
+				Assert.False(q.MicTile);
+				Assert.Equal(language == Language.English ? "Muted" : "Sessiz", q.MicStateText);
 			}
 			finally
 			{

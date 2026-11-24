@@ -6,7 +6,7 @@ namespace Kopru.Core.Virtual;
 // Feature report 0x05 (IMU calibration) is unit specific, so the built-in identity carries none: the virtual pad answers
 // with the live controller's own calibration, read over Bluetooth.
 //
-// Layout relied on (41 bytes with the report id on both USB and Bluetooth; as read by Linux hid-playstation):
+// Layout relied on (41 bytes with the report id on both USB and Bluetooth; public DualSense feature report documentation):
 //   [0]      report id 0x05
 //   [1..35)  17 little-endian int16: gyro pitch/yaw/roll bias; gyro pitch+/pitch-/yaw+/yaw-/roll+/roll-;
 //            gyro speed+/speed-; accel x+/x-/y+/y-/z+/z-

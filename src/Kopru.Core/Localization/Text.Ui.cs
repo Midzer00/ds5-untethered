@@ -5,372 +5,324 @@ namespace Kopru.Core.Localization;
 public static partial class Text
 {
 	// Navigation
-	public static string NavOverview(Language? l = null) => Pick(l, $"Genel Bakış", $"Overview");
-	public static string NavLight(Language? l = null) => Pick(l, $"Işık", $"Light");
-	public static string NavSettings(Language? l = null) => Pick(l, $"Ayarlar", $"Settings");
+	public static string NavOverview(Language? l = null) => T(l, "Nav.Overview");
+	public static string NavLight(Language? l = null) => T(l, "Nav.Light");
+	public static string NavSettings(Language? l = null) => T(l, "Nav.Settings");
 
 	// Device card
-	public static string DeviceConnectedBluetooth(Language? l = null) => Pick(l, $"Bluetooth ile Bağlı", $"Via Bluetooth");
-	public static string DeviceNotConnected(Language? l = null) => Pick(l, $"Bağlı Değil", $"Not Connected");
-	public static string DeviceNoController(Language? l = null) => Pick(l, $"Kumanda Bulunamadı", $"No Controller Found");
-	public static string BatteryCharging(double percent, Language? l = null) => Pick(l, $"Şarj Oluyor %{percent:F0}", $"Charging {percent:F0}%");
-	public static string BatteryUnknown(Language? l = null) => Pick(l, $"Pil Bilgisi Yok", $"Battery Unknown");
+	public static string DeviceConnectedBluetooth(Language? l = null) => T(l, "Device.ConnectedBluetooth");
+	public static string DeviceNotConnected(Language? l = null) => T(l, "Device.NotConnected");
+	public static string DeviceNoController(Language? l = null) => T(l, "Device.NoController");
+	public static string BatteryCharging(double percent, Language? l = null) => T(l, "Battery.ChargingPercent", A("percent", percent, "F0"));
+	public static string BatteryUnknown(Language? l = null) => T(l, "Battery.Unknown");
 
 	// Overview
-	public static string OverviewSubtitle(Language? l = null) => Pick(l,
-		$"Başlatınca oyunlar Bluetooth kumandayı kablolu kumanda olarak görür.",
-		$"When started, games see the Bluetooth controller as a wired one.");
-	public static string CardConnection(Language? l = null) => Pick(l, $"Bağlantı", $"Connection");
-	public static string CardLatency(Language? l = null) => Pick(l, $"Gecikme / Giriş Hızı", $"Latency / Input Rate");
-	public static string CardBattery(Language? l = null) => Pick(l, $"Pil", $"Battery");
-	public static string CardHaptics(Language? l = null) => Pick(l, $"Haptik", $"Haptics");
-	public static string ConnectionBluetooth(Language? l = null) => Pick(l, $"Bağlı", $"Connected");
-	public static string InputRate(double rate, Language? l = null) => Pick(l, $"{rate:F0} rapor/sn", $"{rate:F0} reports/s");
-	public static string BatteryValue(double percent, Language? l = null) => Pick(l, $"%{percent:F0}", $"{percent:F0}%");
-	public static string Charging(Language? l = null) => Pick(l, $"Şarj Oluyor", $"Charging");
-	public static string OnBattery(Language? l = null) => Pick(l, $"Pilde", $"On Battery");
-	public static string HapticsActive(Language? l = null) => Pick(l, $"Etkin", $"Active");
-	public static string HapticsIdle(Language? l = null) => Pick(l, $"Beklemede", $"Idle");
-	public static string HapticsFromGame(Language? l = null) => Pick(l, $"Oyunun Kendi Haptiği", $"The Game's Own Haptics");
-	public static string BridgeStart(Language? l = null) => Pick(l, $"Sanal Kumandayı Başlat", $"Start Virtual Controller");
-	public static string BridgeStop(Language? l = null) => Pick(l, $"Sanal Kumandayı Durdur", $"Stop Virtual Controller");
-	public static string BridgeStatusRunning(Language? l = null) => Pick(l, $"Sanal kumanda çalışıyor: oyunlar kablolu kumanda görüyor.", $"The virtual controller is running: games see a wired controller.");
-	public static string BridgeStatusStopped(Language? l = null) => Pick(l, $"Sanal kumanda kapalı.", $"The virtual controller is off.");
-	public static string QuickTests(Language? l = null) => Pick(l, $"Hızlı Testler", $"Quick Tests");
-	public static string QuickSettings(Language? l = null) => Pick(l, $"Hızlı Ayarlar", $"Quick Settings");
-	public static string TestHapticsLeft(Language? l = null) => Pick(l, $"Sol Haptik", $"Left Haptics");
-	public static string TestHapticsRight(Language? l = null) => Pick(l, $"Sağ Haptik", $"Right Haptics");
-	public static string TestTrigger(Language? l = null) => Pick(l, $"Tetik", $"Trigger");
-	public static string TestLight(Language? l = null) => Pick(l, $"Işık", $"Light");
-	public static string GameHapticsLevel(Language? l = null) => Pick(l, $"Oyun Haptiği", $"Game Haptics");
-	public static string RumbleLevel(Language? l = null) => Pick(l, $"Titreşim", $"Rumble");
-	public static string PercentValue(double percent, Language? l = null) => Pick(l, $"%{percent:F0}", $"{percent:F0}%");
-	public static string TestSent(Language? l = null) => Pick(l, $"Test kumandaya gönderildi.", $"Test sent to the controller.");
-	public static string ComingSoon(Language? l = null) => Pick(l, $"Bu özellik yakında geliyor.", $"This feature is coming soon.");
+	public static string OverviewSubtitle(Language? l = null) => T(l, "Overview.Subtitle");
+	public static string CardConnection(Language? l = null) => T(l, "Card.Connection");
+	public static string CardLatency(Language? l = null) => T(l, "Card.Latency");
+	public static string CardBattery(Language? l = null) => T(l, "Card.Battery");
+	public static string CardHaptics(Language? l = null) => T(l, "Card.Haptics");
+	public static string ConnectionBluetooth(Language? l = null) => T(l, "Connection.Bluetooth");
+	public static string InputRate(double rate, Language? l = null) => T(l, "Input.Rate", A("rate", rate, "F0"));
+	public static string BatteryValue(double percent, Language? l = null) => T(l, "Battery.Value", A("percent", percent, "F0"));
+	public static string Charging(Language? l = null) => T(l, "Common.Charging");
+	public static string OnBattery(Language? l = null) => T(l, "On.Battery");
+	public static string HapticsActive(Language? l = null) => T(l, "Haptics.Active");
+	public static string HapticsIdle(Language? l = null) => T(l, "Haptics.Idle");
+	public static string HapticsFromGame(Language? l = null) => T(l, "Haptics.FromGame");
+	public static string BridgeStart(Language? l = null) => T(l, "Bridge.Start");
+	public static string BridgeStop(Language? l = null) => T(l, "Bridge.Stop");
+	public static string BridgeStatusRunning(Language? l = null) => T(l, "Bridge.StatusRunning");
+	public static string BridgeStatusStopped(Language? l = null) => T(l, "Bridge.StatusStopped");
+	public static string QuickTests(Language? l = null) => T(l, "Quick.Tests");
+	public static string QuickSettings(Language? l = null) => T(l, "Quick.Settings");
+	public static string TestHapticsLeft(Language? l = null) => T(l, "Test.HapticsLeft");
+	public static string TestHapticsRight(Language? l = null) => T(l, "Test.HapticsRight");
+	public static string TestTrigger(Language? l = null) => T(l, "Test.Trigger");
+	public static string TestLight(Language? l = null) => T(l, "Test.Light");
+	public static string GameHapticsLevel(Language? l = null) => T(l, "Game.HapticsLevel");
+	public static string RumbleLevel(Language? l = null) => T(l, "Rumble.Level");
+	public static string PercentValue(double percent, Language? l = null) => T(l, "Percent.Value", A("percent", percent, "F0"));
+	public static string TestSent(Language? l = null) => T(l, "Test.Sent");
+	public static string ComingSoon(Language? l = null) => T(l, "Coming.Soon");
 
 	// Haptics & rumble
-	public static string HapticsIntro(Language? l = null) => Pick(l,
-		$"Oyunların haptiği Bluetooth'ta zayıf kalabilir; seviyeyi buradan artır.",
-		$"Game haptics can feel weak over Bluetooth; raise the level here.");
-	public static string GameHapticsHint(Language? l = null) => Pick(l,
-		$"Oyunun gönderdiği haptik sesin gücü. Önerilen: %150.",
-		$"Strength of the game's haptics. Recommended: 150%.");
-	public static string RumbleHint(Language? l = null) => Pick(l,
-		$"Oyunun titreşimi kumandada haptik olarak çalınır.",
-		$"The game's rumble plays as haptics on the controller.");
-	public static string TestBoth(Language? l = null) => Pick(l, $"İki Taraf", $"Both Sides");
-	public static string TestRumble(Language? l = null) => Pick(l, $"Titreşimi Dene", $"Try Rumble");
+	public static string HapticsIntro(Language? l = null) => T(l, "Haptics.Intro");
+	public static string GameHapticsHint(Language? l = null) => T(l, "Game.HapticsHint");
+	public static string RumbleHint(Language? l = null) => T(l, "Rumble.Hint");
+	public static string TestBoth(Language? l = null) => T(l, "Test.Both");
+	public static string TestRumble(Language? l = null) => T(l, "Test.Rumble");
 
 	// Triggers
-	public static string TriggerStrength(Language? l = null) => Pick(l, $"Tetik Gücü", $"Trigger Strength");
-	public static string TriggerStrengthHint(Language? l = null) => Pick(l,
-		$"Oyunun tetik efektlerinin gücü. %0 tetikleri kapatır.",
-		$"Strength of the game's trigger effects. 0% turns them off.");
-	public static string EffectOff(Language? l = null) => Pick(l, $"Kapalı", $"Off");
-	public static string EffectFeedback(Language? l = null) => Pick(l, $"Direnç", $"Feedback");
-	public static string EffectWeapon(Language? l = null) => Pick(l, $"Silah", $"Weapon");
-	public static string EffectVibration(Language? l = null) => Pick(l, $"Titreşim", $"Vibration");
+	public static string TriggerStrength(Language? l = null) => T(l, "Trigger.Strength");
+	public static string TriggerStrengthHint(Language? l = null) => T(l, "Trigger.StrengthHint");
+	public static string EffectOff(Language? l = null) => T(l, "Effect.Off");
+	public static string EffectFeedback(Language? l = null) => T(l, "Effect.Feedback");
+	public static string EffectWeapon(Language? l = null) => T(l, "Effect.Weapon");
+	public static string EffectVibration(Language? l = null) => T(l, "Effect.Vibration");
 
 	// Light
-	public static string LightIntro(Language? l = null) => Pick(l,
-		$"Bir oyun kendi rengini gönderirse o renk kullanılır.",
-		$"If a game sends its own colour, that colour is used.");
-	public static string LightbarColour(Language? l = null) => Pick(l, $"Işık Çubuğu Rengi", $"Light Bar Colour");
-	public static string Brightness(Language? l = null) => Pick(l, $"Parlaklık", $"Brightness");
-	public static string PlayerLeds(Language? l = null) => Pick(l, $"Oyuncu LED'leri", $"Player LEDs");
-	public static string PlayerLedsHint(Language? l = null) => Pick(l, $"Dokunmatik yüzeyin altındaki küçük LED'ler.", $"The small LEDs below the touchpad.");
-	public static string ColourBlue(Language? l = null) => Pick(l, $"Mavi", $"Blue");
-	public static string ColourRed(Language? l = null) => Pick(l, $"Kırmızı", $"Red");
-	public static string ColourGreen(Language? l = null) => Pick(l, $"Yeşil", $"Green");
-	public static string ColourPurple(Language? l = null) => Pick(l, $"Mor", $"Purple");
-	public static string ColourOrange(Language? l = null) => Pick(l, $"Turuncu", $"Orange");
-	public static string ColourWhite(Language? l = null) => Pick(l, $"Beyaz", $"White");
+	public static string LightIntro(Language? l = null) => T(l, "Light.Intro");
+	public static string LightbarColour(Language? l = null) => T(l, "Lightbar.Colour");
+	public static string Brightness(Language? l = null) => T(l, "Common.Brightness");
+	public static string PlayerLeds(Language? l = null) => T(l, "Player.Leds");
+	public static string PlayerLedsHint(Language? l = null) => T(l, "Player.LedsHint");
+	public static string ColourBlue(Language? l = null) => T(l, "Colour.Blue");
+	public static string ColourRed(Language? l = null) => T(l, "Colour.Red");
+	public static string ColourGreen(Language? l = null) => T(l, "Colour.Green");
+	public static string ColourPurple(Language? l = null) => T(l, "Colour.Purple");
+	public static string ColourOrange(Language? l = null) => T(l, "Colour.Orange");
+	public static string ColourWhite(Language? l = null) => T(l, "Colour.White");
 
 	// Settings
-	public static string LanguageLabel(Language? l = null) => Pick(l, $"Dil", $"Language");
-	public static string LanguageFollowSystem(Language? l = null) => Pick(l, $"Sistemi İzle", $"Follow System");
-	public static string StartWithWindows(Language? l = null) => Pick(l, $"Windows ile Başlat", $"Start With Windows");
-	public static string StartWithWindowsHint(Language? l = null) => Pick(l, $"Oturum açınca pencere açmadan arka planda başlar.", $"Starts in the background when you sign in, without opening the window.");
-	public static string IdlePowerOff(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");
-	public static string IdlePowerOffHint(Language? l = null) => Pick(l,
-		$"Bu kadar dakika boşta kalınca kapanır (0 = asla).",
-		$"Turns off after this many idle minutes (0 = never).");
-	public static string Minutes(double minutes, Language? l = null) => Pick(l, $"{minutes:F0} dk", $"{minutes:F0} min");
-	public static string Never(Language? l = null) => Pick(l, $"Asla", $"Never");
-	public static string General(Language? l = null) => Pick(l, $"Genel", $"General");
-	public static string Tools(Language? l = null) => Pick(l, $"Araçlar", $"Tools");
-	public static string About(Language? l = null) => Pick(l, $"Hakkında", $"About");
-	public static string AboutVersion(string version, Language? l = null) => Pick(l, $"Sürüm {version}", $"Version {version}");
+	public static string LanguageLabel(Language? l = null) => T(l, "Language.Label");
+	public static string LanguageFollowSystem(Language? l = null) => T(l, "Language.FollowSystem");
+	public static string StartWithWindows(Language? l = null) => T(l, "Start.WithWindows");
+	public static string StartWithWindowsHint(Language? l = null) => T(l, "Start.WithWindowsHint");
+	public static string IdlePowerOff(Language? l = null) => T(l, "Idle.PowerOff");
+	public static string IdlePowerOffHint(Language? l = null) => T(l, "Idle.PowerOffHint");
+	public static string Minutes(double minutes, Language? l = null) => T(l, "Common.Minutes", A("minutes", minutes, "F0"));
+	public static string Never(Language? l = null) => T(l, "Common.Never");
+	public static string General(Language? l = null) => T(l, "Common.General");
+	public static string Tools(Language? l = null) => T(l, "Common.Tools");
+	public static string About(Language? l = null) => T(l, "Common.About");
+	public static string AboutVersion(string version, Language? l = null) => T(l, "About.Version", A("version", version));
 	public static string AboutTagline(Language? l = null) =>
-		Pick(l, $"DualSense haptikleri ve uyarlanabilir tetikleri, kablosuz.", $"DualSense haptics and adaptive triggers, wirelessly.");
-	public static string RunSetupWizard(Language? l = null) => Pick(l, $"Kurulum Sihirbazı", $"Setup Wizard");
-	public static string TestBluetoothAdapter(Language? l = null) => Pick(l, $"Bluetooth Adaptör Testi", $"Bluetooth Adapter Test");
-	public static string ExportDiagnostics(Language? l = null) => Pick(l, $"Tanılama Raporu", $"Diagnostics Report");
+		T(l, "About.Tagline");
+	public static string RunSetupWizard(Language? l = null) => T(l, "Run.SetupWizard");
+	public static string TestBluetoothAdapter(Language? l = null) => T(l, "Test.BluetoothAdapter");
+	public static string ExportDiagnostics(Language? l = null) => T(l, "Export.Diagnostics");
 
 	// Redesigned UI: bridge state, stats, cards and setting rows
-	public static string BridgeStateStopped(Language? l = null) => Pick(l, $"Sanal Kumanda Kapalı", $"Virtual Controller Off");
-	public static string BridgeStateWaiting(Language? l = null) => Pick(l, $"Oyun Bekleniyor", $"Waiting for a Game");
-	public static string BridgeStateRunning(Language? l = null) => Pick(l, $"Çalışıyor", $"Running");
-	public static string BridgeHeadlineStopped(Language? l = null) => Pick(l, $"Sanal Kumanda Kapalı", $"Virtual Controller Is Off");
-	public static string BridgeHeadlineWaiting(Language? l = null) => Pick(l, $"Sanal Kumanda Hazır", $"Virtual Controller Is Ready");
-	public static string BridgeHeadlineRunning(Language? l = null) => Pick(l, $"Sanal Kumanda Çalışıyor", $"Virtual Controller Is Running");
-	public static string BridgeDetailWaiting(Language? l = null) => Pick(l,
-		$"Sanal kablolu kumanda takıldı. Bir oyun başlatın.",
-		$"The virtual wired controller is plugged in. Start a game.");
-	public static string BridgeDetailRunning(Language? l = null) => Pick(l,
-		$"Oyun kablolu kumanda görüyor; haptik ve tetikler aktarılıyor.",
-		$"The game sees a wired controller; haptics and triggers are relayed.");
-	public static string StatLatency(Language? l = null) => Pick(l, $"Gecikme", $"Latency");
-	public static string StatInputRate(Language? l = null) => Pick(l, $"Giriş Hızı", $"Input Rate");
-	public static string LiveOutput(Language? l = null) => Pick(l, $"Canlı Haptik Çıkışı", $"Live Haptics Output");
-	public static string LeftShort(Language? l = null) => Pick(l, $"Sol", $"Left");
-	public static string RightShort(Language? l = null) => Pick(l, $"Sağ", $"Right");
-	public static string EffectOffHint(Language? l = null) => Pick(l, $"Direnç yok, serbest tetik", $"No resistance, free travel");
-	public static string EffectFeedbackHint(Language? l = null) => Pick(l, $"Bir noktadan sonra sabit direnç", $"Steady resistance past a point");
-	public static string EffectWeaponHint(Language? l = null) => Pick(l, $"Artan direnç, sonra kırılma", $"Builds up, then snaps");
-	public static string EffectVibrationHint(Language? l = null) => Pick(l, $"Basılıyken titreşir", $"Pulses while pressed");
-	public static string LanguageHint(Language? l = null) => Pick(l, $"Arayüzün dili.", $"The app's language.");
-	public static string RunSetupWizardHint(Language? l = null) => Pick(l,
-		$"Sürücüleri ve eşleşmeyi denetler.",
-		$"Checks drivers and pairing again.");
-	public static string TestBluetoothAdapterHint(Language? l = null) => Pick(l,
-		$"Haptik için yeterli mi, ölçer.",
-		$"Checks it keeps up with haptics.");
-	public static string ExportDiagnosticsHint(Language? l = null) => Pick(l,
-		$"Hata bildirimine eklenecek dosya.",
-		$"A file to attach to bug reports.");
-	public static string ActionRun(Language? l = null) => Pick(l, $"Çalıştır", $"Run");
-	public static string ActionTest(Language? l = null) => Pick(l, $"Test Et", $"Test");
-	public static string ActionExport(Language? l = null) => Pick(l, $"Dışa Aktar", $"Export");
+	public static string BridgeStateStopped(Language? l = null) => T(l, "Bridge.StateStopped");
+	public static string BridgeStateWaiting(Language? l = null) => T(l, "Bridge.StateWaiting");
+	public static string BridgeStateRunning(Language? l = null) => T(l, "Bridge.StateRunning");
+	public static string BridgeHeadlineStopped(Language? l = null) => T(l, "Bridge.HeadlineStopped");
+	public static string BridgeHeadlineWaiting(Language? l = null) => T(l, "Bridge.HeadlineWaiting");
+	public static string BridgeHeadlineRunning(Language? l = null) => T(l, "Bridge.HeadlineRunning");
+	public static string BridgeDetailWaiting(Language? l = null) => T(l, "Bridge.DetailWaiting");
+	public static string BridgeDetailRunning(Language? l = null) => T(l, "Bridge.DetailRunning");
+	public static string StatLatency(Language? l = null) => T(l, "Stat.Latency");
+	public static string StatInputRate(Language? l = null) => T(l, "Stat.InputRate");
+	public static string LiveOutput(Language? l = null) => T(l, "Live.Output");
+	public static string LeftShort(Language? l = null) => T(l, "Left.Short");
+	public static string RightShort(Language? l = null) => T(l, "Right.Short");
+	public static string EffectOffHint(Language? l = null) => T(l, "Effect.OffHint");
+	public static string EffectFeedbackHint(Language? l = null) => T(l, "Effect.FeedbackHint");
+	public static string EffectWeaponHint(Language? l = null) => T(l, "Effect.WeaponHint");
+	public static string EffectVibrationHint(Language? l = null) => T(l, "Effect.VibrationHint");
+	public static string LanguageHint(Language? l = null) => T(l, "Language.Hint");
+	public static string RunSetupWizardHint(Language? l = null) => T(l, "Run.SetupWizardHint");
+	public static string TestBluetoothAdapterHint(Language? l = null) => T(l, "Test.BluetoothAdapterHint");
+	public static string ExportDiagnosticsHint(Language? l = null) => T(l, "Export.DiagnosticsHint");
+	public static string ActionRun(Language? l = null) => T(l, "Action.Run");
+	public static string ActionTest(Language? l = null) => T(l, "Action.Test");
+	public static string ActionExport(Language? l = null) => T(l, "Action.Export");
 
 	// Real controller service
-	public static string TestNoController(Language? l = null) => Pick(l,
-		$"Test için kumanda bulunamadı. Kumandanın Bluetooth ile bağlı olduğundan emin olun.",
-		$"No controller found for the test. Make sure the controller is connected via Bluetooth.");
-	public static string AdapterTestRunning(Language? l = null) => Pick(l, $"Adaptör test ediliyor, yaklaşık 10 saniye sürer…", $"Testing the adapter, this takes about 10 seconds…");
+	public static string TestNoController(Language? l = null) => T(l, "Test.NoController");
+	public static string AdapterTestRunning(Language? l = null) => T(l, "Adapter.TestRunning");
 
 	// Setup wizard page
-	public static string SetupPageTitle(Language? l = null) => Pick(l, $"Kurulum", $"Setup");
-	public static string SetupPageIntro(Language? l = null) => Pick(l,
-		$"DS5 Untethered'ın çalışması için gerekenler. Eksik adımları tamamlayıp yeniden kontrol edin.",
-		$"What DS5 Untethered needs to work. Complete the missing steps, then check again.");
-	public static string SetupClose(Language? l = null) => Pick(l, $"Kapat", $"Close");
+	public static string SetupPageTitle(Language? l = null) => T(l, "Setup.PageTitle");
+	public static string SetupPageIntro(Language? l = null) => T(l, "Setup.PageIntro");
+	public static string SetupClose(Language? l = null) => T(l, "Setup.Close");
 
 	// Overview dashboard
-	public static string OverviewIntro(Language? l = null) => Pick(l,
-		$"Kumandanın, sanal kumandanın ve ayarların anlık durumu.",
-		$"At-a-glance status of your controller, the virtual controller and settings.");
-	public static string OverallOk(Language? l = null) => Pick(l, $"Her Şey Yolunda", $"All Systems Normal");
-	public static string OverallAttention(Language? l = null) => Pick(l, $"Dikkat Gerekiyor", $"Needs Attention");
-	public static string OverallNoController(Language? l = null) => Pick(l, $"Kumanda Bağlı Değil", $"No Controller Connected");
-	public static string CardBridge(Language? l = null) => Pick(l, $"Sanal Kumanda", $"Virtual Controller");
-	public static string CardController(Language? l = null) => Pick(l, $"Kumanda", $"Controller");
-	public static string RowLink(Language? l = null) => Pick(l, $"Bluetooth", $"Link");
-	public static string RowStatus(Language? l = null) => Pick(l, $"Durum", $"Status");
-	public static string RowGame(Language? l = null) => Pick(l, $"Oyun", $"Game");
-	public static string RowMode(Language? l = null) => Pick(l, $"Mod", $"Mode");
-	public static string RowVirtualPad(Language? l = null) => Pick(l, $"Sanal Kumanda", $"Virtual Controller");
-	public static string RowModel(Language? l = null) => Pick(l, $"Tür", $"Model");
-	public static string RowPower(Language? l = null) => Pick(l, $"Güç", $"Power");
-	public static string ValuePluggedIn(Language? l = null) => Pick(l, $"Takılı", $"Plugged in");
-	public static string ValueUnplugged(Language? l = null) => Pick(l, $"Takılı Değil", $"Not Plugged In");
-	public static string ValueGameConnected(Language? l = null) => Pick(l, $"Bağlandı", $"Connected");
-	public static string ValueNoGame(Language? l = null) => Pick(l, $"Yok", $"None");
-	public static string QuickActions(Language? l = null) => Pick(l, $"Hızlı İşlemler", $"Quick Actions");
-	public static string QuickControls(Language? l = null) => Pick(l, $"Hızlı Kontroller", $"Quick Controls");
+	public static string OverviewIntro(Language? l = null) => T(l, "Overview.Intro");
+	public static string OverallOk(Language? l = null) => T(l, "Overall.Ok");
+	public static string OverallAttention(Language? l = null) => T(l, "Overall.Attention");
+	public static string OverallNoController(Language? l = null) => T(l, "Overall.NoController");
+	public static string CardBridge(Language? l = null) => T(l, "Card.Bridge");
+	public static string CardController(Language? l = null) => T(l, "Card.Controller");
+	public static string RowLink(Language? l = null) => T(l, "Row.Link");
+	public static string RowStatus(Language? l = null) => T(l, "Row.Status");
+	public static string RowGame(Language? l = null) => T(l, "Row.Game");
+	public static string RowMode(Language? l = null) => T(l, "Row.Mode");
+	public static string RowVirtualPad(Language? l = null) => T(l, "Row.VirtualPad");
+	public static string RowModel(Language? l = null) => T(l, "Row.Model");
+	public static string RowPower(Language? l = null) => T(l, "Row.Power");
+	public static string ValuePluggedIn(Language? l = null) => T(l, "Value.PluggedIn");
+	public static string ValueUnplugged(Language? l = null) => T(l, "Value.Unplugged");
+	public static string ValueGameConnected(Language? l = null) => T(l, "Value.GameConnected");
+	public static string ValueNoGame(Language? l = null) => T(l, "Value.NoGame");
+	public static string QuickActions(Language? l = null) => T(l, "Quick.Actions");
+	public static string QuickControls(Language? l = null) => T(l, "Quick.Controls");
 
 	// Overview by state: the status pill, the one main action, the hero, the live panel and the health chips.
-	public static string OverviewReady(Language? l = null) => Pick(l, $"Hazır", $"Ready");
-	public static string OverviewWaitingController(Language? l = null) => Pick(l, $"Kumanda Bekleniyor", $"Waiting For Controller");
-	public static string OverviewPlaying(string game, Language? l = null) => Pick(l, $"Çalışıyor · {game}", $"Running · {game}");
-	public static string PairController(Language? l = null) => Pick(l, $"Kumandayı Eşleştir", $"Pair Controller");
-	public static string FinishSetup(Language? l = null) => Pick(l, $"Kurulumu Tamamla", $"Finish Setup");
-	public static string SetupNeeded(Language? l = null) => Pick(l, $"Kurulum Gerekli", $"Setup Needed");
-	public static string HeroGame(Language? l = null) => Pick(l, $"Oyun", $"Game");
-	public static string HeroNoController(Language? l = null) => Pick(l, $"Kumanda Bağlı Değil", $"No Controller");
-	public static string ReasonRadioOff(Language? l = null) => Pick(l, $"Bluetooth kapalı.", $"Bluetooth is off.");
-	public static string ReasonRadioMissing(Language? l = null) => Pick(l, $"Bluetooth adaptörü bulunamadı.", $"No Bluetooth adapter found.");
-	public static string ReasonUsbOnly(Language? l = null) => Pick(l, $"Kumanda USB kablosuyla bağlı.", $"The controller is on a USB cable.");
-	public static string ReasonControllerOff(Language? l = null) => Pick(l, $"Kumanda kapalı ya da eşleşmemiş.", $"The controller is off or not paired.");
-	public static string HintPressPs(Language? l = null) => Pick(l, $"ø tuşuna basın; ilk kez bağlıyorsanız eşleştirin.", $"Press the ø button, or pair it if this is the first time.");
-	public static string LiveTitle(Language? l = null) => Pick(l, $"Canlı", $"Live");
-	public static string LiveIdle(Language? l = null) => Pick(l, $"Sanal kumanda çalışırken burada görünür.", $"Shows here while the virtual controller runs.");
+	public static string OverviewReady(Language? l = null) => T(l, "Overview.Ready");
+	public static string OverviewWaitingController(Language? l = null) => T(l, "Overview.WaitingController");
+	public static string OverviewPlaying(string game, Language? l = null) => T(l, "Overview.Playing", A("game", game));
+	public static string PairController(Language? l = null) => T(l, "Pair.Controller");
+	public static string FinishSetup(Language? l = null) => T(l, "Finish.Setup");
+	public static string SetupNeeded(Language? l = null) => T(l, "Setup.Needed");
+	public static string HeroGame(Language? l = null) => T(l, "Hero.Game");
+	public static string HeroNoController(Language? l = null) => T(l, "Hero.NoController");
+	public static string ReasonRadioOff(Language? l = null) => T(l, "Reason.RadioOff");
+	public static string ReasonRadioMissing(Language? l = null) => T(l, "Reason.RadioMissing");
+	public static string ReasonUsbOnly(Language? l = null) => T(l, "Reason.UsbOnly");
+	public static string ReasonControllerOff(Language? l = null) => T(l, "Reason.ControllerOff");
+	public static string HintPressPs(Language? l = null) => T(l, "Hint.PressPs");
+	public static string LiveTitle(Language? l = null) => T(l, "Live.Title");
+	public static string LiveIdle(Language? l = null) => T(l, "Live.Idle");
 	// The live card's two views (the header's switch), the delay headline's caption and the chart's span.
-	public static string LiveViewLink(Language? l = null) => Pick(l, $"Bağlantı", $"Link");
-	public static string LiveViewSignals(Language? l = null) => Pick(l, $"Sinyaller", $"Signals");
-	public static string LiveTypicalDelay(Language? l = null) => Pick(l, $"Tipik Gecikme", $"Typical Delay");
-	public static string LiveLast60s(Language? l = null) => Pick(l, $"Son 60 sn", $"Last 60 s");
-	public static string LiveLast10s(Language? l = null) => Pick(l, $"Son 10 sn", $"Last 10 s");
-	public static string LiveMicShort(Language? l = null) => Pick(l, $"Mikrofon", $"Mic");
-	public static string LiveSignalsTip(Language? l = null) => Pick(l,
-		$"Son 10 saniyede kumandanın tetiklerine ne kadar basıldığı, haptik motorlara gönderilen titreşim ve mikrofon seviyesi.",
-		$"The last 10 seconds: how far the triggers are pressed, the vibration going to the haptic motors and the microphone level.");
-	public static string DelayMs(double ms, Language? l = null) => Pick(l, $"{ms:F1} ms", $"{ms:F1} ms");
-	public static string LiveTriggers(Language? l = null) => Pick(l, $"Tetikler", $"Triggers");
-	public static string LiveBridgeUptime(string duration, Language? l = null) => Pick(l, $"Sanal kumanda açık · {duration}", $"Virtual controller on · {duration}");
-	public static string LiveConnectedFor(string duration, Language? l = null) => Pick(l, $"Bağlı · {duration}", $"Connected · {duration}");
-	public static string LiveSpeaker(Language? l = null) => Pick(l, $"Hoparlör", $"Speaker");
-	public static string LiveMic(Language? l = null) => Pick(l, $"Mikrofon", $"Microphone");
-	public static string LiveMuted(Language? l = null) => Pick(l, $"Sessizde", $"Muted");
-	public static string LiveOnVolume(double percent, Language? l = null) => Pick(l, $"Açık · %{percent:F0}", $"On · {percent:F0}%");
-	public static string ControlsNeedController(Language? l = null) => Pick(l, $"Kumanda bağlanınca kullanılabilir", $"Available once the controller connects");
-	public static string TryAction(Language? l = null) => Pick(l, $"Dene", $"Try");
-	public static string HealthDriver(Language? l = null) => Pick(l, $"Sürücü", $"Driver");
-	public static string HealthAdapter(Language? l = null) => Pick(l, $"Adaptör", $"Adapter");
-	public static string HealthInstalled(Language? l = null) => Pick(l, $"Kurulu", $"Installed");
-	public static string HealthMissing(Language? l = null) => Pick(l, $"Kurulu Değil", $"Not Installed");
-	public static string HealthUnknown(Language? l = null) => Pick(l, $"Bilinmiyor", $"Unknown");
-	public static string HealthNoIssue(Language? l = null) => Pick(l, $"Sorun Yok", $"No Issue");
-	public static string HealthOn(Language? l = null) => Pick(l, $"Açık", $"On");
-	public static string HealthOff(Language? l = null) => Pick(l, $"Kapalı", $"Off");
-	public static string HealthSuitable(Language? l = null) => Pick(l, $"Uygun", $"Suitable");
-	public static string HealthBorderline(Language? l = null) => Pick(l, $"Sınırda", $"Borderline");
-	public static string HealthUnsuitable(Language? l = null) => Pick(l, $"Uygun Değil", $"Unsuitable");
-	public static string HealthNotTested(Language? l = null) => Pick(l, $"Test Edilmedi", $"Not Tested");
-	public static string HealthError(Language? l = null) => Pick(l, $"Hata", $"Error");
-	public static string HealthFix(Language? l = null) => Pick(l, $"Düzelt", $"Fix");
-	public static string HealthStart(Language? l = null) => Pick(l, $"Başlat", $"Start");
-	public static string HealthRestart(Language? l = null) => Pick(l, $"Yeniden Başlat", $"Restart");
-	public static string GroupStartup(Language? l = null) => Pick(l, $"Başlangıç", $"Startup");
-	public static string GroupPowerSaving(Language? l = null) => Pick(l, $"Güç Tasarrufu", $"Power Saving");
+	public static string LiveViewLink(Language? l = null) => T(l, "Live.ViewLink");
+	public static string LiveViewSignals(Language? l = null) => T(l, "Live.ViewSignals");
+	public static string LiveTypicalDelay(Language? l = null) => T(l, "Live.TypicalDelay");
+	public static string LiveLast60s(Language? l = null) => T(l, "Live.Last60s");
+	public static string LiveLast10s(Language? l = null) => T(l, "Live.Last10s");
+	public static string LiveMicShort(Language? l = null) => T(l, "Live.MicShort");
+	public static string LiveSignalsTip(Language? l = null) => T(l, "Live.SignalsTip");
+	public static string DelayMs(double ms, Language? l = null) => T(l, "Delay.Ms", A("ms", ms, "F1"));
+	public static string LiveTriggers(Language? l = null) => T(l, "Live.Triggers");
+	public static string LiveBridgeUptime(string duration, Language? l = null) => T(l, "Live.BridgeUptime", A("duration", duration));
+	public static string LiveConnectedFor(string duration, Language? l = null) => T(l, "Live.ConnectedFor", A("duration", duration));
+	public static string LiveSpeaker(Language? l = null) => T(l, "Live.Speaker");
+	public static string LiveMic(Language? l = null) => T(l, "Live.Mic");
+	public static string LiveMuted(Language? l = null) => T(l, "Live.Muted");
+	public static string LiveOnVolume(double percent, Language? l = null) => T(l, "Live.OnVolume", A("percent", percent, "F0"));
+	public static string ControlsNeedController(Language? l = null) => T(l, "Controls.NeedController");
+	public static string TryAction(Language? l = null) => T(l, "Try.Action");
+	public static string HealthDriver(Language? l = null) => T(l, "Health.Driver");
+	public static string HealthAdapter(Language? l = null) => T(l, "Health.Adapter");
+	public static string HealthInstalled(Language? l = null) => T(l, "Health.Installed");
+	public static string HealthMissing(Language? l = null) => T(l, "Health.Missing");
+	public static string HealthUnknown(Language? l = null) => T(l, "Health.Unknown");
+	public static string HealthNoIssue(Language? l = null) => T(l, "Health.NoIssue");
+	public static string HealthOn(Language? l = null) => T(l, "Health.On");
+	public static string HealthOff(Language? l = null) => T(l, "Health.Off");
+	public static string HealthSuitable(Language? l = null) => T(l, "Health.Suitable");
+	public static string HealthBorderline(Language? l = null) => T(l, "Health.Borderline");
+	public static string HealthUnsuitable(Language? l = null) => T(l, "Health.Unsuitable");
+	public static string HealthNotTested(Language? l = null) => T(l, "Health.NotTested");
+	public static string HealthError(Language? l = null) => T(l, "Health.Error");
+	public static string HealthFix(Language? l = null) => T(l, "Health.Fix");
+	public static string HealthStart(Language? l = null) => T(l, "Health.Start");
+	public static string HealthRestart(Language? l = null) => T(l, "Health.Restart");
+	public static string GroupStartup(Language? l = null) => T(l, "Group.Startup");
+	public static string GroupPowerSaving(Language? l = null) => T(l, "Group.PowerSaving");
 
 	// Game modes: supported (native DualSense) and other games
-	public static string LightFromGame(Language? l = null) => Pick(l, $"Oyunun Işığını Kullan", $"Use The Game's Light");
-	public static string LightFromGameHint(Language? l = null) => Pick(l,
-		$"Oyun renk gönderirse o yanar; göndermezse veya bu kapalıysa senin ışığın yanar.",
-		$"If the game sends a colour, it is shown; if not, or when this is off, your light is shown.");
-	public static string SupportedGameList(Language? l = null) => Pick(l, $"Desteklenen Oyun Listesi", $"Supported Games List");
+	public static string LightFromGame(Language? l = null) => T(l, "Light.FromGame");
+	public static string LightFromGameHint(Language? l = null) => T(l, "Light.FromGameHint");
+	public static string SupportedGameList(Language? l = null) => T(l, "Supported.GameList");
 	// The "Installed" view's list title: everything on this PC, supported or not.
-	public static string SearchGames(Language? l = null) => Pick(l, $"Oyun Ara", $"Search Games");
-	public static string GameCount(double count, Language? l = null) => Pick(l, $"{count:F0} oyun", $"{count:F0} {En(count, "game", "games")}");
-	public static string NoMatchingGames(Language? l = null) => Pick(l, $"Eşleşen oyun yok.", $"No matching games.");
+	public static string SearchGames(Language? l = null) => T(l, "Search.Games");
+	public static string GameCount(double count, Language? l = null) => T(l, "Game.Count", A("count", count, "F0"));
+	public static string NoMatchingGames(Language? l = null) => T(l, "No.MatchingGames");
 
 	// Online update of the supported games list.
-	public static string UpdateGameList(Language? l = null) => Pick(l, $"Listeyi Güncelle", $"Update List");
-	public static string UpdatingGameList(Language? l = null) => Pick(l, $"Güncelleniyor…", $"Updating…");
-	public static string GameListUpToDate(Language? l = null) => Pick(l, $"Zaten güncel", $"Already up to date");
-	public static string GameListAdded(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new {En(added, "game", "games")} added");
-	public static string GameListFailed(string reason, Language? l = null) => Pick(l, $"Güncellenemedi: {reason}", $"Couldn't update: {reason}");
-	public static string GameListOffline(Language? l = null) => Pick(l, $"sunucuya ulaşılamadı, internet bağlantını kontrol et.", $"the server couldn't be reached, check your internet connection.");
-	public static string GameListTimeout(Language? l = null) => Pick(l, $"sunucu zamanında yanıt vermedi.", $"the server didn't answer in time.");
-	public static string GameListInvalid(Language? l = null) => Pick(l, $"indirilen liste geçersiz.", $"the downloaded list is invalid.");
-	public static string GameListUnsupported(Language? l = null) => Pick(l, $"liste bu sürüm için çok yeni, uygulamayı güncelle.", $"the list is too new for this version, update the app.");
-	public static string GameListSaveFailed(Language? l = null) => Pick(l, $"liste kaydedilemedi.", $"the list couldn't be saved.");
-	public static string AutoUpdateGameList(Language? l = null) => Pick(l, $"Oyun Listesini Otomatik Güncelle", $"Update Game List Automatically");
-	public static string NotifyGameListTitle(Language? l = null) => Pick(l, $"Liste Güncellendi", $"Game List Updated");
-	public static string NotifyGameListBody(double added, Language? l = null) => Pick(l, $"{added:F0} yeni oyun eklendi", $"{added:F0} new {En(added, "game", "games")} added");
+	public static string UpdateGameList(Language? l = null) => T(l, "Update.GameList");
+	public static string UpdatingGameList(Language? l = null) => T(l, "Updating.GameList");
+	public static string GameListUpToDate(Language? l = null) => T(l, "Game.ListUpToDate");
+	public static string GameListAdded(double added, Language? l = null) => T(l, "Game.ListAdded", A("added", added, "F0"));
+	public static string GameListFailed(string reason, Language? l = null) => T(l, "Game.ListFailed", A("reason", reason));
+	public static string GameListOffline(Language? l = null) => T(l, "Game.ListOffline");
+	public static string GameListTimeout(Language? l = null) => T(l, "Game.ListTimeout");
+	public static string GameListInvalid(Language? l = null) => T(l, "Game.ListInvalid");
+	public static string GameListUnsupported(Language? l = null) => T(l, "Game.ListUnsupported");
+	public static string GameListSaveFailed(Language? l = null) => T(l, "Game.ListSaveFailed");
+	public static string AutoUpdateGameList(Language? l = null) => T(l, "Auto.UpdateGameList");
+	public static string NotifyGameListTitle(Language? l = null) => T(l, "Notify.GameListTitle");
+	public static string NotifyGameListBody(double added, Language? l = null) => T(l, "Notify.GameListBody", A("added", added, "F0"));
 
 	// "72 oyun · güncellendi 9 Kas 2026"; without the date when updated is not an ISO date.
 	public static string GameListInfo(double count, string updated, Language? l = null) =>
 		DateTime.TryParseExact(updated, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime date)
-			? Pick(l, $"{count:F0} oyun · güncellendi {date:d MMM yyyy}", $"{count:F0} {En(count, "game", "games")} · updated {date:d MMM yyyy}")
-			: Pick(l, $"{count:F0} oyun", $"{count:F0} {En(count, "game", "games")}");
-	public static string BadgeHaptics(Language? l = null) => Pick(l, $"Haptik", $"Haptics");
-	public static string BadgeTriggers(Language? l = null) => Pick(l, $"Tetik", $"Triggers");
-	public static string MarkUserAdded(Language? l = null) => Pick(l, $"Eklendi", $"Added");
-	public static string AddGame(Language? l = null) => Pick(l, $"Oyun Ekle", $"Add Game");
-	public static string AddGameFromFile(Language? l = null) => Pick(l, $"Dosyadan Seç…", $"Choose File…");
-	public static string AddGameRunningHeader(Language? l = null) => Pick(l, $"Açık Uygulamalar", $"Running Apps");
-	public static string AddGameNoRunning(Language? l = null) => Pick(l, $"Açık uygulama yok", $"No running apps");
-	public static string RemoveGame(Language? l = null) => Pick(l, $"Kaldır", $"Remove");
-	public static string GameListHint(Language? l = null) => Pick(l,
-		$"Listedeki, bilgisayarında bulunan ve eklediğin oyunlar açılınca tanınır. Her oyuna kumanda türü ve profil seçebilirsin.",
-		$"Listed, found and added games are recognised when they start. You can pick a controller type and profile for each.");
+			? T(l, "Game.ListInfo.Updated", A("count", count, "F0"), A("date", date, "d MMM yyyy"))
+			: T(l, "Game.ListInfo", A("count", count, "F0"));
+	public static string BadgeHaptics(Language? l = null) => T(l, "Badge.Haptics");
+	public static string BadgeTriggers(Language? l = null) => T(l, "Badge.Triggers");
+	public static string MarkUserAdded(Language? l = null) => T(l, "Mark.UserAdded");
+	public static string AddGame(Language? l = null) => T(l, "Add.Game");
+	public static string AddGameFromFile(Language? l = null) => T(l, "Add.GameFromFile");
+	public static string AddGameRunningHeader(Language? l = null) => T(l, "Add.GameRunningHeader");
+	public static string AddGameNoRunning(Language? l = null) => T(l, "Add.GameNoRunning");
+	public static string RemoveGame(Language? l = null) => T(l, "Remove.Game");
+	public static string GameListHint(Language? l = null) => T(l, "Game.ListHint");
 
 	// The removed DualSense Mode switch (obsolete: GameModeText.Mode on the games pages still reads these).
-	public static string ModeSupported(Language? l = null) => Pick(l, $"DualSense Modu", $"DualSense Mode");
-	public static string ModeUnsupported(Language? l = null) => Pick(l, $"Klasik Titreşim", $"Classic Rumble");
-	public static string NoGameYet(Language? l = null) => Pick(l, $"Tanınan oyun açık değil", $"No known game running");
-	public static string RumbleFeelLabel(Language? l = null) => Pick(l, $"Titreşim Hissi", $"Rumble Feel");
-	public static string RumbleFeelSoft(Language? l = null) => Pick(l, $"Yumuşak", $"Soft");
-	public static string RumbleFeelPunchy(Language? l = null) => Pick(l, $"Sert", $"Punchy");
-	public static string RumbleFeelHint(Language? l = null) => Pick(l,
-		$"Yumuşak: pes, akıcı tonlar. Sert: daha tiz, kısa ve keskin vuruşlar.",
-		$"Soft: low, smooth tones. Punchy: higher, shorter, sharper hits.");
-	public static string FallbackTriggerLabel(Language? l = null) => Pick(l, $"Yedek Tetik Efekti", $"Fallback Trigger Effect");
-	public static string FallbackTriggerHint(Language? l = null) => Pick(l,
-		$"Oyun tetiklere efekt göndermiyorsa tetiklere bu efekt verilir.",
-		$"Used when the game sends no trigger effect.");
-	public static string FallbackStrength(Language? l = null) => Pick(l, $"Efekt Gücü", $"Effect Strength");
-	public static string TestFallbackTrigger(Language? l = null) => Pick(l, $"Tetik Efektini Dene", $"Try Trigger Effect");
+	public static string ModeSupported(Language? l = null) => T(l, "Mode.Supported");
+	public static string ModeUnsupported(Language? l = null) => T(l, "Mode.Unsupported");
+	public static string NoGameYet(Language? l = null) => T(l, "No.GameYet");
+	public static string RumbleFeelLabel(Language? l = null) => T(l, "Rumble.FeelLabel");
+	public static string RumbleFeelSoft(Language? l = null) => T(l, "Rumble.FeelSoft");
+	public static string RumbleFeelPunchy(Language? l = null) => T(l, "Rumble.FeelPunchy");
+	public static string RumbleFeelHint(Language? l = null) => T(l, "Rumble.FeelHint");
+	public static string FallbackTriggerLabel(Language? l = null) => T(l, "Fallback.TriggerLabel");
+	public static string FallbackTriggerHint(Language? l = null) => T(l, "Fallback.TriggerHint");
+	public static string FallbackStrength(Language? l = null) => T(l, "Fallback.Strength");
+	public static string TestFallbackTrigger(Language? l = null) => T(l, "Test.FallbackTrigger");
 
 	// The controller page: test, sticks, triggers, remap & gyro
-	public static string NavController(Language? l = null) => Pick(l, $"Kumanda", $"Controller");
-	public static string ControllerIntro(Language? l = null) => Pick(l,
-		$"Kumandanı test et, gördüğünü hemen düzelt. Analog, tetik ve tuş ayarları da burada.",
-		$"Test your controller and fix what you see right away. Stick, trigger and button settings are here too.");
-	public static string LivePreviewNeedsBridge(Language? l = null) => Pick(l,
-		$"Canlı önizleme sanal kumanda çalışırken görünür.",
-		$"The live preview shows while the virtual controller is running.");
-	public static string DriftCalibration(Language? l = null) => Pick(l, $"Çubuk Kayması Kalibrasyonu", $"Stick Drift Calibration");
-	public static string CalibrateAction(Language? l = null) => Pick(l, $"Kalibre Et", $"Calibrate");
-	public static string ResetToDefault(Language? l = null) => Pick(l, $"Varsayılana Dön", $"Reset To Default");
+	public static string NavController(Language? l = null) => T(l, "Nav.Controller");
+	public static string ControllerIntro(Language? l = null) => T(l, "Controller.Intro");
+	public static string LivePreviewNeedsBridge(Language? l = null) => T(l, "Live.PreviewNeedsBridge");
+	public static string DriftCalibration(Language? l = null) => T(l, "Drift.Calibration");
+	public static string CalibrateAction(Language? l = null) => T(l, "Calibrate.Action");
+	public static string ResetToDefault(Language? l = null) => T(l, "Reset.ToDefault");
 
 	// Power, latency, diagnostics
-	public static string PowerOffWhenIdleHint(Language? l = null) => Pick(l,
-		$"Açıkken, boşta kapatma süresi dolunca kumanda da kapatılır.",
-		$"When on, the controller is also turned off once the idle time has passed.");
-	public static string TurnOffController(Language? l = null) => Pick(l, $"Kumandayı Kapat", $"Turn Off Controller");
-	public static string PowerOffRunning(Language? l = null) => Pick(l, $"Kumanda kapatılıyor…", $"Turning off the controller…");
-	public static string LatencyHint(Language? l = null) => Pick(l,
-		$"Bluetooth bağlantısının ek gecikmesi: ortanca / en kötü %1. Sanal kumanda çalışırken ölçülür.",
-		$"Extra delay of the Bluetooth link: median / worst 1%. Measured while the virtual controller runs.");
-	public static string DiagnosticsRunning(Language? l = null) => Pick(l, $"Tanılama dosyası hazırlanıyor…", $"Preparing the diagnostics file…");
+	public static string PowerOffWhenIdleHint(Language? l = null) => T(l, "Power.OffWhenIdleHint");
+	public static string TurnOffController(Language? l = null) => T(l, "Turn.OffController");
+	public static string PowerOffRunning(Language? l = null) => T(l, "Power.OffRunning");
+	public static string LatencyHint(Language? l = null) => T(l, "Latency.Hint");
+	public static string DiagnosticsRunning(Language? l = null) => T(l, "Diagnostics.Running");
 
 	// Notifications (toasts) and the tray icon
-	public static string NotifyConnectedTitle(Language? l = null) => Pick(l, $"Kumanda Bağlandı", $"Controller Connected");
-	public static string NotifyConnectedBody(string name, Language? l = null) => Pick(l, $"{name} hazır", $"{name} is ready");
-	public static string NotifyDisconnectedTitle(Language? l = null) => Pick(l, $"Bağlantı Kesildi", $"Disconnected");
-	public static string NotifyDisconnectedBody(Language? l = null) => Pick(l, $"Açınca yeniden bağlanır", $"Reconnects when turned on");
-	public static string NotifyBatteryLowTitle(Language? l = null) => Pick(l, $"Pil Azaldı", $"Battery Low");
-	public static string NotifyBatteryLowBody(double percent, Language? l = null) => Pick(l, $"%{percent:F0} kaldı, şarja takın", $"{percent:F0}% left, plug it in");
-	public static string NotifyBatteryCriticalTitle(Language? l = null) => Pick(l, $"Pil Bitiyor", $"Battery Critical");
-	public static string NotifyBatteryCriticalBody(double percent, Language? l = null) => Pick(l, $"%{percent:F0} kaldı, yakında kapanır", $"{percent:F0}% left, turning off soon");
-	public static string NotifyChargedTitle(Language? l = null) => Pick(l, $"Şarj Doldu", $"Fully Charged");
-	public static string NotifyChargedBody(Language? l = null) => Pick(l, $"Kabloyu çıkarabilirsiniz", $"You can unplug it");
-	public static string NotifySteamInputTitle(Language? l = null) => Pick(l, $"Steam Input Açık", $"Steam Input Is On");
-	public static string NotifySteamInputBody(Language? l = null) => Pick(l, $"Haptik çalışmayabilir", $"Haptics may not work");
-	public static string NotifyPoweredOffTitle(Language? l = null) => Pick(l, $"Kumanda Kapandı", $"Controller Off");
-	public static string NotifyPoweredOffBody(Language? l = null) => Pick(l, $"Boşta kaldığı için", $"Idle for too long");
-	public static string NotifyBridgeErrorTitle(Language? l = null) => Pick(l, $"Sanal Kumanda Hatası", $"Virtual Controller Error");
+	public static string NotifyConnectedTitle(Language? l = null) => T(l, "Notify.ConnectedTitle");
+	public static string NotifyConnectedBody(string name, Language? l = null) => T(l, "Notify.ConnectedBody", A("name", name));
+	public static string NotifyDisconnectedTitle(Language? l = null) => T(l, "Notify.DisconnectedTitle");
+	public static string NotifyDisconnectedBody(Language? l = null) => T(l, "Notify.DisconnectedBody");
+	public static string NotifyBatteryLowTitle(Language? l = null) => T(l, "Notify.BatteryLowTitle");
+	public static string NotifyBatteryLowBody(double percent, Language? l = null) => T(l, "Notify.BatteryLowBody", A("percent", percent, "F0"));
+	public static string NotifyBatteryCriticalTitle(Language? l = null) => T(l, "Notify.BatteryCriticalTitle");
+	public static string NotifyBatteryCriticalBody(double percent, Language? l = null) => T(l, "Notify.BatteryCriticalBody", A("percent", percent, "F0"));
+	public static string NotifyChargedTitle(Language? l = null) => T(l, "Notify.ChargedTitle");
+	public static string NotifyChargedBody(Language? l = null) => T(l, "Notify.ChargedBody");
+	public static string NotifySteamInputTitle(Language? l = null) => T(l, "Notify.SteamInputTitle");
+	public static string NotifySteamInputBody(Language? l = null) => T(l, "Notify.SteamInputBody");
+	public static string NotifyPoweredOffTitle(Language? l = null) => T(l, "Notify.PoweredOffTitle");
+	public static string NotifyPoweredOffBody(Language? l = null) => T(l, "Notify.PoweredOffBody");
+	public static string NotifyBridgeErrorTitle(Language? l = null) => T(l, "Notify.BridgeErrorTitle");
 	// Short reasons for the bridge error toast (the full text is on the Overview page).
-	public static string NotifyBridgeNoIdentity(Language? l = null) => Pick(l, $"Kumanda kimliği yok", $"No controller identity");
-	public static string NotifyBridgeIdentityUnreadable(Language? l = null) => Pick(l, $"Kimlik dosyası okunamadı", $"Identity file unreadable");
-	public static string NotifyBridgeUsbIpMissing(Language? l = null) => Pick(l, $"usbip-win2 kurulu değil", $"usbip-win2 not installed");
-	public static string NotifyBridgeAttachFailed(Language? l = null) => Pick(l, $"Sanal kumanda takılamadı", $"Virtual controller not attached");
-	public static string NotifyBridgeOpenFailed(Language? l = null) => Pick(l, $"Kumanda açılamadı", $"Controller won't open");
-	public static string NotifyBridgeLost(Language? l = null) => Pick(l, $"Kumanda bağlantısı koptu", $"Controller connection lost");
-	public static string NotifyBridgeOther(Language? l = null) => Pick(l, $"Ayrıntılar Genel Bakış'ta", $"Details on the Overview page");
-	public static string NotifyHidHideTitle(Language? l = null) => Pick(l, $"Sanal Kumanda Başlamadı", $"Virtual Controller Not Started");
-	public static string NotifyHidHideBody(Language? l = null) => Pick(l, $"Önce HidHide'ı kurun", $"Install HidHide first");
-	public static string NotifyTrayTitle(Language? l = null) => Pick(l, $"Arka Planda Çalışıyor", $"Running In Background");
-	public static string NotifyTrayBody(Language? l = null) => Pick(l, $"Simgeyi saat yanında bulun", $"Find the icon by the clock");
-	public static string NotifyClose(Language? l = null) => Pick(l, $"Bildirimi Kapat", $"Dismiss");
-	public static string GroupNotifications(Language? l = null) => Pick(l, $"Bildirimler", $"Notifications");
-	public static string NotificationsShow(Language? l = null) => Pick(l, $"Bildirimleri Göster", $"Show Notifications");
-	public static string NotificationsShowHint(Language? l = null) => Pick(l, $"Ekranın sağ altında kısa bilgi kartları.", $"Small cards in the bottom-right corner.");
-	public static string NotifyConnectionSetting(Language? l = null) => Pick(l, $"Bağlantı", $"Connection");
-	public static string NotifyConnectionHint(Language? l = null) => Pick(l, $"Kumanda bağlanınca ve bağlantısı kesilince.", $"When a controller connects or drops.");
-	public static string NotifyBatterySetting(Language? l = null) => Pick(l, $"Pil", $"Battery");
-	public static string NotifyBatteryHint(Language? l = null) => Pick(l, $"%20 ve %10'da birer kez, şarj bitince.", $"At 20% and 10%, and when fully charged.");
-	public static string NotifyGameSetting(Language? l = null) => Pick(l, $"Oyun Algılama", $"Game Detection");
-	public static string NotifyGameHint(Language? l = null) => Pick(l, $"Tanınan bir oyun başlayınca ve kumanda türü değişince.", $"When a known game starts and when the controller type changes.");
-	public static string NotifySteamInputSetting(Language? l = null) => Pick(l, $"Steam Input Uyarısı", $"Steam Input Warning");
-	public static string NotifySteamInputHint(Language? l = null) => Pick(l, $"Oyun oturumu başına bir kez.", $"Once per game session.");
-	public static string NotifyPowerOffSetting(Language? l = null) => Pick(l, $"Boşta Kapatma", $"Idle Power-Off");
-	public static string NotifyPowerOffHint(Language? l = null) => Pick(l, $"Kumanda kullanılmadığı için kapatılınca.", $"When it turns off for being idle.");
-	public static string NotifyErrorsSetting(Language? l = null) => Pick(l, $"Sanal Kumanda Hataları", $"Virtual Controller Errors");
-	public static string NotifyErrorsHint(Language? l = null) => Pick(l, $"Bir sorunla durunca, nedeniyle birlikte.", $"When it stops on a problem, with the reason.");
-	public static string NotifyHidHideSetting(Language? l = null) => Pick(l, $"HidHide Eksik", $"HidHide Missing");
-	public static string NotifyHidHideHint(Language? l = null) => Pick(l, $"Sanal kumanda HidHide kurulu olmadığı için başlayamazsa.", $"If the virtual controller can't start because HidHide isn't installed.");
-	public static string QuietWhilePlaying(Language? l = null) => Pick(l, $"Oyun Sırasında Bildirim Gösterme", $"Don't Notify While Playing");
-	public static string QuietWhilePlayingHint(Language? l = null) => Pick(l, $"Oyunda ve tam ekranda sessiz kalır.", $"Silent in games and full screen apps.");
-	public static string KeepInTray(Language? l = null) => Pick(l, $"Kapatınca Arka Planda Çalış", $"Keep Running In Background");
-	public static string KeepInTrayHint(Language? l = null) => Pick(l, $"Simge, saat yanındaki gizli simgeler bölümünde durur.", $"The icon stays in the hidden icons area next to the clock.");
-	public static string TrayOpen(Language? l = null) => Pick(l, $"Aç", $"Open");
-	public static string TrayNotificationsOff(Language? l = null) => Pick(l, $"Bildirimleri Kapat", $"Turn Off Notifications");
-	public static string TrayNotificationsOn(Language? l = null) => Pick(l, $"Bildirimleri Aç", $"Turn On Notifications");
-	public static string TrayExit(Language? l = null) => Pick(l, $"Çıkış", $"Exit");
-	public static string TrayNoController(Language? l = null) => Pick(l, $"Kumanda Yok", $"No Controller");
-	public static string TrayBattery(double percent, Language? l = null) => Pick(l, $"Pil %{percent:F0}", $"Battery {percent:F0}%");
+	public static string NotifyBridgeNoIdentity(Language? l = null) => T(l, "Notify.BridgeNoIdentity");
+	public static string NotifyBridgeIdentityUnreadable(Language? l = null) => T(l, "Notify.BridgeIdentityUnreadable");
+	public static string NotifyBridgeUsbIpMissing(Language? l = null) => T(l, "Notify.BridgeUsbIpMissing");
+	public static string NotifyBridgeAttachFailed(Language? l = null) => T(l, "Notify.BridgeAttachFailed");
+	public static string NotifyBridgeOpenFailed(Language? l = null) => T(l, "Notify.BridgeOpenFailed");
+	public static string NotifyBridgeLost(Language? l = null) => T(l, "Notify.BridgeLost");
+	public static string NotifyBridgeOther(Language? l = null) => T(l, "Notify.BridgeOther");
+	public static string NotifyHidHideTitle(Language? l = null) => T(l, "Notify.HidHideTitle");
+	public static string NotifyHidHideBody(Language? l = null) => T(l, "Notify.HidHideBody");
+	public static string NotifyTrayTitle(Language? l = null) => T(l, "Notify.TrayTitle");
+	public static string NotifyTrayBody(Language? l = null) => T(l, "Notify.TrayBody");
+	public static string NotifyClose(Language? l = null) => T(l, "Notify.Close");
+	public static string GroupNotifications(Language? l = null) => T(l, "Group.Notifications");
+	public static string NotificationsShow(Language? l = null) => T(l, "Notifications.Show");
+	public static string NotificationsShowHint(Language? l = null) => T(l, "Notifications.ShowHint");
+	public static string NotifyConnectionSetting(Language? l = null) => T(l, "Notify.ConnectionSetting");
+	public static string NotifyConnectionHint(Language? l = null) => T(l, "Notify.ConnectionHint");
+	public static string NotifyBatterySetting(Language? l = null) => T(l, "Notify.BatterySetting");
+	public static string NotifyBatteryHint(Language? l = null) => T(l, "Notify.BatteryHint");
+	public static string NotifyGameSetting(Language? l = null) => T(l, "Notify.GameSetting");
+	public static string NotifyGameHint(Language? l = null) => T(l, "Notify.GameHint");
+	public static string NotifySteamInputSetting(Language? l = null) => T(l, "Notify.SteamInputSetting");
+	public static string NotifySteamInputHint(Language? l = null) => T(l, "Notify.SteamInputHint");
+	public static string NotifyPowerOffSetting(Language? l = null) => T(l, "Notify.PowerOffSetting");
+	public static string NotifyPowerOffHint(Language? l = null) => T(l, "Notify.PowerOffHint");
+	public static string NotifyErrorsSetting(Language? l = null) => T(l, "Notify.ErrorsSetting");
+	public static string NotifyErrorsHint(Language? l = null) => T(l, "Notify.ErrorsHint");
+	public static string NotifyHidHideSetting(Language? l = null) => T(l, "Notify.HidHideSetting");
+	public static string NotifyHidHideHint(Language? l = null) => T(l, "Notify.HidHideHint");
+	public static string QuietWhilePlaying(Language? l = null) => T(l, "Quiet.WhilePlaying");
+	public static string QuietWhilePlayingHint(Language? l = null) => T(l, "Quiet.WhilePlayingHint");
+	public static string KeepInTray(Language? l = null) => T(l, "Keep.InTray");
+	public static string KeepInTrayHint(Language? l = null) => T(l, "Keep.InTrayHint");
+	public static string TrayOpen(Language? l = null) => T(l, "Tray.Open");
+	public static string TrayNotificationsOff(Language? l = null) => T(l, "Tray.NotificationsOff");
+	public static string TrayNotificationsOn(Language? l = null) => T(l, "Tray.NotificationsOn");
+	public static string TrayExit(Language? l = null) => T(l, "Tray.Exit");
+	public static string TrayNoController(Language? l = null) => T(l, "Tray.NoController");
+	public static string TrayBattery(double percent, Language? l = null) => T(l, "Tray.Battery", A("percent", percent, "F0"));
 }

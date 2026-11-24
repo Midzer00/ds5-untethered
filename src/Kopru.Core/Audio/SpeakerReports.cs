@@ -45,7 +45,7 @@ public static class SpeakerReports
 	}
 }
 
-// Audio fields of the 47-byte output block (offsets and bits as documented by the Linux hid-playstation driver).
+// Audio fields of the 47-byte output block (offsets and bits per public DualSense output report documentation).
 public static class AudioOutput
 {
 	public const int HeadphoneVolume = 4;
@@ -55,7 +55,7 @@ public static class AudioOutput
 	public const int AudioControl2 = 37;
 
 	// Flag0
-	public const byte HeadphoneVolumeEnable = 0x10; // uncertain: not named by the kernel driver
+	public const byte HeadphoneVolumeEnable = 0x10; // uncertain: not consistently documented in public output report notes
 	public const byte SpeakerVolumeEnable = 0x20;
 	public const byte MicVolumeEnable = 0x40;
 	public const byte AudioControlEnable = 0x80;
@@ -69,7 +69,7 @@ public static class AudioOutput
 	public const byte PreampMask = 0x07;
 
 	public const byte MaxHeadphoneVolume = 0x7F;
-	// The kernel driver reports the speaker reacting in about 0x3D..0x64; it uses 0x64 with preamp 2.
+	// Public DualSense output report documentation notes the speaker reacting in about 0x3D..0x64 (0x64 with preamp 2).
 	public const byte MinSpeakerVolume = 0x3D;
 	public const byte MaxSpeakerVolume = 0x64;
 	public const byte DefaultPreamp = 2;

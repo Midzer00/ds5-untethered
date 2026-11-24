@@ -40,7 +40,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 		{
 			Settings.Clock = clock;
 		}
-		BackToGame = new GameReturn(service, Settings, _environment.FullScreen);
+		BackToGame = new GameReturn(service, Settings, _environment.FullScreen) { Closer = new GameCloser(service.Games) };
 		Overview = new OverviewViewModel(service, Settings);
 		Overview.BackToGame = BackToGame;
 		SupportedGames = new SupportedGamesViewModel(service, Settings, _environment.GameList, _environment.Now, _environment.GameImages,
@@ -221,10 +221,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	public string AppName => AppInfo.Name;
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 	public string DeviceName => _service.IsConnected ? _service.DeviceName : Text.DeviceNoController();
-	public string DeviceConnection => !_service.IsConnected ? Text.DeviceNotConnected()
-		: _service.IsWired ? Text.ConnectionWired()
-		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable()
-		: Text.DeviceConnectedBluetooth();
+	// The link line of the sidebar card: the same words as the Overview's status line ("Bluetooth", "USB Kablosu (Deneysel)", ...).
+	public string DeviceConnection => Overview.SidebarLinkText;
 	public string DeviceBattery => !_service.HasBattery ? Text.BatteryUnknown() : _service.IsCharging
 		? Text.BatteryCharging(Math.Round(_service.BatteryPercent))
 		: Text.BatteryPercent(Math.Round(_service.BatteryPercent));

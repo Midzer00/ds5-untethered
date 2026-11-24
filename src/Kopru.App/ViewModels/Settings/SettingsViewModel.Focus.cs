@@ -20,7 +20,7 @@ public sealed partial class SettingsViewModel
 	// never loses its selection.
 	public IReadOnlyList<TabOption> Tabs { get; } =
 	[
-		new(() => Text.General()), new(() => Text.ControllersSection()), new(() => Text.SettingsTabAudio()),
+		new(() => Text.General()), new(() => Text.SettingsTabDevices()), new(() => Text.SettingsTabAudio()),
 		new(() => Text.SettingsTabShortcuts()), new(() => Text.DesktopModeSection()), new(() => Text.GroupNotifications()),
 	];
 
