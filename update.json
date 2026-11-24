@@ -1,8 +1,8 @@
 {
-  "version": "0.2.1",
-  "published": "2026-11-22",
-  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.1/DS5-Untethered-0.2.1-Update.exe", "sha256": "18A3C7B3F88C6E91DC1D483AAD09335A7BDC3BDCAFCBBE8F7C4738BC13F81427", "size": 43985864 },
-  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.1/DS5-Untethered-0.2.1-win-x64-Portable.zip", "sha256": "B24AA42842496D94E8FD780E1773C0D779068FACF1B5979A6C24F7A3E562F9CC", "size": 55320782 },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.1",
-  "notes": { "tr": "USB kablosuyla şarj etmek artık sanal kumandayı durdurmuyor. Kumandayı kablo üzerinden çalıştıran deneysel mod, \"Kumanda Rengi\", \"Özel Tetik\" ve yeni \"Canlı\" kartı eklendi.", "en": "Charging over the USB cable no longer stops the virtual controller, plus an experimental mode that runs the controller over the cable. Controller colours, Custom Trigger and a new Live card." }
+  "version": "0.2.2",
+  "published": "2026-11-24",
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.2/DS5-Untethered-0.2.2-Update.exe", "sha256": "4F5CAEB20C4C75986868183FDF81E86EBC441F98ACCC9331B9ECD51138086B93", "size": 44016620 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.2/DS5-Untethered-0.2.2-win-x64-Portable.zip", "sha256": "F160CABFAD954EADDD890F333EA965AAE465B18DF5C4D3ED1BF865CDB2D12787", "size": 55374218 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.2",
+  "notes": { "tr": "Kablo ayarı artık \"Kumanda\" sayfasında. Boşta kalınca kapanma ayarı daha anlaşılır, ayarlar yeniden düzenlendi ve uygulama çeviriye hazır.", "en": "Cable setting on the Controller page, clearer idle power-off, settings reorganised and the app ready for translations." }
 }
