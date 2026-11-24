@@ -5,10 +5,9 @@ Thank you for helping translate DS5 Untethered! All user-facing UI strings live 
 
 ## Translating on Weblate
 
-> **Weblate project:** coming soon. Until it opens, send translations as a GitHub pull request (see the note at the end of this section).
-
-1. Open the Weblate project and sign in (or create a free account).
-2. Choose your language from the list, or request a new language if yours is not listed yet.
+1. Open the [Windows app interface on Weblate](https://hosted.weblate.org/projects/ds5-untethered/windows-ui/)
+   and sign in (or create a free account).
+2. Choose your language from the list, or start a new translation if yours is not listed yet.
    First target languages include Simplified Chinese (`zh-Hans`), Russian (`ru`), Spanish (`es`),
    Brazilian Portuguese (`pt-BR`), German (`de`), Japanese (`ja`), French (`fr`), Polish (`pl`), and Korean (`ko`),
    but every language is welcome.
