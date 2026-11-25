@@ -1,0 +1,135 @@
+{
+ "hero": {
+  "desktop": {
+   "w": 1920,
+   "h": 1080,
+   "fps": 30,
+   "frames": 108,
+   "mp4": "video/hero-desktop.mp4",
+   "webm": "video/hero-desktop.webm",
+   "first": "img/hero-desktop-first.webp",
+   "last": "img/hero-desktop-last.webp",
+   "events": {
+    "release": 0.5463,
+    "igniteStart": 0.6759,
+    "igniteEnd": 0.787,
+    "settle": 0.8611
+   },
+   "types": {
+    "webm": "video/webm; codecs=\"vp9\"",
+    "mp4": "video/mp4; codecs=\"avc1.640028\""
+   }
+  },
+  "mobile": {
+   "w": 900,
+   "h": 1400,
+   "fps": 30,
+   "frames": 108,
+   "mp4": "video/hero-mobile.mp4",
+   "webm": "video/hero-mobile.webm",
+   "first": "img/hero-mobile-first.webp",
+   "last": "img/hero-mobile-last.webp",
+   "events": {
+    "release": 0.5463,
+    "igniteStart": 0.6759,
+    "igniteEnd": 0.787,
+    "settle": 0.8611
+   },
+   "types": {
+    "webm": "video/webm; codecs=\"vp9\"",
+    "mp4": "video/mp4; codecs=\"avc1.640028\""
+   }
+  }
+ },
+ "stage": {
+  "file": "img/stage.webp",
+  "fileSm": "img/stage-sm.webp",
+  "w": 2000,
+  "h": 1190,
+  "masks": {
+   "strip": "img/stage-mask-strip.webp",
+   "player": "img/stage-mask-player.webp",
+   "touchpad": "img/stage-mask-touchpad.webp",
+   "grip-left": "img/stage-mask-grip-left.webp",
+   "grip-right": "img/stage-mask-grip-right.webp",
+   "triggers": "img/stage-mask-triggers.webp",
+   "mic": "img/stage-mask-mic.webp",
+   "speaker": "img/stage-mask-speaker.webp",
+   "ps": "img/stage-mask-ps.webp"
+  },
+  "hotspots": {
+   "touchpad": [
+    0.4995,
+    0.35279
+   ],
+   "gripLeft": [
+    0.14601,
+    0.7417
+   ],
+   "gripRight": [
+    0.85294,
+    0.74253
+   ],
+   "triggerLeft": [
+    0.18402,
+    0.1539
+   ],
+   "triggerRight": [
+    0.81621,
+    0.15467
+   ],
+   "strip": [
+    0.695,
+    0.45504
+   ],
+   "mic": [
+    0.49922,
+    0.74382
+   ],
+   "speaker": [
+    0.49976,
+    0.60904
+   ],
+   "ps": [
+    0.49953,
+    0.68568
+   ]
+  },
+  "touchSurface": [
+   544,
+   196,
+   910,
+   466
+  ]
+ },
+ "tv": {
+  "file": "img/tv-dark.webp",
+  "fileSm": "img/tv-dark-sm.webp",
+  "reflection": "img/tv-reflection.webp",
+  "w": 2000,
+  "h": 1362,
+  "screenQuad": [
+   [
+    0.06627,
+    0.09724
+   ],
+   [
+    0.93373,
+    0.09724
+   ],
+   [
+    0.93373,
+    0.8133
+   ],
+   [
+    0.06627,
+    0.8133
+   ]
+  ],
+  "screenCornerRadius": 0.03509,
+  "indicator": [
+   0.89458,
+   0.8796
+  ]
+ }
+}
