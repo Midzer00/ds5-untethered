@@ -1,0 +1,651 @@
+/* Translation page. An app-like shell that always fits the viewport: header bar, toolbar, the work area
+   (List scrolls inside it, Visual fills it) and the submit bar. The page itself never scrolls.
+   The shell copies the few site.css rules and tokens it needs (the .osd top bar, .btn.primary, .chip, the
+   .dl-panel box), so the page loads only tokens.css, app-ui.css and this file. */
+:root{--raven:#0a0506;--raven-2:#140c0e;--raven-3:#1f1517;--paper:#f4efe9;--mute:#a49c9a;--dim:#857c7b;
+  --powder:#b6ddf3;--powder-deep:#7fb6d9;--powder-ink:#12222c;
+  --line:color-mix(in srgb,var(--paper) 14%,transparent);
+  --mono:"Cascadia Mono",Consolas,"Liberation Mono",monospace;
+  --disp:Bahnschrift,"DIN Alternate","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --tr-pad:32px;--tr-edge:24px;--tr-bar-h:48px;--tr-sub-h:56px;--tr-mono:"Cascadia Mono",Consolas,"Liberation Mono",monospace;
+  color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%;background:var(--raven);-webkit-text-size-adjust:100%}
+body{display:flex;flex-direction:column;height:100%;height:100vh;height:100dvh;margin:0;background:var(--raven);color:var(--paper);font:450 18px/1.5 var(--disp);overflow-x:clip}
+a{color:var(--powder);text-underline-offset:3px}
+a:hover{color:var(--powder-deep)}
+:focus-visible{outline:2px solid var(--powder);outline-offset:2px}
+.skip-link{position:fixed;z-index:100;left:16px;top:-80px;background:var(--paper);color:var(--raven);padding:12px 16px;font:600 14px var(--mono)}
+.skip-link:focus{top:24px;color:var(--raven)}
+
+/* Header bar: the site's .osd top bar (osd-brand with the ø mark, osd type, osd-r with osd-dl), copied from
+   site.css. One solid row in the page flow instead of a fixed overlay, so no gradient ::before and no timecode. */
+.osd{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--paper) 72%,transparent)}
+.osd p{margin:0}
+.osd a,.osd button{color:inherit;text-decoration:none;text-transform:uppercase;letter-spacing:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0;border:0;background:none;cursor:pointer}
+.osd a:hover,.osd button:hover{color:var(--powder)}
+.oe{fill:none;stroke:currentColor}
+.osd-brand .oe{width:18px;height:18px}
+.osd-l{display:flex;align-items:center;gap:10px;min-width:0}
+.osd-r{display:flex;align-items:center;justify-content:flex-end;gap:18px}
+.osd .osd-dl{color:var(--powder)}
+.osd .osd-dl:hover{color:var(--paper)}
+.tr-bar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;height:var(--tr-bar-h);padding:0 var(--tr-edge);background:var(--raven);border-bottom:1px solid var(--line)}
+.osd-brand{flex:none;white-space:nowrap}
+.osd-r{flex:none}
+/* the page name: the current item, as the site's .osd-lang marks its current language */
+.tr-title{min-width:0;margin:0;font:inherit;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-title::before{content:"/";margin-right:10px;opacity:.55;color:color-mix(in srgb,var(--paper) 72%,transparent)}
+.osd .tr-rules-btn[aria-expanded=true]{color:var(--powder)}
+
+/* The tool surface, in the site's colours and type: one raven ground with raven-2 boxes on it (powder-edged like
+   .dl-panel), Bahnschrift for text and Cascadia Mono for labels, powder only for the one current choice.
+   Radii are the site's two: 10px for boxes, 999px for pills. */
+.tr-app{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:clip;background:var(--raven);font-family:var(--disp);
+  --au-bg0:var(--raven);--au-bg1:var(--raven);--au-surface:var(--raven-2);--au-panel:var(--raven-2);--au-panel-edge:none;
+  --au-hairline:var(--line);--au-border:var(--line);--tr-box-edge:color-mix(in srgb,var(--powder) 28%,transparent);
+  --au-font-body:14px;--au-radius-small:10px;
+  --au-text:var(--paper);--au-text-secondary:var(--mute);--au-muted:var(--dim);
+  --au-accent:var(--powder);--au-accent-tint:color-mix(in srgb,var(--powder) 14%,transparent);--au-accent-fill:var(--powder);--au-accent-fill-hover:var(--paper);--au-accent-pressed:var(--powder-deep);
+  --au-meter:var(--powder);
+  --au-quiet-fill:color-mix(in srgb,var(--paper) 8%,transparent);--au-quiet-fill-hover:color-mix(in srgb,var(--paper) 12%,transparent);--au-quiet-fill-pressed:color-mix(in srgb,var(--paper) 5%,transparent);
+  --au-segment-track:color-mix(in srgb,var(--paper) 6%,transparent);
+  --au-radius-card:10px;--au-radius-control:10px}
+#app{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.tr-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+.tr-wrap{max-width:calc(var(--au-page-max-width) + 2*var(--tr-pad));margin:0 auto;padding-left:var(--tr-pad);padding-right:var(--tr-pad)}
+.tr-app a{color:var(--au-text-secondary)}
+.tr-app a:hover{color:var(--au-text)}
+.tr-app a.au-btn{color:var(--powder);text-decoration:none}
+.tr-app a.au-btn:hover{color:var(--powder-deep)}
+.au .au-btn:disabled{background:var(--au-disabled-fill);color:var(--au-disabled-text);border-color:transparent;cursor:default}
+.tr-app code{font:12px/1.4 var(--tr-mono);padding:1px 6px;border-radius:10px;background:var(--raven-3);color:var(--au-text);overflow-wrap:anywhere}
+
+/* Boxes, buttons and chips in the site's look (.dl-panel, .btn.primary, .chip) */
+.tr-app .au-panel{border:1px solid var(--tr-box-edge)}
+.tr-app .au-panel::before{content:none}
+.tr-app .au-h1{font:700 24px/1 var(--disp);font-stretch:75%;font-variation-settings:"wdth" 75,"wght" 700;letter-spacing:-.01em;text-transform:uppercase}
+.tr-app .au-section{font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+/* Secondary buttons follow the site's .btn: mono uppercase powder text, no box. Primary is .btn.primary. */
+.au .au-btn{padding:0 6px;border-color:transparent;border-radius:999px;background:transparent;color:var(--powder);font:600 12px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.au .au-btn:hover{background:transparent;color:var(--powder-deep)}
+.au .au-btn:not(.primary):disabled{background:transparent;color:var(--au-disabled-text)}
+.au .au-btn:not(.primary):not(.tr-icon-btn) .au-ic{color:currentColor}
+.au .au-btn.primary{padding:0 22px;border-color:transparent;background:var(--powder);color:var(--raven);font:600 12px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.au .au-btn.primary .au-ic{color:var(--raven)}
+.au .au-btn.primary:hover{background:var(--paper)}
+.au .au-btn.primary:disabled{background:transparent;border:1px solid var(--line);color:var(--dim)}
+.au .au-btn.primary:disabled .au-ic{color:var(--dim)}
+.tr-app a.au-btn.primary{color:var(--raven)}
+/* Segmented choices: no track. Only Visual | List keeps the powder chip; the others mark the current choice the way
+   the site's .osd-lang marks its language (paper against mute). */
+.au .au-seg{border-radius:999px;background:transparent}
+.au .au-seg>button{border-radius:999px;font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.au .au-seg>button:hover{background:transparent;color:var(--paper)}
+.au .au-seg>button[aria-checked=true]{background:none;color:var(--paper)}
+.au .tr-mode>button[aria-checked=true]{background:var(--powder);color:var(--raven)}
+.au .au-seg>button:focus-visible{border-color:var(--paper)}
+/* Combos and fields: a raven-2 box with the paper hairline, as the site has no grey-filled rectangles */
+.au .au-combo{background:var(--raven-2);border:1px solid var(--line)}
+.au .au-combo:hover{background:var(--raven-3)}
+.au .au-combo[aria-expanded=true]{border-color:var(--powder)}
+.tr-app .au-pop{border-color:var(--line);border-radius:10px;background:var(--raven-3)}
+.tr-app .au-pop>button:hover{background:var(--raven-2)}
+.tr-app .au-pop>button[aria-selected=true]{background:none;color:var(--powder)}
+.tr-app .au-pop>button[aria-selected=true]:hover{background:var(--raven-2)}
+.tr-sub{margin:6px 0 0;max-width:62ch;font-size:14px;line-height:1.5;color:var(--au-text-secondary)}
+
+/* Footer (site .foot), at the end of the List; hidden in Visual mode, its text is in the Rules dialog too */
+.foot{max-width:calc(var(--au-page-max-width) + 2*var(--tr-pad));margin:0 auto;padding:8px var(--tr-pad) 24px;font:450 13px/1.5 var(--disp);color:var(--mute)}
+.foot p{max-width:64em;margin:0 0 5px}
+.is-visual .foot{display:none}
+
+/* Rules and glossary dialog: a popover under the header on desktop, a bottom sheet on mobile */
+.tr-app .tr-rules{inset:calc(var(--tr-bar-h) + 6px) 16px auto auto;width:460px;max-width:calc(100vw - 32px);height:auto;max-height:calc(100vh - var(--tr-bar-h) - 22px);max-height:calc(100dvh - var(--tr-bar-h) - 22px);border:1px solid var(--line);border-radius:10px}
+.tr-app .tr-rules::backdrop{background:rgba(0,0,0,.35)}
+.tr-rules .tr-sheet-in{min-height:0;gap:14px}
+.tr-rules .tr-sub{margin:0}
+.tr-rules-body{color:var(--au-text-secondary);line-height:1.55}
+.tr-rules-list{margin:0;padding-left:18px}
+.tr-rules-list li+li{margin-top:6px}
+.au .tr-gloss-h{margin:16px 0 6px}
+.tr-gloss{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:4px 14px;margin:0}
+.tr-gloss dt{color:var(--au-text);font-weight:600}
+.tr-gloss dd{margin:0}
+.tr-guide{margin-top:12px!important;font-size:var(--au-font-caption)}
+.tr-legal{padding-top:12px;border-top:1px solid var(--au-hairline);font-size:var(--au-font-caption);line-height:1.45;color:var(--au-muted)}
+.tr-legal p{margin:0 0 6px}
+.tr-legal p:last-child{margin:0}
+
+/* Toolbar: one row (language, progress, restored draft, Visual | List); List adds its filter row */
+.tr-tools{position:relative;flex:none;z-index:20;background:var(--raven);border-bottom:1px solid var(--au-hairline)}
+.is-visual .tr-tools{border-bottom:0}
+.tr-tools-in{display:flex;flex-direction:column;gap:10px;padding:10px var(--tr-edge)}
+.tr-r1{display:flex;align-items:center;gap:16px;min-width:0}
+.tr-r1>.tr-lang-combo{flex:0 1 300px;min-width:0}
+.tr-prog{flex:1 1 auto;display:flex;align-items:center;gap:14px;min-width:0}
+.tr-progress{flex:none;font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--au-text-secondary);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tr-pct{display:none;font:500 11px/1.45 var(--mono);letter-spacing:.08em;color:var(--au-text-secondary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tr-meter{flex:1;min-width:40px;max-width:360px;border-radius:999px;background-color:var(--raven-3)}
+.tr-r1>.tr-mode{flex:none;margin-left:auto}
+/* Translated by: a quiet mono line in the toolbar row, cut short with an ellipsis before it can push anything */
+.tr-by{flex:0 1 auto;min-width:0;margin:0;font:500 11px/1.45 var(--mono);letter-spacing:.02em;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-app .tr-by a{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.tr-app .tr-by a:hover{color:var(--paper);text-decoration-color:currentColor}
+.tr-by .tm-more{color:var(--dim);cursor:help}
+.tr-r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,auto) minmax(0,240px);align-items:center;gap:12px}
+.au-combo .au-ic.sm{color:var(--au-text-secondary)}
+.tr-pop{top:calc(100% + 2px);bottom:auto;max-height:min(440px,55vh);overflow:auto;overscroll-behavior:contain;z-index:30}
+.tr-pop>button{display:flex;align-items:center;gap:10px;color:var(--au-text)}
+.tr-pop>button:focus-visible{outline:0;background:var(--raven-2)}
+.tr-opt-l{flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr-opt-m{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--au-muted);font-size:var(--au-font-caption)}
+.tr-opt-r{flex:none;margin-left:auto;color:var(--au-text-secondary);font-size:var(--au-font-caption);font-variant-numeric:tabular-nums}
+.tr-pop-head{padding:8px 12px 4px;font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--au-muted)}
+.tr-pop-div{margin:4px 0}
+.tr-seg>button[aria-checked=true]{cursor:default}
+
+/* Restored draft item */
+.tr-draft{position:relative;flex:none}
+.au .tr-draft-btn{position:relative;display:inline-flex;align-items:center;gap:6px;height:var(--au-control-height);padding:0 8px 0 10px;border:0;border-radius:999px;background:transparent;color:var(--mute);font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+.au .tr-draft-btn:hover,.au .tr-draft-btn[aria-expanded=true]{background:transparent;color:var(--paper)}
+.tr-draft-btn .au-chev{width:14px;height:14px}
+.tr-draft-menu{left:auto;right:0;top:calc(100% + 6px);bottom:auto;width:320px;max-width:calc(100vw - 32px);max-height:calc(100vh - 120px);max-height:calc(100dvh - 120px);overflow:auto;overscroll-behavior:contain;padding:12px 14px;z-index:30}
+.tr-draft-menu p{margin:0 0 8px;font-size:var(--au-font-caption);line-height:1.45;color:var(--au-text-secondary);overflow-wrap:anywhere}
+.tr-draft-menu .tr-draft-h{margin-bottom:6px;font-size:var(--au-font-body);color:var(--au-text)}
+.tr-draft-menu .tr-draft-n.is-warn{color:var(--au-text)}
+.tr-draft-menu .tr-draft-msg{color:var(--au-text)}
+.tr-draft-menu .tr-actions{margin-top:10px}
+.tr-draft-menu .tr-actions+.tr-actions{margin-top:8px}
+.tr-draft-menu .tr-actions .au-btn{height:var(--au-control-height)}
+.au .tr-draft-btn.is-warn{color:var(--paper)}
+.tr-draft-btn.is-warn>.au-ic:first-child{color:var(--au-danger)}
+
+/* Text fields */
+.tr-search{position:relative;min-width:0}
+.tr-search>.au-ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--au-muted);pointer-events:none}
+.tr-field{width:100%;height:var(--au-control-height);padding:0 12px 0 34px;border:1px solid var(--line);border-radius:var(--au-radius-control);background:var(--raven-2);color:var(--au-text);font:inherit;font-size:var(--au-font-body)}
+.tr-field.tr-code{padding-left:12px;font-family:var(--tr-mono)}
+.tr-field::placeholder{color:var(--au-muted)}
+.tr-field:hover{background:var(--raven-3)}
+.au .tr-field:focus,.au .tr-field:focus-visible{outline:0;border-color:var(--au-accent)}
+.tr-field.is-bad{border-color:var(--au-danger)}
+.tr-field::-webkit-search-cancel-button{cursor:pointer}
+
+/* Body */
+.tr-body{display:flex;flex-direction:column;gap:16px;padding-top:20px;padding-bottom:24px}
+.tr-slot:empty{display:none}
+.tr-list{display:flex;flex-direction:column;gap:16px}
+.tr-list:empty{display:none}
+.tr-group{content-visibility:auto;contain-intrinsic-size:auto 600px}
+.tr-gh{display:flex;align-items:baseline;gap:8px;margin:0 0 2px}
+.tr-gh .au-tag{font-weight:400;font-variant-numeric:tabular-nums}
+
+/* Rows */
+.tr-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 24px;align-items:start;padding:14px 0}
+.tr-src{min-width:0}
+.tr-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-bottom:4px}
+.tr-keytext{min-width:0;font:12px/1.4 var(--tr-mono);color:var(--au-muted);overflow-wrap:anywhere}
+.tr-changed{padding:0;border:0;background:none;font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.tr-en{color:var(--au-text);font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.tr-note{margin-top:6px!important}
+.tr-phs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.au .tr-ph{display:inline-flex;align-items:center;max-width:100%;min-height:24px;padding:2px 8px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--au-text-secondary);font:12px/1.35 var(--tr-mono);text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.au .tr-ph:hover{background:var(--raven-3);color:var(--au-text)}
+.tr-dst{min-width:0}
+/* The text box sits one step below its raven-2 box, a well with the paper hairline */
+.tr-input{display:block;width:100%;min-height:36px;margin:0;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:var(--raven);color:var(--au-text);font:inherit;font-size:14px;line-height:1.5;resize:none;overflow:hidden;field-sizing:content;overflow-wrap:anywhere}
+.tr-input::placeholder{color:var(--au-muted)}
+.tr-input:hover{border-color:color-mix(in srgb,var(--paper) 28%,transparent)}
+.au .tr-input:focus,.au .tr-input:focus-visible{outline:0;border-color:var(--au-accent)}
+.au .tr-input.is-bad{border-color:var(--au-danger)}
+.tr-warns:empty{display:none}
+.tr-warns{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.tr-warn{display:flex;align-items:flex-start;gap:6px;font-size:var(--au-font-caption);line-height:16px;color:var(--au-muted);overflow-wrap:anywhere}
+.tr-warn .au-ic{color:var(--au-muted)}
+.tr-warn.is-danger{color:var(--au-text-secondary)}
+.tr-warn.is-danger .au-ic{color:var(--au-danger)}
+.tr-warn span{min-width:0}
+
+/* States */
+.tr-pick h2,.tr-fail h2{margin:0 0 6px}
+.tr-pick-h{margin:16px 0 8px}
+.tr-langs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.tr-langs+.tr-langs{margin-top:8px}
+.au .tr-lang{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n p" "m p";align-items:center;column-gap:12px;row-gap:2px;min-height:52px;padding:8px 14px;border:1px solid var(--line);border-radius:var(--au-radius-control);background:transparent;text-align:left;cursor:pointer}
+.au .tr-lang:hover{background:var(--raven-3)}
+.tr-lang-name{grid-area:n;font-weight:600;overflow-wrap:anywhere}
+.tr-lang-meta{grid-area:m;font-size:var(--au-font-caption);color:var(--au-muted);overflow-wrap:anywhere}
+.tr-lang-pct{grid-area:p;font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--au-text-secondary);font-variant-numeric:tabular-nums}
+.au .tr-lang-other{grid-template-areas:"n p"}
+.tr-loading .au-section{margin:0 0 4px}
+.tr-skel{display:block;height:12px;border-radius:999px;background:var(--raven-3)}
+.tr-skel-k{width:30%;height:10px;margin-bottom:8px;background:var(--raven-3)}
+.tr-skel-t0{width:80%}.tr-skel-t1{width:55%}.tr-skel-t2{width:68%}
+.tr-skel-in{height:36px;border-radius:10px;background:var(--raven);box-shadow:inset 0 0 0 1px var(--line)}
+.tr-fail .au-body{margin-bottom:14px}
+.tr-actions{display:flex;flex-wrap:wrap;gap:8px}
+.tr-empty{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.tr-empty .au-h2{min-width:0;overflow-wrap:anywhere}
+.au .tr-quiet{background:transparent;color:var(--mute)}
+.au .tr-quiet:hover{background:transparent;color:var(--paper)}
+.au .tr-danger{padding:0 14px;color:var(--paper);border-color:var(--au-danger);background:transparent}
+.au .tr-danger:hover{background:var(--raven-2);color:var(--paper)}
+/* Other language: one compact row, as wide as its content (title, code, Start, Cancel, then the hint) */
+.tr-label{display:block;margin-bottom:6px}
+.tr-app .tr-other{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;width:fit-content;max-width:100%;margin-bottom:12px;padding:10px 16px}
+.tr-other-t{flex:none;margin:0;font:600 12px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--paper);white-space:nowrap}
+.tr-other-field{flex:0 1 200px;min-width:120px}
+.tr-other-field .tr-field{width:100%}
+.tr-other-btns{flex:none;display:flex;gap:4px}
+.tr-other-info{flex:0 1 auto;min-width:0}
+/* the site's .meta type; codes keep their own case */
+.tr-app .meta{margin:0;font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.tr-other-code{text-transform:none;color:var(--au-text-secondary)}
+.tr-other-name{color:var(--au-text-secondary)}
+.tr-other-err{margin:0}
+
+/* Submit bar */
+.tr-subbar{position:relative;flex:none;z-index:15;height:var(--tr-sub-h);background:var(--raven);border-top:1px solid var(--au-hairline)}
+.tr-subbar-in{display:flex;align-items:center;justify-content:space-between;gap:12px;height:100%;padding:0 var(--tr-edge)}
+.tr-status{min-width:0;font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--au-text-secondary);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tr-subbar .au-btn{flex:none}
+
+/* Side sheet (desktop) / bottom sheet (mobile) */
+.tr-sheet{position:fixed;inset:0 0 0 auto;width:420px;max-width:100vw;height:100vh;height:100dvh;max-height:none;margin:0;padding:0;border:0;border-left:1px solid var(--line);background:var(--au-surface);color:var(--au-text);overflow:auto;overscroll-behavior:contain}
+.tr-sheet::backdrop{background:rgba(0,0,0,.55)}
+.tr-sheet-in{display:flex;flex-direction:column;gap:20px;min-height:100%;padding:18px 24px 24px}
+.tr-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tr-sheet-head h2{margin:0}
+.au .tr-icon-btn{justify-content:center;width:var(--au-control-height);padding:0;border-color:transparent;background:transparent}
+.au .tr-icon-btn:hover{background:transparent}
+.tr-icon-btn .au-ic{color:var(--au-text-secondary)}
+.au .tr-icon-btn:hover .au-ic{color:var(--paper)}
+.tr-problems{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px 14px;border:1px solid var(--au-hairline);border-radius:var(--au-radius-control)}
+.tr-problems .tr-warn{font-size:var(--au-font-body);line-height:19px}
+.tr-steps{display:flex;flex-direction:column;gap:22px;margin:0;padding:0;list-style:none}
+.tr-step{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px}
+.tr-step-n{display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--line);border-radius:999px;color:var(--au-text-secondary);font:500 11px/1 var(--mono);font-variant-numeric:tabular-nums}
+.tr-step h3{margin:4px 0 4px;font-size:var(--au-font-h2);font-weight:600;line-height:1.35}
+.tr-step p{color:var(--au-text-secondary);line-height:1.5;overflow-wrap:anywhere}
+.tr-step .tr-actions{margin-top:12px}
+.tr-sheet .tr-guide{margin-top:auto!important}
+/* The three ways to send: hairline-separated disclosures, one open at a time. The title is the site's mono label;
+   Recommended is an outlined powder pill, so the one filled powder control stays the primary button. */
+.tr-sheet-sum{margin:-6px 0 0!important}
+/* Do not list my name: one plain checkbox above the ways */
+.tr-unlisted{display:flex;align-items:flex-start;gap:10px;margin:-8px 0 0;font-size:14px;line-height:1.45;color:var(--au-text-secondary);cursor:pointer}
+.tr-unlisted input{flex:none;width:16px;height:16px;margin:2px 0 0;accent-color:var(--powder);cursor:pointer}
+.tr-unlisted:hover{color:var(--paper)}
+.tr-ways{display:flex;flex-direction:column;border-top:1px solid var(--au-hairline)}
+.tr-way{border-bottom:1px solid var(--au-hairline)}
+.tr-way-sum{display:flex;align-items:center;gap:10px;min-height:48px;padding:4px 0;list-style:none;cursor:pointer;user-select:none}
+.tr-way-sum::-webkit-details-marker{display:none}
+.tr-way-sum::marker{content:none}
+.tr-way-t{font:600 12px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--au-text-secondary)}
+.tr-way-sum:hover .tr-way-t,.tr-way[open] .tr-way-t{color:var(--paper)}
+.tr-way-tag{padding:3px 9px;border:1px solid var(--tr-box-edge);border-radius:999px;font:600 10px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--powder)}
+.tr-way-chev{display:flex;margin-left:auto;color:var(--au-text-secondary)}
+.tr-way-chev .au-ic{transition:transform .15s}
+.tr-way[open] .tr-way-chev .au-ic{transform:rotate(180deg)}
+.tr-way-sum:focus-visible{outline-offset:-2px;border-radius:10px}
+.tr-way-in{padding:2px 0 20px}
+.tr-way-in .tr-steps{gap:18px}
+.tr-way-note{margin-top:10px!important}
+.tr-gh{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.tr-gh p{margin:0;line-height:1.5;overflow-wrap:anywhere}
+.tr-gh-what{color:var(--au-text-secondary)}
+.tr-gh-status{font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--paper)}
+.tr-gh-done{font-size:var(--au-font-h2);font-weight:600;color:var(--paper)}
+.tr-gh-note{color:var(--au-text-secondary)}
+.tr-gh .tr-warn{font-size:var(--au-font-body);line-height:19px}
+.tr-gh .tr-way-note{margin-top:-4px!important}
+.tr-app a.au-btn[aria-disabled=true]{color:var(--au-disabled-text);cursor:default}
+
+/* ---------- Landing ----------
+   The page without #lang= or #other: one composed screen that never scrolls. Desktop: the intro and How It Works on
+   the left, Continue and the languages on the right, tops aligned and the pair centred in the window. Phones: one
+   column; the language list scrolls inside its box. The boxes are the site's .dl-panel; the language rows are the
+   home menu's .tm-row (built by translate-menu.js), their rules copied from site.css. */
+.tr-land{flex:1 1 auto;display:flex;min-height:0;overflow:hidden}
+.tr-land ul,.tr-land ol{margin:0;padding:0;list-style:none}
+.tr-land-in{flex:1 1 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);grid-template-rows:minmax(0,max-content);align-content:center;align-items:start;column-gap:clamp(40px,6vw,96px);
+  width:100%;max-width:calc(1120px + 2*var(--tr-pad));min-height:0;margin:0 auto;padding:clamp(20px,6vh,64px) var(--tr-pad)}
+.tr-land-l{min-width:0}
+/* the site's section headline: Bahnschrift condensed, uppercase */
+.tr-land-h{margin:0;font:700 clamp(40px,4.4vw,64px)/.95 var(--disp);font-stretch:75%;font-variation-settings:"wdth" 75,"wght" 700;letter-spacing:-.01em;text-transform:uppercase;color:var(--paper);text-wrap:balance;overflow-wrap:break-word}
+.tr-land-h:focus{outline:0}
+.tr-land .tr-land-lead{max-width:44ch;margin:18px 0 0;font-size:18px;line-height:1.5;color:var(--mute);text-wrap:pretty}
+.tr-land-how{max-width:52ch;margin-top:clamp(24px,5vh,44px)}
+.tr-land-label{margin:0 0 10px;font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.tr-land-steps{border-top:1px solid var(--line)}
+.tr-land-steps li{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line)}
+.tr-land-n{font:500 11px/1.45 var(--mono);letter-spacing:.08em;color:var(--mute);font-variant-numeric:tabular-nums}
+.tr-land-steps p{margin:0;font-size:16px;line-height:1.45;color:var(--paper)}
+.tr-land .tr-land-guide{margin:14px 0 0}
+.tr-app .tr-land-guide a{text-decoration:underline;text-underline-offset:3px}
+.tr-app .tr-land-guide a:hover{color:var(--paper)}
+
+.tr-land-r{display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0;max-height:100%}
+.tr-box{min-height:0;background:var(--raven-2);border:1px solid var(--tr-box-edge);border-radius:10px;font-size:14px;line-height:1.4}
+.tr-box-h{margin:0;padding:16px 18px 10px;font:600 15px/1.3 var(--mono);letter-spacing:0;text-transform:none;color:var(--paper)}
+.tr-land-cont{flex:none;display:flex;flex-direction:column}
+/* more than two drafts: about two and a half cards show, the rest scroll in the box */
+.tr-land-cont.is-many .tr-land-drafts{max-height:150px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.tr-land-langs{flex:0 1 auto;display:flex;flex-direction:column;padding-bottom:6px;overflow:hidden}
+.tr-land-list{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+/* Continue: one card per draft; the newest one's button is the page's one powder action */
+.tr-land-draft{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n b" "m b";align-items:center;column-gap:16px;row-gap:2px;padding:10px 12px 10px 18px;border-top:1px solid var(--line)}
+.tr-land-dn{grid-area:n;display:flex;align-items:baseline;gap:8px;min-width:0;color:var(--paper)}
+.tr-land-dm{grid-area:m;min-width:0}
+.tr-land-dm>span{white-space:nowrap}
+.tr-land-draft>.au-btn{grid-area:b}
+.au .tr-land-draft>.au-btn:not(.primary){padding:0 10px}
+/* .tm-row and friends, from site.css */
+.tr-land .tm-row{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;column-gap:8px;min-height:38px;padding:9px 18px 8px;border-top:1px solid var(--line);color:var(--paper);text-decoration:none}
+@media (hover:hover){.tr-land a.tm-row:hover{color:var(--powder);background:var(--raven-3)}}
+.tr-land a.tm-row:focus-visible{outline:2px solid var(--powder);outline-offset:-2px;color:var(--powder)}
+.tr-land .tm-name{font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+.tr-land .tm-code{grid-column:2}
+.tr-land .tm-stat{grid-column:3;text-align:right;white-space:nowrap}
+.tr-land .tm-note{grid-column:1/-1}
+.tr-land .tm-other .tm-name{grid-column:1/-1}
+.tr-land .tm-row.is-off{color:var(--mute)}
+.tr-land .tm-row.is-off .tm-code,.tr-land .tm-row.is-off .tm-stat,.tr-land .tm-row.is-off .tm-note{color:var(--dim)}
+.tr-land .tm-bar{position:absolute;left:0;bottom:0;height:2px;background:var(--powder)}
+.tr-land .tm-row.is-off .tm-bar{background:var(--dim)}
+.tr-land .tm-has-by{position:relative;border-top:1px solid var(--line)}
+.tr-land .tm-has-by>.tm-row{position:static;min-height:0;padding-bottom:2px;border-top:0}
+@media (hover:hover){.tr-land .tm-has-by:has(>a.tm-row:hover){background:var(--raven-3)}}
+.tr-land p.tm-by{margin:0;padding:0 18px 9px;color:var(--mute);letter-spacing:.02em;text-transform:none;overflow-wrap:anywhere}
+.tr-land .tm-by a{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.tr-land .tm-by a:hover{color:var(--paper);text-decoration-color:currentColor}
+.tr-land .tm-more{color:var(--dim);cursor:help}
+
+/* Short desktop windows: the same composition, tighter */
+@media (max-height:720px) and (min-width:861px){
+  .tr-land-h{font-size:clamp(36px,3.8vw,52px)}
+  .tr-land .tr-land-lead{margin-top:12px;font-size:16px}
+  .tr-land-steps li{padding:9px 0}
+  .tr-land-steps p{font-size:15px}
+}
+@media (max-width:860px){
+  .tr-land-in{display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:14px var(--tr-pad) 16px}
+  .tr-land-l{flex:none}
+  .tr-land-h{font-size:30px}
+  .tr-land .tr-land-lead{margin-top:8px;font-size:15px;line-height:1.45}
+  /* How It Works: the guide link sits on the label's line */
+  .tr-land-how{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;column-gap:12px;margin-top:14px}
+  .tr-land-label{margin-bottom:6px}
+  .tr-land-steps{grid-column:1/-1;grid-row:2}
+  .tr-land .tr-land-guide{grid-column:2;grid-row:1;margin:0}
+  .tr-land-steps li{grid-template-columns:30px minmax(0,1fr);padding:7px 0}
+  .tr-land-steps p{font-size:14px;line-height:1.4}
+  .tr-land-r{flex:1 1 auto;gap:12px;max-height:none}
+  .tr-box-h{padding:12px 16px 8px}
+  .tr-land-draft{padding:4px 6px 4px 16px;column-gap:10px}
+  .tr-land .tm-row{min-height:44px;padding:12px 16px 11px}
+  .tr-land .tm-has-by>.tm-row{min-height:34px;padding-bottom:2px}
+  .tr-land p.tm-by{padding:0 16px 10px}
+}
+@media (max-width:860px) and (max-height:700px){
+  .tr-land-h{font-size:26px}
+  .tr-land .tr-land-lead{font-size:14px}
+  .tr-land-steps li{padding:5px 0}
+  .tr-land-steps p{font-size:13px}
+  .tr-land .tm-row{min-height:40px;padding:10px 16px 9px}
+  .tr-land .tm-has-by>.tm-row{min-height:30px;padding-bottom:2px}
+  .tr-land p.tm-by{padding-bottom:8px}
+  /* a returning volunteer on a short phone: Continue takes the place of How It Works */
+  .tr-land.has-drafts .tr-land-how{display:none}
+  .tr-land-cont.is-many .tr-land-drafts{max-height:120px}
+}
+/* Phones held sideways: two columns again, the intro without How It Works */
+@media (max-width:860px) and (max-height:500px) and (orientation:landscape){
+  .tr-land-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:minmax(0,1fr);column-gap:24px;padding:12px var(--tr-pad)}
+  .tr-land-h{font-size:26px}
+  .tr-land .tr-land-lead{font-size:14px}
+  .tr-land .tr-land-how{display:none}
+  .tr-land-r{max-height:100%}
+  .tr-land-cont.is-many .tr-land-drafts{max-height:96px}
+}
+
+@media (max-width:1180px) and (min-width:861px){
+  .tr-r2{grid-template-columns:minmax(0,1fr) minmax(260px,auto) minmax(0,200px)}
+}
+
+@media (max-width:860px){
+  :root{--tr-pad:16px;--tr-edge:16px;--tr-bar-h:44px}
+  .osd{font-size:10px}
+  .tr-bar{gap:8px}
+  .osd-l,.osd-r{gap:12px}
+  .au .au-combo,.au .au-btn,.tr-field{height:44px}
+  .tr-field,.tr-input{font-size:16px}
+  .tr-pop>button{height:44px}
+  .tr-lang-combo .tr-pop{right:auto;width:calc(100vw - 2*var(--tr-edge))}
+  .au .tr-seg{height:44px}
+  .au .tr-seg>button{height:40px;padding:0 10px}
+  .tr-seg{grid-auto-columns:auto}
+  .tr-tools-in{gap:8px;padding-top:8px;padding-bottom:8px}
+  .tr-r1{flex-wrap:wrap;gap:4px 8px}
+  .tr-r1>.tr-lang-combo{flex:1 1 0}
+  /* phones: Translated by takes its own short line under the row */
+  .tr-by{order:9;flex:1 1 100%}
+  .tr-prog{flex:none;gap:0}
+  .tr-progress{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .tr-pct{display:inline}
+  /* the meter becomes a thin line along the toolbar's bottom edge */
+  .tr-meter{position:absolute;left:0;right:0;bottom:-1px;width:auto;max-width:none;min-width:0;height:2px;border-radius:0}
+  .tr-draft-l{display:none}
+  .au .tr-draft-btn{height:44px;padding:0 8px 0 12px}
+  .tr-draft-menu{position:fixed;left:16px;right:16px;top:auto;width:auto;max-width:none}
+  .tr-r2{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .tr-group-combo{grid-column:1/-1}
+  .au-panel{padding:14px 16px}
+  .tr-row{grid-template-columns:minmax(0,1fr);gap:10px;padding:14px 0}
+  .tr-gloss{grid-template-columns:minmax(0,1fr)}
+  .tr-gloss dd{margin-bottom:6px}
+  .tr-langs{grid-template-columns:minmax(0,1fr)}
+  .tr-sheet,.tr-app .tr-rules{inset:auto 0 0 0;width:100%;max-width:100%;height:auto;max-height:88vh;max-height:88dvh;border:0;border-top:1px solid var(--line);border-radius:10px 10px 0 0}
+  .tr-sheet-in{min-height:0;padding:14px 16px calc(20px + env(safe-area-inset-bottom))}
+  .au .tr-icon-btn{width:44px}
+  /* phones: title and code on one line, the buttons and the hint on the next */
+  .tr-app .tr-other{width:auto;gap:8px 12px;padding:10px 12px}
+  .tr-other-field{flex:1 1 140px}
+  .tr-other-info{flex:1 1 150px}
+}
+@media (max-width:400px){
+  .au .tr-seg>button{padding:0 6px;letter-spacing:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .au-pop,.tr-way-chev .au-ic,.tr-seen-tog .au-ic{transition:none}
+}
+
+/* ---------- Visual mode ---------- */
+.au .tr-mode>button{padding:0 14px}
+.tr-seen{margin-top:10px}
+.tr-seen-line{overflow-wrap:anywhere}
+.au .tr-show-on{margin-left:6px;text-decoration:underline;text-underline-offset:3px}
+/* screen names: quiet mono text that turns paper on hover, as the site's .chip */
+.au .tr-seen-name,.au .tr-seen-tog{display:inline;padding:0;border:0;background:none;font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--au-text-secondary);cursor:pointer}
+.au .tr-seen-name:hover,.au .tr-seen-tog:hover{color:var(--paper)}
+.au .tr-seen-name[aria-current=true]{color:var(--paper)}
+.au .tr-seen-tog{display:inline-flex;align-items:center;gap:2px;margin-left:8px;color:var(--powder)}
+.tr-seen-tog .au-ic{width:14px;height:14px;transition:transform .15s}
+.tr-seen-tog[aria-expanded=true] .au-ic{transform:rotate(180deg)}
+.tr-seen-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.au .tr-seen-chip{min-height:26px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--mute);font:600 10px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.au .tr-seen-chip:hover{color:var(--paper);border-color:color-mix(in srgb,var(--paper) 28%,transparent)}
+.au .tr-seen-chip[aria-current=true]{color:var(--paper);border-color:var(--tr-box-edge)}
+.tr-row-ph{display:none}
+.vm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.is-visual .tr-r2{display:none!important}
+.is-visual .tr-list{display:none}
+/* In Visual mode the scroll area only holds the Other Language form, when it is open */
+.is-visual .tr-scroll{flex:0 0 auto;max-height:45%}
+.is-visual .tr-body{padding-bottom:16px}
+.is-visual .tr-scroll:not(:has(.tr-slot:not(:empty))){display:none}
+
+/* Workspace: fills exactly the space between the toolbar and the submit bar */
+.vm{--vm-ed:clamp(300px,calc(300px + (100vw - 960px)*.125),360px);flex:1 1 0;display:grid;grid-template-columns:minmax(0,1fr) var(--vm-ed);grid-template-rows:40px minmax(0,1fr);gap:12px;
+  min-height:0;padding:12px var(--tr-edge);background:var(--au-bg0)}
+.vm-bar{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-width:0}
+.vm-group{flex:none;width:168px}
+.vm-bar>*{flex:none}
+/* Shot pills: one row. Pills that do not fit wrap whole onto a hidden second row (never cut mid-word);
+   app.js marks them .is-out and the "+N" chip after the row opens the screen picker for them. */
+.vm-pills{position:relative;flex:1 1 auto;display:flex;flex-wrap:wrap;align-content:flex-start;align-items:center;gap:6px;height:30px;min-width:0;overflow:hidden}
+.vm-pill.is-out{visibility:hidden}
+.au .vm-pill{flex:none;display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 13px;border:0;border-radius:999px;background:transparent;color:var(--mute);font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+.au .vm-pill:hover{color:var(--paper)}
+.au .vm-pill[aria-current=true]{background:var(--powder);border-color:var(--powder);color:var(--raven)}
+.vm-pill-t{min-width:0;max-width:calc(22ch + 1.32em);overflow:hidden;text-overflow:ellipsis}
+.vm-pill-n{font-weight:400;color:var(--au-text-secondary);font-variant-numeric:tabular-nums}
+.vm-pill[aria-current=true] .vm-pill-n{color:var(--powder-ink)}
+/* The "+N" chip: the screen picker's button, dressed as a .chip; it takes the current style when the current
+   screen is one of the hidden ones */
+.vm-shot.is-more{position:relative}
+.au .vm-shot.is-more>.au-combo{gap:8px;width:auto;height:30px;padding:0 13px;border:0;border-radius:999px;background:transparent;color:var(--mute);font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.au .vm-shot.is-more>.au-combo:hover,.au .vm-shot.is-more>.au-combo[aria-expanded=true]{color:var(--paper)}
+.vm-shot.is-more>.au-combo>.au-chev{display:none}
+.vm-shot.is-more>.au-combo>span{display:inline-flex;align-items:center;gap:8px;overflow:visible}
+.au .vm-shot.is-more.is-cur>.au-combo,.au .vm-shot.is-more.is-cur>.au-combo:hover{background:var(--powder);color:var(--raven)}
+.vm-shot.is-cur .vm-pill-n{color:var(--powder-ink)}
+.vm-more-n{font-weight:600}
+.vm-shot.is-more>.tr-pop{left:0;right:auto;width:320px;max-width:calc(100vw - 32px)}
+.vm-shot.is-more .tr-opt-l{flex:1 1 auto;min-width:0;max-width:none}
+.vm-orig{flex:none;min-width:170px;margin-left:auto}
+.vm-zoom{flex:none;min-width:104px}
+.au .vm-orig>button,.au .vm-zoom>button{padding:0 10px}
+.vm-next{flex:none}
+.vm-prev-shot,.vm-next-shot{display:none!important}
+
+/* Canvas */
+.vm-canvas{position:relative;min-width:0;min-height:0}
+.vm-view{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain}
+.vm.is-fit .vm-view{overflow:hidden}
+.vm-pad{display:grid;place-items:center;min-width:100%;min-height:100%;width:max-content;height:max-content}
+.vm-stage{position:relative;isolation:isolate;overflow:hidden;border-radius:10px;background:var(--au-bg1);box-shadow:0 0 0 1px var(--au-border)}
+.vm-img{position:absolute;inset:0;display:block;width:100%;height:100%;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;pointer-events:none}
+.vm-paint{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.vm:not(.is-preview) .vm-paint{visibility:hidden}
+.vm-patch,.vm-text{position:absolute}
+.vm-text,.vm-measure{font-family:"DS5 Inter",Inter,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;letter-spacing:0;font-feature-settings:"calt","kern";color:var(--au-text);overflow-wrap:break-word}
+.vm-measure{position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;contain:layout style}
+.vm-spots{position:absolute;inset:0;--au-hit:32px}
+
+/* Hotspots: a double stroke (light line, dark ring outside) */
+.au .vm-spots>.vm-spot{position:absolute;display:block;padding:0;border:1px dashed rgba(255,255,255,.6);border-radius:10px;background:transparent;box-shadow:0 0 0 1px rgba(0,0,0,.6);cursor:pointer}
+.au .vm-spots>.vm-spot.is-done{border-style:solid;border-color:rgba(255,255,255,.3)}
+.vm.is-preview .vm-spots>.vm-spot.is-done:not(.is-bad){border-color:transparent;box-shadow:none}
+.au .vm-spots>.vm-spot.is-bad{border:2px solid var(--au-danger);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.au .vm-spots>.vm-spot:hover,.au .vm-spots>.vm-spot:focus-visible{background:rgba(255,255,255,.1);outline:0}
+.au .vm-spots>.vm-spot.is-sel{outline:2px solid var(--au-accent);outline-offset:2px}
+.au .vm-spots>.vm-spot.is-primary{box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 0 9999px rgba(0,0,0,.3)!important;z-index:9000!important}
+.vm-spot::after{content:none;position:absolute;background:var(--au-danger);pointer-events:none}
+.vm-spot.over-right::after,.vm-spot.over-left::after,.vm-spot.over-bottom::after{content:""}
+.vm-spot.over-right::after{top:-1px;bottom:-1px;right:-2px;width:2px}
+.vm-spot.over-left::after{top:-1px;bottom:-1px;left:-2px;width:2px}
+.vm-spot.over-bottom::after{left:-1px;right:-1px;bottom:-2px;height:2px}
+.vm-chip{display:none;position:absolute;left:-2px;bottom:calc(100% + 5px);padding:2px 8px;border-radius:10px;background:var(--raven-3);box-shadow:0 0 0 1px rgba(0,0,0,.5);color:var(--au-text);font:11px/1.35 var(--tr-mono);white-space:nowrap;pointer-events:none;z-index:2}
+.vm-spot.chip-below .vm-chip{bottom:auto;top:calc(100% + 5px)}
+.vm-spot:hover .vm-chip,.vm-spot:focus-visible .vm-chip{display:block}
+.vm-tab{position:absolute;top:-10px;right:-10px;display:grid;place-items:center;width:18px;height:18px;border-radius:10px;background:var(--raven);border:1px solid var(--au-danger);pointer-events:none}
+.vm-tab .au-ic{width:12px;height:12px;color:var(--au-danger);stroke-width:2.2}
+
+/* Editor (right column on desktop, bottom sheet on mobile) */
+.vm-ed{display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--tr-box-edge);border-radius:var(--au-radius-card);background:var(--au-panel)}
+.vm-sh,.vm-sh-tools{display:none}
+.vm-ed-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px 16px 16px}
+/* Panel heading as a .dl-panel heading; the count in the .meta type */
+.vm-lv-head h2{margin:0 0 4px;font:600 15px/1.3 var(--mono);letter-spacing:0;text-transform:none}
+.au .vm-status{font:400 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-variant-numeric:tabular-nums}
+.vm-hint{margin:10px 0 8px!important;color:var(--au-text-secondary);line-height:1.45}
+.vm-items{display:flex;flex-direction:column;gap:2px}
+.au .vm-li{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;width:100%;padding:7px 10px;border:0;border-radius:var(--au-radius-small);background:transparent;text-align:left;cursor:pointer}
+.au .vm-li:hover{background:var(--raven-3)}
+/* An untranslated text is one paper line; a translated one dims its English and shows the translation under it */
+.vm-li-en,.vm-li-tr{grid-column:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;color:var(--paper)}
+.vm-li.is-done .vm-li-en{color:var(--mute)}
+.vm-li-tr.is-empty{display:none}
+.vm-li-warn{grid-column:2;grid-row:1/3;align-self:center}
+.vm-li-warn .au-ic{color:var(--au-danger)}
+.vm-note{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--au-hairline);color:var(--au-text-secondary);line-height:1.45}
+.vm-evhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-6px -6px 0}
+.au .vm-back{min-width:0;padding:0 8px;gap:4px}
+.vm-back>span{overflow:hidden;text-overflow:ellipsis}
+.vm-evnav{display:flex;align-items:center;gap:2px;flex:none}
+.vm-pos{margin-right:4px;font-size:var(--au-font-caption);color:var(--au-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* The editor reads top to bottom: key, English, placeholders, the text box, its warnings; where the text is
+   seen comes last, under a hairline. The row's two columns dissolve into one ordered stack. */
+.vm-ed .tr-row{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:12px 0 0}
+.vm-ed .tr-src{display:contents}
+.vm-ed .tr-key{order:1;margin:0 0 -8px}
+.vm-ed .tr-en{order:2;font-size:15px;line-height:1.5}
+.vm-ed .tr-phs{order:3;margin:0}
+.vm-ed .tr-note{order:4;margin:0!important}
+.vm-ed .tr-dst{order:5}
+.vm-ed .tr-seen{order:6;margin:4px 0 0;padding-top:12px;border-top:1px solid var(--au-hairline)}
+.vm-ed .tr-show-on{display:none}
+.vm-fit{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.vm-fit:empty{display:none}
+
+@media (max-width:1180px) and (min-width:861px){
+  .vm-group{width:150px}
+}
+/* Short desktop windows: tighter workspace; the canvas simply gets smaller */
+@media (max-height:620px) and (min-width:861px){
+  .tr-tools-in{padding-top:8px;padding-bottom:8px}
+  .vm{gap:8px;padding-top:8px;padding-bottom:8px}
+}
+
+@media (max-width:860px){
+  .au .tr-mode{height:44px}
+  .au .tr-mode>button{height:40px;padding:0 12px}
+
+  .vm{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:0;padding:0}
+  .vm-bar{gap:6px;padding:6px 16px}
+  .vm-group,.vm-pills,.vm-zoom{display:none!important}
+  .vm-shot{display:block!important;flex:1;min-width:0}
+  .vm-prev-shot,.vm-next-shot{display:inline-flex!important;flex:none}
+  .vm-view{overflow:hidden;touch-action:none}
+  .vm.is-fit .vm-view{overflow:hidden}
+  .vm-pad{display:block;width:max-content;min-width:0;min-height:0}
+  .vm-stage{border-radius:10px}
+
+  .vm-ed{position:fixed;left:0;right:0;bottom:var(--tr-sub-h);z-index:14;height:64px;border:0;border-radius:10px 10px 0 0;background:var(--au-surface);box-shadow:0 -1px 0 var(--tr-box-edge);transition:height .18s ease}
+  .vm.is-off .vm-ed{visibility:hidden}
+  .vm-sh{display:flex;align-items:center;gap:8px;flex:none;height:64px;padding:10px 12px 6px 0}
+  .vm-sh-btn{position:relative;display:flex;align-items:center;flex:1;min-width:0;height:100%;padding:8px 8px 0 16px;border:0;background:none;color:var(--au-text);text-align:left;cursor:pointer;touch-action:none}
+  .vm-grab{position:absolute;left:50%;top:-4px;width:36px;height:4px;margin-left:-18px;border-radius:999px;background:var(--au-border)}
+  .vm-sh-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .vm-sh .vm-next{flex:none;padding:0 12px}
+  .vm-ed:not(.is-open) .vm-ed-body{visibility:hidden}
+  .vm-ed-body{padding:4px 16px calc(16px + env(safe-area-inset-bottom))}
+  .vm-sh-tools{display:flex;margin-bottom:10px}
+  .vm-sh-tools .vm-orig{flex:1}
+  .vm-hint{display:none}
+  .au .vm-li{padding:9px 10px}
+  .vm-ed .tr-input{font-size:16px}
+}
+@media (max-width:400px){
+  .tr-lang-combo .au-combo>.au-ic.sm{display:none}
+  .vm-sh .vm-next{padding:0 10px;font-size:11px}
+  .au .tr-mode>button{padding:0 9px}
+}
+/* Phones held sideways: everything a little shorter */
+@media (max-width:860px) and (max-height:500px){
+  :root{--tr-bar-h:40px;--tr-sub-h:48px}
+    .tr-tools-in{padding-top:4px;padding-bottom:4px}
+  .au .au-combo,.au .au-btn,.au .tr-draft-btn,.tr-field{height:40px}
+  .au .tr-seg,.au .tr-mode{height:40px}
+  .au .tr-seg>button,.au .tr-mode>button{height:36px}
+  .vm-bar{padding:4px 16px}
+  .tr-subbar .au-btn.lg{height:38px}
+  .tr-by{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .vm-ed{transition:none}
+}
