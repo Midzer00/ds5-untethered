@@ -262,8 +262,9 @@
   close.type = 'button'; close.setAttribute('aria-label', T.close);
   var title = el('h2', null, T.title); title.id = 'tm-t';
   var list = el('ul', 'tm-list');
-  var foot = el('a', 'tm-open', T.open); foot.href = base;
-  panel.append(close, title, el('p', 'tm-line', T.line), list, foot);
+  var foot = el('a', 'tm-open btn primary', T.open + ' →'); foot.href = base;
+  var top = el('div', 'tm-top'); top.append(foot);
+  panel.append(close, title, el('p', 'tm-line', T.line), top, list);
   document.body.appendChild(panel);
 
   function render() {

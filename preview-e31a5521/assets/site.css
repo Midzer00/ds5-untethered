@@ -746,11 +746,12 @@ a.tm-row:focus-visible{outline:2px solid var(--powder);outline-offset:-2px;color
 .tm-by a:hover{color:var(--paper);text-decoration-color:currentColor}
 .tm-by a:focus-visible{outline-offset:1px}
 .tm-more{color:var(--dim);cursor:help}
-.tm-open{display:flex;align-items:center;min-height:40px;padding:0 18px;border-top:1px solid var(--line);font:600 11px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
+.tm-top{padding:4px 18px 16px;border-bottom:1px solid var(--line)}
+.tm-panel .tm-open{display:flex;justify-content:center;width:100%;min-height:40px;box-sizing:border-box}
 .tm-open:focus-visible{outline-offset:-2px}
 @media (max-width:860px){
   .tm-panel{left:var(--inset);right:var(--inset);width:auto;max-width:none}
   .tm-row{min-height:44px}
   .tm-has-by>.tm-row{min-height:34px}
-  .tm-open{min-height:44px}
+  .tm-panel .tm-open{min-height:44px}
 }
