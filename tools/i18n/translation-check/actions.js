@@ -79,16 +79,30 @@ function isGone(e) { return !!e && (e.status === 404 || e.status === 410); }
 
 function isBot(user) { return !user || user.type === 'Bot' || /\[bot\]$/.test(String(user.login || '')); }
 
-// Comment and close must not break the run: a locked or deleted issue only leaves a warning.
+// Comment and close must not break the run: a locked or deleted issue only leaves a warning. A GitHub server error
+// (5xx, seen in practice on closing an issue) is tried once more, then also only warned about; the pull request is
+// already in place by then.
 async function safely(core, what, fn) {
-  try { return await fn(); } catch (e) {
-    if (e && (e.status === 403 || e.status === 404 || e.status === 410 || e.status === 422)) {
-      core.warning('Could not ' + what + ' (HTTP ' + e.status + '); the issue may be locked or deleted.');
-      return null;
+  for (let attempt = 1; ; attempt++) {
+    try { return await fn(); } catch (e) {
+      const status = e && e.status;
+      if (status >= 500 && attempt === 1) {
+        await new Promise(r => setTimeout(r, safely.retryDelayMs));
+        continue;
+      }
+      if (status === 403 || status === 404 || status === 410 || status === 422) {
+        core.warning('Could not ' + what + ' (HTTP ' + status + '); the issue may be locked or deleted.');
+        return null;
+      }
+      if (status >= 500) {
+        core.warning('Could not ' + what + ' (HTTP ' + status + ' from GitHub, twice); left as it is.');
+        return null;
+      }
+      throw e;
     }
-    throw e;
   }
 }
+safely.retryDelayMs = 3000;
 
 async function getText(github, repoRef, filePath, ref) {
   try {
@@ -315,4 +329,4 @@ async function readDataBranch(github, repoRef) {
   return { exists: true, clean: clean && !!data, data };
 }
 
-module.exports = { validate, intake, readPrFile, translatorsData, DATA_BRANCH, DATA_FILE, HIDDEN_LIST };
+module.exports = { safely, validate, intake, readPrFile, translatorsData, DATA_BRANCH, DATA_FILE, HIDDEN_LIST };

@@ -38,7 +38,7 @@ function fakeGithub(state) {
         get: async (p) => { rec('issues.get', p); if (state.issueStatus) throw httpError(state.issueStatus); return { data: state.issue }; },
         listComments: async (p) => { rec('issues.listComments', p); return { data: state.comments || [] }; },
         createComment: async (p) => { rec('issues.createComment', p); if (state.commentStatus) throw httpError(state.commentStatus); return { data: {} }; },
-        update: async (p) => { rec('issues.update', p); return { data: {} }; }
+        update: async (p) => { rec('issues.update', p); if (state.closeStatus && state.closeStatus.length) throw httpError(state.closeStatus.shift()); return { data: {} }; }
       },
       repos: {
         get: async () => ({ data: { default_branch: 'main' } }),
@@ -301,4 +301,19 @@ test('validate: files outside the checkout are not read', () => {
   const ws = workspace({ 'de.json': GOOD });
   assert.ok(actions.readPrFile(path.join(ws, 'pr'), DIR + '/de.json').bytes);
   assert.deepEqual(actions.readPrFile(path.join(ws, 'pr'), DIR + '/missing.json'), { missing: true });
+});
+
+test('intake: a GitHub 500 on closing the issue is retried, then only warned about; the PR stays', async () => {
+  actions.safely.retryDelayMs = 0;
+  for (const statuses of [[500], [500, 502]]) {
+    const state = issueState(pageIssue('de', GOOD));
+    state.closeStatus = statuses.slice();
+    const core = fakeCore();
+    const github = fakeGithub(state);
+    const result = await actions.intake({ github, context: ctx('issues'), core });
+    assert.notEqual(result, 'failed');
+    assert.equal(github.called('issues.update').length, 2);
+    assert.equal(core.log.failed.length, 0);
+    if (statuses.length === 2) assert.match(core.log.warning.map((w) => w.m).join(String.fromCharCode(10)), /twice/);
+  }
 });
