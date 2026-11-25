@@ -33,7 +33,7 @@
 
 ## English
 
-Help translate the Windows app interface on [Weblate](https://hosted.weblate.org/projects/ds5-untethered/windows-ui/).
+Want to help translate the Windows app? See the [translation guide](docs/TRANSLATING.md).
 
 ### Quick Start
 
@@ -264,7 +264,7 @@ DS5 Untethered ile PC'de DualSense'in haptik titreşimlerini ve adaptif tetikler
 Uygulama, destekleyen oyunların kendi efektlerini Bluetooth üzerinden kumandaya aktarır. Ücretsiz ve açık kaynaklıdır;
 bilgisayarınızın Bluetooth'u veya standart bir USB Bluetooth adaptörü yeterlidir.
 
-Windows uygulamasının arayüz çevirilerine [Weblate](https://hosted.weblate.org/projects/ds5-untethered/windows-ui/) üzerinden katkıda bulunabilirsiniz.
+Windows uygulamasının çevirisine katkıda bulunmak için [çeviri rehberine](docs/TRANSLATING.md) göz atabilirsiniz.
 
 ### Hızlı Başlangıç
 

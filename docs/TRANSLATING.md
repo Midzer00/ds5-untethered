@@ -3,26 +3,12 @@
 Thank you for helping translate DS5 Untethered! All user-facing UI strings live in flat JSON files under
 `src/Kopru.Core/Localization/strings/` so translators never need to edit C# or XAML code.
 
-## Translating on Weblate
+## Translating with GitHub
 
-1. Open the [Windows app interface on Weblate](https://hosted.weblate.org/projects/ds5-untethered/windows-ui/)
-   and sign in (or create a free account).
-2. Choose your language from the list, or start a new translation if yours is not listed yet.
-   First target languages include Simplified Chinese (`zh-Hans`), Russian (`ru`), Spanish (`es`),
-   Brazilian Portuguese (`pt-BR`), German (`de`), Japanese (`ja`), French (`fr`), Polish (`pl`), and Korean (`ko`),
-   but every language is welcome.
-3. Translate from the English source strings (`en.json`).
-   - Set the special `@name` metadata entry to your language's native name (for example, `简体中文`, `Русский`,
-     `Español`, `Português (Brasil)`, `Deutsch`, `日本語`, `Français`, `Polski`, `한국어`). This name is shown
-     directly in **Settings → General → Language**.
-   - Any missing or empty key automatically falls back to English, so partial translations are safe.
-4. Check the context screenshots (if uploaded to Weblate or generated with `tools/i18n/screenshots.ps1`) to make
-   sure short labels, tabs, and buttons fit their space.
-5. Save your translations (or submit suggestions for review). Approved Weblate changes are synced back to the
-   repository by the maintainer.
-
-*(Developers who prefer GitHub pull requests can also add or edit `src/Kopru.Core/Localization/strings/<code>.json`
-directly using BCP-47 language codes such as `pt-BR` or `zh-Hans`, then run `powershell -File tools\test.ps1`.)*
+1. Open the [language files](../src/Kopru.Core/Localization/strings/). If your language is already listed, edit its file. Otherwise, copy `en.json` into a new file named with your language code, such as `es.json`, `pt-BR.json`, or `zh-Hans.json`.
+2. Translate the values and leave the keys unchanged. Set the `@name` value to your language's name in that language. This is what appears in the app under **Settings → General → Language**.
+3. Use the context screenshots below to check whether short labels, tabs, and buttons fit. Partial translations are welcome. Missing or empty values fall back to English.
+4. Open a pull request with your changes. If you have the repository checked out locally, you can first run `powershell -File tools\test.ps1` to check your changes.
 
 ## Glossary
 
