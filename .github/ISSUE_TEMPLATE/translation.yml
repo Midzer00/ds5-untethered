@@ -1,0 +1,46 @@
+name: Translation
+description: Send a translation file made on ds5untethered.com/translate.
+title: "Translation: "
+labels: ["translation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        <!-- ds5-translate v1 -->
+        Thank you for translating DS5 Untethered!
+
+        Attach the `<code>.json` file you downloaded from https://ds5untethered.com/translate/ (for example `de.json`),
+        then submit. A check runs automatically: if the file passes, a pull request is opened with you as co-author and
+        this issue is closed; if not, the problems are listed here and you can edit this issue to attach a fixed file.
+  - type: input
+    id: language
+    attributes:
+      label: Language code
+      description: The BCP-47 code of your language, for example `de`, `pt-BR` or `zh-Hans`.
+      placeholder: de
+    validations:
+      required: true
+  - type: upload
+    id: file
+    attributes:
+      label: Translation file
+      description: Drop your `<code>.json` file here (one file, at most 1 MB).
+    validations:
+      required: true
+      accept: ".json"
+  - type: checkboxes
+    id: hide
+    attributes:
+      label: Credits
+      description: >-
+        Translators are listed by their GitHub name on ds5untethered.com. Tick this if you would rather not be listed.
+      options:
+        - label: Do not list my name among the translators
+          required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Optional. Anything the reviewer should know.
+    validations:
+      required: false

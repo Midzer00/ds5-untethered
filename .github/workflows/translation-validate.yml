@@ -1,0 +1,55 @@
+# Way 1 of the translation submission flow: checks every language file a pull request changes with the shared rules
+# in tools/i18n/translation-check (the same rules as the translation page and the intake workflow), and fails a pull
+# request from anyone but the repo owner that touches en.json or tr.json.
+#
+# Security: pull_request (never pull_request_target), read-only token, no secrets. The checks and en.json come from
+# the base commit; the pull request is checked out separately and its files are only read as data, never run.
+# Fork pull requests get no write token, so the result is the job summary and annotations, not PR comments.
+name: Translation validate
+
+on:
+  pull_request:
+    paths:
+      - "src/Kopru.Core/Localization/strings/*.json"
+
+permissions: {}
+
+concurrency:
+  group: translation-validate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out the base commit (checks and en.json)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+          sparse-checkout: |
+            tools/i18n/translation-check
+            src/Kopru.Core/Localization/strings
+
+      - name: Check out the pull request (data only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+          sparse-checkout: src/Kopru.Core/Localization/strings
+
+      - name: Check the language files
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        with:
+          script: |
+            const path = require('path');
+            const checks = require(path.join(process.env.GITHUB_WORKSPACE, 'base', 'tools', 'i18n', 'translation-check', 'actions.js'));
+            await checks.validate({ github, context, core });

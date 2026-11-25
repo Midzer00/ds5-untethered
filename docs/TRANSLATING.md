@@ -3,12 +3,59 @@
 Thank you for helping translate DS5 Untethered! All user-facing UI strings live in flat JSON files under
 `src/Kopru.Core/Localization/strings/` so translators never need to edit C# or XAML code.
 
-## Translating with GitHub
+## Translating on the website
 
-1. Open the [language files](../src/Kopru.Core/Localization/strings/). If your language is already listed, edit its file. Otherwise, copy `en.json` into a new file named with your language code, such as `es.json`, `pt-BR.json`, or `zh-Hans.json`.
-2. Translate the values and leave the keys unchanged. Set the `@name` value to your language's name in that language. This is what appears in the app under **Settings → General → Language**.
-3. Use the context screenshots below to check whether short labels, tabs, and buttons fit. Partial translations are welcome. Missing or empty values fall back to English.
-4. Open a pull request with your changes. If you have the repository checked out locally, you can first run `powershell -File tools\test.ps1` to check your changes.
+Open the translation page at **https://ds5untethered.com/translate/**. It shows every English string next to your
+translation, with screenshots of where each text appears, and checks placeholders, plurals and length while you type.
+Your draft is kept in your browser, so you can stop and come back later.
+
+1. Choose your language, or type its BCP-47 code if it is not listed yet (for example `de`, `pt-BR` or `zh-Hans`).
+   First target languages include Simplified Chinese (`zh-Hans`), Russian (`ru`), Spanish (`es`),
+   Brazilian Portuguese (`pt-BR`), German (`de`), Japanese (`ja`), French (`fr`), Polish (`pl`), and Korean (`ko`),
+   but every language is welcome. English (`en`) is the source and Turkish (`tr`) is maintained by the project,
+   so neither is accepted as a volunteer translation.
+2. Translate from the English source strings.
+   - Set the special `@name` entry to your language's native name (for example, `简体中文`, `Русский`,
+     `Español`, `Português (Brasil)`, `Deutsch`, `日本語`, `Français`, `Polski`, `한국어`). This name is shown
+     directly in **Settings → General → Language**.
+   - Any missing or empty key automatically falls back to English, so partial translations are safe.
+3. Send it in one of three ways (all need a free GitHub account):
+   - **Send with GitHub** (easiest): sign in to GitHub once in the pop-up and the page opens a translation issue in
+     your name. A check runs automatically; if the file passes, a pull request is opened with you as co-author and
+     the issue is closed. If something needs fixing, the problems are listed on the issue.
+   - **Upload form:** download your `<code>.json` file, then use the page's link to open the
+     [Translation issue form](https://github.com/Midzer00/ds5-untethered/issues/new?template=translation.yml), drop the
+     file into its upload field and submit. The same automatic check and pull request follow.
+   - **Paste:** copy the file and use the page's link to open the file on GitHub's web editor; GitHub creates a fork and
+     you open the pull request yourself. The same rules are checked on the pull request.
+
+A later send for the same language from the same account updates your existing pull request instead of opening a new
+one. Nothing is merged automatically: the maintainer reviews every translation first.
+
+### What the automatic check looks for
+
+The page shows the same checks while you translate, so a file the page accepts normally passes:
+
+- the language code is a valid BCP-47 code (not `en`, `tr`, `qps` or `qtg`) and matches the file name;
+- the file is valid JSON (UTF-8), one flat object of `"key": "text"` pairs, at most 1 MB, without duplicate keys;
+- every key exists in `en.json` (plus `@name`);
+- every text keeps the English placeholders, has balanced braces, and keeps `plural` blocks with an `other` branch
+  where your language has plural forms;
+- no HTML tags, no links unless the English text has one, and at most 4× the English length plus 20 characters.
+
+## Translating with a pull request (developers)
+
+Developers can also add or edit `src/Kopru.Core/Localization/strings/<code>.json` directly, using BCP-47 language
+codes such as `pt-BR` or `zh-Hans` as the file name, and open a pull request. Before sending, check the file with the
+same rules the pull request check uses (Node.js 20 or newer, no install needed):
+
+```powershell
+node tools\i18n\translation-check\cli.js src\Kopru.Core\Localization\strings\de.json
+```
+
+Pull requests that change `en.json` or `tr.json` are accepted only from the maintainer. Running
+`powershell -File tools\test.ps1` also checks every shipped language file in the app's own tests (it needs a
+non-empty `@name` and no empty values, so leave untranslated keys out instead of setting them to `""`).
 
 ## Glossary
 
@@ -89,6 +136,16 @@ Screenshots are saved to `TestResults\i18n-screenshots\<lang>\` (git-ignored).
 
 ## Credits
 
-Volunteer translators are credited by name (or handle, if you prefer) in the project credits and release notes
-**if you would like to be listed**. Let the maintainer know how you want your name to appear, or let us know if
-you prefer to remain anonymous.
+Once your translation is merged, your GitHub name is listed under your language on ds5untethered.com: on the home
+page's language list and in the translation page ("Translated by @you"). The list is built from the repository
+history (commit authors and co-authors) and refreshed automatically, so it shows only your public GitHub login,
+linked to your profile.
+
+If you would rather not be listed:
+
+- **Send with GitHub** or the **upload form:** tick "Do not list my name among the translators" before you send.
+  The choice is kept for all your translations.
+- **Your own pull request:** write in the pull request that you do not want to be listed; the maintainer adds your
+  login to `tools/i18n/translators-hidden.txt`.
+
+You can also ask for this later in an issue at any time.

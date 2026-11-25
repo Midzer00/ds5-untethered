@@ -1,0 +1,62 @@
+# Ways 2 and 3 of the translation submission flow: turns a translation issue into a pull request.
+#   Way 2: the "Translation" issue form (.github/ISSUE_TEMPLATE/translation.yml) with the file in its upload field.
+#   Way 3: "Send with GitHub" on ds5untethered.com/translate; the issue body (and, for big files, the next comments)
+#          carries the file as gzip+base64 parts behind the marker <!-- ds5-translate v1 -->.
+# The file is checked with the shared rules (tools/i18n/translation-check). On success the branch
+# translate/<code>-<login> is reset to the default branch plus one commit with only the language file (the volunteer
+# as co-author), the pull request for that branch is opened or updated, and the issue is commented on and closed.
+# On failure the problems are commented and the issue stays open. Nothing is ever merged automatically.
+#
+# Security: issue text is untrusted. It is only read inside actions/github-script (never in a run: shell step), the
+# checks come from the default branch, attachments are downloaded only from https://github.com/user-attachments/
+# (1 MB cap), and the job has only the permissions it needs. Events from bots, edits and comments by anyone other than
+# the issue author, closed and locked issues are ignored.
+# Needs the repository setting "Allow GitHub Actions to create and approve pull requests" for pulls.create.
+name: Translation intake
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: translation-intake-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    if: >-
+      !github.event.issue.pull_request &&
+      github.event.issue.state == 'open' &&
+      !github.event.issue.locked &&
+      github.event.sender.type != 'Bot' &&
+      github.event.issue.user.type != 'Bot' &&
+      github.event.sender.login == github.event.issue.user.login &&
+      (github.event_name != 'issue_comment' || contains(github.event.comment.body, '```ds5-translate')) &&
+      (contains(github.event.issue.body, '<!-- ds5-translate v1 -->') ||
+       (contains(github.event.issue.body, '### Language code') && contains(github.event.issue.body, '### Translation file')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Check out the checks from the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: tools/i18n/translation-check
+
+      - name: Check the translation and open or update its pull request
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const path = require('path');
+            const checks = require(path.join(process.env.GITHUB_WORKSPACE, 'tools', 'i18n', 'translation-check', 'actions.js'));
+            const outcome = await checks.intake({ github, context, core });
+            core.info('Outcome: ' + outcome);

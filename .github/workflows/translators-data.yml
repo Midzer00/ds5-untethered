@@ -1,0 +1,53 @@
+# Publishes the translator credits for ds5untethered.com: lists the commits of every volunteer language file on the
+# default branch, builds translators.json (tools/i18n/translation-check/credits.js) and force-updates the unprotected
+# branch translation-data to a single parentless commit holding only that file. The site reads it from
+# https://raw.githubusercontent.com/Midzer00/ds5-untethered/translation-data/translators.json
+#
+# Credited: commit authors and noreply Co-authored-by logins. Never listed: en, tr, qps, qtg, the repository owner,
+# bots, logins in tools/i18n/translators-hidden.txt, and anyone credited by a commit with "Translator-Listing: hidden".
+#
+# Security: only the checks folder of the default branch is checked out (no credentials kept); commit messages are
+# parsed inside actions/github-script and never reach a shell. The branch is written through the Git data API.
+name: Translators data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/Kopru.Core/Localization/strings/*.json"
+      - "tools/i18n/translators-hidden.txt"
+  workflow_dispatch:
+  schedule:
+    - cron: "41 5 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: translators-data
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the generator from the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Scheduled runs carry no repository object in the event; main is the default branch.
+          ref: ${{ github.event.repository.default_branch || 'main' }}
+          persist-credentials: false
+          sparse-checkout: tools/i18n/translation-check
+
+      - name: Build translators.json and update the translation-data branch
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        with:
+          script: |
+            const path = require('path');
+            const checks = require(path.join(process.env.GITHUB_WORKSPACE, 'tools', 'i18n', 'translation-check', 'actions.js'));
+            const outcome = await checks.translatorsData({ github, context, core });
+            core.info('Outcome: ' + outcome);

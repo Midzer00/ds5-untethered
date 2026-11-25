@@ -1,0 +1,10 @@
+{
+  "name": "translation-check",
+  "private": true,
+  "description": "Shared checks for volunteer translation files (CLI, validate Action, intake Action). No dependencies.",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/rules.test.js test/cli.test.js test/pr-check.test.js test/intake.test.js test/actions.test.js test/credits.test.js test/credits-action.test.js"
+  }
+}

@@ -1,0 +1,3 @@
+# GitHub logins that are never listed among the translators on ds5untethered.com.
+# One login per line; a leading @ and the letter case do not matter; text after # is a comment.
+# Read by .github/workflows/translators-data.yml from the default branch.
