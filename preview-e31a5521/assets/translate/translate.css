@@ -36,6 +36,8 @@ a:hover{color:var(--powder-deep)}
 .osd-r{flex:none}
 /* the page name: the current item, as the site's .osd-lang marks its current language */
 .tr-title{min-width:0;margin:0;font:inherit;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-title .tr-home{color:inherit;text-decoration:none}
+.tr-title .tr-home:hover,.tr-title .tr-home:focus-visible{color:var(--powder)}
 .tr-title::before{content:"/";margin-right:10px;opacity:.55;color:color-mix(in srgb,var(--paper) 72%,transparent)}
 .osd .tr-rules-btn[aria-expanded=true]{color:var(--powder)}
 
@@ -492,35 +494,38 @@ a:hover{color:var(--powder-deep)}
 .vm{--vm-ed:clamp(300px,calc(300px + (100vw - 960px)*.125),360px);flex:1 1 0;display:grid;grid-template-columns:minmax(0,1fr) var(--vm-ed);grid-template-rows:40px minmax(0,1fr);gap:12px;
   min-height:0;padding:12px var(--tr-edge);background:var(--au-bg0)}
 .vm-bar{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-width:0}
-.vm-group{flex:none;width:168px}
 .vm-bar>*{flex:none}
-/* Shot pills: one row. Pills that do not fit wrap whole onto a hidden second row (never cut mid-word);
-   app.js marks them .is-out and the "+N" chip after the row opens the screen picker for them. */
-.vm-pills{position:relative;flex:1 1 auto;display:flex;flex-wrap:wrap;align-content:flex-start;align-items:center;gap:6px;height:30px;min-width:0;overflow:hidden}
-.vm-pill.is-out{visibility:hidden}
-.au .vm-pill{flex:none;display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 13px;border:0;border-radius:999px;background:transparent;color:var(--mute);font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
-.au .vm-pill:hover{color:var(--paper)}
-.au .vm-pill[aria-current=true]{background:var(--powder);border-color:var(--powder);color:var(--raven)}
-.vm-pill-t{min-width:0;max-width:calc(22ch + 1.32em);overflow:hidden;text-overflow:ellipsis}
-.vm-pill-n{font-weight:400;color:var(--au-text-secondary);font-variant-numeric:tabular-nums}
-.vm-pill[aria-current=true] .vm-pill-n{color:var(--powder-ink)}
-/* The "+N" chip: the screen picker's button, dressed as a .chip; it takes the current style when the current
-   screen is one of the hidden ones */
-.vm-shot.is-more{position:relative}
-.au .vm-shot.is-more>.au-combo{gap:8px;width:auto;height:30px;padding:0 13px;border:0;border-radius:999px;background:transparent;color:var(--mute);font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-.au .vm-shot.is-more>.au-combo:hover,.au .vm-shot.is-more>.au-combo[aria-expanded=true]{color:var(--paper)}
-.vm-shot.is-more>.au-combo>.au-chev{display:none}
-.vm-shot.is-more>.au-combo>span{display:inline-flex;align-items:center;gap:8px;overflow:visible}
-.au .vm-shot.is-more.is-cur>.au-combo,.au .vm-shot.is-more.is-cur>.au-combo:hover{background:var(--powder);color:var(--raven)}
-.vm-shot.is-cur .vm-pill-n{color:var(--powder-ink)}
-.vm-more-n{font-weight:600}
-.vm-shot.is-more>.tr-pop{left:0;right:auto;width:320px;max-width:calc(100vw - 32px)}
-.vm-shot.is-more .tr-opt-l{flex:1 1 auto;min-width:0;max-width:none}
+/* Screen arrows: bare icons, mute until hovered */
+.au .vm-bar>.vm-prev-shot,.au .vm-bar>.vm-next-shot{display:inline-flex;align-items:center;justify-content:center;width:32px;height:40px;padding:0;border:0;background:none;color:var(--mute)}
+.au .vm-bar>.vm-prev-shot:hover,.au .vm-bar>.vm-next-shot:hover{background:none;color:var(--paper)}
+.au .vm-bar>.vm-prev-shot .au-ic,.au .vm-bar>.vm-next-shot .au-ic{color:currentColor}
+.au .vm-bar>.vm-prev-shot:disabled,.au .vm-bar>.vm-next-shot:disabled{opacity:.35}
+/* The screen picker: a breadcrumb in a box like the language combo, as wide as its label. GROUP / SCREEN reads like
+   the top bar's DS5 UNTETHERED / TRANSLATE (group mute, slash in the hairline colour, screen paper), the count last. */
+.vm-bar>.vm-shot{flex:0 1 auto;min-width:0;max-width:460px}
+.au .vm-shot>.au-combo{height:40px;gap:10px;padding:0 12px 0 14px;border-radius:10px;color:var(--paper);font:600 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.vm-shot>.au-combo>span{display:flex;align-items:baseline;min-width:0;overflow:hidden}
+.vm-shot>.au-combo>.au-chev{color:var(--mute)}
+.vm-cr-g{flex:none;color:var(--mute)}
+.vm-cr-s{flex:none;margin:0 8px;color:var(--au-border)}
+.vm-cr-t{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--paper)}
+.vm-cr-f{display:none}
+.vm-pill-n{flex:none;margin-left:auto;padding-left:12px;font-weight:400;color:var(--mute);font-variant-numeric:tabular-nums}
+/* Its popover maps the whole app: the groups in sidebar order, in columns, every title whole */
+.vm-shot>.tr-pop{left:0;right:auto;width:min(760px,calc(100vw - 2*var(--tr-edge)));padding:14px}
+.tr-pop-cols{columns:3 220px;column-gap:20px}
+.tr-pop-grp{break-inside:avoid;margin-bottom:12px}
+.vm-shot .tr-pop-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;padding:6px 8px;border-bottom:1px solid var(--au-border);font:600 10px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.au .tr-pop-grp>button{display:flex;align-items:center;gap:12px;width:100%;min-height:30px;padding:0 8px;border:0;border-radius:10px;background:none;color:var(--paper);font:inherit;font-size:14px;line-height:1.25;text-align:left;cursor:pointer}
+.au .tr-pop-grp>button:hover,.au .tr-pop-grp>button:focus-visible{outline:0;background:var(--raven-2)}
+.tr-pop-grp .tr-opt-l{flex:1 1 auto;min-width:0;max-width:none;padding:6px 0;white-space:normal;overflow:visible;overflow-wrap:anywhere}
+.vm-shot .tr-pop .tr-opt-r{flex:none;margin-left:auto;font:400 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);font-variant-numeric:tabular-nums}
+.au .tr-pop-grp>button.is-done{color:var(--mute)}
+.au .tr-pop-grp>button[aria-selected=true]{color:var(--powder)}
 .vm-orig{flex:none;min-width:170px;margin-left:auto}
 .vm-zoom{flex:none;min-width:104px}
 .au .vm-orig>button,.au .vm-zoom>button{padding:0 10px}
 .vm-next{flex:none}
-.vm-prev-shot,.vm-next-shot{display:none!important}
 
 /* Canvas */
 .vm-canvas{position:relative;min-width:0;min-height:0}
@@ -592,8 +597,11 @@ a:hover{color:var(--powder-deep)}
 .vm-fit{display:flex;flex-direction:column;gap:4px;margin-top:8px}
 .vm-fit:empty{display:none}
 
-@media (max-width:1180px) and (min-width:861px){
-  .vm-group{width:150px}
+/* Narrow desktops: the picker drops the group part and shows the full title; the popover takes two columns */
+@media (max-width:1099px){
+  .vm-cr-g,.vm-cr-s,.vm-cr-p{display:none}
+  .vm-cr-f{display:inline}
+  .tr-pop-cols{columns:2}
 }
 /* Short desktop windows: tighter workspace; the canvas simply gets smaller */
 @media (max-height:620px) and (min-width:861px){
@@ -606,10 +614,21 @@ a:hover{color:var(--powder-deep)}
   .au .tr-mode>button{height:40px;padding:0 12px}
 
   .vm{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:0;padding:0}
-  .vm-bar{gap:6px;padding:6px 16px}
-  .vm-group,.vm-pills,.vm-zoom{display:none!important}
-  .vm-shot{display:block!important;flex:1;min-width:0}
-  .vm-prev-shot,.vm-next-shot{display:inline-flex!important;flex:none}
+  .vm-bar{position:relative;gap:4px;padding:6px 12px}
+  .vm-zoom{display:none!important}
+  /* the same picker between the arrows: the group over the screen's name, the count on the right */
+  .au .vm-bar>.vm-prev-shot,.au .vm-bar>.vm-next-shot{width:40px;height:44px}
+  .vm-bar>.vm-shot{position:static;flex:1 1 auto;max-width:none}
+  .au .vm-shot>.au-combo{height:44px;width:100%}
+  .vm-shot>.au-combo>span{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px}
+  .vm-cr-g{display:block;grid-column:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+  .vm-cr-s,.vm-cr-f{display:none}
+  .vm-cr-t{display:block;grid-column:1;font:600 14px/1.25 var(--disp);letter-spacing:0;text-transform:none}
+  .vm-cr-p{display:inline}
+  .vm-pill-n{grid-column:2;grid-row:1/span 2;padding-left:0}
+  .vm-shot>.tr-pop{left:12px;right:12px;width:auto;max-height:calc(100dvh - 120px);overflow-y:auto;padding:8px 10px}
+  .tr-pop-cols{columns:auto}
+  .au .tr-pop-grp>button{min-height:40px}
   .vm-view{overflow:hidden;touch-action:none}
   .vm.is-fit .vm-view{overflow:hidden}
   .vm-pad{display:block;width:max-content;min-width:0;min-height:0}
@@ -632,6 +651,7 @@ a:hover{color:var(--powder-deep)}
 }
 @media (max-width:400px){
   .tr-lang-combo .au-combo>.au-ic.sm{display:none}
+  .vm-shot>.au-combo .vm-pill-n{display:none}
   .vm-sh .vm-next{padding:0 10px;font-size:11px}
   .au .tr-mode>button{padding:0 9px}
 }
@@ -641,6 +661,7 @@ a:hover{color:var(--powder-deep)}
     .tr-tools-in{padding-top:4px;padding-bottom:4px}
   .au .au-combo,.au .au-btn,.au .tr-draft-btn,.tr-field{height:40px}
   .au .tr-seg,.au .tr-mode{height:40px}
+  .au .vm-shot>.au-combo,.au .vm-bar>.vm-prev-shot,.au .vm-bar>.vm-next-shot{height:40px}
   .au .tr-seg>button,.au .tr-mode>button{height:36px}
   .vm-bar{padding:4px 16px}
   .tr-subbar .au-btn.lg{height:38px}

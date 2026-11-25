@@ -310,16 +310,31 @@
       if (focusBtn) btn.focus();
     };
     self.setLabel = function (t) { btn.querySelector('span').textContent = t; };
+    // self.grouped: each heading opens a block (role=group) that holds the heading and the options under it; the
+    // blocks sit in one wrapper (.tr-pop-cols) that may set them in columns while the popover itself scrolls
     self.setItems = function (items) {
       pop.textContent = '';
+      var box = pop, cols = self.grouped ? h('div', 'tr-pop-cols') : pop;
+      if (cols !== pop) pop.append(cols);
       items.forEach(function (it) {
-        if (it.heading) { pop.append(h('div', 'tr-pop-head', { role: 'presentation', text: it.heading })); return; }
-        if (it.divider) { pop.append(h('div', 'au-divider tr-pop-div', { role: 'presentation' })); return; }
-        var o = h('button', null, { type: 'button', role: 'option', 'aria-selected': it.selected ? 'true' : 'false', 'data-value': it.value, tabindex: '-1' });
+        if (it.heading) {
+          var hd = h('div', 'tr-pop-head' + (it.done ? ' is-done' : ''), { role: 'presentation' });
+          if (it.right != null) hd.append(h('span', 'tr-pop-head-l', { text: it.heading }), h('span', 'tr-opt-r', { text: it.right }));
+          else hd.textContent = it.heading;
+          if (self.grouped) {
+            box = h('div', 'tr-pop-grp', { role: 'group', 'aria-label': it.heading + (it.right != null ? ', ' + it.right : '') });
+            hd.setAttribute('aria-hidden', 'true');
+            cols.append(box);
+          }
+          box.append(hd);
+          return;
+        }
+        if (it.divider) { box.append(h('div', 'au-divider tr-pop-div', { role: 'presentation' })); return; }
+        var o = h('button', it.done ? 'is-done' : null, { type: 'button', role: 'option', 'aria-selected': it.selected ? 'true' : 'false', 'data-value': it.value, tabindex: '-1' });
         o.append(h('span', 'tr-opt-l', { text: it.label, lang: it.lang || null }));
         if (it.meta) o.append(h('span', 'tr-opt-m', { text: it.meta }));
         if (it.right != null) o.append(h('span', 'tr-opt-r', { text: it.right }));
-        pop.append(o);
+        box.append(o);
       });
     };
     btn.addEventListener('click', function () {
@@ -1584,14 +1599,15 @@
   /* DOM */
   var vm = h('section', 'vm', { id: 'visual', hidden: true, 'aria-label': T.modeVisual });
   var vmBar = h('div', 'vm-bar');
-  var groupPick = Combo('vm-group', T.screenGroupLabel, null, function (v) {
-    var g = V.groups[+v];
-    if (g) showShot(g.shots[0]);
-  });
-  groupPick.onOpen = function () { groupPick.setItems(groupItems()); };
-  var pills = h('div', 'vm-pills', { role: 'group', 'aria-label': T.screensLabel });
+  // The screen picker: one breadcrumb combo (group / screen and its count) whose popover maps every screen by group
   var shotPick = Combo('vm-shot', T.screenLabel, null, function (v) { showShot(+v); });
-  shotPick.onOpen = function () { shotPick.setItems(shotItems()); };
+  shotPick.grouped = true;
+  shotPick.onOpen = function () {
+    shotPick.setItems(shotItems());
+    // the list ends above the window's bottom edge; anything taller scrolls inside it
+    var room = Math.floor(window.innerHeight - shotPick.btn.getBoundingClientRect().bottom - 14);
+    shotPick.pop.style.maxHeight = 'min(' + (mobile() ? 'calc(100dvh - 120px)' : '9999px') + ',' + Math.max(160, room) + 'px)';
+  };
   var prevShotBtn = iconBtn('left', T.previousScreen, 'vm-prev-shot');
   var nextShotBtn = iconBtn('right', T.nextScreen, 'vm-next-shot');
   prevShotBtn.setAttribute('aria-keyshortcuts', 'Alt+ArrowLeft');
@@ -1638,127 +1654,69 @@
   var meas = h('div', 'vm-measure', { 'aria-hidden': 'true' });
   (document.getElementById('main') || document.body).append(meas);
 
-  // Mobile: the screen picker is the full-width combo. Desktop: it is the "+N" chip after the pills.
+  // Desktop: the arrows, the screen picker, then Original | Preview, Fit | 100% and Next Untranslated on the right.
+  // Phones: the arrows at the ends of the row around the picker; the other controls move into the editor sheet.
   function placeControls() {
-    moreSig = '';
     if (mobile()) {
-      shotPick.el.classList.remove('is-more', 'is-cur');
-      shotPick.el.hidden = false;
-      shotPick.btn.setAttribute('aria-label', T.screenLabel);
-      vmBar.append(shotPick.el, prevShotBtn, nextShotBtn);
+      vmBar.append(prevShotBtn, shotPick.el, nextShotBtn);
       sheetTools.append(origSeg.el);
       sheetHead.append(nextBtn);
-      if (V && VS.built >= 0) shotPick.setLabel(curShot().title + ' · ' + progressOf([VS.shot]));
     } else {
-      shotPick.el.classList.add('is-more');
-      vmBar.append(groupPick.el, pills, shotPick.el, origSeg.el, zoomSeg.el, nextBtn);
-      if (V && VS.built >= 0) layoutPills();
+      vmBar.append(prevShotBtn, nextShotBtn, shotPick.el, origSeg.el, zoomSeg.el, nextBtn);
     }
   }
   placeControls();
 
   /* Bar */
-  function progressOf(shotIdxs) {
+  function progOf(shotIdxs) {
     var d = 0, t = 0;
     shotIdxs.forEach(function (i) { var p = C.shotProgress(V.shots[i], isDone); d += p.done; t += p.total; });
-    return fmt(d) + '/' + fmt(t);
+    return { done: d, total: t };
   }
-  function groupItems() {
-    return V.groups.map(function (g, i) {
-      return { value: String(i), label: g.name, right: progressOf(g.shots), selected: i === curShot().groupIndex };
-    });
-  }
-  // Mobile lists every screen under its group; the desktop "+N" chip lists the current group's screens
+  function progressOf(shotIdxs) { var p = progOf(shotIdxs); return fmt(p.done) + '/' + fmt(p.total); }
+  function finished(p) { return p.total > 0 && p.done >= p.total; }
+  // The popover is a map of the app: every group in sidebar order with its count, its screens under it. A finished
+  // screen or group shows Done in place of its count.
   function shotItems() {
-    var items = [], gs = mobile() ? V.groups : [V.groups[curShot().groupIndex]];
-    gs.forEach(function (g) {
-      if (gs.length > 1) items.push({ heading: g.name });
-      g.shots.forEach(function (i) { items.push({ value: String(i), label: V.shots[i].title, right: progressOf([i]), selected: i === VS.shot }); });
+    var items = [];
+    V.groups.forEach(function (g) {
+      var gp = progOf(g.shots), gd = finished(gp);
+      items.push({ heading: g.name, right: gd ? T.screenDone : fmt(gp.done) + '/' + fmt(gp.total), done: gd });
+      g.shots.forEach(function (i) {
+        var p = progOf([i]), d = finished(p);
+        items.push({ value: String(i), label: V.shots[i].title, right: d ? T.screenDone : fmt(p.done) + '/' + fmt(p.total), done: d, selected: i === VS.shot });
+      });
     });
     return items;
   }
-  // A pill names its screen without the group, which the group combo already shows: "Overview (Signals)" in the
-  // Overview group is "Signals". A screen named like its group keeps the name; a bare number keeps the full title.
+  // The screen part of the breadcrumb names its screen without the group, which the group part already shows:
+  // "Overview (Signals)" in the Overview group is "Signals". A screen named like its group keeps the name; a bare
+  // number keeps the full title.
   function pillName(shot, g) {
     var t = shot.title, n = g.name;
     if (t === n || t.indexOf(n) !== 0 || !/^[\s(:]/.test(t.slice(n.length))) return t;
     var rest = t.slice(n.length).replace(/^[\s(:]+/, '').replace(/\)\s*$/, '').trim();
     return /[A-Za-zÀ-￿]/.test(rest) ? rest : t;
   }
-  var pillsGroup = -1;
+  // The picker's label: GROUP / SCREEN and the count. A screen named like its group shows the name once. Narrow
+  // desktops drop the group part and show the full title (.vm-cr-f); phones stack the group over the screen part.
+  var barSig = '';
   function updateBar() {
-    var shot = curShot(), g = V.groups[shot.groupIndex];
-    groupPick.setLabel(g.name);
-    if (pillsGroup !== shot.groupIndex) {
-      pillsGroup = shot.groupIndex;
-      pills.textContent = '';
-      g.shots.forEach(function (i) {
-        pills.append(h('button', 'vm-pill', { type: 'button', 'data-shot': i, title: V.shots[i].title }, [h('span', 'vm-pill-t', { text: pillName(V.shots[i], g) }), h('span', 'vm-pill-n')]));
-      });
-    }
-    Array.prototype.forEach.call(pills.children, function (b) {
-      var i = +b.getAttribute('data-shot');
-      b.lastChild.textContent = progressOf([i]);
-      if (i === VS.shot) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
-    });
-    if (mobile()) shotPick.setLabel(shot.title + ' · ' + progressOf([VS.shot]));
-    else layoutPills();
-  }
-
-  /* Desktop: pills that are not wholly on the first row are hidden and counted in the "+N" chip. When the current
-     screen is among them, the chip shows it in the current style. The chip's width changes the room the pills
-     have, so the count is settled in a few passes. */
-  var moreSig = '';
-  function layoutPills() {
-    if (mobile() || vm.hidden || !V || VS.built < 0) return;
-    var chip = shotPick.el, bs = Array.prototype.slice.call(pills.children), out = [];
-    pills.style.maxWidth = '';
-    pills.scrollTop = pills.scrollLeft = 0;
-    chip.hidden = true;
-    for (var pass = 0; pass < 4; pass++) {
-      var w = pills.clientWidth;
-      var now = bs.filter(function (b) { return b.offsetTop > 2 || b.offsetLeft + b.offsetWidth > w + 0.5; });
-      if (pass && now.length === out.length) break;
-      out = now;
-      if (!out.length) break;
-      setMoreChip(out);
-    }
-    bs.forEach(function (b) { b.classList.toggle('is-out', out.indexOf(b) >= 0); });
-    if (!out.length) { chip.hidden = true; chip.classList.remove('is-cur'); moreSig = ''; return; }
-    // the chip follows the last whole pill
-    var last = null;
-    bs.forEach(function (b) { if (out.indexOf(b) < 0) last = b; });
-    pills.style.maxWidth = (last ? Math.ceil(last.getBoundingClientRect().right - pills.getBoundingClientRect().left) + 1 : 0) + 'px';
-  }
-  function setMoreChip(out) {
-    var chip = shotPick.el, cur = null, shot = curShot();
-    out.forEach(function (b) { if (+b.getAttribute('data-shot') === VS.shot) cur = b; });
-    var more = out.length - (cur ? 1 : 0);
-    var sig = (cur ? VS.shot + '|' + progressOf([VS.shot]) : '') + '|' + more;
-    chip.hidden = false;
-    chip.classList.toggle('is-cur', !!cur);
-    if (sig === moreSig) return;
-    moreSig = sig;
+    var shot = curShot(), g = V.groups[shot.groupIndex], n = progressOf([VS.shot]);
+    shotPick.btn.setAttribute('aria-label', T.screenLabel + ': ' + shot.title + ' · ' + n);
+    shotPick.btn.title = shot.title;
+    var sig = VS.shot + '|' + n;
+    if (sig === barSig) return;
+    barSig = sig;
     var span = shotPick.btn.querySelector('span');
     span.textContent = '';
-    if (cur) {
-      span.append(h('span', 'vm-pill-t', { text: cur.firstChild.textContent }), h('span', 'vm-pill-n', { text: progressOf([VS.shot]) }));
-      if (more) span.append(h('span', 'vm-more-n', { text: '+' + fmt(more) }));
-    } else {
-      span.append(h('span', 'vm-more-n', { text: '+' + fmt(more) }));
-    }
-    shotPick.btn.setAttribute('aria-label', cur
-      ? T.screenLabel + ': ' + shot.title + ' · ' + progressOf([VS.shot]) + (more ? ' · ' + T.moreScreens(fmt(more)) : '')
-      : T.moreScreens(fmt(more)));
-    shotPick.btn.title = cur ? shot.title : '';
+    if (shot.title !== g.name) span.append(h('span', 'vm-cr-g', { text: g.name }), h('span', 'vm-cr-s', { text: '/', 'aria-hidden': 'true' }));
+    span.append(
+      h('span', 'vm-cr-t', null, [h('span', 'vm-cr-p', { text: pillName(shot, g) }), h('span', 'vm-cr-f', { text: shot.title })]),
+      h('span', 'vm-pill-n', { text: n })
+    );
   }
-  if (window.ResizeObserver) new ResizeObserver(function () { requestAnimationFrame(layoutPills); }).observe(vmBar);
-  try { document.fonts.ready.then(function () { layoutPills(); }); } catch (e) { /* no font loading API */ }
 
-  pills.addEventListener('click', function (e) {
-    var b = e.target.closest('[data-shot]');
-    if (b) showShot(+b.getAttribute('data-shot'));
-  });
   prevShotBtn.addEventListener('click', function () { showShot(VS.shot - 1); });
   nextShotBtn.addEventListener('click', function () { showShot(VS.shot + 1); });
   nextBtn.addEventListener('click', goNext);
@@ -2623,6 +2581,14 @@
     if (first || !landing || landing.hidden) showLanding(!first);
   }
   window.addEventListener('hashchange', route);
+  // the header's Translate link goes back to the landing without reloading the page
+  var home = document.querySelector('.tr-home');
+  if (home) home.addEventListener('click', function (e) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    if (location.hash) history.pushState(null, '', location.pathname + location.search);
+    route();
+  });
   window.addEventListener('popstate', route);
   // the skip link moves focus without a #main entry, so Back never lands on a hash the page does not route
   var skip = document.querySelector('.skip-link');
