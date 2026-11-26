@@ -1,8 +1,8 @@
 {
-  "version": "0.2.3",
+  "version": "0.2.4",
   "published": "2026-11-26",
-  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.3/DS5-Untethered-0.2.3-Update.exe", "sha256": "B0E501ABACA8C7F028CF35B76C4C1F4F8E45A20B1E6702F5066A990D81EA37B5", "size": 44048796 },
-  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.3/DS5-Untethered-0.2.3-win-x64-Portable.zip", "sha256": "EB13716249D60CA7CC047A8D1D50F85F5CF8F8CD20470ABDD59642E0EE41F1D2", "size": 55402302 },
-  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.3",
-  "notes": { "tr": "Kablo modunda oyun haptiği dahil her şey artık USB üzerinden çalışıyor, hoparlör çıtırtısı giderildi. Sayfalar kaydırmadan sığıyor, Titreşim ve Kumanda sayfaları sekmelere ayrıldı.", "en": "The cable mode now runs everything over USB, including game haptics, with no speaker crackle. Every page fits without scrolling; Haptics and Controller pages gained tabs." }
+  "setup": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.4/DS5-Untethered-0.2.4-Update.exe", "sha256": "4AEFBB688832CD34320699A7C78489F9ED3FDE5F919E78FBEC406699B9F708E3", "size": 44040080 },
+  "zip": { "url": "https://github.com/Midzer00/ds5-untethered/releases/download/v0.2.4/DS5-Untethered-0.2.4-win-x64-Portable.zip", "sha256": "E658B789C63378BA2FF9B07E5741A91CC40BA5B8BDF58B6ADA39E0ACE56B56A9", "size": 55402324 },
+  "page": "https://github.com/Midzer00/ds5-untethered/releases/tag/v0.2.4",
+  "notes": { "tr": "Kablo modu artık deneysel değil ve açıklaması seçtiğiniz seçeneği yansıtıyor.", "en": "The cable mode is no longer experimental, and its description now matches the selected option." }
 }
