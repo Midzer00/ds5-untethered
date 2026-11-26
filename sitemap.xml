@@ -26,4 +26,8 @@
       <image:loc>https://ds5untethered.com/assets/overview-full-tr-ds5.jpg</image:loc>
     </image:image>
   </url>
+  <url>
+    <loc>https://ds5untethered.com/translate/</loc>
+    <lastmod>2026-11-25</lastmod>
+  </url>
 </urlset>
