@@ -177,17 +177,17 @@ public sealed class OverviewLinkStatesTests
 		Localizer.Chosen = Language.Turkish;
 		try
 		{
-			(string State, LinkUse Bluetooth, LinkUse Usb, string? Hero, string? Tag, string Sidebar, string? Heading)[] cases =
+			(string State, LinkUse Bluetooth, LinkUse Usb, string? Hero, string Sidebar, string? Heading)[] cases =
 			[
-				("bt", LinkUse.InUse, LinkUse.Absent, "Bluetooth İle Bağlı", null, "Bluetooth", null),
-				("charge", LinkUse.InUse, LinkUse.ChargeOnly, "Bluetooth · Kablo Takılı", null, "Bluetooth · Kablo Takılı", null),
-				("wired", LinkUse.Standby, LinkUse.InUse, "Kablo Üzerinden Çalışıyor", "Deneysel", "USB Kablosu (Deneysel)", null),
-				("virtual-off", LinkUse.Standby, LinkUse.Absent, "Sanal Kumanda Kapalı", null, "Bluetooth", "Sanal Kumanda Kapalı"),
-				("not-connected", LinkUse.Absent, LinkUse.Absent, null, null, "Bağlı Değil", "Kumandayı Aç"),
-				("waiting", LinkUse.Absent, LinkUse.Absent, null, null, "Bağlı Değil", "Kumanda Bekleniyor"),
-				("cable-only", LinkUse.Absent, LinkUse.Direct, null, null, "Kabloyla Bağlı", "Sanal Kumanda Duraklatıldı"),
+				("bt", LinkUse.InUse, LinkUse.Absent, "Bluetooth İle Bağlı", "Bluetooth", null),
+				("charge", LinkUse.InUse, LinkUse.ChargeOnly, "Bluetooth · Kablo Takılı", "Bluetooth · Kablo Takılı", null),
+				("wired", LinkUse.Standby, LinkUse.InUse, "Kablo Üzerinden Çalışıyor", "USB Kablosu", null),
+				("virtual-off", LinkUse.Standby, LinkUse.Absent, "Sanal Kumanda Kapalı", "Bluetooth", "Sanal Kumanda Kapalı"),
+				("not-connected", LinkUse.Absent, LinkUse.Absent, null, "Bağlı Değil", "Kumandayı Aç"),
+				("waiting", LinkUse.Absent, LinkUse.Absent, null, "Bağlı Değil", "Kumanda Bekleniyor"),
+				("cable-only", LinkUse.Absent, LinkUse.Direct, null, "Kabloyla Bağlı", "Sanal Kumanda Duraklatıldı"),
 			];
-			foreach ((string state, LinkUse bluetooth, LinkUse usb, string? heroText, string? tag, string sidebar, string? heading) in cases)
+			foreach ((string state, LinkUse bluetooth, LinkUse usb, string? heroText, string sidebar, string? heading) in cases)
 			{
 				(MainWindowViewModel vm, MainWindow window, FakeControllerService fake) = UiShotsRenderTests.OpenOverview(state, 1100, 700);
 				try
@@ -199,9 +199,9 @@ public sealed class OverviewLinkStatesTests
 					if (heroText != null)
 					{
 						Assert.Equal(heroText, o.HeroLinkText);
-						Assert.Equal(tag != null, o.ShowsHeroLinkTag);
-						Assert.Equal("Deneysel", o.HeroLinkTag);
 					}
+					// The cable mode is no longer experimental: no tag on any link line.
+					Assert.Empty(window.GetVisualDescendants().OfType<ExperimentalTag>());
 					Assert.Equal(sidebar, vm.DeviceConnection);
 					Assert.Equal(sidebar, window.GetVisualDescendants().OfType<LinkLine>().Single(l => l.Name == "SidebarLink").Label!.Text);
 					Assert.Equal(heading == null, o.IsLive);

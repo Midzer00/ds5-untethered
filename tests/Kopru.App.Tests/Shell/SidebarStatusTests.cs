@@ -88,7 +88,7 @@ public class SidebarStatusTests
 				Assert.Contains(nameof(MainWindowViewModel.DeviceConnection), changed);
 				changed.Clear();
 			}
-			Assert.Equal("USB Cable (Experimental)", vm.DeviceConnection);
+			Assert.Equal("USB Cable", vm.DeviceConnection);
 
 			fake.IsWired = false;
 			fake.RaiseStateChanged();
@@ -126,7 +126,7 @@ public class SidebarStatusTests
 
 			Assert.Equal("Bluetooth ile Bağlı", Text.DeviceConnectedBluetooth(Language.Turkish));
 			Assert.Equal("Bluetooth · Kablo Takılı", Text.ConnectionBluetoothCable(Language.Turkish));
-			Assert.Equal("USB Kablosu (Deneysel)", Text.ConnectionWired(Language.Turkish));
+			Assert.Equal("USB Kablosu", Text.ConnectionWired(Language.Turkish));
 		}
 		finally
 		{

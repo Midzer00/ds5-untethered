@@ -371,7 +371,7 @@
               </c:ArtRow>
 
               <c:LinkLine Grid.Row="1" Name="HeroLink" Hero="True" Height="20" Margin="0,6,0,0" IsVisible="{Binding ShowsHeroLink}"
-                          Bluetooth="{Binding BluetoothUse}" Usb="{Binding UsbUse}" Text="{Binding HeroLinkText}" TagText="{Binding HeroLinkTag}" ShowsTag="{Binding ShowsHeroLinkTag}" />
+                          Bluetooth="{Binding BluetoothUse}" Usb="{Binding UsbUse}" Text="{Binding HeroLinkText}" />
             </Grid>
           </Border>
 

@@ -222,7 +222,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	public string AppName => AppInfo.Name;
 	public bool IsEdge => _service.Kind == ControllerKind.DualSenseEdge;
 	public string DeviceName => _service.IsConnected ? _service.DeviceName : Text.DeviceNoController();
-	// The link line of the sidebar card: the same words as the Overview's status line ("Bluetooth", "USB Kablosu (Deneysel)", ...).
+	// The link line of the sidebar card: the same words as the Overview's status line ("Bluetooth", "USB Kablosu", ...).
 	public string DeviceConnection => Overview.SidebarLinkText;
 	public string DeviceBattery => !_service.HasBattery ? ChargingLevelUnknown ? Text.BatteryCharging() : Text.BatteryUnknown()
 		: _service.IsCharging

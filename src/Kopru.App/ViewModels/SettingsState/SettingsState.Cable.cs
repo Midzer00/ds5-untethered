@@ -10,7 +10,7 @@ namespace Kopru.App.ViewModels;
 public sealed partial class SettingsState
 {
 	// The cable behaviour while the saved setting is missing: Charge Only. Wired mode is opt-in (the user picks
-	// "Use The Cable (Experimental)").
+	// "Use The Cable").
 	public const CableMode DefaultCableMode = CableMode.ChargeOnly;
 
 	[ObservableProperty]

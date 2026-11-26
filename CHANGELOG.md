@@ -6,6 +6,11 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.2.4 — 2026-11-26
+
+- Use The Cable is no longer experimental: the cable mode was tested on real controllers, so the "(Experimental)" label and the tag on the Overview are gone.
+- The line under When The Cable Is Plugged In now describes the selected choice; with Charge Only it no longer reads as if cable mode were on.
+
 ### 0.2.3 — 2026-11-26
 
 - Use The Cable (Experimental) now runs the controller fully over USB: while the cable is in, input, triggers, light, haptics, speaker and microphone go over the cable and Bluetooth is disconnected. Game haptics now play over the cable too. After unplugging, press the ø button to reconnect over Bluetooth. The setting is on the Controller page, Tests & Cable tab.
@@ -119,6 +124,11 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.2.4 — 26.11.2026
+
+- "Kablo Üzerinden Çalış" artık deneysel değil. Kablo modu gerçek DualSense kumandalarla test edildi. "(Deneysel)" ibaresi ve "Genel Bakış" ekranındaki etiket kaldırıldı.
+- "Kablo Takılınca" ayarının altındaki açıklama artık seçtiğiniz seçeneğe göre değişiyor. "Sadece Şarj Et" seçiliyken açıklama artık kablo modu açıkmış gibi okunmuyor.
 
 ### 0.2.3 — 26.11.2026
 

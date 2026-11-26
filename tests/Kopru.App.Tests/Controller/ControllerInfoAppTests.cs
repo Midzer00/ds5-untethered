@@ -1671,8 +1671,8 @@ public class ControllerInfoAppTests
 			// Experimental wired mode: both view models name the USB cable while it carries the bridge.
 			fake.IsWired = true;
 			info.Refresh();
-			Assert.Equal("USB Cable (Experimental)", info.Connection);
-			Assert.Equal("USB Cable (Experimental)", tester.ConnectionText);
+			Assert.Equal("USB Cable", info.Connection);
+			Assert.Equal("USB Cable", tester.ConnectionText);
 			fake.IsWired = false;
 			info.Refresh();
 			Assert.Equal("Bluetooth · Cable Plugged In", info.Connection);

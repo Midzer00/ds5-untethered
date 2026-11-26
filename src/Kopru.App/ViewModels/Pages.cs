@@ -128,7 +128,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 		? (IsBridgeRunning && Blocking == null ? Text.OverviewWaitingController() : Connection.Label())
 		: StatusState + " · " + ConnectionLabel;
 
-	// The one connection label (Bluetooth / Bluetooth · Cable Plugged In / USB Cable (Experimental)), the same words as the sidebar's.
+	// The one connection label (Bluetooth / Bluetooth · Cable Plugged In / USB Cable), the same words as the sidebar's.
 	public string ConnectionLabel => _service.IsWired || _service.IsCableOnly ? Text.ConnectionWired()
 		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable()
 		: "Bluetooth";

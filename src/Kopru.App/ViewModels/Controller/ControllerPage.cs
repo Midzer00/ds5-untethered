@@ -81,7 +81,8 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 	public string Intro => Text.ControllerIntro();
 	public string CableGroupLabel => Text.CardCable();
 	public string CableModeLabel => Text.CableModeLabel();
-	public string CableModeShort => Text.CableModeShort();
+	// Describes the selected choice, so it never reads like cable mode is on while Charge Only is picked.
+	public string CableModeShort => SelectedCableMode?.Mode == CableMode.Wired ? Text.CableModeShort() : Text.CableModeShortChargeOnly();
 	public string CableModeHint => Text.CableModeHint();
 
 	// The cable behaviour choice (Settings.CableMode both ways; a cleared selection while the language switch
@@ -91,6 +92,7 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 
 	partial void OnSelectedCableModeChanged(CableModeOption value)
 	{
+		OnPropertyChanged(nameof(CableModeShort));
 		if (value != null && value.Mode != _settings.CableMode)
 		{
 			_settings.CableMode = value.Mode;

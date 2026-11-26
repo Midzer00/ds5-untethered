@@ -22,19 +22,17 @@ public sealed partial class OverviewViewModel
 		: LinkUse.Absent;
 
 	// Hero: the link line under the drawing while a controller is connected ("Bluetooth İle Bağlı", "Bluetooth · Kablo
-	// Takılı", "Kablo Üzerinden Çalışıyor" with "Deneysel"; "Sanal Kumanda Kapalı" while it is off).
+	// Takılı", "Kablo Üzerinden Çalışıyor"; "Sanal Kumanda Kapalı" while it is off).
 	public bool ShowsHeroLink => _service.IsConnected && !IsOnCable;
 	public string HeroLinkText => !_service.IsBridgeRunning ? Text.BridgeStateStopped()
 		: _service.IsWired ? Text.HeroLinkWired()
 		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable()
 		: Text.HeroLinkBluetooth();
-	public string HeroLinkTag => Text.ExperimentalTag();
-	public bool ShowsHeroLinkTag => _service.IsWired && _service.IsBridgeRunning;
 
 	// The link notice: the sentence after its title.
 	public string LinkNoticeRest => " · " + LinkAdvice;
 
-	// Sidebar card: the link's name ("Bluetooth", "Bluetooth · Kablo Takılı", "USB Kablosu (Deneysel)", "Kabloyla Bağlı",
+	// Sidebar card: the link's name ("Bluetooth", "Bluetooth · Kablo Takılı", "USB Kablosu", "Kabloyla Bağlı",
 	// "Bağlı Değil").
 	public string SidebarLinkText => IsOnCable ? Text.ConnectionOnUsb()
 		: !_service.IsConnected ? Text.DeviceNotConnected()

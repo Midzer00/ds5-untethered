@@ -27,7 +27,7 @@
 
 <p align="center"><a href="#english">English</a> · <a href="#türkçe">Türkçe</a> · <a href="#quick-start">Quick Start</a> · <a href="#troubleshooting">Troubleshooting</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="https://ds5untethered.com/">Website</a> · <a href="https://drive.google.com/file/d/1dSZgX1E2ETb50e1AbPEG-hCaTthpGGVd/view">Media kit</a></p>
 
-<p align="center"><img src="docs/screens/v0.2.0/overview-en.jpg" alt="DS5 Untethered Overview with a connected DualSense and live haptics and latency readings" width="820"></p>
+<p align="center"><img src="docs/screens/v0.2.3/overview-en.jpg" alt="DS5 Untethered Overview with a connected DualSense and a live latency reading" width="820"></p>
 
 <p align="center"><sub>Unofficial project, not affiliated with Sony. See the <a href="#disclaimer">Disclaimer</a> (<a href="#yasal-uyarı">Yasal uyarı</a>).</sub></p>
 
@@ -157,7 +157,7 @@ DS5 Untethered is free and stays free. If it is useful to you, you can support i
   If the app shows "Not Paired", hold Create and the ø button until the light blinks, then pair it.
 - **The controller is plugged in with a USB cable.** What happens depends on Controller > Tests & Cable. With
   Charge Only (the default) the cable only charges: everything stays on Bluetooth and games still see one controller.
-  With Use The Cable (Experimental) the app runs the controller over USB and disconnects Bluetooth; after unplugging,
+  With Use The Cable the app runs the controller over USB and disconnects Bluetooth; after unplugging,
   press the ø button to reconnect over Bluetooth. A controller paired once is also picked up when it is on the cable
   alone at app start.
 - **SmartScreen warns when you start the installer.** The build is not signed: choose "More info", then "Run anyway".
@@ -241,9 +241,9 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 
 | Per-game profiles | Haptics and triggers |
 |---|---|
-| ![Per-game profiles](docs/screens/v0.2.0/profiles-en.jpg) | ![Haptics and triggers](docs/screens/v0.2.0/haptics-and-triggers-en.jpg) |
+| ![Per-game profiles](docs/screens/v0.2.3/profiles-en.jpg) | ![Haptics and triggers](docs/screens/v0.2.3/haptics-and-triggers-en.jpg) |
 | **Gyro aiming** | **Sound into haptics** |
-| ![Gyro aiming](docs/screens/v0.2.0/gyro-aiming-en.jpg) | ![Sound into haptics](docs/screens/v0.2.0/sound-into-haptics-en.jpg) |
+| ![Gyro aiming](docs/screens/v0.2.3/gyro-aiming-en.jpg) | ![Sound into haptics](docs/screens/v0.2.3/sound-into-haptics-en.jpg) |
 
 Find cover images, screenshots, short videos and a setup guide in the [media kit](https://drive.google.com/file/d/1dSZgX1E2ETb50e1AbPEG-hCaTthpGGVd/view).
 
@@ -407,7 +407,7 @@ Hata bildirimleri, öneriler ve kod katkıları da projenin gelişmesine yardım
   Uygulama "Eşleşmemiş" gösteriyorsa Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
 - **Kumanda USB kablosuyla takılı.** Kumandanın nasıl bağlanacağını Kumanda > Testler ve Kablo bölümünden seçebilirsiniz.
   Sadece Şarj Et (varsayılan) seçiliyken kablo yalnızca şarj eder. Kumanda Bluetooth üzerinden çalışmaya devam eder ve oyunlar yine tek kumanda görür.
-  Kablo Üzerinden Çalış (Deneysel) seçiliyken kumanda USB üzerinden çalışır ve Bluetooth bağlantısı kesilir.
+  Kablo Üzerinden Çalış seçiliyken kumanda USB üzerinden çalışır ve Bluetooth bağlantısı kesilir.
   Kabloyu çıkardıktan sonra Bluetooth ile yeniden bağlanmak için ø tuşuna basın. Uygulama açılırken daha önce eşleştirilmiş kumandayı yalnızca kabloyla bağlı olsa bile tanır.
 - **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Uygulamada kod imzası yok: "Ek bilgi"ye, ardından "Yine de
   çalıştır"a tıklayın.
@@ -492,13 +492,13 @@ powershell -ExecutionPolicy Bypass -File tools\test.ps1
 
 ### Ekran görüntüleri
 
-<p align="center"><img src="docs/screens/v0.2.0/overview-tr.jpg" alt="DS5 Untethered Genel Bakış ekranı" width="820"></p>
+<p align="center"><img src="docs/screens/v0.2.3/overview-tr.jpg" alt="DS5 Untethered Genel Bakış ekranı" width="820"></p>
 
 | Oyuna özel profiller | Titreşim ve tetikler |
 |---|---|
-| ![Oyuna özel profiller](docs/screens/v0.2.0/profiles-tr.jpg) | ![Titreşim ve tetikler](docs/screens/v0.2.0/haptics-and-triggers-tr.jpg) |
+| ![Oyuna özel profiller](docs/screens/v0.2.3/profiles-tr.jpg) | ![Titreşim ve tetikler](docs/screens/v0.2.3/haptics-and-triggers-tr.jpg) |
 | **Gyro ile nişan alma** | **Sesi titreşime çevir** |
-| ![Gyro ile nişan alma](docs/screens/v0.2.0/gyro-aiming-tr.jpg) | ![Sesi titreşime çevir](docs/screens/v0.2.0/sound-into-haptics-tr.jpg) |
+| ![Gyro ile nişan alma](docs/screens/v0.2.3/gyro-aiming-tr.jpg) | ![Sesi titreşime çevir](docs/screens/v0.2.3/sound-into-haptics-tr.jpg) |
 
 Kapak görsellerini, ekran görüntülerini, kısa tanıtım videolarını ve Türkçe kurulum kılavuzunu [medya kitinde](https://drive.google.com/file/d/1dSZgX1E2ETb50e1AbPEG-hCaTthpGGVd/view) bulabilirsiniz.
 

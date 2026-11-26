@@ -161,10 +161,10 @@ public class CableModeAppTests
 		try
 		{
 			Localizer.Chosen = Language.English;
-			Assert.Equal("Use The Cable (Experimental)", vm.CableModes[0].Name);
+			Assert.Equal("Use The Cable", vm.CableModes[0].Name);
 			Assert.Equal("Charge Only", vm.CableModes[1].Name);
 			Localizer.Chosen = Language.Turkish;
-			Assert.Equal("Kablo Üzerinden Çalış (Deneysel)", vm.CableModes[0].Name);
+			Assert.Equal("Kablo Üzerinden Çalış", vm.CableModes[0].Name);
 			Assert.Equal("Sadece Şarj Et", vm.CableModes[1].Name);
 		}
 		finally
@@ -178,21 +178,45 @@ public class CableModeAppTests
 		Assert.Same(vm.CableModes[1], vm.SelectedCableMode);
 	}
 
+	// The line under the row describes the selected choice: under Charge Only it must not read like cable mode is on.
+	[AvaloniaFact]
+	public void Description_FollowsTheSelectedChoice()
+	{
+		var fake = new FakeControllerService(animate: false);
+		var settings = new SettingsState(fake);
+		var vm = new ControllerPageViewModel(fake, settings, live: false);
+		var changed = new List<string?>();
+		vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+		Assert.Equal(Text.CableModeShortChargeOnly(), vm.CableModeShort);
+
+		vm.SelectedCableMode = vm.CableModes[0];
+		Assert.Equal(Text.CableModeShort(), vm.CableModeShort);
+		Assert.Contains(nameof(ControllerPageViewModel.CableModeShort), changed);
+
+		changed.Clear();
+		settings.CableMode = CableMode.ChargeOnly;
+		Assert.Equal(Text.CableModeShortChargeOnly(), vm.CableModeShort);
+		Assert.Contains(nameof(ControllerPageViewModel.CableModeShort), changed);
+	}
+
 	[Fact]
 	public void Texts_InBothLanguages()
 	{
 		Assert.Equal("Kablo Takılınca", Text.CableModeLabel(Language.Turkish));
 		Assert.Equal("When The Cable Is Plugged In", Text.CableModeLabel(Language.English));
-		Assert.Equal("Kablo Üzerinden Çalış (Deneysel)", Text.CableModeWired(Language.Turkish));
-		Assert.Equal("Use The Cable (Experimental)", Text.CableModeWired(Language.English));
+		Assert.Equal("Kablo Üzerinden Çalış", Text.CableModeWired(Language.Turkish));
+		Assert.Equal("Use The Cable", Text.CableModeWired(Language.English));
 		Assert.Equal("Sadece Şarj Et", Text.CableModeChargeOnly(Language.Turkish));
 		Assert.Equal("Charge Only", Text.CableModeChargeOnly(Language.English));
 		Assert.Equal("Kablo takılıyken kumanda kablo üzerinden çalışır, Bluetooth bağlantısı kesilir.", Text.CableModeShort(Language.Turkish));
 		Assert.Equal("While the cable is in, the app runs the controller over it and disconnects Bluetooth.", Text.CableModeShort(Language.English));
-		Assert.Equal("Kablo Üzerinden Çalış (Deneysel) seçiliyken kumandanın tüm işlevleri USB üzerinden çalışır ve Bluetooth bağlantısı kesilir. Kabloyu çıkarınca yeniden bağlanmak için ø tuşuna bas. Sorun olursa Sadece Şarj Et’i seç. Kablo yalnızca şarj eder, kumanda Bluetooth üzerinden çalışmaya devam eder.", Text.CableModeHint(Language.Turkish));
+		Assert.Equal("Kablo yalnızca şarj eder, kumanda Bluetooth üzerinden çalışmaya devam eder.", Text.CableModeShortChargeOnly(Language.Turkish));
+		Assert.Equal("The cable only charges; the controller stays on Bluetooth.", Text.CableModeShortChargeOnly(Language.English));
+		Assert.Equal("Kablo Üzerinden Çalış seçiliyken kumandanın tüm işlevleri USB üzerinden çalışır ve Bluetooth bağlantısı kesilir. Kabloyu çıkarınca yeniden bağlanmak için ø tuşuna bas. Sorun olursa Sadece Şarj Et’i seç. Kablo yalnızca şarj eder, kumanda Bluetooth üzerinden çalışmaya devam eder.", Text.CableModeHint(Language.Turkish));
 		Assert.Equal("Use The Cable: while the cable is in, input, triggers, light, haptics, speaker and microphone go over USB and Bluetooth is disconnected; after unplugging, press the ø button to reconnect. If anything misbehaves choose Charge Only: the cable only charges and everything stays on Bluetooth.", Text.CableModeHint(Language.English));
-		Assert.Equal("USB Kablosu (Deneysel)", Text.ConnectionWired(Language.Turkish));
-		Assert.Equal("USB Cable (Experimental)", Text.ConnectionWired(Language.English));
+		Assert.Equal("USB Kablosu", Text.ConnectionWired(Language.Turkish));
+		Assert.Equal("USB Cable", Text.ConnectionWired(Language.English));
 		Assert.Equal("Kablo", Text.CardCable(Language.Turkish));
 		Assert.Equal("Cable", Text.CardCable(Language.English));
 	}

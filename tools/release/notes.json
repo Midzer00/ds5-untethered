@@ -1,4 +1,4 @@
 {
-  "tr": "Kablo modunda oyun haptiği dahil her şey artık USB üzerinden çalışıyor, hoparlör çıtırtısı giderildi. Sayfalar kaydırmadan sığıyor, Titreşim ve Kumanda sayfaları sekmelere ayrıldı.",
-  "en": "The cable mode now runs everything over USB, including game haptics, with no speaker crackle. Every page fits without scrolling; Haptics and Controller pages gained tabs."
+  "tr": "Kablo modu artık deneysel değil ve açıklaması seçtiğiniz seçeneği yansıtıyor.",
+  "en": "The cable mode is no longer experimental, and its description now matches the selected option."
 }

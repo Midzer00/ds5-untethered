@@ -10,8 +10,9 @@ public static partial class Text
 	public static string CableModeWired(Language? l = null) => T(l, "Cable.ModeWired");
 	public static string CableModeChargeOnly(Language? l = null) => T(l, "Cable.ModeChargeOnly");
 
-	// Descriptions (sentence case).
+	// Descriptions (sentence case). The row's line describes the selected choice: Use The Cable, or Charge Only.
 	public static string CableModeShort(Language? l = null) => T(l, "Cable.ModeShort");
+	public static string CableModeShortChargeOnly(Language? l = null) => T(l, "Cable.ModeShortChargeOnly");
 
 	public static string CableModeHint(Language? l = null) => T(l, "Cable.ModeHint");
 
