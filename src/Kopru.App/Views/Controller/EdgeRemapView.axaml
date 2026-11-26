@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.EdgeRemapView" x:DataType="vm:RemapViewModel">
+  <UserControl.Styles>
+    <!-- Switches outside setting rows end on the right edge like the shared setting-row switches -->
+    <Style Selector="ToggleSwitch">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="ToggleSwitch /template/ ContentPresenter#PART_OnContentPresenter, ToggleSwitch /template/ ContentPresenter#PART_OffContentPresenter">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector=":disabled TextBlock">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <!-- A disabled button shows the shared disabled look (App.axaml), not faded on top of it -->
+    <Style Selector="Button:disabled TextBlock, ToggleButton:disabled TextBlock">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <!-- Label (with an optional caption under it) on the left of a setting row -->
+    <Style Selector="Grid.settingRow > StackPanel.text">
+      <Setter Property="Spacing" Value="2" />
+      <Setter Property="Margin" Value="0,10" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <!-- One remap row: the physical button, the target picker; two columns per card -->
+    <DataTemplate DataType="vm:RemapRow">
+      <Grid ColumnDefinitions="*,200" ColumnSpacing="{StaticResource Gap}" Margin="0,3,28,3">
+        <TextBlock Classes="label" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Targets}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{Binding Name}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ButtonOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </Grid>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <!-- DualSense Edge: back paddles and presentation, only while an Edge is connected -->
+  <Border Classes="panel" DataContext="{Binding Edge}" x:DataType="vm:EdgeRemapPanel" IsVisible="{Binding IsVisible}" Name="EdgePanel">
+    <StackPanel Spacing="14">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h2" Text="{Binding Title}" />
+        <TextBlock Classes="body" Text="{Binding Hint}" />
+      </StackPanel>
+      <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+        <StackPanel Classes="text">
+          <TextBlock Classes="label" Text="{Binding PresentAsEdgeLabel}" />
+          <TextBlock Classes="body" Text="{Binding PresentAsEdgeHint}" />
+        </StackPanel>
+        <ToggleSwitch Grid.Column="1" IsChecked="{Binding PresentAsEdge}" OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{Binding PresentAsEdgeLabel}" />
+      </Grid>
+      <ItemsControl ItemsSource="{Binding Rows}" Margin="0,0,-28,0">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</UserControl>

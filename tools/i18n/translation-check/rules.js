@@ -22,6 +22,9 @@ const STRINGS_DIR = 'src/Kopru.Core/Localization/strings';
 
 const CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'];
 
+// Plural blocks nest by recursion; deeper input is reported as a syntax error instead of exhausting the stack.
+const MAX_DEPTH = 16;
+
 // TRANSLATING.md lists these as "other only" although CLDR gives them a "one" form too.
 const OTHER_ONLY = { tr: true };
 
@@ -35,7 +38,7 @@ class IcuError {
 
 // Returns { ok, code?, detail?, names: [...in order of first use], plurals: { name: { cats: [], exacts: [] } } }
 function parse(pattern) {
-  const st = { s: String(pattern == null ? '' : pattern), i: 0, names: [], seen: {}, plurals: {} };
+  const st = { s: String(pattern == null ? '' : pattern), i: 0, depth: 0, names: [], seen: {}, plurals: {} };
   try {
     parseNodes(st, false, false);
     return { ok: true, names: st.names, plurals: st.plurals };
@@ -105,6 +108,7 @@ function parseHole(st) {
   if (s[st.i] !== ',') throw new IcuError('badArg', name);
   st.i++;
   addName(st, name);
+  if (++st.depth > MAX_DEPTH) throw new IcuError('tooDeep', name);
   const info = st.plurals[name] || (st.plurals[name] = { cats: [], exacts: [] });
   const cats = [], exacts = [];
   let hasOther = false;
@@ -133,6 +137,7 @@ function parseHole(st) {
     parseNodes(st, true, true);
   }
   if (!hasOther) throw new IcuError('noOther', name);
+  st.depth--;
   info.cats = info.cats.concat(cats.filter((c) => info.cats.indexOf(c) < 0));
   info.exacts = info.exacts.concat(exacts);
 }
@@ -251,8 +256,32 @@ function countTranslated(enKeys, values) {
 // Test-only pseudo-locales of the app; never accepted as a translation.
 const RESERVED = { qps: true, qtg: true };
 
+// Language subtags that name no language: undetermined, multiple, no linguistic content, uncoded.
+const NOT_A_LANGUAGE = { und: true, mul: true, zxx: true, mis: true };
+
+// True when English display names know every subtag of a canonical code: Intl.DisplayNames gives a name that
+// differs from the subtag itself (an unknown one comes back unchanged, or as "Unknown Region"/"Unknown Script").
+function knownCode(c) {
+  if (typeof Intl.DisplayNames !== 'function') return true;
+  try {
+    const parts = c.split('-');
+    const lang = parts[0].toLowerCase();
+    if (NOT_A_LANGUAGE[lang]) return false;
+    const names = new Intl.DisplayNames(['en'], { type: 'language' });
+    if (names.of(c) === c || names.of(lang) === lang) return false;
+    for (let i = 1; i < parts.length; i++) {
+      const sub = parts[i];
+      const n = new Intl.DisplayNames(['en'], { type: sub.length === 4 ? 'script' : 'region' }).of(sub);
+      if (!n || n === sub || /^unknown\b/i.test(n)) return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // BCP-47 subset used for file names: language, optional script, optional region.
-// Returns { ok: true, code } or { ok: false, reason: 'format' | 'source' | 'maintained' | 'reserved' }.
+// Returns { ok: true, code } or { ok: false, reason: 'format' | 'source' | 'maintained' | 'reserved' | 'unknown' }.
 function canonicalCode(input) {
   const s = String(input == null ? '' : input).trim().replace(/_/g, '-');
   if (!/^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-(?:[A-Za-z]{2}|[0-9]{3}))?$/.test(s)) return { ok: false, reason: 'format' };
@@ -264,6 +293,7 @@ function canonicalCode(input) {
   if (c.toLowerCase() === 'en') return { ok: false, reason: 'source' };
   // Turkish is maintained by the project itself, in any region.
   if (primary === 'tr') return { ok: false, reason: 'maintained' };
+  if (!knownCode(c)) return { ok: false, reason: 'unknown' };
   return { ok: true, code: c };
 }
 
@@ -328,7 +358,8 @@ const SYNTAX_TEXT = {
   badExact: 'a bad exact selector',
   dupSelector: 'a repeated plural selector',
   unknownCategory: 'an unknown plural category',
-  noOther: 'a plural block without an "other" branch'
+  noOther: 'a plural block without an "other" branch',
+  tooDeep: 'plural blocks nested more than ' + MAX_DEPTH + ' levels deep'
 };
 
 function problem(level, rule, message, extra) {
@@ -340,6 +371,7 @@ function codeProblem(reason, input) {
     case 'source': return problem('error', 'code.source', 'en is the English source and is not accepted as a translation.');
     case 'maintained': return problem('error', 'code.maintained', 'Turkish (tr) is maintained by the project and is not accepted from volunteers.');
     case 'reserved': return problem('error', 'code.reserved', show(input, 20) + ' is a reserved test code (qps, qtg).');
+    case 'unknown': return problem('error', 'code.unknown', show(input, 20) + ' is not a known language. Use a BCP-47 code such as de, pt-BR or zh-Hans.');
     default: return problem('error', 'code.format', show(input, 20) + ' is not a language code. Use a BCP-47 code such as de, pt-BR or zh-Hans.');
   }
 }
@@ -532,6 +564,7 @@ module.exports = {
   NAME_KEY,
   STRINGS_DIR,
   CATEGORIES,
+  MAX_DEPTH,
   RESERVED,
   parse,
   placeholders,
@@ -541,6 +574,7 @@ module.exports = {
   buildOutput,
   countTranslated,
   canonicalCode,
+  knownCode,
   codeProblem,
   charLength,
   topLevelKeys,

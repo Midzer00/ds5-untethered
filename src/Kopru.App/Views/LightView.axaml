@@ -1,36 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.LightView" x:DataType="vm:LightViewModel">
   <UserControl.Resources>
-    <!-- Choice pill (same look as ChipToggle): the chosen one gets the accent edge and tint -->
-    <ControlTheme x:Key="ChoicePill" TargetType="ListBoxItem">
-      <Setter Property="Background" Value="{StaticResource QuietFillBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource ControlEdgeBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-      <Setter Property="FontSize" Value="13" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Margin" Value="0,0,6,6" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="Template">
-        <ControlTemplate>
-          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="16"
-                  Height="{StaticResource ControlHeight}" Padding="12,0">
-            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                              VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" />
-          </Border>
-        </ControlTemplate>
-      </Setter>
-      <Style Selector="^:pointerover">
-        <Setter Property="Background" Value="{StaticResource QuietFillHoverBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-      </Style>
-      <Style Selector="^:selected">
-        <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-      </Style>
-      <Style Selector="^:selected:pointerover"><Setter Property="Background" Value="{StaticResource AccentTintHoverBrush}" /></Style>
-      <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" /></Style>
-    </ControlTheme>
-    <ItemsPanelTemplate x:Key="Wrap"><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
     <!-- The custom colour: the colour disc (about 180 px across) and the hex code under it, in a pop-up anchored to the
          Custom swatch (opened from LightView.axaml.cs). It opens above the swatches and the colour's title (lifted by that
          row's height), its right edge on the swatch's, so it
@@ -187,8 +156,8 @@
                   <TextBlock Classes="h2" Text="{Binding PlayerLedsLabel}" />
                   <TextBlock Classes="body" Text="{Binding PatternHint}" />
                 </StackPanel>
-                <ListBox Classes="plain" AutoScrollToSelectedItem="False" ItemsSource="{Binding Patterns}" SelectedItem="{Binding SelectedPattern}"
-                         ItemContainerTheme="{StaticResource ChoicePill}" ItemsPanel="{StaticResource Wrap}" Margin="0,0,0,-6">
+                <ListBox Name="PlayerLedPatternChoice" Theme="{StaticResource Segmented}" AutoScrollToSelectedItem="False" ItemsSource="{Binding Patterns}"
+                         SelectedIndex="{Binding PatternIndex}" AutomationProperties.Name="{Binding PlayerLedsLabel}">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
                   </ListBox.ItemTemplate>
@@ -196,7 +165,7 @@
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Margin="0,2,0,0">
                   <TextBlock Classes="label" Text="{Binding LedBrightnessLabel}" VerticalAlignment="Center" />
                   <ListBox Grid.Column="1" Name="LedBrightnessChoice" Theme="{StaticResource Segmented}" MinWidth="{StaticResource ControlWidthCompact}" AutoScrollToSelectedItem="False"
-                           ItemsSource="{Binding LedLevels}" SelectedItem="{Binding SelectedLedLevel}" AutomationProperties.Name="{Binding LedBrightnessLabel}">
+                           ItemsSource="{Binding LedLevels}" SelectedIndex="{Binding LedLevelIndex}" AutomationProperties.Name="{Binding LedBrightnessLabel}">
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="vm:LabelledChoice"><TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" /></DataTemplate>
                     </ListBox.ItemTemplate>

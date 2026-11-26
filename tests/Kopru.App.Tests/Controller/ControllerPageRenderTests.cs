@@ -39,7 +39,7 @@ public sealed class ControllerPageRenderTests
 				{
 					var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 					window.Show();
-					foreach ((int tab, string name) in new[] { (ControllerPageViewModel.TestTab, "test"), (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.RemapTab, "remap") })
+					foreach ((int tab, string name) in new[] { (ControllerPageViewModel.TestTab, "test"), (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.ButtonsTab, "buttons"), (ControllerPageViewModel.GyroTab, "gyro-sticks") })
 					{
 						vm.OpenController(tab);
 						Settle();

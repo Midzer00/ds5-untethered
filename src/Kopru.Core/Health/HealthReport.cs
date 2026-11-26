@@ -104,7 +104,8 @@ public sealed record HealthRuntime(
 	BridgeError LastError,
 	SteamInputResult? SteamInput,
 	bool? HidHideAppAllowed = null,
-	bool? ControllerHidden = null)
+	bool? ControllerHidden = null,
+	bool WiredCableOnly = false)
 {
 	public static HealthRuntime Idle { get; } = new([], false, BridgeState.Stopped, BridgeError.None, null);
 }
@@ -200,7 +201,7 @@ public sealed record HealthReport(
 
 	public static HealthReport Build(HealthEnvironment env, HealthRuntime run, DateTimeOffset now, Language? l = null)
 	{
-		ConnectionState connection = ConnectionState.Detect(env.Radio, run.Controllers, env.Paired);
+		ConnectionState connection = ConnectionState.Detect(env.Radio, run.Controllers, env.Paired, run.WiredCableOnly);
 		HealthChip[] chips =
 		[
 			DriverChip(env, l),
@@ -214,6 +215,8 @@ public sealed record HealthReport(
 		{
 			ConnectionKind.ConnectedBluetooth => string.Empty,
 			ConnectionKind.ConnectedUsb => Text.CannotTestUsb(l),
+			// Wired mode on the cable alone: the tests run through the bridge's USB session.
+			ConnectionKind.ConnectedWired => run.BridgeStarted ? string.Empty : Text.CannotTestUsb(l),
 			_ => Text.CannotTestNoController(l)
 		};
 		return new HealthReport(connection, chips, blocking, blocking?.Reason ?? string.Empty, testReason);

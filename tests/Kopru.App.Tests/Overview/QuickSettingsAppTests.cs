@@ -498,14 +498,15 @@ public class QuickSettingsAppTests
 			fake.RaiseStateChanged();
 			Settle();
 			Assert.True(vm.Overview.IsHealthAllGood);
-			Assert.False(vm.Overview.ShowsHealthChips);
-			Assert.StartsWith("All good · ", vm.Overview.HealthSummary);
+			Assert.False(vm.Overview.ShowsHealthLine);
+			Assert.Equal(string.Empty, vm.Overview.HealthSummary);
 
 			fake.Health = OverviewHealthTests.Report(driver: false);
 			fake.RaiseStateChanged();
 			Settle();
 			Assert.False(vm.Overview.IsHealthAllGood);
-			Assert.True(vm.Overview.ShowsHealthChips);
+			Assert.True(vm.Overview.ShowsHealthLine);
+			Assert.StartsWith("Problem: Driver", vm.Overview.HealthSummary);
 		});
 	}
 

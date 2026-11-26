@@ -255,13 +255,18 @@ test('the downloaded file goes through the shared rules', () => {
   assert.deepEqual(r.errors.map((p) => p.rule), ['icu.missing', 'key.unknown']);
 });
 
-test('plan: branch, path, commit message with the co-author trailer, PR title and body', () => {
+test('plan: branch, path, the volunteer as commit author, the bot as committer, PR title and body', () => {
   const result = intake.checkSubmission('pt-BR', Buffer.from(json({ 'Action.Run': 'Executar', '@name': 'Português (Brasil)' })), EN);
   const plan = intake.planPullRequest({ code: 'pt-BR', login: USER.login, userId: USER.id, issueNumber: 42, result, en: EN });
-  assert.equal(plan.branch, 'translate/pt-BR-volunteer-1');
+  assert.equal(plan.branch, 'translate/1234567/pt-BR');
   assert.equal(plan.path, 'src/Kopru.Core/Localization/strings/pt-BR.json');
-  assert.equal(plan.commitMessage, 'Translation: pt-BR (2 strings)\n\nCo-authored-by: volunteer-1 <1234567+volunteer-1@users.noreply.github.com>\n');
+  assert.equal(plan.commitMessage, 'Translation: pt-BR (2 strings)\n');
+  assert.doesNotMatch(plan.commitMessage, /Co-authored-by/i);
+  assert.deepEqual(plan.author, { name: 'volunteer-1', email: '1234567+volunteer-1@users.noreply.github.com' });
+  assert.deepEqual(plan.committer, { name: 'github-actions[bot]', email: '41898282+github-actions[bot]@users.noreply.github.com' });
   assert.equal(plan.prTitle, 'Translation: pt-BR by @volunteer-1');
+  assert.match(plan.prBody, /Merge with a merge commit or Rebase and merge \(not Squash\) so the volunteer stays the commit author\./);
+  assert.doesNotMatch(plan.prBody, /squash and merge/i);
   assert.match(plan.prBody, /#42/);
   assert.match(plan.prBody, /\| Strings \| 2 of \d+ \|/);
   // Normalised to en.json key order, LF, trailing newline.
@@ -275,6 +280,89 @@ test('plan: refuses odd logins, ids and codes', () => {
   assert.throws(() => intake.planPullRequest(Object.assign({}, base, { login: '../x' })));
   assert.throws(() => intake.planPullRequest(Object.assign({}, base, { userId: '1; x' })));
   assert.throws(() => intake.planPullRequest(Object.assign({}, base, { code: 'tr' })));
+  assert.throws(() => intake.planPullRequest(Object.assign({}, base, { userId: '0' })));
+  assert.throws(() => intake.planPullRequest(Object.assign({}, base, { userId: '12/de' })));
+});
+
+test('branch: translate/<user id>/<code> never collides, unlike the old <code>-<login>', () => {
+  // The old scheme gave both of these translate/pt-BR-alice.
+  const a = intake.branchFor(101, 'pt-BR'), b = intake.branchFor(202, 'pt');
+  assert.equal(a, 'translate/101/pt-BR');
+  assert.equal(b, 'translate/202/pt');
+  assert.notEqual(a, b);
+  // Ids are digits only and end at "/", so 1 + "01/pt" style overlaps cannot happen either.
+  assert.notEqual(intake.branchFor(10, 'de'), intake.branchFor(1, 'de'));
+  // Logins can be renamed or reused; the id is what the branch is built from.
+  const result = intake.checkSubmission('pt-BR', Buffer.from(json({ 'Action.Run': 'Executar' })), EN);
+  const alice = intake.planPullRequest({ code: 'pt-BR', login: 'alice', userId: 101, issueNumber: 1, result, en: EN });
+  const renamed = intake.planPullRequest({ code: 'pt-BR', login: 'alice-new', userId: 101, issueNumber: 2, result, en: EN });
+  assert.equal(alice.branch, renamed.branch);
+  assert.throws(() => intake.branchFor('abc', 'de'));
+});
+
+test('ownOpenPulls: only this volunteer\'s bot branches in this repository, never old-format ones', () => {
+  const pr = (number, ref, repo) => ({ number, head: { ref, repo: repo === null ? null : { full_name: repo || 'Owner/Repo' } } });
+  const pulls = [
+    pr(1, 'translate/101/de'), pr(2, 'translate/101/pt-BR'),
+    pr(3, 'translate/1010/de'),               // another id that starts with the same digits
+    pr(4, 'translate/202/de'),
+    pr(5, 'translate/de-alice'),              // the old scheme
+    pr(6, 'translate/101/fr', 'fork/repo'),   // a fork with the same branch name
+    pr(7, 'translate/101/ja', null),          // a deleted fork
+    { number: 8 }, null
+  ];
+  assert.deepEqual(intake.ownOpenPulls(pulls, 101, 'owner/repo').map((p) => p.number), [1, 2]);
+  assert.deepEqual(intake.ownOpenPulls(pulls, 202, 'owner/repo').map((p) => p.number), [4]);
+});
+
+test('limit comment: friendly, lists the open pull requests and carries the refusal mark', () => {
+  const c = intake.limitComment([{ number: 4 }, { number: 9 }, { number: 'x' }]);
+  assert.ok(c.startsWith(intake.FAILURE_MARK + '\n'));
+  assert.match(c, /already have 3 translation pull requests waiting for review \(#4, #9\)/);
+  assert.match(c, /merged or closed/);
+  assert.equal(intake.MAX_OPEN_PULLS, 3);
+});
+
+/* ---------- rate limit ---------- */
+
+test('plausiblePartComment: only a well-formed further part counts', () => {
+  const p = pageIssue('de', GOOD + ' '.repeat(3000), { maxPartChars: 40 });
+  assert.ok(p.parts >= 3);
+  for (const c of p.comments) assert.equal(intake.plausiblePartComment(c), true);
+  const sha = p.sha256;
+  const block = (attrs) => '```ds5-translate ' + attrs + '\nQUJD\n```';
+  for (const bad of [
+    'thanks!', '```ds5-translate', block('part=1/2 encoding=gzip+base64 sha256=' + sha),
+    block('part=2/1 encoding=gzip+base64 sha256=' + sha), block('part=2/0 encoding=gzip+base64 sha256=' + sha),
+    block('part=2/65 encoding=gzip+base64 sha256=' + sha), block('part=3/2 encoding=gzip+base64 sha256=' + sha),
+    block('part=2/x encoding=gzip+base64 sha256=' + sha), block('part=2/3 encoding=gzip+base64 sha256=abc'),
+    block('part=2/3 encoding=gzip+base64 sha256=' + sha.toUpperCase().replace(/[0-9]/g, 'G')),
+    block('part=2/3 encoding=br sha256=' + sha), block('part=2/3 sha256=' + sha), null
+  ]) {
+    assert.equal(intake.plausiblePartComment(bad), false, String(bad));
+  }
+  assert.equal(intake.plausiblePartComment(block('part=64/64 encoding=gzip+base64 sha256=' + sha)), true);
+});
+
+test('resolveSubmission reads at most MAX_AUTHOR_COMMENTS comments by the author', () => {
+  assert.equal(intake.MAX_AUTHOR_COMMENTS, 2 * intake.MAX_PARTS);
+  const p = pageIssue('de', GOOD + ' '.repeat(3000), { maxPartChars: 100 });
+  const junk = Array.from({ length: intake.MAX_AUTHOR_COMMENTS }, (x, i) => ({ id: 1000 + i, body: 'spam ' + i, user: USER }));
+  // Other people's comments do not use up the budget.
+  const others = Array.from({ length: 300 }, (x, i) => ({ id: 5000 + i, body: p.comments[0], user: { login: 'someone-else' } }));
+  assert.equal(intake.resolveSubmission(issueOf(p), others.concat(commentsOf(p))).action, 'check');
+  const late = intake.resolveSubmission(issueOf(p), junk.concat(commentsOf(p)));
+  assert.equal(late.action, 'wait');
+  assert.deepEqual(late.have, [1]);
+});
+
+test('isFailureComment: only the workflow\'s own marked comments', () => {
+  const bot = { login: 'github-actions[bot]', type: 'Bot' };
+  assert.equal(intake.isFailureComment({ user: bot, body: intake.failureComment([{ level: 'error', rule: 'x', message: 'y' }]) }), true);
+  assert.equal(intake.isFailureComment({ user: bot, body: intake.limitComment([]) }), true);
+  assert.equal(intake.isFailureComment({ user: bot, body: 'Thank you! ...' }), false);
+  assert.equal(intake.isFailureComment({ user: USER, body: intake.FAILURE_MARK + ' fake' }), false);
+  assert.equal(intake.isFailureComment(null), false);
 });
 
 /* ---------- opting out of the translator listing ---------- */
@@ -317,16 +405,66 @@ test('listing (way 2): the hide checkbox is read from the Credits section', () =
   assert.equal(intake.hideTickedInForm('- [X] Something else'), false);
 });
 
-test('plan: a hidden listing adds the trailer after Co-authored-by and a note in the PR body', () => {
+test('plan: a hidden listing leaves the bot as author, names the volunteer nowhere in the commit, keeps the trailer', () => {
   const result = intake.checkSubmission('de', Buffer.from(GOOD), EN);
   const base = { code: 'de', login: USER.login, userId: USER.id, issueNumber: 3, result, en: EN };
   const hidden = intake.planPullRequest(Object.assign({}, base, { hidden: true }));
-  assert.equal(hidden.commitMessage, 'Translation: de (3 strings)\n\n' +
-    'Co-authored-by: volunteer-1 <1234567+volunteer-1@users.noreply.github.com>\nTranslator-Listing: hidden\n');
+  assert.equal(hidden.commitMessage, 'Translation: de (3 strings)\n\nTranslator-Listing: hidden\n');
+  assert.equal(hidden.author, null);
+  assert.equal(hidden.committer, null);
+  assert.doesNotMatch(hidden.commitMessage, /volunteer-1|1234567/);
+  // The default merge commit message is the PR title, so the title leaves the name out too.
+  assert.equal(hidden.prTitle, 'Translation: de');
+  assert.equal(hidden.branch, 'translate/1234567/de');
   assert.match(hidden.prBody, /not to be listed/);
+  assert.match(hidden.prBody, /not Squash/);
   const shown = intake.planPullRequest(base);
   assert.doesNotMatch(shown.commitMessage, /Translator-Listing/);
   assert.doesNotMatch(shown.prBody, /not to be listed/);
+});
+
+/* ---------- who sent it ---------- */
+
+const APP_BOT = { login: 'ds5-untethered-translate[bot]', id: 900001, type: 'Bot' };
+const withSender = (body, line) => body.replace(intake.MARKER + '\n', intake.MARKER + '\n' + line + '\n');
+
+test('verifiedSender: only the line directly under the marker, in the exact format', () => {
+  const body = pageIssue('de', GOOD).body;
+  assert.deepEqual(intake.verifiedSender(withSender(body, '**Sender:** @anna-dev (id 4242, verified)')), { login: 'anna-dev', id: 4242 });
+  assert.deepEqual(intake.verifiedSender(withSender(body, '**Sender:** @anna-dev (id 4242, verified)').replace(/\n/g, '\r\n')), { login: 'anna-dev', id: 4242 });
+  // The Worker's current form names the volunteer without "@" (no notification); both forms are read.
+  assert.deepEqual(intake.verifiedSender(withSender(body, '**Sender:** anna-dev (id 4242, verified)')), { login: 'anna-dev', id: 4242 });
+  for (const line of ['**Sender:** @anna-dev (id 4242)', '**Sender:** @@anna-dev (id 4242, verified)', '**Sender:** @anna-dev (id 0, verified)',
+    '**Sender:**  anna-dev (id 4242, verified)', '**Sender:** anna-dev  (id 4242, verified)', '**Sender:** anna-dev (id 4242, verified) ',
+    '**Sender:**\tanna-dev (id 4242, verified)', '**Sender:** anna dev (id 4242, verified)', '**Sender:** [anna](x) (id 4242, verified)',
+    '**Sender:** @anna-dev (id 12x, verified)', '**Sender:** @-bad (id 1, verified)', '**Sender:** @anna-dev (id 4242, verified) extra',
+    'Sender: @anna-dev (id 4242, verified)', '**Sender:** @anna-dev (id 99999999999999999, verified)']) {
+    assert.equal(intake.verifiedSender(withSender(body, line)), null, line);
+  }
+  // Further down the body it does not count.
+  assert.equal(intake.verifiedSender(body.replace('**Strings:**', '**Sender:** @anna-dev (id 4242, verified)\n**Strings:**')), null);
+  // Not under the marker when the marker is not the first line.
+  assert.equal(intake.verifiedSender('intro\n' + withSender(body, '**Sender:** @anna-dev (id 4242, verified)')), null);
+});
+
+test('isAppIssue: our bot by login, or a bot acting through our App; never a user', () => {
+  assert.equal(intake.isAppIssue({ user: APP_BOT }), true);
+  assert.equal(intake.isAppIssue({ user: { login: 'renamed[bot]', type: 'Bot' }, performed_via_github_app: { slug: 'ds5-untethered-translate' } }), true);
+  assert.equal(intake.isAppIssue({ user: { login: 'ds5-untethered-translate[bot]', type: 'User' } }), false);
+  assert.equal(intake.isAppIssue({ user: USER, performed_via_github_app: { slug: 'ds5-untethered-translate' } }), false);
+  assert.equal(intake.isAppIssue({ user: { login: 'other-app[bot]', type: 'Bot' }, performed_via_github_app: { slug: 'other-app' } }), false);
+  assert.equal(intake.isAppBot(APP_BOT), true);
+  assert.equal(intake.isAppBot({ login: 'other-app[bot]', type: 'Bot' }), false);
+  assert.equal(intake.isAppBot({ login: APP_BOT.login, type: 'User' }), false);
+});
+
+test('volunteerOf: verified sender for our bot, issue author for users (forged sender ignored), null for other bots', () => {
+  const body = withSender(pageIssue('de', GOOD).body, '**Sender:** @anna-dev (id 4242, verified)');
+  assert.deepEqual(intake.volunteerOf({ user: APP_BOT, body }), { login: 'anna-dev', id: 4242, verified: true });
+  assert.equal(intake.volunteerOf({ user: APP_BOT, body: pageIssue('de', GOOD).body }), null);
+  assert.deepEqual(intake.volunteerOf({ user: Object.assign({ type: 'User' }, USER), body }), { login: 'volunteer-1', id: 1234567, verified: false });
+  assert.equal(intake.volunteerOf({ user: { login: 'helper[bot]', id: 5, type: 'Bot' }, body }), null);
+  assert.equal(intake.volunteerOf({ user: { login: 'helper[bot]', id: 5, type: 'User' }, body }), null);
 });
 
 test('failure comment: first 30 problems with key names and lines, escaped', () => {

@@ -403,7 +403,7 @@ public sealed class SettingsFitTests
 		Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
 	}
 
-	private static ControllerEntry Entry(string id, int slot = 1, double battery = 78, bool edge = false) =>
+	internal static ControllerEntry Entry(string id, int slot = 1, double battery = 78, bool edge = false) =>
 		new(id, slot, edge ? "DualSense Edge" : "DualSense", edge, true, battery, false, BridgeState.Stopped);
 
 	// Settings with everything that can make a tab taller shown.

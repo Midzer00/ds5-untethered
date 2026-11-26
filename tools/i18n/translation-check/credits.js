@@ -3,18 +3,32 @@
  *
  *   languageOfPath(path)        -> the canonical code of src/Kopru.Core/Localization/strings/<code>.json, or null for
  *                                  en, tr, qps, qtg and anything that is not a language file
- *   fromApiCommit(c, languages) -> the input shape below from one item of GET /repos/{o}/{r}/commits
+ *   fromApiCommit(c, languages) -> the input shape below from one item of GET /repos/{o}/{r}/commits; when GitHub
+ *                                  links no account to the author (or committer), a noreply address still gives the
+ *                                  login
+ *   intakeKind(commit, legacy)  -> 'intake' (made by the intake workflow today), 'legacy' (an allowlisted older intake
+ *                                  commit) or null (any other commit, whatever its message says)
+ *   loginFromNoreply(email)     -> the login of "<id>+<login>@users.noreply.github.com" (or "<login>@..."), or null
  *   parseCoAuthors(message)     -> [{ login, id }] from "Co-authored-by: ... <<id>+<login>@users.noreply.github.com>"
  *   hasHiddenTrailer(message)   -> true when the message carries "Translator-Listing: hidden"
  *   parseHiddenList(text)       -> the logins of tools/i18n/translators-hidden.txt (lower case)
  *   buildTranslators(input)     -> { generated, languages: { <code>: [{ login, commits, first, last }] } }
  *
- * A commit is { sha, author: { login, type } | null, date (ISO 8601), message, languages: [codes] }.
+ * A commit is { sha, author: { login, type } | null, committer: { login, type } | null, date (ISO 8601), message,
+ * languages: [codes] }.
  * Rules:
- *   - a commit credits its author (the GitHub account from the API) and every noreply co-author;
+ *   - a commit credits its author (the GitHub account from the API). The intake makes the volunteer the author of its
+ *     bot-committed commits, so that is the credit for every new commit, as for any human commit;
+ *   - Co-authored-by lines and the "Translator-Listing: hidden" trailer are message text anyone can write, so they
+ *     count only on commits of the intake (intakeKind):
+ *       'intake': committed by github-actions[bot], message exactly "Translation: <code> (<n> strings)", optionally
+ *                 followed by a blank line and the trailer. The trailer makes that commit credit nobody; it never
+ *                 hides anyone elsewhere. (The intake authors a hidden send as the bot, so it names nobody anyway.)
+ *       'legacy': one of LEGACY_INTAKE_SHAS (older intake commits: bot author, the volunteer as the one
+ *                 Co-authored-by line). They credit that co-author; with the trailer, the co-author is hidden in
+ *                 every language, as before;
+ *     on every other commit (a normal pull request, a squash merge) both are ignored: no co-author credit, no hiding;
  *   - the repo owner and bots ([bot] logins, type Bot, github-actions, web-flow) are never listed;
- *   - a commit with "Translator-Listing: hidden" hides everyone it credits, in every language (the volunteer of a
- *     bot commit is its co-author; for a squash merge the author may be the owner, so the co-authors are hidden too);
  *   - logins in the hidden list are never listed;
  *   - the same commit seen for several files is merged, a person credited twice by one commit counts once, and logins
  *     are compared without case;
@@ -28,6 +42,16 @@ const HIDDEN_TRAILER_RE = /^[ \t]*Translator-Listing:[ \t]*hidden[ \t]*$/im;
 const CO_AUTHOR_RE = /^[ \t]*Co-authored-by:[^<\n]*<([^>\n]+)>[ \t]*$/gim;
 const NOREPLY_RE = /^(?:(\d+)\+)?([A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?)@users\.noreply\.github\.com$/i;
 const BOT_LOGINS = ['github-actions', 'web-flow'];
+// The identity the intake workflow commits as (tools/i18n/translation-check/intake.js BOT_COMMITTER).
+const INTAKE_COMMITTER = 'github-actions[bot]';
+// Intake commits made before the volunteer became the commit author (Co-authored-by credits). Listed by SHA, so a
+// commit written later cannot claim to be one of them by its date or message. Only 0be59df exists (never on main).
+const LEGACY_INTAKE_SHAS = ['0be59dfb6cf5d812b771b4fddc12458a73547dcd'];
+const CODE = '[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8}){0,4}';
+const LOGIN = '[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})';
+const INTAKE_MESSAGE_RE = new RegExp('^Translation: ' + CODE + ' \\(\\d{1,7} strings\\)(\\n\\nTranslator-Listing: hidden)?$');
+const LEGACY_MESSAGE_RE = new RegExp('^Translation: ' + CODE + ' \\(\\d{1,7} strings\\)\\n\\nCo-authored-by: [^\\n<>]+ <\\d{1,16}\\+(' +
+  LOGIN + ')@users\\.noreply\\.github\\.com>(\\nTranslator-Listing: hidden)?$');
 
 function languageOfPath(filePath) {
   const prefix = rules.STRINGS_DIR + '/';
@@ -39,12 +63,26 @@ function languageOfPath(filePath) {
   return cc.ok ? cc.code : null;
 }
 
+function loginFromNoreply(email) {
+  const m = NOREPLY_RE.exec(String(email || '').trim());
+  return m ? m[2] : null;
+}
+
+// The account GitHub links to a commit identity, else the login of its noreply address.
+function accountOf(linked, raw) {
+  if (linked && linked.login) return { login: linked.login, type: linked.type || 'User' };
+  // GitHub resolves a noreply address to its account; if it ever does not, the address itself names the login.
+  const login = loginFromNoreply(raw && raw.email);
+  return login ? { login, type: /\[bot\]$/i.test(login) ? 'Bot' : 'User' } : null;
+}
+
 function fromApiCommit(c, languages) {
   const commit = (c && c.commit) || {};
   const date = (commit.author && commit.author.date) || (commit.committer && commit.committer.date) || null;
   return {
     sha: c && c.sha,
-    author: c && c.author && c.author.login ? { login: c.author.login, type: c.author.type || 'User' } : null,
+    author: accountOf(c && c.author, commit.author),
+    committer: accountOf(c && c.committer, commit.committer),
     date,
     message: String(commit.message || ''),
     languages: (languages || []).slice()
@@ -81,8 +119,30 @@ function isBot(login, type) {
   return type === 'Bot' || /\[bot\]$/.test(l) || BOT_LOGINS.indexOf(l) >= 0;
 }
 
+function messageOf(commit) {
+  return String(commit.message || '').replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+}
+
+function isLogin(account, login) {
+  return !!account && String(account.login || '').toLowerCase() === login;
+}
+
+/**
+ * 'intake' | 'legacy' | null. legacy: the SHAs of older intake commits (default LEGACY_INTAKE_SHAS).
+ * Only these commits may credit a co-author or carry a listing choice; see the rules above.
+ */
+function intakeKind(commit, legacy) {
+  if (!commit) return null;
+  const msg = messageOf(commit);
+  const shas = legacy || new Set(LEGACY_INTAKE_SHAS);
+  if (commit.sha && shas.has(commit.sha) && isLogin(commit.author, INTAKE_COMMITTER) && LEGACY_MESSAGE_RE.test(msg)) return 'legacy';
+  if (isLogin(commit.committer, INTAKE_COMMITTER) && INTAKE_MESSAGE_RE.test(msg)) return 'intake';
+  return null;
+}
+
 // The people a commit credits: [{ key (lower case), login }], owner and bots left out, each person once.
-function creditedPeople(commit, ownerKey) {
+// kind: intakeKind(commit). Only a legacy intake commit credits its co-author.
+function creditedPeople(commit, ownerKey, kind) {
   const seen = new Map();
   const add = (login, type) => {
     if (!login || isBot(login, type)) return;
@@ -90,8 +150,9 @@ function creditedPeople(commit, ownerKey) {
     if (key === ownerKey || seen.has(key)) return;
     seen.set(key, { key, login: String(login) });
   };
+  if (kind === 'intake' && hasHiddenTrailer(commit.message)) return [];
   if (commit.author) add(commit.author.login, commit.author.type);
-  for (const c of parseCoAuthors(commit.message)) add(c.login, 'User');
+  if (kind === 'legacy') for (const c of parseCoAuthors(commit.message)) add(c.login, 'User');
   return Array.from(seen.values());
 }
 
@@ -119,20 +180,25 @@ function isoSeconds(d) {
 }
 
 /**
- * input: { commits, owner, hidden (text of translators-hidden.txt, or an iterable of logins), generated? (Date|string) }
+ * input: { commits, owner, hidden (text of translators-hidden.txt, or an iterable of logins), generated? (Date|string),
+ *          legacyShas? (iterable; default LEGACY_INTAKE_SHAS, for tests) }
  */
 function buildTranslators(input) {
   const ownerKey = String(input.owner || '').toLowerCase();
   const hidden = typeof input.hidden === 'string' || input.hidden == null
     ? parseHiddenList(input.hidden)
     : new Set(Array.from(input.hidden, (l) => String(l).replace(/^@/, '').toLowerCase()));
+  const legacy = new Set(input.legacyShas ? Array.from(input.legacyShas) : LEGACY_INTAKE_SHAS);
   const commits = mergeCommits(input.commits).map((c) => {
     const t = Date.parse(c.date);
-    return Object.assign({}, c, { time: t, people: creditedPeople(c, ownerKey) });
+    const kind = intakeKind(c, legacy);
+    return Object.assign({}, c, { time: t, kind, people: creditedPeople(c, ownerKey, kind) });
   }).filter((c) => isFinite(c.time));
 
+  // A hidden listing on a legacy intake commit hides its co-author everywhere (the commit is on the allowlist, so the
+  // name in its message is the volunteer's own choice). Hidden intake commits only credit nobody (creditedPeople).
   for (const c of commits) {
-    if (hasHiddenTrailer(c.message)) for (const p of c.people) hidden.add(p.key);
+    if (c.kind === 'legacy' && hasHiddenTrailer(c.message)) for (const p of c.people) hidden.add(p.key);
   }
 
   const langs = new Map();
@@ -180,8 +246,12 @@ function sameLanguages(a, b) {
 
 module.exports = {
   BOT_LOGINS,
+  INTAKE_COMMITTER,
+  LEGACY_INTAKE_SHAS,
+  intakeKind,
   languageOfPath,
   fromApiCommit,
+  loginFromNoreply,
   parseCoAuthors,
   hasHiddenTrailer,
   parseHiddenList,

@@ -78,7 +78,8 @@ public sealed class OverviewLinkStatesTests
 
 		// Nothing scrolls, the page ends inside the view, both columns end on one line.
 		Assert.DoesNotContain(view.GetVisualAncestors().OfType<ScrollViewer>(), s => s.Extent.Height > s.Viewport.Height + 0.5);
-		double footer = page.Children.Where(c => Grid.GetRow(c) == 2 && c.IsVisible).Max(c => Rect(c, view).Bottom);
+		Control[] footers = page.Children.Where(c => Grid.GetRow(c) == 2 && c.IsVisible).ToArray();
+		double footer = footers.Length > 0 ? footers.Max(c => Rect(c, view).Bottom) : Math.Max(Rect(live, view).Bottom, Rect(quick, view).Bottom);
 		Assert.True(footer <= view.Bounds.Height + 0.5, $"{at}: the page ends at {footer:0.#}, below {view.Bounds.Height:0.#}");
 		Assert.InRange(Rect(live, view).Bottom, Rect(quick, view).Bottom - 1, Rect(quick, view).Bottom + 1);
 

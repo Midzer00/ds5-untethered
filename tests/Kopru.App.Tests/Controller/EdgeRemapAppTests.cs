@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
 using Kopru.App.Views;
@@ -28,7 +29,7 @@ public class EdgeRemapAppTests
 
 	private static Window Show(MainWindowViewModel vm)
 	{
-		vm.OpenController(ControllerPageViewModel.RemapTab);
+		vm.OpenController(ControllerPageViewModel.EdgeTab);
 		var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 		window.Show();
 		Settle();
@@ -43,7 +44,7 @@ public class EdgeRemapAppTests
 			(MainWindowViewModel vm, _) = NewViewModel(kind);
 			Assert.Equal(visible, vm.Sticks.Remap.Edge.IsVisible);
 			Window window = Show(vm);
-			Assert.Equal(visible, EdgePanel(window).IsVisible);
+			Assert.Equal(visible, window.GetVisualDescendants().OfType<Border>().Any(b => b.Name == "EdgePanel" && b.IsEffectivelyVisible));
 			window.Close();
 		}
 	}

@@ -129,7 +129,7 @@ public sealed partial class OverviewViewModel : PageViewModel
 		: StatusState + " · " + ConnectionLabel;
 
 	// The one connection label (Bluetooth / Bluetooth · Cable Plugged In / USB Cable (Experimental)), the same words as the sidebar's.
-	public string ConnectionLabel => _service.IsWired ? Text.ConnectionWired()
+	public string ConnectionLabel => _service.IsWired || _service.IsCableOnly ? Text.ConnectionWired()
 		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable()
 		: "Bluetooth";
 
@@ -235,10 +235,12 @@ public sealed partial class OverviewViewModel : PageViewModel
 	// ("Last: 62% · 2 h ago").
 	public bool HasBattery => _service.IsConnected && _service.HasBattery;
 	// The live reading in the hero, next to the name: the same values the sidebar card shows ("%78 · Charging").
-	public bool ShowsBattery => HasBattery && !ShowsNoController;
+	// Charging with the level not reported (on the USB cable) shows "Charging" alone, never "%0 · Charging".
+	public bool ShowsBattery => (HasBattery || ChargingLevelUnknown) && !ShowsNoController;
+	public bool ChargingLevelUnknown => _service.IsConnected && !_service.HasBattery && _service.IsCharging;
 	public double BatteryPercent => _service.BatteryPercent;
 	public bool IsCharging => _service.IsCharging;
-	public string BatteryText => !HasBattery ? string.Empty
+	public string BatteryText => !HasBattery ? ChargingLevelUnknown ? Text.Charging() : string.Empty
 		: _service.IsCharging ? Text.BatteryValue(Math.Round(_service.BatteryPercent)) + " · " + Text.Charging()
 		: Text.BatteryValue(Math.Round(_service.BatteryPercent));
 	// Below 20 % while not charging: the number turns amber (the glyph colours itself).
@@ -392,11 +394,39 @@ public sealed partial class OverviewViewModel : PageViewModel
 	public double HapticsLeft => _service.HapticsLeftLevel * 100;
 	public double HapticsRight => _service.HapticsRightLevel * 100;
 
-	// Health strip: the model's five chips, shown one by one only when one needs attention; otherwise one quiet line.
+	// Health line: one quiet line under the cards, only while something needs a look: those items, grouped by level, the
+	// worst first ("Attention: Virtual Controller · Unknown: Steam Input"), and a "Fix ›" link at the end. Every item's
+	// level and reason are in the line's tooltip. All good: no line at all (the page gives its room back).
 	public IReadOnlyList<HealthChipViewModel> HealthChips { get; }
 	public bool IsHealthAllGood => HealthChips.All(c => !c.IsAttention && !c.IsProblem);
-	public bool ShowsHealthChips => !IsHealthAllGood;
-	public string HealthSummary => Text.HealthAllGood(string.Join(", ", HealthChips.Select(c => c.Name.Trim()).Where(n => n.Length > 0)));
+	public bool ShowsHealthLine => !IsHealthAllGood;
+
+	// The levels that need a look, worst first.
+	private static readonly HealthLevel[] NotGoodLevels = [HealthLevel.Error, HealthLevel.Warning, HealthLevel.Unknown];
+
+	public string HealthSummary => IsHealthAllGood
+		? string.Empty
+		: string.Join(" · ", NotGoodLevels
+			.Select(level => HealthChips.Where(c => c.Level == level).ToList())
+			.Where(group => group.Count > 0)
+			.Select(group => HealthFixes.Group(HealthFixes.LevelText(group[0].Level), Names(group))));
+
+	public string HealthDetails => string.Join(Environment.NewLine, HealthChips.Where(c => c.Name.Trim().Length > 0)
+		.Select(c => HealthFixes.Detail(c.Name, c.StatusText, c.Reason)));
+
+	// The fixes the line offers, the worst item's first: none while all is good (as before, an untested adapter alone asks
+	// for nothing). One fix: "Fix ›" runs it; several: "Fix ›" opens a menu with each one by name.
+	public IReadOnlyList<HealthChipViewModel> HealthFixItems => IsHealthAllGood ? []
+		: [.. NotGoodLevels.SelectMany(level => HealthChips.Where(c => c.Level == level && c.HasAction))];
+	public bool HasHealthFix => HealthFixItems.Count == 1;
+	public bool HasHealthFixes => HealthFixItems.Count > 1;
+	public string HealthFixText => Text.HealthFixLink();
+	public string? HealthFixTip => HealthFixItems.Count == 1 ? HealthFixItems[0].ActionTip : null;
+
+	[RelayCommand]
+	private Task HealthFix() => HealthFixItems.Count > 0 ? HealthFixItems[0].RunCommand.ExecuteAsync(null) : Task.CompletedTask;
+
+	private static string Names(IEnumerable<HealthChipViewModel> chips) => string.Join(", ", chips.Select(c => c.Name.Trim()).Where(n => n.Length > 0));
 
 	public HealthChipViewModel Chip(HealthChipKind kind) => HealthChips.First(c => c.Kind == kind);
 
@@ -411,8 +441,13 @@ public sealed partial class OverviewViewModel : PageViewModel
 			HealthChips.FirstOrDefault(c => c.Kind == chip.Kind)?.Set(chip);
 		}
 		OnPropertyChanged(nameof(IsHealthAllGood));
-		OnPropertyChanged(nameof(ShowsHealthChips));
+		OnPropertyChanged(nameof(ShowsHealthLine));
 		OnPropertyChanged(nameof(HealthSummary));
+		OnPropertyChanged(nameof(HealthDetails));
+		OnPropertyChanged(nameof(HealthFixItems));
+		OnPropertyChanged(nameof(HasHealthFix));
+		OnPropertyChanged(nameof(HasHealthFixes));
+		OnPropertyChanged(nameof(HealthFixTip));
 	}
 
 	// Whether the drawing and the graph follow the controller now (the page is in view in a shown window).

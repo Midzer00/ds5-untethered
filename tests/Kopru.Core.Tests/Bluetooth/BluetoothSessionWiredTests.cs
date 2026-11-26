@@ -14,11 +14,17 @@ internal sealed class FakeWiredAudioSink : IWiredAudioSink
 	public readonly List<(sbyte[] Left, sbyte[] Right)> Writes = [];
 	public readonly List<byte[]> Speaker = [];
 	public bool FailWrites;
+	// Thrown by WriteHaptics when set (FailWrites throws an IOException).
+	public Exception? FailWith;
 	public bool Disposed;
 	public int Idles;
 
 	public void WriteHaptics(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right)
 	{
+		if (FailWith != null)
+		{
+			throw FailWith;
+		}
 		if (FailWrites)
 		{
 			throw new IOException("boom");
@@ -48,13 +54,19 @@ internal sealed class FakeWiredAudioSink : IWiredAudioSink
 		}
 	}
 
+	// What SpeakerSounding answers (the speaker idle volume follows it).
+	public volatile bool Sounding;
+
+	public bool SpeakerSounding => Sounding;
+
 	public void Idle() => Interlocked.Increment(ref Idles);
 
 	public void Dispose() => Disposed = true;
 }
 
-// EXPERIMENTAL wired mode: a USB link of the same controller carries input (0x01) and output (0x02) while Bluetooth
-// stays connected; a failed USB read or write falls the session back to Bluetooth by itself.
+// EXPERIMENTAL wired mode: a USB link of the same controller carries input (0x01) and output (0x02); the host then
+// disconnects Bluetooth, whose reader ends quietly. A failed USB link falls back to Bluetooth only while Bluetooth is
+// still connected; after the hand-off it is the controller lost.
 [Trait("Category", "RealTime")]
 [Collection("RealTime")]
 public class BluetoothSessionWiredTests
@@ -107,8 +119,24 @@ public class BluetoothSessionWiredTests
 		}
 	}
 
+	private static byte[] LastBluetoothOutput(FakeLink bt)
+	{
+		byte[] last = bt.Writes.Last(w => w[0] == BluetoothReports.OutputId);
+		Assert.Equal(Crc.Compute(Crc.OutputSeed, last.AsSpan(0, 74)), BinaryPrimitives.ReadUInt32LittleEndian(last.AsSpan(74)));
+		return last;
+	}
+
+	private static byte[] LastUsbOutput(FakeLink usb)
+	{
+		byte[] last = usb.Writes.Last(w => w[0] == UsbReports.OutputId);
+		Assert.Equal(UsbReports.OutputSize, last.Length);
+		return last;
+	}
+
+	private const byte HapticsControls = OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl;
+
 	[Fact]
-	public void Attach_ResendsTheStateOnUsb_AndOutputWhileWired_GoesOnlyToUsb()
+	public void Attach_SendsTheStateOverUsb_AndOutputWhileWired_GoesOnlyToUsb()
 	{
 		FakeLink bt = new();
 		using BluetoothSession session = new(bt);
@@ -119,55 +147,26 @@ public class BluetoothSessionWiredTests
 		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
 		session.AttachWired(usb);
 
-		// The attach resend: report 0x02 carrying the block, the rumble bits cleared and the same haptics-mode
-		// controls set as over Bluetooth (haptics un-muted, no power save, full motor power).
-		byte[] resent = usb.Writes.Last();
-		Assert.Equal(UsbReports.OutputSize, resent.Length);
-		Assert.Equal(UsbReports.OutputId, resent[0]);
-		Assert.Equal(0, resent[1 + OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
-		Assert.Equal(OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl,
-			resent[1 + OutputBlock.Flag1] & (OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl));
-		Assert.Equal(0, resent[1 + OutputBlock.PowerSave]);
-		Assert.Equal(0, resent[1 + OutputBlock.MotorPowerReduction]);
-		Assert.Equal((100, 200), (resent[1 + OutputBlock.MotorRight], resent[1 + OutputBlock.MotorLeft]));
+		// The attach sends the block as report 0x02, as a wired game does: rumble bits cleared (USB audio haptics keep
+		// playing), none of the Bluetooth-only haptics controls added.
+		byte[] sent = LastUsbOutput(usb);
+		Assert.Equal(0, sent[1 + OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
+		Assert.Equal(0, sent[1 + OutputBlock.Flag1] & HapticsControls);
+		Assert.Equal((100, 200), (sent[1 + OutputBlock.MotorRight], sent[1 + OutputBlock.MotorLeft]));
 
 		session.UpdateOutput(b => OutputBlock.SetLightbar(b, 0, 200, 40));
+		session.UpdateOutput(b => Audio.AudioOutput.SetRoute(b, false, 0.5));
 
 		Assert.Equal(btWrites, bt.Writes.Count);
-		byte[] last = usb.Writes.Last();
-		Assert.Equal(UsbReports.OutputId, last[0]);
+		byte[] last = LastUsbOutput(usb);
 		Assert.Equal((200, 40), (last[1 + OutputBlock.Red + 1], last[1 + OutputBlock.Red + 2]));
-		Assert.Equal(OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl,
-			last[1 + OutputBlock.Flag1] & (OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl));
+		Assert.Equal(Audio.AudioOutput.PathSpeaker, last[1 + Audio.AudioOutput.AudioControl] & Audio.AudioOutput.PathMask);
+		Assert.NotEqual(0, last[1 + Audio.AudioOutput.SpeakerVolume]);
 	}
 
-	// In haptics mode the mute and power-save bytes the game may have left in the block are un-set over USB too.
+	// Without haptics mode the USB report is the game's block as sent: rumble kept.
 	[Fact]
-	public void WiredOutput_InHapticsMode_UnmutesHaptics_WhateverTheBlockSays()
-	{
-		FakeLink bt = new();
-		using BluetoothSession session = new(bt);
-		session.Start();
-		session.UpdateOutput(b =>
-		{
-			b[OutputBlock.PowerSave] = 0x84;
-			b[OutputBlock.MotorPowerReduction] = 0x22;
-		});
-
-		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
-		session.AttachWired(usb);
-
-		byte[] resent = usb.Writes.Last();
-		Assert.Equal(UsbReports.OutputId, resent[0]);
-		Assert.Equal(0, resent[1 + OutputBlock.PowerSave]);
-		Assert.Equal(0, resent[1 + OutputBlock.MotorPowerReduction]);
-		Assert.Equal(OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl,
-			resent[1 + OutputBlock.Flag1] & (OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl));
-	}
-
-	// Without haptics mode the USB report is the game's block as sent: rumble kept, no haptics-mode controls added.
-	[Fact]
-	public void WiredOutput_WithoutHapticsMode_KeepsRumble_AndAddsNoHapticsControls()
+	public void WiredOutput_WithoutHapticsMode_KeepsRumble()
 	{
 		FakeLink bt = new();
 		using BluetoothSession session = new(bt) { HapticsMode = false };
@@ -177,15 +176,14 @@ public class BluetoothSessionWiredTests
 		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
 		session.AttachWired(usb);
 
-		byte[] resent = usb.Writes.Last();
-		Assert.Equal(UsbReports.OutputId, resent[0]);
+		byte[] sent = LastUsbOutput(usb);
 		Assert.Equal(OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect,
-			resent[1 + OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
-		Assert.Equal((100, 200), (resent[1 + OutputBlock.MotorRight], resent[1 + OutputBlock.MotorLeft]));
-		Assert.Equal(0, resent[1 + OutputBlock.Flag1] &
-			(OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl));
+			sent[1 + OutputBlock.Flag0] & (OutputBlock.CompatibleVibration | OutputBlock.HapticsSelect));
+		Assert.Equal((100, 200), (sent[1 + OutputBlock.MotorRight], sent[1 + OutputBlock.MotorLeft]));
 	}
 
+	// Back on Bluetooth (the mode changed while Bluetooth was still connected): the state is sent over it again, with
+	// the Bluetooth haptics-mode controls.
 	[Fact]
 	public void Detach_SendsOutputOnBluetoothAgain_AndPublishesBluetoothInput()
 	{
@@ -195,18 +193,15 @@ public class BluetoothSessionWiredTests
 		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
 		session.AttachWired(usb);
 		Assert.True(session.IsWired);
+		long btWrites = bt.Writes.Count;
 
 		Assert.True(session.DetachWired("test"));
 
 		Assert.False(session.IsWired);
-		byte[] resent = bt.Writes.Last();
-		Assert.Equal(BluetoothReports.OutputId, resent[0]);
-		Assert.Equal(Crc.Compute(Crc.OutputSeed, resent.AsSpan(0, 74)), BinaryPrimitives.ReadUInt32LittleEndian(resent.AsSpan(74)));
-
+		Assert.Equal(btWrites + 1, bt.Writes.Count);
+		Assert.Equal(HapticsControls, LastBluetoothOutput(bt)[3 + OutputBlock.Flag1] & HapticsControls);
 		session.UpdateOutput(b => OutputBlock.SetLightbar(b, 1, 2, 3));
-		byte[] last = bt.Writes.Last();
-		Assert.Equal(BluetoothReports.OutputId, last[0]);
-		Assert.Equal(Crc.Compute(Crc.OutputSeed, last.AsSpan(0, 74)), BinaryPrimitives.ReadUInt32LittleEndian(last.AsSpan(74)));
+		Assert.Equal(1, LastBluetoothOutput(bt)[3 + OutputBlock.Red]);
 
 		List<byte[]> bodies = [];
 		session.InputBodyReceived += b =>
@@ -221,8 +216,10 @@ public class BluetoothSessionWiredTests
 		Assert.False(session.DetachWired("test"));
 	}
 
+	// While Bluetooth is still connected (before the host's hand-off, or when the radio refused it), failed USB reads
+	// fall the session back to Bluetooth.
 	[Fact]
-	public void UsbReadsFallingBack_RaisesWiredLost_AndResendsTheStateOnBluetooth()
+	public void UsbReadsFailing_WithBluetoothConnected_FallBackToBluetooth()
 	{
 		FakeLink bt = new();
 		using BluetoothSession session = new(bt);
@@ -237,38 +234,106 @@ public class BluetoothSessionWiredTests
 				lost.Add(r);
 			}
 		};
-		long btWrites = bt.Writes.Count;
+		bool controllerLost = false;
+		session.Lost += () => controllerLost = true;
 
 		usb.FailReads = true;
 
 		WaitUntil(() => !session.IsWired);
 		WaitUntil(() => { lock (lost) return lost.Count == 1; });
 		Assert.Equal("usb reads failed", lost[0]);
-		Assert.True(bt.Writes.Count > btWrites);
-		Assert.Equal(BluetoothReports.OutputId, bt.Writes.Last()[0]);
+		Assert.False(controllerLost);
+		session.UpdateOutput(b => OutputBlock.SetLightbar(b, 9, 8, 7));
+		Assert.Equal(9, LastBluetoothOutput(bt)[3 + OutputBlock.Red]);
 	}
 
+	// Bluetooth disconnected on purpose while wired: its reader ends quietly (no Lost), input and output stay on USB.
+	// Then the cable is pulled: with no Bluetooth left the controller is lost, as a switched-off one is.
 	[Fact]
-	public void AUsbWriteThatFails_FallsBack_AndSendsThatUpdateOnBluetooth()
+	public void BluetoothGoneWhileWired_IsNoLoss_ThenAPulledCable_IsTheControllerLost()
+	{
+		FakeLink bt = new();
+		using BluetoothSession session = new(bt);
+		List<byte[]> bodies = [];
+		session.InputBodyReceived += b =>
+		{
+			lock (bodies)
+			{
+				bodies.Add(b.ToArray());
+			}
+		};
+		int controllerLost = 0;
+		session.Lost += () => Interlocked.Increment(ref controllerLost);
+		List<string> wiredLost = [];
+		session.WiredLost += r =>
+		{
+			lock (wiredLost)
+			{
+				wiredLost.Add(r);
+			}
+		};
+		session.Start();
+		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+		session.AttachWired(usb);
+		usb.Feed(UsbInput(55, 3));
+		WaitUntil(() => session.IsWiredInputLive);
+
+		bt.FailReads = true;
+		WaitUntil(() => session.IsBluetoothGone);
+		Thread.Sleep(100);
+		Assert.Equal(0, Volatile.Read(ref controllerLost));
+		Assert.True(session.IsWired);
+		usb.Feed(UsbInput(66, 4));
+		WaitUntil(() => { lock (bodies) return bodies.Count == 2; });
+		Assert.Equal(66, bodies[1][4]);
+		session.UpdateOutput(b => OutputBlock.SetLightbar(b, 4, 5, 6));
+		Assert.Equal(4, LastUsbOutput(usb)[1 + OutputBlock.Red]);
+
+		usb.FailReads = true;
+		WaitUntil(() => Volatile.Read(ref controllerLost) == 1);
+		Assert.False(session.IsWired);
+		lock (wiredLost)
+		{
+			Assert.Empty(wiredLost);
+		}
+	}
+
+	// Leaving wired mode after Bluetooth was disconnected: nothing carries the controller, so it counts as lost.
+	[Fact]
+	public void DetachWired_AfterBluetoothWasDisconnected_IsTheControllerLost()
+	{
+		FakeLink bt = new();
+		using BluetoothSession session = new(bt);
+		int controllerLost = 0;
+		session.Lost += () => Interlocked.Increment(ref controllerLost);
+		session.Start();
+		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+		session.AttachWired(usb);
+		bt.FailReads = true;
+		WaitUntil(() => session.IsBluetoothGone);
+
+		Assert.True(session.DetachWired("charge only chosen"));
+		Assert.Equal(1, Volatile.Read(ref controllerLost));
+	}
+
+	// A failed USB write is left to the wired reader (a pulled cable fails its reads too): no fallback by itself.
+	[Fact]
+	public void AUsbWriteThatFails_IsLeftToTheReader_TheSessionStaysWired()
 	{
 		FakeLink bt = new();
 		using BluetoothSession session = new(bt);
 		session.Start();
-		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize) { FailWrites = true };
 		session.AttachWired(usb);
 		List<string> lost = [];
 		session.WiredLost += r => lost.Add(r);
-		usb.FailWrites = true;
 		long btWrites = bt.Writes.Count;
 
 		session.UpdateOutput(b => OutputBlock.SetLightbar(b, 9, 8, 7));
 
-		Assert.False(session.IsWired);
-		Assert.Equal("usb write failed", Assert.Single(lost));
-		Assert.True(bt.Writes.Count > btWrites);
-		byte[] last = bt.Writes.Last();
-		Assert.Equal(BluetoothReports.OutputId, last[0]);
-		Assert.Equal(9, last[3 + OutputBlock.Red]);
+		Assert.True(session.IsWired);
+		Assert.Empty(lost);
+		Assert.Equal(btWrites, bt.Writes.Count);
 	}
 
 	[Fact]
@@ -312,6 +377,58 @@ public class BluetoothSessionWiredTests
 		// No 0x32 / 0x36 report goes to the Bluetooth link while the sink plays.
 		Assert.DoesNotContain(bt.Writes.Skip(btWrites), w => w[0] is 0x32 or 0x36);
 		WaitUntil(() => session.HapticsReports >= 2);
+	}
+
+	// Fix 8 diagnostic (KOPRU_WIRED_SPEAKER_IDLE): while the sink's channels 1-2 are quiet the controller's speaker is
+	// muted over USB; sound brings the user's volume back, and leaving wired mode restores it too.
+	[Fact]
+	public void WiredAudio_SpeakerIdleVolume_MutesTheQuietSpeaker_AndSoundBringsTheVolumeBack()
+	{
+		FakeLink bt = new();
+		using BluetoothSession session = new(bt) { WiredTuning = new WiredAudioTuning { SpeakerIdleVolume = 0 } };
+		session.Start();
+		session.Speaker = new SpeakerAudioSender(new FakeOpusEncoder()) { Volume = 1 };
+		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+		FakeWiredAudioSink sink = new();
+		session.AttachWired(usb, sink);
+
+		byte[] report = LastUsbOutput(usb);
+		Assert.Equal(0, report[1 + AudioOutput.SpeakerVolume]);
+		Assert.Equal(AudioOutput.PathSpeaker, report[1 + AudioOutput.AudioControl] & AudioOutput.PathMask);
+		Assert.Equal(0, report[1 + AudioOutput.AudioControl2] & AudioOutput.PreampMask);
+		// The game's own output keeps the idle route too.
+		byte[] game = new byte[OutputBlock.Size];
+		session.WriteSpeakerRoute(game);
+		Assert.Equal(0, game[AudioOutput.SpeakerVolume]);
+
+		sink.Sounding = true;
+		for (int i = 0; i < 64; i++)
+		{
+			session.Haptics.Push(50, -50);
+		}
+		session.WakeHaptics();
+		WaitUntil(() => LastUsbOutput(usb)[1 + AudioOutput.SpeakerVolume] == AudioOutput.MaxSpeakerVolume);
+		Assert.Equal(AudioOutput.DefaultPreamp, LastUsbOutput(usb)[1 + AudioOutput.AudioControl2] & AudioOutput.PreampMask);
+
+		sink.Sounding = false;
+		for (int i = 0; i < 64; i++)
+		{
+			session.Haptics.Push(50, -50);
+		}
+		session.WakeHaptics();
+		WaitUntil(() => LastUsbOutput(usb)[1 + AudioOutput.SpeakerVolume] == 0);
+	}
+
+	[Fact]
+	public void WiredAudio_ByDefault_TheSpeakerKeepsTheUsersVolume()
+	{
+		FakeLink bt = new();
+		using BluetoothSession session = new(bt) { WiredTuning = WiredAudioTuning.Default };
+		session.Start();
+		session.Speaker = new SpeakerAudioSender(new FakeOpusEncoder()) { Volume = 1 };
+		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+		session.AttachWired(usb, new FakeWiredAudioSink());
+		Assert.Equal(AudioOutput.MaxSpeakerVolume, LastUsbOutput(usb)[1 + AudioOutput.SpeakerVolume]);
 	}
 
 	[Fact]
@@ -363,6 +480,55 @@ public class BluetoothSessionWiredTests
 		// Still wired (the USB link carries input/output); only audio went back.
 		Assert.True(session.IsWired);
 		WaitUntil(() => bt.Writes.Any(w => w[0] == 0x32));
+	}
+
+	// A sink whose device clock never moved (WiredRenderPump's stall check) is dropped with its own reason and a loud
+	// log line: haptics go back to Bluetooth instead of being written into a dead stream.
+	[Fact]
+	public void WiredAudio_AStreamThatIsNotPlaying_IsDroppedLoudly_AndHapticsAreBluetoothReportsAgain()
+	{
+		List<string> lines = [];
+		void Watch(string line)
+		{
+			lock (lines)
+			{
+				lines.Add(line);
+			}
+		}
+		Diagnostics.AppLog.Written += Watch;
+		try
+		{
+			FakeLink bt = new();
+			using BluetoothSession session = new(bt);
+			session.Start();
+			FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+			FakeWiredAudioSink sink = new() { FailWith = new WiredAudioStalledException("device clock still 0 after 1.0 s written, queue 960 frames") };
+			session.AttachWired(usb, sink);
+			List<string> lost = [];
+			session.WiredAudioLost += r =>
+			{
+				lock (lost)
+				{
+					lost.Add(r);
+				}
+			};
+			session.Haptics.Push(40, 40);
+			session.WakeHaptics();
+
+			WaitUntil(() => { lock (lost) return lost.Count == 1; });
+			Assert.Equal("usb audio not playing", lost[0]);
+			Assert.True(sink.Disposed);
+			Assert.True(session.IsWired);
+			WaitUntil(() => bt.Writes.Any(w => w[0] == 0x32));
+			lock (lines)
+			{
+				Assert.Contains("wired: USB AUDIO NOT PLAYING: device clock still 0 after 1.0 s written, queue 960 frames; haptics and speaker back on Bluetooth", lines);
+			}
+		}
+		finally
+		{
+			Diagnostics.AppLog.Written -= Watch;
+		}
 	}
 
 	[Fact]
@@ -464,13 +630,13 @@ public class BluetoothSessionWiredTests
 		WaitUntil(() => bt.Writes.Any(w => w[0] == 0x32));
 	}
 
-	// A USB link whose reads never return must not freeze input: Bluetooth keeps carrying it until the first USB
-	// report, and once WiredSilentTimeout has passed the next Bluetooth report falls the session back.
+	// A USB link whose reads never return does not freeze input: Bluetooth keeps carrying it until the first USB
+	// report. There is no silent-link fallback any more (wired mode disconnects Bluetooth instead).
 	[Fact]
-	public void ASilentUsbLink_BluetoothInputKeepsFlowing_ThenFallsBackAfterTheTimeout()
+	public void ASilentUsbLink_BluetoothKeepsCarryingInput_AndTheSessionStaysWired()
 	{
 		FakeLink bt = new();
-		using BluetoothSession session = new(bt) { WiredSilentTimeout = TimeSpan.FromSeconds(10) };
+		using BluetoothSession session = new(bt);
 		List<byte[]> bodies = [];
 		session.InputBodyReceived += b =>
 		{
@@ -482,34 +648,15 @@ public class BluetoothSessionWiredTests
 		session.Start();
 		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
 		session.AttachWired(usb);
-		List<string> lost = [];
-		session.WiredLost += r =>
-		{
-			lock (lost)
-			{
-				lost.Add(r);
-			}
-		};
-		long btWrites = bt.Writes.Count;
 
-		// No USB report yet: a Bluetooth report is published (Bluetooth carries input until the link starts).
 		bt.Feed(FakeLink.Input(77, 2));
 		WaitUntil(() => { lock (bodies) return bodies.Count == 1; });
-		Assert.Equal(77, bodies[0][4]);
-		Assert.True(session.IsWired);
-
-		// Past the timeout the next Bluetooth report falls the session back: the report is published and the
-		// output state is resent on Bluetooth.
-		session.WiredSilentTimeout = TimeSpan.FromMilliseconds(50);
-		Thread.Sleep(80);
+		Thread.Sleep(200);
 		bt.Feed(FakeLink.Input(88, 3));
-		WaitUntil(() => !session.IsWired);
 		WaitUntil(() => { lock (bodies) return bodies.Count == 2; });
 		Assert.Equal(88, bodies[1][4]);
-		WaitUntil(() => { lock (lost) return lost.Count == 1; });
-		Assert.Equal("usb silent", lost[0]);
-		WaitUntil(() => bt.Writes.Count > btWrites);
-		Assert.Equal(BluetoothReports.OutputId, bt.Writes.Last()[0]);
+		Assert.True(session.IsWired);
+		Assert.False(session.IsWiredInputLive);
 	}
 
 	// A USB link that starts late: Bluetooth carries input until the first USB report; Bluetooth reports after it
@@ -518,7 +665,7 @@ public class BluetoothSessionWiredTests
 	public void ALateUsbLink_BluetoothCarriesInput_UntilTheFirstUsbReport()
 	{
 		FakeLink bt = new();
-		using BluetoothSession session = new(bt) { WiredSilentTimeout = TimeSpan.FromSeconds(10) };
+		using BluetoothSession session = new(bt);
 		List<byte[]> bodies = [];
 		session.InputBodyReceived += b =>
 		{
@@ -549,46 +696,6 @@ public class BluetoothSessionWiredTests
 		{
 			Assert.Equal(3, bodies.Count);
 		}
-	}
-
-	// A wired link that worked and then went silent: the next Bluetooth report after the timeout falls back.
-	[Fact]
-	public void AUsbLinkGoneSilent_FallsBack_OnTheNextBluetoothReportAfterTheTimeout()
-	{
-		FakeLink bt = new();
-		using BluetoothSession session = new(bt) { WiredSilentTimeout = TimeSpan.FromMilliseconds(50) };
-		List<byte[]> bodies = [];
-		session.InputBodyReceived += b =>
-		{
-			lock (bodies)
-			{
-				bodies.Add(b.ToArray());
-			}
-		};
-		session.Start();
-		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
-		session.AttachWired(usb);
-		List<string> lost = [];
-		session.WiredLost += r =>
-		{
-			lock (lost)
-			{
-				lost.Add(r);
-			}
-		};
-
-		usb.Feed(UsbInput(55, 3));
-		WaitUntil(() => { lock (bodies) return bodies.Count == 1; });
-		Assert.Equal(55, bodies[0][4]);
-		Assert.True(session.IsWired);
-
-		Thread.Sleep(80);
-		bt.Feed(FakeLink.Input(99, 4));
-		WaitUntil(() => !session.IsWired);
-		WaitUntil(() => { lock (bodies) return bodies.Count == 2; });
-		Assert.Equal(99, bodies[1][4]);
-		WaitUntil(() => { lock (lost) return lost.Count == 1; });
-		Assert.Equal("usb silent", lost[0]);
 	}
 
 	// The link's USB audio endpoint can arrive after the link itself (or an earlier sink was lost): it attaches to
@@ -638,11 +745,10 @@ public class BluetoothSessionWiredTests
 		Assert.False(session.IsWiredAudio);
 	}
 
-	// Once the endpoint plays, the controller gets the output state over USB again: right at the run's first
-	// block and once more at the WiredOutputResendBlock-th write (the haptics-mode flags reach it while the
-	// USB audio endpoint is surely streaming); each is logged once.
+	// The stream playing on the USB audio endpoint: haptics go to the sink, not to Bluetooth, and the output state
+	// goes out over USB; the attach says where everything goes.
 	[Fact]
-	public void WiredAudio_WhenTheStreamPlaysOnTheSink_TheOutputStateGoesOutAgainOverUsb()
+	public void WiredAudio_TheStreamPlaysOnTheSink_AndTheOutputGoesOverUsb()
 	{
 		List<string> lines = [];
 		void Watch(string line)
@@ -665,28 +771,20 @@ public class BluetoothSessionWiredTests
 			FakeWiredAudioSink sink = new();
 			session.AttachWired(usb, sink);
 			Assert.True(session.IsWiredAudio);
-			Assert.Equal(1, session.WiredOutputLogs);
-			int outputs = usb.Writes.Count(w => w[0] == UsbReports.OutputId);
+			long btWrites = bt.Writes.Count;
+			session.UpdateOutput(b => Audio.AudioOutput.SetRoute(b, false, 1));
 
-			// The mic keeps the stream running (and the sink writing) while nothing is pushed.
-			session.MicStreamEnabled = true;
-			WaitUntil(() => { lock (sink.Writes) return sink.Writes.Count >= 17; });
-			// Exactly two more 0x02 reports went out during this run (write 1 and write 16), both flagged.
-			WaitUntil(() => usb.Writes.Count(w => w[0] == UsbReports.OutputId) == outputs + 2);
-			WaitUntil(() => session.WiredOutputLogs == 2);
-			byte[][] resends = [.. usb.Writes.Where(w => w[0] == UsbReports.OutputId).TakeLast(2)];
-			Assert.All(resends, r => Assert.Equal(
-				OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl,
-				r[1 + OutputBlock.Flag1] & (OutputBlock.PowerSaveControl | OutputBlock.HapticsLowPass | OutputBlock.MotorPowerControl)));
-			// No further resend while the same run keeps writing.
-			Thread.Sleep(150);
-			Assert.Equal(outputs + 2, usb.Writes.Count(w => w[0] == UsbReports.OutputId));
-			List<string> wired;
+			session.Haptics.Push(50, -50);
+			session.WakeHaptics();
+			WaitUntil(() => { lock (sink.Writes) return sink.Writes.Count >= 1; });
+			Thread.Sleep(50);
+
+			Assert.Equal(btWrites, bt.Writes.Count);
+			Assert.Equal(Audio.AudioOutput.MaxSpeakerVolume, LastUsbOutput(usb)[1 + Audio.AudioOutput.SpeakerVolume]);
 			lock (lines)
 			{
-				wired = [.. lines];
+				Assert.Contains("wired: input and output over USB, haptics/speaker over USB audio", lines);
 			}
-			Assert.Contains(wired, l => l.Contains("(haptics playing)", StringComparison.Ordinal));
 		}
 		finally
 		{

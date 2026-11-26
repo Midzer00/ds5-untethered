@@ -8,6 +8,20 @@
     <Style Selector="Border.stepBody.last">
       <Setter Property="BorderThickness" Value="0" />
     </Style>
+    <!-- Accordion: a closed step is one 48 px line (its 24 px title line and 12 above and below), the open one has more air;
+         the circle column's space above the circle follows, so the circle stays level with the title -->
+    <Style Selector="Border.stepBody">
+      <Setter Property="Padding" Value="0,12" />
+    </Style>
+    <Style Selector="Border.stepBody.expanded">
+      <Setter Property="Padding" Value="0,16" />
+    </Style>
+    <Style Selector="Panel.stepAbove">
+      <Setter Property="Height" Value="12" />
+    </Style>
+    <Style Selector="Panel.stepAbove.expanded">
+      <Setter Property="Height" Value="16" />
+    </Style>
     <!-- Done steps recede: their text muted like their title, so the steps still to do stand out -->
     <Style Selector="TextBlock.body.done">
       <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
@@ -17,6 +31,31 @@
     <Style Selector="TextBlock.state.warn"><Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" /></Style>
     <Style Selector="TextBlock.state.bad"><Setter Property="Foreground" Value="{StaticResource DangerBrush}" /></Style>
   </UserControl.Styles>
+  <UserControl.Resources>
+    <!-- A step's title line: a flat button (click, Enter or Space opens the step) with the accent hairline on keyboard focus -->
+    <ControlTheme x:Key="StepTitleButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="-1" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
+    </ControlTheme>
+  </UserControl.Resources>
   <ScrollViewer Classes="page">
     <StackPanel Spacing="0" Classes="page">
       <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
@@ -38,8 +77,10 @@
             <DataTemplate x:DataType="vm:SetupStepItem">
               <!-- Numbered stepper row: circle column (done / current / upcoming) joined by a 1 px connector, content on the right -->
               <Grid ColumnDefinitions="24,*">
-                <Grid RowDefinitions="16,24,*">
-                  <Rectangle Width="1" Fill="{StaticResource BorderBrush}" HorizontalAlignment="Center" IsVisible="{Binding HasConnectorAbove}" />
+                <Grid RowDefinitions="Auto,24,*">
+                  <Panel Classes="stepAbove" Classes.expanded="{Binding IsExpanded}">
+                    <Rectangle Width="1" Fill="{StaticResource BorderBrush}" HorizontalAlignment="Center" IsVisible="{Binding HasConnectorAbove}" />
+                  </Panel>
                   <Border Grid.Row="1" Width="24" Height="24" CornerRadius="12" BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" IsVisible="{Binding IsDone}">
                     <Path Data="{x:Static c:IconPaths.Check}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
                           Stroke="{StaticResource MutedBrush}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round" />
@@ -54,85 +95,98 @@
                   </Border>
                   <Rectangle Grid.Row="2" Width="1" Fill="{StaticResource BorderBrush}" HorizontalAlignment="Center" IsVisible="{Binding HasConnector}" />
                 </Grid>
-                <Border Grid.Column="1" Classes="stepBody" Classes.last="{Binding IsLast}" Margin="12,0,0,0" Padding="0,16">
+                <Border Grid.Column="1" Classes="stepBody" Classes.last="{Binding IsLast}" Classes.expanded="{Binding IsExpanded}" Margin="12,0,0,0">
                   <StackPanel Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="24" Margin="0,0,0,2">
-                      <Grid VerticalAlignment="Center">
-                        <TextBlock Classes="label" Text="{Binding Title}" VerticalAlignment="Center" IsVisible="{Binding !IsDone}" />
-                        <TextBlock Classes="label" Text="{Binding Title}" VerticalAlignment="Center" IsVisible="{Binding IsDone}"
-                                   Foreground="{StaticResource MutedBrush}" FontWeight="Normal" />
-                      </Grid>
-                      <TextBlock Text="{Binding OptionalText}" IsVisible="{Binding IsOptional}" FontSize="{StaticResource FontCaption}"
-                                 Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <TextBlock Classes="body" Classes.done="{Binding IsDone}" Text="{Binding Instructions}" />
-                    <TextBlock Classes="body" Text="{Binding Notes}" IsVisible="{Binding HasNotes}" Foreground="{StaticResource IndicatorWaitBrush}" />
-                    <Panel IsVisible="{Binding HasActions}" Margin="0,6,0,0">
-                      <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding RestartHost.ShowsActions, FallbackValue=True}">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource GapSmall}" LineSpacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:SetupActionItem">
-                            <Button Theme="{StaticResource QuietButton}" Content="{Binding Label}" Command="{Binding Command}" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                      <!-- Drivers row, "Restart The Computer" pressed: the buttons turn into a short question -->
-                      <Grid ColumnDefinitions="Auto,16,Auto,8,Auto" IsVisible="{Binding RestartHost.IsConfirmingRestart, FallbackValue=False}" HorizontalAlignment="Left">
-                        <TextBlock Classes="label" Text="{Binding RestartHost.RestartQuestion, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="440" />
-                        <Button Grid.Column="2" Theme="{StaticResource PrimaryButton}" Content="{Binding RestartHost.RestartConfirmText, FallbackValue=''}"
-                                Command="{Binding RestartHost.ConfirmRestartCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
-                        <Button Grid.Column="4" Theme="{StaticResource QuietButton}" Content="{Binding RestartHost.RestartCancelText, FallbackValue=''}"
-                                Command="{Binding RestartHost.CancelRestartCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
-                      </Grid>
-                    </Panel>
-                    <TextBlock Classes="body" Text="{Binding RestartHost.RestartError, FallbackValue=''}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"
-                               IsVisible="{Binding RestartHost.HasRestartError, FallbackValue=False}" Margin="0,4,0,0" />
-                    <!-- Adapter test running: determinate bar over both phases, the phase and the seconds left, Cancel -->
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,10,0,0" Width="560" HorizontalAlignment="Left"
-                          IsVisible="{Binding AdapterTest.IsTesting, FallbackValue=False}">
-                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,16,8">
-                        <TextBlock Classes="label" Text="{Binding AdapterTest.TestPhase, FallbackValue=''}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Classes="body" Text="{Binding AdapterTest.TestRemaining, FallbackValue=''}" Foreground="{StaticResource MutedBrush}"
-                                   VerticalAlignment="Center" />
-                      </Grid>
-                      <ProgressBar Grid.Row="1" Classes="meter" Value="{Binding AdapterTest.TestProgress, FallbackValue=0}" HorizontalAlignment="Stretch"
-                                   VerticalAlignment="Center" Margin="0,0,16,0" />
-                      <Button Grid.Column="1" Grid.RowSpan="2" Theme="{StaticResource QuietButton}" Content="{Binding AdapterTest.CancelText, FallbackValue=''}"
-                              Command="{Binding AdapterTest.CancelTestCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                    <!-- Title line: the step's title (and Optional) as a button that opens it; a closed optional step offers its first
+                         button at the right. 24 high, so a closed step is 48 with its padding. -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" Height="24">
+                      <Button Name="StepTitle" Theme="{StaticResource StepTitleButton}" Command="{Binding ExpandCommand}"
+                              AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding Instructions}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Grid VerticalAlignment="Center">
+                            <TextBlock Classes="label" Text="{Binding Title}" VerticalAlignment="Center" IsVisible="{Binding !IsDone}" />
+                            <TextBlock Classes="label" Text="{Binding Title}" VerticalAlignment="Center" IsVisible="{Binding IsDone}"
+                                       Foreground="{StaticResource MutedBrush}" FontWeight="Normal" />
+                          </Grid>
+                          <TextBlock Text="{Binding OptionalText}" IsVisible="{Binding IsOptional}" FontSize="{StaticResource FontCaption}"
+                                     Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Button Grid.Column="1" Name="StepTitleAction" Classes="titleAction" Theme="{StaticResource QuietButton}" Margin="0,-1"
+                              Content="{Binding TitleAction.Label, FallbackValue=''}" Command="{Binding TitleAction.Command, FallbackValue={x:Null}}"
+                              IsVisible="{Binding ShowsTitleAction}" />
                     </Grid>
-                    <!-- Adapter test done: the verdict in one sentence, the values that decided it (measured · needed, state),
-                         and what to try when it is not suitable; or why it could not measure -->
-                    <StackPanel Spacing="4" Margin="0,8,0,0" Width="560" HorizontalAlignment="Left"
-                                IsVisible="{Binding AdapterTest.HasAdapterResult, FallbackValue=False}">
-                      <TextBlock Classes="label state" Classes.good="{Binding AdapterTest.IsAdapterGood, FallbackValue=False}"
-                                 Classes.warn="{Binding AdapterTest.IsAdapterBorderline, FallbackValue=False}" Classes.bad="{Binding AdapterTest.IsAdapterBad, FallbackValue=False}"
-                                 Text="{Binding AdapterTest.AdapterHeadline, FallbackValue=''}" TextWrapping="Wrap" />
-                      <ItemsControl ItemsSource="{Binding AdapterTest.AdapterLines, FallbackValue={x:Null}}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:AdapterLineItem">
-                            <Grid ColumnDefinitions="*,Auto" MinHeight="22">
-                              <TextBlock Classes="body" VerticalAlignment="Center" TextWrapping="Wrap">
-                                <Run Text="{Binding Measured}" /><Run Text="{Binding Needed}" Foreground="{StaticResource MutedBrush}" />
-                              </TextBlock>
-                              <TextBlock Grid.Column="1" Classes="body state" Classes.good="{Binding IsGood}" Classes.warn="{Binding IsWarn}" Classes.bad="{Binding IsBad}"
-                                         Text="{Binding Status}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" />
-                            </Grid>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                      <ItemsControl ItemsSource="{Binding AdapterTest.AdapterAdvice, FallbackValue={x:Null}}" Margin="0,4,0,0"
-                                    IsVisible="{Binding AdapterTest.HasAdapterAdvice, FallbackValue=False}">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="x:String">
-                            <TextBlock Classes="body" Text="{Binding}" TextWrapping="Wrap" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
+                    <StackPanel Spacing="4" IsVisible="{Binding IsExpanded}" Margin="0,2,0,0">
+                      <TextBlock Classes="body" Classes.done="{Binding IsDone}" Text="{Binding Instructions}"
+                                 IsVisible="{Binding AdapterTest.ShowsStepInstructions, FallbackValue=True}" />
+                      <TextBlock Classes="body" Text="{Binding Notes}" IsVisible="{Binding HasNotes}" Foreground="{StaticResource IndicatorWaitBrush}" />
+                      <Panel IsVisible="{Binding HasActions}" Margin="0,6,0,0">
+                        <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding RestartHost.ShowsActions, FallbackValue=True}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel ItemSpacing="{StaticResource GapSmall}" LineSpacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SetupActionItem">
+                              <Button Theme="{StaticResource QuietButton}" Content="{Binding Label}" Command="{Binding Command}" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <!-- Drivers row, "Restart The Computer" pressed: the buttons turn into a short question -->
+                        <Grid ColumnDefinitions="Auto,16,Auto,8,Auto" IsVisible="{Binding RestartHost.IsConfirmingRestart, FallbackValue=False}" HorizontalAlignment="Left">
+                          <TextBlock Classes="label" Text="{Binding RestartHost.RestartQuestion, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="440" />
+                          <Button Grid.Column="2" Theme="{StaticResource PrimaryButton}" Content="{Binding RestartHost.RestartConfirmText, FallbackValue=''}"
+                                  Command="{Binding RestartHost.ConfirmRestartCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                          <Button Grid.Column="4" Theme="{StaticResource QuietButton}" Content="{Binding RestartHost.RestartCancelText, FallbackValue=''}"
+                                  Command="{Binding RestartHost.CancelRestartCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                        </Grid>
+                      </Panel>
+                      <TextBlock Classes="body" Text="{Binding RestartHost.RestartError, FallbackValue=''}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"
+                                 IsVisible="{Binding RestartHost.HasRestartError, FallbackValue=False}" Margin="0,4,0,0" />
+                      <!-- Adapter test running: determinate bar over both phases, the phase and the seconds left, Cancel -->
+                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,10,0,0" MaxWidth="560" HorizontalAlignment="Left"
+                            IsVisible="{Binding AdapterTest.IsTesting, FallbackValue=False}">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,16,8">
+                          <TextBlock Classes="label" Text="{Binding AdapterTest.TestPhase, FallbackValue=''}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Classes="body" Text="{Binding AdapterTest.TestRemaining, FallbackValue=''}" Foreground="{StaticResource MutedBrush}"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                        <ProgressBar Grid.Row="1" Classes="meter" Value="{Binding AdapterTest.TestProgress, FallbackValue=0}" HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <Button Grid.Column="1" Grid.RowSpan="2" Theme="{StaticResource QuietButton}" Content="{Binding AdapterTest.CancelText, FallbackValue=''}"
+                                Command="{Binding AdapterTest.CancelTestCommand, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                      </Grid>
+                      <!-- Adapter test done: the verdict in one sentence, the values that decided it (measured · needed, state),
+                           and what to try when it is not suitable; or why it could not measure -->
+                      <StackPanel Spacing="4" Margin="0,8,0,0"
+                                  IsVisible="{Binding AdapterTest.HasAdapterResult, FallbackValue=False}">
+                        <TextBlock Classes="label state" Classes.good="{Binding AdapterTest.IsAdapterGood, FallbackValue=False}"
+                                   Classes.warn="{Binding AdapterTest.IsAdapterBorderline, FallbackValue=False}" Classes.bad="{Binding AdapterTest.IsAdapterBad, FallbackValue=False}"
+                                   Text="{Binding AdapterTest.AdapterHeadline, FallbackValue=''}" TextWrapping="Wrap" />
+                        <ItemsControl ItemsSource="{Binding AdapterTest.AdapterLines, FallbackValue={x:Null}}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AdapterLineItem">
+                              <Grid ColumnDefinitions="*,Auto" MinHeight="22">
+                                <TextBlock Classes="body" VerticalAlignment="Center" TextWrapping="Wrap">
+                                  <Run Text="{Binding Measured}" /><Run Text="{Binding Needed}" Foreground="{StaticResource MutedBrush}" />
+                                </TextBlock>
+                                <TextBlock Grid.Column="1" Classes="body state" Classes.good="{Binding IsGood}" Classes.warn="{Binding IsWarn}" Classes.bad="{Binding IsBad}"
+                                           Text="{Binding Status}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0" />
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding AdapterTest.AdapterAdvice, FallbackValue={x:Null}}" Margin="0,4,0,0"
+                                      IsVisible="{Binding AdapterTest.HasAdapterAdvice, FallbackValue=False}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                              <TextBlock Classes="body" Text="{Binding}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
                     </StackPanel>
                   </StackPanel>
                 </Border>

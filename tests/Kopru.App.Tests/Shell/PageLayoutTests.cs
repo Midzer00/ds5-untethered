@@ -26,7 +26,7 @@ public class PageLayoutTests
 	}
 
 	[AvaloniaFact]
-	public void Sidebar_HasOneControllerEntry_WithTestOutputsAndRemapTabs()
+	public void Sidebar_HasOneControllerEntry_WithTestOutputsButtonsGyroAndEdgeTabs()
 	{
 		(MainWindowViewModel vm, _) = NewViewModel();
 		Assert.Equal(6, vm.NavItems.Count);
@@ -34,21 +34,25 @@ public class PageLayoutTests
 		Assert.Equal(Text.NavController(), vm.Controller.Title);
 		Assert.Same(vm.Sticks.Triggers, vm.Triggers);
 		Assert.Same(vm.Triggers, vm.Tester.Triggers);
-		Assert.Equal(["Test", Text.ControllerTabDeviceTests(), Text.RemapTab()], vm.Controller.Tabs.Select(t => t.Name));
+		Assert.Equal(["Test", Text.ControllerTabDeviceTests(), Text.ControllerTabButtons(), Text.ControllerTabGyroSticks(), "Edge"],
+			vm.Controller.Tabs.Select(t => t.Name));
+		// The Edge tab is there only with an Edge (this is a DualSense).
+		Assert.Equal([true, true, true, true, false], vm.Controller.Tabs.Select(t => t.IsVisible));
 		Assert.True(vm.Controller.IsTestTab);
-		vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
+		vm.Controller.SelectedTab = ControllerPageViewModel.GyroTab;
 		// Nothing selected (-1) and a tab that does not exist are ignored.
 		vm.Controller.SelectedTab = -1;
-		vm.Controller.SelectedTab = 3;
+		vm.Controller.SelectedTab = 5;
+		Assert.True(vm.Controller.IsGyroTab);
 		Assert.True(vm.Controller.IsRemapTab);
 		vm.Controller.SelectedTab = ControllerPageViewModel.OutputsTab;
 		Assert.True(vm.Controller.IsOutputsTab);
-		// Opening a tab that does not exist opens Test.
-		vm.OpenController(3);
+		// Opening a tab that does not exist opens Test; the Edge tab without an Edge opens Buttons.
+		vm.OpenController(7);
 		Assert.True(vm.Controller.IsTestTab);
 		Assert.Same(vm.Controller, vm.CurrentPage);
-		vm.OpenController(ControllerPageViewModel.RemapTab);
-		Assert.True(vm.Controller.IsRemapTab);
+		vm.OpenController(ControllerPageViewModel.EdgeTab);
+		Assert.True(vm.Controller.IsButtonsTab);
 	}
 
 	// Every setting shows on one tab only: the stick settings and trigger ranges on the Test tab (beside the live test), the
@@ -67,7 +71,7 @@ public class PageLayoutTests
 			Dispatcher.UIThread.RunJobs();
 			var seen = new Dictionary<string, int>();
 			ControllerView page = window.GetVisualDescendants().OfType<ControllerView>().Single();
-			foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.RemapTab })
+			foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.ButtonsTab, ControllerPageViewModel.GyroTab })
 			{
 				vm.Controller.SelectedTab = tab;
 				Dispatcher.UIThread.RunJobs();
@@ -227,17 +231,17 @@ public class PageLayoutTests
 			(MainWindowViewModel vm, _) = NewViewModel();
 			var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 			window.Show();
-			vm.OpenController(ControllerPageViewModel.RemapTab);
+			vm.OpenController(ControllerPageViewModel.GyroTab);
 			Dispatcher.UIThread.RunJobs();
 			ListBox tabs = window.GetVisualDescendants().OfType<ListBox>().Single(l => ReferenceEquals(l.ItemsSource, vm.Controller.Tabs));
-			Assert.Equal(ControllerPageViewModel.RemapTab, tabs.SelectedIndex);
+			Assert.Equal(ControllerPageViewModel.GyroTab, tabs.SelectedIndex);
 
 			Localizer.Chosen = Language.English;
 			Dispatcher.UIThread.RunJobs();
-			Assert.Equal(ControllerPageViewModel.RemapTab, vm.Controller.SelectedTab);
-			Assert.Equal(Text.RemapTab(Language.English), vm.Controller.Tabs[ControllerPageViewModel.RemapTab].Name);
-			Assert.Equal(ControllerPageViewModel.RemapTab, tabs.SelectedIndex);
-			Assert.True(window.GetVisualDescendants().OfType<RemapView>().Single().IsEffectivelyVisible);
+			Assert.Equal(ControllerPageViewModel.GyroTab, vm.Controller.SelectedTab);
+			Assert.Equal(Text.ControllerTabGyroSticks(Language.English), vm.Controller.Tabs[ControllerPageViewModel.GyroTab].Name);
+			Assert.Equal(ControllerPageViewModel.GyroTab, tabs.SelectedIndex);
+			Assert.True(window.GetVisualDescendants().OfType<GyroSticksView>().Single().IsEffectivelyVisible);
 			window.Close();
 		}
 		finally

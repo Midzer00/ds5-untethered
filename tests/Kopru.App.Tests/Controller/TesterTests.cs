@@ -251,8 +251,10 @@ public class TesterTests
 
 				vm.Controller.SelectedTab = ControllerPageViewModel.OutputsTab;
 				Capture("controller-outputs");
-				vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
-				Capture("controller-remap");
+				vm.Controller.SelectedTab = ControllerPageViewModel.ButtonsTab;
+				Capture("controller-buttons");
+				vm.Controller.SelectedTab = ControllerPageViewModel.GyroTab;
+				Capture("controller-gyro-sticks");
 				window.Close();
 			}
 			finally

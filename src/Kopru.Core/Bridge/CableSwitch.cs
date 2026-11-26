@@ -12,8 +12,8 @@ public enum CableDecision
 
 // Which link feeds the bridge while the bridged controller is also on a USB cable. ChargeOnly: the cable only
 // charges; the bridge keeps running on Bluetooth (every feature keeps working) and the USB twin is hidden. Wired
-// (EXPERIMENTAL): while the cable is in and the twin is hidden, the bridge talks to the controller over USB;
-// Bluetooth stays connected and takes over again when the cable is out.
+// (EXPERIMENTAL): while the cable is in and the twin is hidden, the bridge runs the controller over USB and
+// disconnects Bluetooth; when the cable is out the controller is gone until it reconnects over Bluetooth.
 public enum CableMode
 {
 	ChargeOnly,
@@ -67,14 +67,37 @@ public sealed class CableSwitch
 	// is not wanted, and on StopForCable.
 	public IReadOnlyCollection<ulong> WiredTwins => wiredNow;
 
+	// CableMode.Wired: the controllers on the cable alone (no Bluetooth link a bridge holds) to take over this tick: their
+	// USB instance is wanted hidden (HiddenTwins) and, once hidden, the service offers them to the bridge. Empty
+	// otherwise.
+	public IReadOnlyCollection<ulong> CableOnlyTwins => cableOnlyNow;
+
+	private readonly HashSet<ulong> cableOnlyNow = [];
+
 	// bridgeWanted: the bridge is started (by the user). usbAddresses: 0x09 addresses of the USB DualSenses present.
-	// bridgedAddresses: addresses whose Bluetooth link a running bridge holds right now (decides hiding only).
+	// bridgedAddresses: addresses a running bridge holds right now, over Bluetooth or (wired mode, Bluetooth
+	// disconnected) over the cable: they decide hiding, and a held one never counts as "only the cable is left".
 	// knownAddresses: the broad set (paired list, last bridged), used only for the stop. bluetoothPresent: a Bluetooth
 	// DualSense is listed. now: the time of this tick (only needed with a resume delay).
+	// cableOnly: cabled controllers wired mode may take over on the cable alone (their Bluetooth identity is known);
+	// ignored in charge-only mode.
 	public CableDecision Next(bool bridgeWanted, IReadOnlyCollection<ulong> usbAddresses, IReadOnlyCollection<ulong> bridgedAddresses,
-		IReadOnlyCollection<ulong> knownAddresses, bool bluetoothPresent, DateTimeOffset now = default)
+		IReadOnlyCollection<ulong> knownAddresses, bool bluetoothPresent, DateTimeOffset now = default,
+		IReadOnlyCollection<ulong>? cableOnly = null)
 	{
-		CableDecision decision = Decide(bridgeWanted, usbAddresses, bridgedAddresses, knownAddresses, bluetoothPresent, now);
+		cableOnlyNow.Clear();
+		if (Mode == CableMode.Wired && bridgeWanted && !PausedForCable && cableOnly != null)
+		{
+			foreach (ulong a in cableOnly.Where(a => usbAddresses.Contains(a) && !bridgedAddresses.Contains(a) && !Hid.PairingInfo.IsVirtual(a)))
+			{
+				cableOnlyNow.Add(a);
+			}
+		}
+		CableDecision decision = Decide(bridgeWanted, usbAddresses, bridgedAddresses, knownAddresses, bluetoothPresent, now, cableOnly);
+		if (decision == CableDecision.StopForCable)
+		{
+			cableOnlyNow.Clear();
+		}
 		HashSet<ulong> wasWired = [.. wiredNow];
 		wiredNow.Clear();
 		if (decision == CableDecision.StopForCable || Mode != CableMode.Wired)
@@ -113,7 +136,7 @@ public sealed class CableSwitch
 	}
 
 	private CableDecision Decide(bool bridgeWanted, IReadOnlyCollection<ulong> usbAddresses, IReadOnlyCollection<ulong> bridgedAddresses,
-		IReadOnlyCollection<ulong> knownAddresses, bool bluetoothPresent, DateTimeOffset now)
+		IReadOnlyCollection<ulong> knownAddresses, bool bluetoothPresent, DateTimeOffset now, IReadOnlyCollection<ulong>? cableOnly)
 	{
 		List<ulong> cabled = [.. usbAddresses.Where(a => !Hid.PairingInfo.IsVirtual(a))];
 		if (PausedForCable)
@@ -124,6 +147,14 @@ public sealed class CableSwitch
 				PausedForCable = false;
 				waitSince = null;
 				return CableDecision.None;
+			}
+			// CableMode.Wired with a controller on the cable that can be taken over: resume at once, the next ticks
+			// take it over on the cable alone.
+			if (Mode == CableMode.Wired && cableOnly != null && cableOnly.Any(usbAddresses.Contains))
+			{
+				PausedForCable = false;
+				waitSince = null;
+				return CableDecision.Resume;
 			}
 			// Resume once Bluetooth is back and stayed for the delay, even with the cable still in: the next ticks
 			// hide the twin again.
@@ -151,14 +182,15 @@ public sealed class CableSwitch
 		}
 		// CableMode.ChargeOnly: a controller that is cabled AND bridged over Bluetooth keeps its bridge; its USB twin
 		// is hidden.
-		foreach (ulong a in cabled.Where(bridgedAddresses.Contains))
+		// CableMode.Wired also hides a controller on the cable alone that is to be taken over (CableOnlyTwins).
+		foreach (ulong a in cabled.Where(a => bridgedAddresses.Contains(a) || cableOnlyNow.Contains(a)))
 		{
 			hidden.Add(a);
 			twinOffSince.Remove(a);
 		}
 		foreach (ulong a in hidden.ToList())
 		{
-			if (cabled.Contains(a) && bridgedAddresses.Contains(a))
+			if (cabled.Contains(a) && (bridgedAddresses.Contains(a) || cableOnlyNow.Contains(a)))
 			{
 				continue;
 			}
@@ -174,7 +206,8 @@ public sealed class CableSwitch
 			}
 		}
 		// Only the cable is left: a known controller is on USB and no Bluetooth DualSense is listed, for the whole delay.
-		if (cabled.Any(knownAddresses.Contains) && !bluetoothPresent)
+		// A controller the bridge holds over the cable (wired mode, Bluetooth disconnected) is not "left": it is in use.
+		if (cabled.Any(a => knownAddresses.Contains(a) && !bridgedAddresses.Contains(a) && !cableOnlyNow.Contains(a)) && !bluetoothPresent)
 		{
 			waitSince ??= now;
 			if (now - waitSince >= resumeDelay)

@@ -114,9 +114,29 @@ async function getText(github, repoRef, filePath, ref) {
   }
 }
 
+// Pages of 100 comments read per run; a translation issue has a handful, so this only bounds a flooded one.
+const COMMENT_PAGES = 3;
+
+/**
+ * The issue's comments, oldest first: the first MAX_AUTHOR_COMMENTS by the issue author (the file parts of way 3)
+ * and the number of refusal comments the workflow posted before. Reads at most COMMENT_PAGES pages.
+ */
+async function readComments(github, repoRef, number, author) {
+  const out = { author: [], refusals: 0 };
+  for (let page = 1; page <= COMMENT_PAGES; page++) {
+    const list = (await github.rest.issues.listComments(Object.assign({}, repoRef, { issue_number: number, per_page: 100, page }))).data || [];
+    for (const c of list) {
+      if (intakeLib.isFailureComment(c)) out.refusals++;
+      else if (c && c.user && c.user.login === author && out.author.length < intakeLib.MAX_AUTHOR_COMMENTS) out.author.push(c);
+    }
+    if (list.length < 100) break;
+  }
+  return out;
+}
+
 /**
  * Handles one issues/issue_comment event. Returns a short outcome string (for tests and the log):
- * 'ignored' | 'gone' | 'waiting' | 'failed' | 'unchanged' | 'created' | 'updated'.
+ * 'ignored' | 'gone' | 'waiting' | 'failed' | 'limited' | 'unchanged' | 'created' | 'updated'.
  */
 async function intake({ github, context, core, fetchImpl }) {
   fetchImpl = fetchImpl || globalThis.fetch;
@@ -127,7 +147,21 @@ async function intake({ github, context, core, fetchImpl }) {
   const ignore = (why) => { core.info('Ignored: ' + why); return 'ignored'; };
 
   if (!number || payload.issue.pull_request) return ignore('not an issue');
-  if (isBot(sender)) return ignore('sent by a bot');
+  // Bots are ignored, except our GitHub App's bot: it opens the issues of "Send with GitHub" for verified volunteers.
+  if (isBot(sender) && !intakeLib.isAppBot(sender)) return ignore('sent by a bot');
+
+  // Decided from the payload alone, before any API call, so junk events cost no rate limit: a comment must come from
+  // the issue author and hold a well-formed further part; an issue must look like a translation issue.
+  const payloadAuthor = payload.issue.user && payload.issue.user.login;
+  if (context.eventName === 'issue_comment') {
+    const c = payload.comment;
+    if (!c || !c.user || !sender || c.user.login !== sender.login || (payloadAuthor && c.user.login !== payloadAuthor)) {
+      return ignore('the comment is not by the issue author');
+    }
+    if (!intakeLib.plausiblePartComment(c.body)) return ignore('the comment carries no well-formed file part');
+  } else if (typeof payload.issue.body === 'string' && !intakeLib.recognise(payload.issue)) {
+    return ignore('not a translation issue');
+  }
 
   // Fresh state: the payload may be stale when runs queue up behind each other.
   let issue;
@@ -145,34 +179,46 @@ async function intake({ github, context, core, fetchImpl }) {
   if (issue.pull_request) return ignore('a pull request');
   if (issue.state !== 'open') return ignore('the issue is closed');
   if (issue.locked) { core.notice('Issue #' + number + ' is locked; nothing to do.'); return 'ignored'; }
-  if (isBot(issue.user)) return ignore('opened by a bot');
+  const appIssue = intakeLib.isAppIssue(issue);
+  if (isBot(issue.user) && !appIssue) return ignore('opened by a bot');
   if (!sender || sender.login !== issue.user.login) return ignore('the event was caused by someone other than the issue author');
   if (context.eventName === 'issue_comment') {
     const c = payload.comment;
     if (!c || !c.user || c.user.login !== issue.user.login) return ignore('the comment is not by the issue author');
-    if (String(c.body || '').indexOf('```ds5-translate') < 0) return ignore('the comment carries no file part');
   }
   const kind = intakeLib.recognise(issue);
   if (!kind) return ignore('not a translation issue');
+  if (appIssue && kind !== 'page') return ignore('an App issue without the page marker');
+  // The volunteer: the verified sender of an App issue; the issue author otherwise (a Sender line there is ignored).
+  // Their id and login drive the branch, the open pull request limit and the commit author.
+  const volunteer = intakeLib.volunteerOf(issue);
+  if (!volunteer) return ignore('an App issue without a valid sender line');
 
-  let comments = [];
-  if (kind === 'page') {
-    try {
-      comments = await github.paginate(github.rest.issues.listComments, Object.assign({}, repoRef, { issue_number: number, per_page: 100 }));
-    } catch (e) {
-      if (isGone(e)) { core.notice('Issue #' + number + ' no longer exists; nothing to do.'); return 'gone'; }
-      throw e;
-    }
+  // The comments: the author's (file parts, way 3) and the workflow's own earlier refusals (to cap them).
+  let comments;
+  try {
+    comments = await readComments(github, repoRef, number, issue.user.login);
+  } catch (e) {
+    if (isGone(e)) { core.notice('Issue #' + number + ' no longer exists; nothing to do.'); return 'gone'; }
+    throw e;
   }
 
-  const fail = async (problems) => {
-    core.warning('Translation in #' + number + ' did not pass: ' + problems.length + ' problem(s).');
+  // Refusals are commented at most MAX_FAILURE_COMMENTS times per issue; after that only the log says why.
+  const refuse = async (body, logLine) => {
+    core.warning(logLine);
+    if (comments.refusals >= intakeLib.MAX_FAILURE_COMMENTS) {
+      core.warning('Issue #' + number + ' already has ' + comments.refusals + ' refusal comments; not commenting again.');
+      return;
+    }
     await safely(core, 'comment on the issue', () =>
-      github.rest.issues.createComment(Object.assign({}, repoRef, { issue_number: number, body: intakeLib.failureComment(problems) })));
+      github.rest.issues.createComment(Object.assign({}, repoRef, { issue_number: number, body })));
+  };
+  const fail = async (problems) => {
+    await refuse(intakeLib.failureComment(problems), 'Translation in #' + number + ' did not pass: ' + problems.length + ' problem(s).');
     return 'failed';
   };
 
-  const decision = intakeLib.resolveSubmission(issue, comments);
+  const decision = intakeLib.resolveSubmission(issue, comments.author);
   if (decision.action === 'ignore') return ignore(decision.reason);
   if (decision.action === 'wait') {
     core.info('Waiting for more parts: have ' + decision.have.join(',') + ' of ' + decision.of + '.');
@@ -199,7 +245,7 @@ async function intake({ github, context, core, fetchImpl }) {
   if (!result.ok) return fail(result.errors);
 
   const plan = intakeLib.planPullRequest({
-    code, login: issue.user.login, userId: issue.user.id, issueNumber: number, result, en, hidden: !!decision.hidden
+    code, login: volunteer.login, userId: volunteer.id, issueNumber: number, result, en, hidden: !!decision.hidden
   });
   const close = () => safely(core, 'close the issue', () =>
     github.rest.issues.update(Object.assign({}, repoRef, { issue_number: number, state: 'closed', state_reason: 'completed' })));
@@ -212,15 +258,31 @@ async function intake({ github, context, core, fetchImpl }) {
     return 'unchanged';
   }
 
-  // One commit on top of main with only the language file; the branch is reset to it every time.
+  // The volunteer's open bot pull requests (branches translate/<user id>/...): the one for this language is updated;
+  // a new language is refused once MAX_OPEN_PULLS are open. Old-format branches are not matched.
+  const allOpen = await github.paginate(github.rest.pulls.list, Object.assign({}, repoRef, { state: 'open', per_page: 100 }));
+  const mine = intakeLib.ownOpenPulls(allOpen, volunteer.id, repoRef.owner + '/' + repoRef.repo);
+  const existingPr = mine.find((p) => p.head.ref === plan.branch);
+  if (!existingPr && mine.length >= intakeLib.MAX_OPEN_PULLS) {
+    await refuse(intakeLib.limitComment(mine), 'Translation in #' + number + ' refused: ' + volunteer.login + ' already has ' +
+      mine.length + ' open translation pull requests.');
+    return 'limited';
+  }
+
+  // One commit on top of main with only the language file; the branch is reset to it every time. The volunteer is its
+  // author and the workflow bot its committer (given explicitly: the API would otherwise copy the author); with a
+  // hidden listing both are left to the API, which uses the bot.
   const baseCommit = (await github.rest.git.getCommit(Object.assign({}, repoRef, { commit_sha: mainSha }))).data;
   const tree = (await github.rest.git.createTree(Object.assign({}, repoRef, {
     base_tree: baseCommit.tree.sha,
     tree: [{ path: plan.path, mode: '100644', type: 'blob', content: plan.content }]
   }))).data;
-  const commit = (await github.rest.git.createCommit(Object.assign({}, repoRef, {
-    message: plan.commitMessage, tree: tree.sha, parents: [mainSha]
-  }))).data;
+  const commitParams = { message: plan.commitMessage, tree: tree.sha, parents: [mainSha] };
+  if (plan.author) {
+    commitParams.author = plan.author;
+    commitParams.committer = plan.committer;
+  }
+  const commit = (await github.rest.git.createCommit(Object.assign({}, repoRef, commitParams))).data;
   try {
     await github.rest.git.updateRef(Object.assign({}, repoRef, { ref: 'heads/' + plan.branch, sha: commit.sha, force: true }));
   } catch (e) {
@@ -228,10 +290,9 @@ async function intake({ github, context, core, fetchImpl }) {
     await github.rest.git.createRef(Object.assign({}, repoRef, { ref: 'refs/heads/' + plan.branch, sha: commit.sha }));
   }
 
-  const open = (await github.rest.pulls.list(Object.assign({}, repoRef, { state: 'open', head: repoRef.owner + ':' + plan.branch, base, per_page: 10 }))).data;
   let pr, updated = false;
-  if (open.length) {
-    pr = (await github.rest.pulls.update(Object.assign({}, repoRef, { pull_number: open[0].number, title: plan.prTitle, body: plan.prBody }))).data;
+  if (existingPr) {
+    pr = (await github.rest.pulls.update(Object.assign({}, repoRef, { pull_number: existingPr.number, title: plan.prTitle, body: plan.prBody }))).data;
     updated = true;
   } else {
     pr = (await github.rest.pulls.create(Object.assign({}, repoRef, { title: plan.prTitle, head: plan.branch, base, body: plan.prBody }))).data;

@@ -161,6 +161,47 @@ public class SidebarStatusTests
 		Assert.Equal(Text.BatteryUnknown(), vm.BatteryRowTip);
 	}
 
+	// On the USB cable the controller says "charging" without a level: the card, the tooltip and the Overview's hero say
+	// "Charging", never "%0"; once a level comes the number is back.
+	[AvaloniaFact]
+	public void ChargingWithoutALevel_ShowsCharging_NotZeroPercent()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = Create();
+		fake.IsConnected = true;
+		fake.IsWired = true;
+		fake.HasBattery = false;
+		fake.BatteryPercent = 0;
+		fake.IsCharging = true;
+		fake.RaiseStateChanged();
+		Settle();
+		Assert.True(vm.ChargingLevelUnknown);
+		Assert.False(vm.HasBattery);
+		Assert.Equal(Text.Charging(), vm.BatteryRowText);
+		Assert.Equal(Text.Charging(), vm.BatteryShort);
+		Assert.Equal(Text.BatteryCharging(), vm.BatteryRowTip);
+		Assert.Equal(Text.BatteryCharging(), vm.DeviceBattery);
+		Assert.True(vm.Overview.ShowsBattery);
+		Assert.Equal(Text.Charging(), vm.Overview.BatteryText);
+		Assert.DoesNotContain("0", vm.BatteryRowText + vm.Overview.BatteryText, StringComparison.Ordinal);
+
+		fake.HasBattery = true;
+		fake.BatteryPercent = 60;
+		fake.RaiseStateChanged();
+		Settle();
+		Assert.False(vm.ChargingLevelUnknown);
+		Assert.Equal(Text.BatteryValue(60), vm.BatteryRowText);
+		Assert.Equal(Text.BatteryCharging(60), vm.BatteryRowTip);
+		Assert.Equal(Text.BatteryValue(60) + " · " + Text.Charging(), vm.Overview.BatteryText);
+
+		// Not charging and no level: still the dash.
+		fake.HasBattery = false;
+		fake.IsCharging = false;
+		fake.RaiseStateChanged();
+		Settle();
+		Assert.Equal("—", vm.BatteryRowText);
+		Assert.Equal(Text.BatteryUnknown(), vm.BatteryRowTip);
+	}
+
 	// A start under way: the card says it is connecting, and a second press (the bridge command, the header's action)
 	// neither stops nor starts again.
 	[AvaloniaFact]

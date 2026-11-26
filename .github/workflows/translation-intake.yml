@@ -1,16 +1,24 @@
 # Ways 2 and 3 of the translation submission flow: turns a translation issue into a pull request.
 #   Way 2: the "Translation" issue form (.github/ISSUE_TEMPLATE/translation.yml) with the file in its upload field.
 #   Way 3: "Send with GitHub" on ds5untethered.com/translate; the issue body (and, for big files, the next comments)
-#          carries the file as gzip+base64 parts behind the marker <!-- ds5-translate v1 -->.
-# The file is checked with the shared rules (tools/i18n/translation-check). On success the branch
-# translate/<code>-<login> is reset to the default branch plus one commit with only the language file (the volunteer
-# as co-author), the pull request for that branch is opened or updated, and the issue is commented on and closed.
-# On failure the problems are commented and the issue stays open. Nothing is ever merged automatically.
+#          carries the file as gzip+base64 parts behind the marker <!-- ds5-translate v1 -->. These issues are opened
+#          by the GitHub App bot ds5-untethered-translate[bot] (tools/i18n/translate-worker), with the volunteer's
+#          GitHub-verified identity in a "**Sender:**" line directly under the marker.
+# The volunteer is that verified sender for issues of our App's bot, and the issue author for every other issue (a
+# Sender line written by a user is ignored). The file is checked with the shared rules (tools/i18n/translation-check).
+# On success the branch translate/<volunteer's numeric user id>/<code> is reset to the default branch plus one commit
+# with only the language file (authored by the volunteer through their noreply address, committed by the bot; with a
+# hidden listing the bot is the author too), the pull request for that branch is opened or updated, and the issue is
+# commented on and closed. A volunteer may have 3 such pull requests open; a fourth language waits until one is
+# merged or closed.
+# On failure the problems are commented (at most 3 refusal comments per issue, then only the log) and the issue stays
+# open. Nothing is ever merged automatically.
 #
 # Security: issue text is untrusted. It is only read inside actions/github-script (never in a run: shell step), the
 # checks come from the default branch, attachments are downloaded only from https://github.com/user-attachments/
-# (1 MB cap), and the job has only the permissions it needs. Events from bots, edits and comments by anyone other than
-# the issue author, closed and locked issues are ignored.
+# (1 MB cap), and the job has only the permissions it needs. Events from bots other than our App's bot, edits and
+# comments by anyone other than the issue author, closed and locked issues are ignored; a comment without a well-formed
+# file part is ignored from the event payload, before any API call.
 # Needs the repository setting "Allow GitHub Actions to create and approve pull requests" for pulls.create.
 name: Translation intake
 
@@ -32,8 +40,8 @@ jobs:
       !github.event.issue.pull_request &&
       github.event.issue.state == 'open' &&
       !github.event.issue.locked &&
-      github.event.sender.type != 'Bot' &&
-      github.event.issue.user.type != 'Bot' &&
+      (github.event.sender.type != 'Bot' || github.event.sender.login == 'ds5-untethered-translate[bot]') &&
+      (github.event.issue.user.type != 'Bot' || github.event.issue.user.login == 'ds5-untethered-translate[bot]') &&
       github.event.sender.login == github.event.issue.user.login &&
       (github.event_name != 'issue_comment' || contains(github.event.comment.body, '```ds5-translate')) &&
       (contains(github.event.issue.body, '<!-- ds5-translate v1 -->') ||

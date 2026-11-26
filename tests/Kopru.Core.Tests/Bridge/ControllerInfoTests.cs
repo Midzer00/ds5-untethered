@@ -246,6 +246,28 @@ public class ControllerInfoTests
 		Assert.Empty(cable.HiddenTwins);
 	}
 
+	// Wired mode disconnects Bluetooth on purpose: a controller the bridge still holds over the cable is in use, not
+	// "only the cable left", so there is no stop and its twin stays hidden and wired. Once the cable is out too,
+	// nothing is held and nothing stops (the bridge waits for Bluetooth).
+	[Fact]
+	public void Cable_WiredMode_HeldOverTheCable_WithBluetoothGone_IsNotStopped()
+	{
+		TimeSpan delay = TimeSpan.FromSeconds(5);
+		CableSwitch cable = new(delay) { Mode = CableMode.Wired };
+		DateTimeOffset t = new(2026, 11, 24, 15, 0, 0, TimeSpan.Zero);
+		Assert.Equal(CableDecision.None, cable.Next(true, [Address], [Address], [Address], true, t));
+		Assert.Equal([Address], cable.WiredTwins);
+		Assert.Equal(CableDecision.None, cable.Next(true, [Address], [Address], [Address], false, t.AddSeconds(2)));
+		Assert.Equal(CableDecision.None, cable.Next(true, [Address], [Address], [Address], false, t.AddSeconds(30)));
+		Assert.False(cable.PausedForCable);
+		Assert.Equal([Address], cable.HiddenTwins);
+		Assert.Equal([Address], cable.WiredTwins);
+		Assert.Equal(CableDecision.None, cable.Next(true, [], [], [Address], false, t.AddSeconds(31)));
+		Assert.Equal(CableDecision.None, cable.Next(true, [], [], [Address], false, t.AddSeconds(60)));
+		Assert.False(cable.PausedForCable);
+		Assert.Empty(cable.HiddenTwins);
+	}
+
 	// While stopped: a one-tick Bluetooth appearance that goes away restarts the wait; Bluetooth back for the whole
 	// delay resumes it — the cable may still be in, the next tick wants the twin hidden again.
 	[Fact]

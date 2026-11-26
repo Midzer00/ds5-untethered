@@ -186,12 +186,19 @@ public class CustomTriggerAppTests
 		var main = new MainWindowViewModel(new FakeControllerService(animate: false), new AppEnvironment(new MemorySettingsStore(new AppSettings { GameListCheckedAt = DateTimeOffset.Now, Language = "en" })));
 		var page = new MainWindow { DataContext = main, Width = 1100, Height = 700 };
 		page.Show();
-		main.Navigate(main.OtherGames);
-		FitCheck.Settle(page);
-		OtherGamesView haptics = page.GetVisualDescendants().OfType<OtherGamesView>().Single();
-		Assert.Contains(haptics.GetVisualDescendants().OfType<Control>(), c => c.Name == "FallbackPicker" && c.IsEffectivelyVisible);
-		Assert.Contains(haptics.GetVisualDescendants().OfType<Control>(), c => c.Name == "FallbackStrengthSlider");
-		Assert.DoesNotContain(haptics.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Text.CustomTriggerSection());
-		page.Close();
+		try
+		{
+			main.Navigate(main.OtherGames);
+			main.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
+			FitCheck.Settle(page);
+			OtherGamesView haptics = page.GetVisualDescendants().OfType<OtherGamesView>().Single();
+			Assert.Contains(haptics.GetVisualDescendants().OfType<Control>(), c => c.Name == "FallbackPicker" && c.IsEffectivelyVisible);
+			Assert.Contains(haptics.GetVisualDescendants().OfType<Control>(), c => c.Name == "FallbackStrengthSlider");
+			Assert.DoesNotContain(haptics.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Text.CustomTriggerSection());
+		}
+		finally
+		{
+			page.Close();
+		}
 	}
 }

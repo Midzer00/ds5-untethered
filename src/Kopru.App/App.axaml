@@ -107,6 +107,7 @@
       <!-- Light accent tint for selected chips and rows (with an accent hairline) -->
       <SolidColorBrush x:Key="AccentTintBrush" Color="#263B82F6" />
       <SolidColorBrush x:Key="AccentTintHoverBrush" Color="#333B82F6" />
+      <SolidColorBrush x:Key="AccentTintEdgeBrush" Color="#733B82F6" />
       <SolidColorBrush x:Key="IndicatorOffBrush" Color="#5F646D" />
       <SolidColorBrush x:Key="IndicatorWaitBrush" Color="#C9A24A" />
       <SolidColorBrush x:Key="IndicatorOnBrush" Color="#4FA877" />
@@ -420,13 +421,12 @@
         </Style>
         <Style Selector="^:checked:disabled">
           <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
-          <Setter Property="BorderBrush" Value="#733B82F6" />
+          <Setter Property="BorderBrush" Value="{StaticResource AccentTintEdgeBrush}" />
         </Style>
       </ControlTheme>
 
       <!-- Quick toggle tile: the whole tile switches a setting. Off = quiet flat fill, muted icon; on = accent tint with an
            accent hairline and the icon in the accent. Content is the label and its state word; Tag is the icon geometry -->
-      <SolidColorBrush x:Key="AccentTintEdgeBrush" Color="#733B82F6" />
       <ControlTheme x:Key="QuickTile" TargetType="ToggleButton">
         <Setter Property="Background" Value="{StaticResource QuietFillPressedBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
@@ -466,12 +466,11 @@
         <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.5" /></Style>
       </ControlTheme>
 
-      <!-- Segmented choice (a few steps side by side, e.g. light / normal / strong): a ListBox with this theme and string
-           items; one flat track without an outline, equal steps, the selected step a raised neutral fill with full-strength
-           text (still readable when its row is dimmed). SelectedIndex -1 selects none -->
+      <!-- Segmented choice: the app-wide standard for picking one of a few options (e.g. light / normal / strong, left /
+           right stick). A ListBox with this theme, string items and a SelectedIndex binding; one flat track without an
+           outline, equal steps, the selected step the accent tint with an accent hairline (the same selected look as chips,
+           tiles and rows) and full-strength text (still readable when its row is dimmed). SelectedIndex -1 selects none -->
       <SolidColorBrush x:Key="SegmentTrackBrush" Color="#0FFFFFFF" />
-      <SolidColorBrush x:Key="SegmentSelectedBrush" Color="#3A3F47" />
-      <SolidColorBrush x:Key="SegmentSelectedHoverBrush" Color="#434852" />
       <ControlTheme x:Key="SegmentItem" TargetType="ListBoxItem">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
@@ -500,11 +499,12 @@
           <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
         <Style Selector="^:selected">
-          <Setter Property="Background" Value="{StaticResource SegmentSelectedBrush}" />
+          <Setter Property="Background" Value="{StaticResource AccentTintBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource AccentTintEdgeBrush}" />
           <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
           <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-        <Style Selector="^:selected:pointerover"><Setter Property="Background" Value="{StaticResource SegmentSelectedHoverBrush}" /></Style>
+        <Style Selector="^:selected:pointerover"><Setter Property="Background" Value="{StaticResource AccentTintHoverBrush}" /></Style>
         <Style Selector="^:focus-visible"><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Style>
       </ControlTheme>
       <ControlTheme x:Key="Segmented" TargetType="ListBox">
@@ -881,5 +881,26 @@
     <Style Selector="ToolTip /template/ ContentPresenter">
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
+    <!-- ===== Compact setting row, 44 px (settingRowCompact44) =====================================================
+         A setting row for a dense tab that must fit one window (Controller > Gyro & Sticks): a 32 px control with 6 px above
+         and below, label left, control right. Kept as its own block (the other setting rows are above). -->
+    <Style Selector="Grid.settingRowCompact44">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="ColumnSpacing" Value="{StaticResource GapLarge}" />
+    </Style>
+    <Style Selector="Grid.settingRowCompact44 > :is(Control)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid.settingRowCompact44 > StackPanel.text">
+      <Setter Property="Margin" Value="0,6" />
+      <Setter Property="Spacing" Value="2" />
+    </Style>
+    <Style Selector="Grid.settingRowCompact44 > ToggleSwitch">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Grid.settingRowCompact44 > ToggleSwitch /template/ ContentPresenter#PART_OnContentPresenter, Grid.settingRowCompact44 > ToggleSwitch /template/ ContentPresenter#PART_OffContentPresenter">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <!-- ===== end of settingRowCompact44 ========================================================================== -->
   </Application.Styles>
 </Application>

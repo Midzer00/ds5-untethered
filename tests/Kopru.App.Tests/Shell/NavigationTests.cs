@@ -81,8 +81,8 @@ public class NavigationTests
 		Assert.True(vm.Tester.IsVisible);
 		Assert.False(vm.Sticks.IsPreviewRunning);
 
-		// Remap tab: the tester lets go of the controller, the gyro preview polls the virtual controller.
-		vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
+		// Gyro & Sticks tab: the tester lets go of the controller, the gyro preview polls the virtual controller.
+		vm.Controller.SelectedTab = ControllerPageViewModel.GyroTab;
 		Assert.Null(service.LiveHandler);
 		Assert.False(vm.Tester.IsVisible);
 		Assert.True(vm.Sticks.IsPreviewRunning);
@@ -94,11 +94,11 @@ public class NavigationTests
 		Assert.Contains(page, host.Children);
 		Assert.Null(service.LiveHandler);
 		Assert.False(vm.Tester.IsVisible);
-		vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
+		vm.Controller.SelectedTab = ControllerPageViewModel.GyroTab;
 		Assert.False(vm.Sticks.IsPreviewRunning);
 		Go(vm, window, vm.NavItems.Single(n => n.Page == vm.Controller));
 		Assert.Same(page, Shown(host));
-		Assert.Equal(ControllerPageViewModel.RemapTab, vm.Controller.SelectedTab);
+		Assert.Equal(ControllerPageViewModel.GyroTab, vm.Controller.SelectedTab);
 		Assert.True(vm.Sticks.IsPreviewRunning);
 		Assert.Null(service.LiveHandler);
 

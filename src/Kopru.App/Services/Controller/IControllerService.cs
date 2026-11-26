@@ -220,6 +220,21 @@ public interface IControllerService
 	// The bridge talks to the selected controller over its USB cable (experimental wired mode).
 	bool IsWired => false;
 
+	// How a controller's Bluetooth address (0x09) maps to its remembered id (SettingsState passes the registry's
+	// lookup): wired mode takes over a controller on the cable alone only under the id it has over Bluetooth.
+	void UseKnownIdentities(Func<ulong, string?> idForAddress)
+	{
+	}
+
+	// The Bluetooth address Windows recorded for a remembered controller id (its paired Bluetooth node, also while the
+	// controller is off or on the cable alone), or null. Fills in remembered controllers saved without an address.
+	ulong? BluetoothAddressOf(string id) => null;
+
+	// Wired mode and the selected controller is on the cable alone, under a remembered identity: held over USB by the
+	// bridge, or taken over as soon as the bridge starts. It counts as connected (the automatic start and the Start
+	// button work with it).
+	bool IsCableOnly => false;
+
 	// Tears the bridge's connection down, opens the controller again and restarts the bridge if it ran.
 	Task ReconnectAsync() => Task.CompletedTask;
 

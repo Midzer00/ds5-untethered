@@ -10,7 +10,7 @@ body:
         Thank you for translating DS5 Untethered!
 
         Attach the `<code>.json` file you downloaded from https://ds5untethered.com/translate/ (for example `de.json`),
-        then submit. A check runs automatically: if the file passes, a pull request is opened with you as co-author and
+        then submit. A check runs automatically: if the file passes, a pull request is opened with you as commit author and
         this issue is closed; if not, the problems are listed here and you can edit this issue to attach a fixed file.
   - type: input
     id: language

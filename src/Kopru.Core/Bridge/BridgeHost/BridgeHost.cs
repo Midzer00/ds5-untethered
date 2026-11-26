@@ -392,6 +392,10 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 					continue;
 				}
 				ReadDetailsFrom(link);
+				if (connection.Session.IsUsbOnly)
+				{
+					StartUsbOnly(connection, link.Device);
+				}
 				ApplyLightTo(connection.Session);
 				ApplySpeakerTo(connection);
 				ApplyMicTo(connection);
@@ -441,6 +445,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 				{
 					while (!token.IsCancellationRequested && !Monitor(connection))
 					{
+						RereadMissingDetails(connection, link);
 						CheckXboxSeriesStart(connection);
 						await SwapPadIfNeededAsync(connection, token).ConfigureAwait(false);
 						await Task.Delay(MonitorInterval, token).ConfigureAwait(false);
@@ -529,7 +534,7 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 			return true;
 		}
 		double seconds = (now - c.RateSince).TotalSeconds;
-		BatteryStatus? reading = inputs > 0 ? BatteryStatus.From(c.Session.LastInput) : null;
+		BatteryStatus? reading = inputs > 0 ? ReadBattery(c) : null;
 		bool lowNow = false;
 		lock (gate)
 		{
@@ -579,6 +584,30 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		StatusUpdated?.Invoke(Status);
 		return false;
 	}
+
+	// The battery of the latest input. Over USB the raw status byte is logged on the first reading and on every change
+	// (at most MaxUsbStatusLogs per connection), so a hardware run shows what the controller reports on the cable.
+	private static BatteryStatus ReadBattery(Connection c)
+	{
+		Protocol.InputState input = c.Session.LastInput;
+		bool overUsb = c.Session.LastInputOverUsb;
+		BatteryStatus b = BatteryStatus.From(input, overUsb);
+		if (overUsb)
+		{
+			byte status = BatteryStatus.StatusByte(input);
+			if (status != c.LastUsbStatus && c.UsbStatusLogs < MaxUsbStatusLogs)
+			{
+				c.LastUsbStatus = status;
+				c.UsbStatusLogs++;
+				string level = b.LevelKnown ? $"{b.Percent} %" : "not reported, shown as charging";
+				Diagnostics.AppLog.Write(string.Create(System.Globalization.CultureInfo.InvariantCulture,
+					$"wired: battery status over USB 0x{status:X2} ({b.State}, level {level})"));
+			}
+		}
+		return b;
+	}
+
+	private const int MaxUsbStatusLogs = 32;
 
 	private void OnActivity(Connection c)
 	{
@@ -681,6 +710,11 @@ public sealed partial class BridgeHost : IAsyncDisposable, IGameBridge
 		public long MicCheckMic, MicCheckInputs, MicCheckRejected;
 
 		public long LastInputCount;
+
+		// The last USB battery status byte logged (-1: none yet) and how many were logged (BridgeHost.ReadBattery).
+		public int LastUsbStatus = -1;
+
+		public int UsbStatusLogs;
 
 		public DateTimeOffset LastInputAt;
 

@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const actions = require('../actions');
+const intakeLib = require('../intake');
 const { EN_TEXT, readStrings, json, pageIssue, formIssue, fakeFetch } = require('./helpers');
 
 const DIR = 'src/Kopru.Core/Localization/strings';
@@ -36,7 +37,11 @@ function fakeGithub(state) {
     rest: {
       issues: {
         get: async (p) => { rec('issues.get', p); if (state.issueStatus) throw httpError(state.issueStatus); return { data: state.issue }; },
-        listComments: async (p) => { rec('issues.listComments', p); return { data: state.comments || [] }; },
+        listComments: async (p) => {
+          rec('issues.listComments', p);
+          const per = p.per_page || 30, page = p.page || 1;
+          return { data: (state.comments || []).slice((page - 1) * per, page * per) };
+        },
         createComment: async (p) => { rec('issues.createComment', p); if (state.commentStatus) throw httpError(state.commentStatus); return { data: {} }; },
         update: async (p) => { rec('issues.update', p); if (state.closeStatus && state.closeStatus.length) throw httpError(state.closeStatus.shift()); return { data: {} }; }
       },
@@ -68,6 +73,11 @@ function fakeGithub(state) {
   return gh;
 }
 
+// An open pull request of the intake bot on a branch of this repository (or of a fork).
+function botPull(number, ref, repo) {
+  return { number, head: { ref, repo: { full_name: repo || 'owner/repo' } }, base: { ref: 'main' } };
+}
+
 function issueState(p, extra) {
   return Object.assign({
     issue: Object.assign({ number: 12, title: p.title, body: p.body, user: USER, state: 'open', locked: false, repository_url: 'https://api.github.com/repos/owner/repo' }, extra || {}),
@@ -85,7 +95,7 @@ function ctx(eventName, extra) {
 
 /* ---------- intake ---------- */
 
-test('intake: a page issue opens a PR with the co-authored commit, comments and closes', async () => {
+test('intake: a page issue opens a PR with the volunteer as commit author, comments and closes', async () => {
   const state = issueState(pageIssue('de', GOOD));
   const github = fakeGithub(state), core = fakeCore();
   const out = await actions.intake({ github, context: ctx('issues'), core });
@@ -96,25 +106,28 @@ test('intake: a page issue opens a PR with the co-authored commit, comments and 
   assert.equal(tree.tree[0].content, GOOD);
   const commit = github.called('git.createCommit')[0].p;
   assert.deepEqual(commit.parents, ['main-sha']);
-  assert.match(commit.message, /^Translation: de \(2 strings\)\n\nCo-authored-by: volunteer-1 <1234567\+volunteer-1@users\.noreply\.github\.com>\n$/);
-  assert.equal(github.called('git.createRef')[0].p.ref, 'refs/heads/translate/de-volunteer-1');
+  assert.equal(commit.message, 'Translation: de (2 strings)\n');
+  assert.deepEqual(commit.author, { name: 'volunteer-1', email: '1234567+volunteer-1@users.noreply.github.com' });
+  assert.deepEqual(commit.committer, { name: 'github-actions[bot]', email: '41898282+github-actions[bot]@users.noreply.github.com' });
+  assert.equal(github.called('git.createRef')[0].p.ref, 'refs/heads/translate/1234567/de');
   const pr = github.called('pulls.create')[0].p;
   assert.equal(pr.title, 'Translation: de by @volunteer-1');
-  assert.equal(pr.head, 'translate/de-volunteer-1');
+  assert.equal(pr.head, 'translate/1234567/de');
   assert.equal(pr.base, 'main');
+  assert.match(pr.body, /merge commit or Rebase and merge \(not Squash\)/);
   assert.match(github.called('issues.createComment')[0].p.body, /pull\/7/);
   assert.deepEqual(github.called('issues.update')[0].p.state, 'closed');
 });
 
 test('intake: a later send resets the branch and updates the open PR', async () => {
-  const state = Object.assign(issueState(pageIssue('de', GOOD)), { branchExists: true, openPulls: [{ number: 5 }] });
+  const state = Object.assign(issueState(pageIssue('de', GOOD)), { branchExists: true, openPulls: [botPull(5, 'translate/1234567/de')] });
   const github = fakeGithub(state);
   assert.equal(await actions.intake({ github, context: ctx('issues'), core: fakeCore() }), 'updated');
   const upd = github.called('git.updateRef')[0].p;
-  assert.deepEqual([upd.ref, upd.sha, upd.force], ['heads/translate/de-volunteer-1', 'new-commit', true]);
+  assert.deepEqual([upd.ref, upd.sha, upd.force], ['heads/translate/1234567/de', 'new-commit', true]);
   assert.equal(github.called('pulls.create').length, 0);
   assert.equal(github.called('pulls.update')[0].p.pull_number, 5);
-  assert.equal(github.called('pulls.list')[0].p.head, 'owner:translate/de-volunteer-1');
+  assert.equal(github.called('pulls.list')[0].p.state, 'open');
 });
 
 test('intake: a failing file gets one comment and stays open', async () => {
@@ -160,21 +173,139 @@ test('intake: a form issue downloads the attachment', async () => {
   assert.equal(fetchImpl.calls.length, 1);
 });
 
-test('intake: opting out (page line or form checkbox) puts the listing trailer on the bot commit', async () => {
+test('intake: opting out (page line or form checkbox) leaves the bot as author with the listing trailer', async () => {
   const page = fakeGithub(issueState(pageIssue('de', GOOD, { listing: 'hidden' })));
   assert.equal(await actions.intake({ github: page, context: ctx('issues'), core: fakeCore() }), 'created');
-  assert.match(page.called('git.createCommit')[0].p.message,
-    /\nCo-authored-by: volunteer-1 <1234567\+volunteer-1@users\.noreply\.github\.com>\nTranslator-Listing: hidden\n$/);
+  const hiddenCommit = page.called('git.createCommit')[0].p;
+  assert.equal(hiddenCommit.message, 'Translation: de (2 strings)\n\nTranslator-Listing: hidden\n');
+  assert.equal(hiddenCommit.author, undefined, 'the API makes the bot the author');
+  assert.equal(hiddenCommit.committer, undefined);
+  assert.equal(page.called('pulls.create')[0].p.title, 'Translation: de');
 
   const url = 'https://github.com/user-attachments/files/56/de.json';
   const form = fakeGithub(issueState(formIssue('de', '[de.json](' + url + ')', null, true)));
   const fetchImpl = fakeFetch({ [url]: { body: GOOD } });
   assert.equal(await actions.intake({ github: form, context: ctx('issues'), core: fakeCore(), fetchImpl }), 'created');
   assert.match(form.called('git.createCommit')[0].p.message, /\nTranslator-Listing: hidden\n$/);
+  assert.equal(form.called('git.createCommit')[0].p.author, undefined);
 
   const shown = fakeGithub(issueState(formIssue('de', '[de.json](' + url + ')', null, false)));
   await actions.intake({ github: shown, context: ctx('issues'), core: fakeCore(), fetchImpl: fakeFetch({ [url]: { body: GOOD } }) });
   assert.doesNotMatch(shown.called('git.createCommit')[0].p.message, /Translator-Listing/);
+  assert.equal(shown.called('git.createCommit')[0].p.author.email, '1234567+volunteer-1@users.noreply.github.com');
+});
+
+/* ---------- issues opened by our App's bot ("Send with GitHub", verified sender) ---------- */
+
+const APP_BOT = { login: 'ds5-untethered-translate[bot]', id: 900001, type: 'Bot' };
+const SENDER = '**Sender:** @anna-dev (id 4242, verified)';
+function appIssue(p, line) {
+  return Object.assign({}, p, { body: p.body.replace(intakeLib.MARKER + '\n', intakeLib.MARKER + '\n' + (line === undefined ? SENDER : line) + '\n') });
+}
+const appState = (p, extra) => issueState(p, Object.assign({ user: APP_BOT, performed_via_github_app: null }, extra || {}));
+const appCtx = (eventName, extra) => ctx(eventName, Object.assign({ sender: APP_BOT }, extra || {}));
+
+test('intake: our bot\'s issue is accepted; the verified sender drives the branch, the author and the PR', async () => {
+  const github = fakeGithub(appState(appIssue(pageIssue('de', GOOD))));
+  assert.equal(await actions.intake({ github, context: appCtx('issues'), core: fakeCore() }), 'created');
+  const commit = github.called('git.createCommit')[0].p;
+  assert.equal(commit.message, 'Translation: de (2 strings)\n');
+  assert.deepEqual(commit.author, { name: 'anna-dev', email: '4242+anna-dev@users.noreply.github.com' });
+  assert.equal(commit.committer.name, 'github-actions[bot]');
+  assert.equal(github.called('git.createRef')[0].p.ref, 'refs/heads/translate/4242/de');
+  const pr = github.called('pulls.create')[0].p;
+  assert.equal(pr.title, 'Translation: de by @anna-dev');
+  assert.match(pr.body, /sent by @anna-dev in #12/);
+  assert.doesNotMatch(JSON.stringify(github.calls), /ds5-untethered-translate\[bot\]@|900001/);
+  assert.equal(github.called('issues.update')[0].p.state, 'closed');
+});
+
+test('intake: our bot\'s further parts arrive as its own comments and complete the send', async () => {
+  const p = appIssue(pageIssue('de', GOOD + ' '.repeat(3000), { maxPartChars: 100 }));
+  const state = appState(p);
+  state.comments = p.comments.map((body, i) => ({ id: i, body, user: APP_BOT }));
+  const last = state.comments[state.comments.length - 1];
+  const github = fakeGithub(state);
+  const out = await actions.intake({ github, context: appCtx('issue_comment', { action: 'created', comment: last, issue: { number: 12, user: APP_BOT } }), core: fakeCore() });
+  assert.equal(out, 'created');
+  assert.equal(github.called('git.createCommit')[0].p.author.name, 'anna-dev');
+  // A part posted by someone else on our bot's issue is ignored from the payload.
+  const other = fakeGithub(state);
+  const outOther = await actions.intake({ github: other, context: ctx('issue_comment', { action: 'created', comment: Object.assign({}, last, { user: USER }), issue: { number: 12, user: APP_BOT } }), core: fakeCore() });
+  assert.equal(outOther, 'ignored');
+  assert.equal(other.calls.length, 0);
+});
+
+test('intake: our bot\'s hidden issue gets a bot-authored commit that names nobody', async () => {
+  const github = fakeGithub(appState(appIssue(pageIssue('de', GOOD, { listing: 'hidden' }))));
+  assert.equal(await actions.intake({ github, context: appCtx('issues'), core: fakeCore() }), 'created');
+  const commit = github.called('git.createCommit')[0].p;
+  assert.equal(commit.message, 'Translation: de (2 strings)\n\nTranslator-Listing: hidden\n');
+  assert.equal(commit.author, undefined);
+  assert.equal(commit.committer, undefined);
+  assert.doesNotMatch(commit.message, /anna-dev|4242/);
+  assert.equal(github.called('pulls.create')[0].p.title, 'Translation: de');
+  assert.equal(github.called('git.createRef')[0].p.ref, 'refs/heads/translate/4242/de');
+});
+
+test('intake: the open pull request limit counts the verified sender\'s branches', async () => {
+  const mine = [botPull(4, 'translate/4242/fr'), botPull(5, 'translate/4242/ja'), botPull(6, 'translate/4242/pl')];
+  const state = Object.assign(appState(appIssue(pageIssue('de', GOOD))), { openPulls: mine });
+  const github = fakeGithub(state);
+  assert.equal(await actions.intake({ github, context: appCtx('issues'), core: fakeCore() }), 'limited');
+  assert.match(github.called('issues.createComment')[0].p.body, /\(#4, #5, #6\)/);
+  // Three open pull requests of another volunteer (or of the bot's own id) do not count.
+  const others = Object.assign(appState(appIssue(pageIssue('de', GOOD))), {
+    openPulls: [botPull(4, 'translate/1234567/fr'), botPull(5, 'translate/1234567/ja'), botPull(6, 'translate/900001/pl')]
+  });
+  assert.equal(await actions.intake({ github: fakeGithub(others), context: appCtx('issues'), core: fakeCore() }), 'created');
+});
+
+test('intake: a Sender line in a user\'s issue is ignored; the issue author is the volunteer', async () => {
+  for (const line of [SENDER, '**Sender:** @Midzer00 (id 1, verified)']) {
+    const github = fakeGithub(issueState(appIssue(pageIssue('de', GOOD), line)));
+    assert.equal(await actions.intake({ github, context: ctx('issues'), core: fakeCore() }), 'created', line);
+    const commit = github.called('git.createCommit')[0].p;
+    assert.deepEqual(commit.author, { name: 'volunteer-1', email: '1234567+volunteer-1@users.noreply.github.com' });
+    assert.equal(github.called('git.createRef')[0].p.ref, 'refs/heads/translate/1234567/de');
+    assert.equal(github.called('pulls.create')[0].p.title, 'Translation: de by @volunteer-1');
+    assert.doesNotMatch(JSON.stringify(github.calls), /anna-dev|Midzer00 </);
+  }
+});
+
+test('intake: another bot\'s issue is ignored, even with a well-formed Sender line', async () => {
+  const other = { login: 'helper[bot]', id: 77, type: 'Bot' };
+  const p = appIssue(pageIssue('de', GOOD));
+  // From the payload (the sender is another bot) ...
+  let github = fakeGithub(appState(p, { user: other }));
+  assert.equal(await actions.intake({ github, context: ctx('issues', { sender: other }), core: fakeCore() }), 'ignored');
+  assert.equal(github.calls.length, 0);
+  // ... and from the fetched issue (another App's bot, even if the event looks like ours).
+  github = fakeGithub(appState(p, { user: other, performed_via_github_app: { slug: 'helper' } }));
+  assert.equal(await actions.intake({ github, context: appCtx('issues'), core: fakeCore() }), 'ignored');
+  assert.equal(github.called('git.createCommit').length, 0);
+  assert.equal(github.called('issues.createComment').length, 0);
+  // A user account that merely names itself like our bot is not our bot.
+  github = fakeGithub(appState(p, { user: { login: APP_BOT.login, id: 3, type: 'User' } }));
+  assert.equal(await actions.intake({ github, context: appCtx('issues'), core: fakeCore() }), 'ignored');
+});
+
+test('intake: our bot\'s issue without a valid Sender line under the marker is ignored', async () => {
+  const bad = [
+    pageIssue('de', GOOD),
+    appIssue(pageIssue('de', GOOD), '**Sender:** @anna-dev (id 4242)'),
+    (() => { const p = pageIssue('de', GOOD); return Object.assign({}, p, { body: p.body.replace('**Strings:**', SENDER + '\n**Strings:**') }); })()
+  ];
+  for (const p of bad) {
+    const github = fakeGithub(appState(p));
+    assert.equal(await actions.intake({ github, context: appCtx('issues'), core: fakeCore() }), 'ignored');
+    assert.equal(github.called('git.createCommit').length, 0);
+    assert.equal(github.called('issues.createComment').length, 0);
+  }
+  // A form-style issue from our bot is not something the Worker makes.
+  const url = 'https://github.com/user-attachments/files/57/de.json';
+  const form = fakeGithub(appState(formIssue('de', '[de.json](' + url + ')')));
+  assert.equal(await actions.intake({ github: form, context: appCtx('issues'), core: fakeCore(), fetchImpl: fakeFetch({ [url]: { body: GOOD } }) }), 'ignored');
 });
 
 test('intake: an identical file closes without a PR', async () => {
@@ -240,6 +371,100 @@ test('intake: unmarked issues and pull requests are ignored', async () => {
   const prCtx = ctx('issue_comment', { issue: { number: 12, pull_request: {} } });
   assert.equal(await actions.intake({ github, context: prCtx, core: fakeCore() }), 'ignored');
 });
+
+/* ---------- branches and the open pull request limit ---------- */
+
+test('intake: an old-format branch or a fork with the same branch name is never updated', async () => {
+  const state = Object.assign(issueState(pageIssue('de', GOOD)), {
+    openPulls: [botPull(3, 'translate/de-volunteer-1'), botPull(4, 'translate/1234567/de', 'volunteer-1/repo')]
+  });
+  const github = fakeGithub(state);
+  assert.equal(await actions.intake({ github, context: ctx('issues'), core: fakeCore() }), 'created');
+  assert.equal(github.called('pulls.update').length, 0);
+  assert.equal(github.called('pulls.create')[0].p.head, 'translate/1234567/de');
+});
+
+test('intake: a fourth language is refused while three of the volunteer\'s pull requests are open', async () => {
+  const mine = [botPull(4, 'translate/1234567/fr'), botPull(5, 'translate/1234567/ja'), botPull(6, 'translate/1234567/pl')];
+  const others = [botPull(7, 'translate/7654321/de'), botPull(8, 'translate/de-volunteer-1')];
+  const state = Object.assign(issueState(pageIssue('de', GOOD)), { openPulls: mine.concat(others) });
+  const github = fakeGithub(state), core = fakeCore();
+  assert.equal(await actions.intake({ github, context: ctx('issues'), core }), 'limited');
+  const body = github.called('issues.createComment')[0].p.body;
+  assert.match(body, /already have 3 translation pull requests waiting for review \(#4, #5, #6\)/);
+  for (const name of ['git.createTree', 'git.createCommit', 'git.updateRef', 'git.createRef', 'pulls.create', 'pulls.update', 'issues.update']) {
+    assert.equal(github.called(name).length, 0, name);
+  }
+  assert.equal(core.log.failed.length, 0);
+
+  // Two open: the third language is fine. An update of one of the three open languages is always fine.
+  const two = fakeGithub(Object.assign(issueState(pageIssue('de', GOOD)), { openPulls: mine.slice(0, 2) }));
+  assert.equal(await actions.intake({ github: two, context: ctx('issues'), core: fakeCore() }), 'created');
+  const update = fakeGithub(Object.assign(issueState(pageIssue('fr', GOOD.replace('Deutsch', 'Français'))), { branchExists: true, openPulls: mine }));
+  assert.equal(await actions.intake({ github: update, context: ctx('issues'), core: fakeCore() }), 'updated');
+  assert.equal(update.called('pulls.update')[0].p.pull_number, 4);
+});
+
+/* ---------- rate limit ---------- */
+
+test('intake: comment events without a well-formed further part cost no API call', async () => {
+  const p = pageIssue('de', GOOD + ' '.repeat(3000), { maxPartChars: 40 });
+  const sha = p.sha256;
+  const block = (attrs) => '```ds5-translate ' + attrs + '\nQUJD\n```';
+  const bodies = ['thanks', '```ds5-translate', block('part=2/0 encoding=gzip+base64 sha256=' + sha),
+    block('part=2/99 encoding=gzip+base64 sha256=' + sha), block('part=1/3 encoding=gzip+base64 sha256=' + sha),
+    block('part=2/3 encoding=gzip+base64 sha256=nope'), block('part=4/3 encoding=gzip+base64 sha256=' + sha)];
+  for (const body of bodies) {
+    const github = fakeGithub(issueState(p));
+    const out = await actions.intake({ github, context: ctx('issue_comment', { action: 'created', comment: { id: 1, body, user: USER } }), core: fakeCore() });
+    assert.equal(out, 'ignored', body);
+    assert.equal(github.calls.length, 0, body);
+  }
+  // A comment by someone else is dropped from the payload too, even with a good part.
+  const other = { login: 'someone-else', type: 'User' };
+  const github = fakeGithub(issueState(p));
+  const out = await actions.intake({ github, context: ctx('issue_comment', { sender: other, issue: { number: 12, user: USER }, comment: { id: 1, body: p.comments[0], user: other } }), core: fakeCore() });
+  assert.equal(out, 'ignored');
+  assert.equal(github.calls.length, 0);
+  // An issue event whose payload is not a translation issue is dropped before the API too.
+  const plain = fakeGithub(issueState(p));
+  assert.equal(await actions.intake({ github: plain, context: ctx('issues', { issue: { number: 12, title: 'Bug', body: 'it crashes' } }), core: fakeCore() }), 'ignored');
+  assert.equal(plain.calls.length, 0);
+});
+
+test('intake: at most 3 pages of comments are read', async () => {
+  const p = pageIssue('de', GOOD);
+  const state = issueState(p);
+  state.comments = Array.from({ length: 1000 }, (x, i) => ({ id: i, body: 'chatter ' + i, user: { login: 'someone-else', type: 'User' } }));
+  const github = fakeGithub(state);
+  assert.equal(await actions.intake({ github, context: ctx('issues'), core: fakeCore() }), 'created');
+  assert.deepEqual(github.called('issues.listComments').map((c) => c.p.page), [1, 2, 3]);
+});
+
+test('intake: after 3 refusal comments on an issue the run only logs', async () => {
+  const bad = pageIssue('de', json({ 'About.Version': 'Version' }));
+  const bot = { login: 'github-actions[bot]', type: 'Bot' };
+  const refusal = (i) => ({ id: 100 + i, body: failureBody(), user: bot });
+  for (const [prior, comments] of [[2, true], [3, false]]) {
+    const state = issueState(bad);
+    state.comments = Array.from({ length: prior }, (x, i) => refusal(i)).concat([{ id: 50, body: 'Thank you! ...', user: bot }]);
+    const github = fakeGithub(state), core = fakeCore();
+    assert.equal(await actions.intake({ github, context: ctx('issues', { action: 'edited' }), core }), 'failed');
+    assert.equal(github.called('issues.createComment').length, comments ? 1 : 0, 'prior ' + prior);
+    if (!comments) assert.match(core.log.warning.map((w) => w.m).join('\n'), /already has 3 refusal comments; not commenting again/);
+  }
+  // The open pull request limit counts as a refusal too.
+  const mine = [botPull(4, 'translate/1234567/fr'), botPull(5, 'translate/1234567/ja'), botPull(6, 'translate/1234567/pl')];
+  const state = Object.assign(issueState(pageIssue('de', GOOD)), { openPulls: mine });
+  state.comments = [refusal(1), refusal(2), refusal(3)];
+  const github = fakeGithub(state);
+  assert.equal(await actions.intake({ github, context: ctx('issues'), core: fakeCore() }), 'limited');
+  assert.equal(github.called('issues.createComment').length, 0);
+});
+
+function failureBody() {
+  return intakeLib.failureComment([{ level: 'error', rule: 'icu.missing', message: 'm' }]);
+}
 
 /* ---------- validate ---------- */
 

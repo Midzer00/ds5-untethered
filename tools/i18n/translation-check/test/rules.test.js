@@ -77,6 +77,19 @@ test('codes: en, tr (any region), qps, qtg and junk are rejected', () => {
   }
 });
 
+test('codes: only codes with an English display name for every subtag are accepted', () => {
+  // The canonical codes in use today keep working.
+  for (const c of ['zh-Hans', 'pt-BR', 'es-419', 'sr-Latn', 'de', 'ja', 'uk', 'fil', 'zh-Hant', 'es-ES']) {
+    assert.deepEqual(rules.canonicalCode(c), { ok: true, code: c }, c);
+  }
+  // Well-formed but unknown: language, script or region, and the codes that name no language.
+  for (const c of ['xx', 'abc', 'qaa', 'xx-Latn', 'de-XX', 'de-Xxxx', 'de-ZZ', 'und', 'mul', 'zxx', 'mis', 'de-999']) {
+    assert.equal(rules.canonicalCode(c).reason, 'unknown', c);
+  }
+  const r = rules.checkFile({ code: 'xx', text: '{}', en: MINI_EN });
+  assert.deepEqual(rulesOf(r.errors), ['code.unknown']);
+});
+
 test('codes: checkFile reports each code rule', () => {
   assert.deepEqual(rulesOf(check({}, { code: 'en' }).errors), ['code.source']);
   assert.deepEqual(rulesOf(check({}, { code: 'tr' }).errors), ['code.maintained']);
@@ -278,6 +291,37 @@ test('topLevelKeys finds keys with lines and skips nested ones', () => {
   ]);
 });
 
+/* ---------- nesting depth ---------- */
+
+// {n, plural, other {{n, plural, other {... x ...}}}} with the given number of plural blocks.
+function deepPlural(levels) {
+  return '{n, plural, other {'.repeat(levels) + 'x' + '}}'.repeat(levels);
+}
+
+test('ICU: nesting is capped at MAX_DEPTH plural blocks and deeper input is a syntax error, not a crash', () => {
+  assert.equal(rules.MAX_DEPTH, 16);
+  assert.equal(rules.parse(deepPlural(16)).ok, true);
+  const p = rules.parse(deepPlural(17));
+  assert.equal(p.ok, false);
+  assert.equal(p.code, 'tooDeep');
+  // About 20k levels used to throw an uncaught RangeError (stack overflow).
+  assert.equal(rules.parse(deepPlural(20000)).code, 'tooDeep');
+  // Siblings do not add up: depth is nesting, not count.
+  assert.equal(rules.parse('{n, plural, other {x}} '.repeat(100)).ok, true);
+});
+
+test('ICU: a deeply nested value is reported as a normal validation error', () => {
+  const en = { 'A.Count': '{count, plural, one {# game} other {# games}}' };
+  const deep = '{count, plural, one {# Spiel} other {' + deepPlural(20000) + '}}';
+  const r = rules.checkFile({ code: 'de', text: json({ 'A.Count': deep }), en });
+  assert.equal(r.ok, false);
+  assert.deepEqual(rulesOf(r.errors), ['icu.syntax']);
+  assert.match(r.errors[0].message, /nested more than 16 levels/);
+  const src = rules.checkSource(json({ 'A.Deep': deepPlural(20000) }));
+  assert.equal(src.ok, false);
+  assert.equal(src.errors[0].rule, 'icu.syntax');
+});
+
 /* ---------- parity with the translation page ---------- */
 
 const CORE_JS = process.env.TRANSLATE_CORE_JS || path.resolve(REPO_ROOT, '..', 'site', 'web', 'assets', 'translate', 'core.js');
@@ -294,12 +338,13 @@ test('parity with the site page core.js (skipped when the site folder is not nex
     ['Hello {name}', 'Hallo {name'],
     ['Save', 'Speichern und wirklich alles schliessen']
   );
+  samples.push(['{n, plural, other {x}}', deepPlural(16)], ['{n, plural, other {x}}', deepPlural(17)], ['{n, plural, other {x}}', deepPlural(20000)]);
   for (const code of ['de', 'ru', 'ja', 'tr', 'fr', 'pl', 'zh-Hans', 'xx']) {
     for (const [en, t] of samples) {
       assert.deepEqual(rules.validate(en, t, code), core.validate(en, t, code), code + ': ' + t);
     }
   }
-  for (const c of ['de', 'pt_br', 'zh-hans', 'en', 'tr', 'tr-CY', 'x', 'de-DE', 'es-419']) {
+  for (const c of ['de', 'pt_br', 'zh-hans', 'en', 'tr', 'tr-CY', 'x', 'de-DE', 'es-419', 'sr-Latn', 'xx', 'de-XX', 'und', 'de-Xxxx']) {
     assert.deepEqual(rules.canonicalCode(c), core.canonicalCode(c), c);
   }
   // Known, intended difference: the contract also rejects qps and qtg as "reserved".

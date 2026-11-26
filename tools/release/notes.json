@@ -1,4 +1,4 @@
 {
-  "tr": "Kablo ayarı artık \"Kumanda\" sayfasında. Boşta kalınca kapanma ayarı daha anlaşılır, ayarlar yeniden düzenlendi ve uygulama çeviriye hazır.",
-  "en": "Cable setting on the Controller page, clearer idle power-off, settings reorganised and the app ready for translations."
+  "tr": "Kablo modunda oyun haptiği dahil her şey artık USB üzerinden çalışıyor, hoparlör çıtırtısı giderildi. Sayfalar kaydırmadan sığıyor, Titreşim ve Kumanda sayfaları sekmelere ayrıldı.",
+  "en": "The cable mode now runs everything over USB, including game haptics, with no speaker crackle. Every page fits without scrolling; Haptics and Controller pages gained tabs."
 }

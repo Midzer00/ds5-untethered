@@ -57,7 +57,7 @@ public sealed class UiPolish2Tests
 					}
 					if (item.Page == vm.Controller)
 					{
-						foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.RemapTab })
+						foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.ButtonsTab, ControllerPageViewModel.GyroTab })
 						{
 							vm.OpenController(tab);
 							Settle(window);

@@ -106,6 +106,44 @@ public sealed partial class LightViewModel
 		}
 	}
 
+	// The player LED pattern and their brightness as segmented choices (SelectedIndex); -1 from the view selects nothing
+	// and changes nothing.
+	public int PatternIndex
+	{
+		get => IndexOf(Patterns, Settings.PlayerLedPattern);
+		set
+		{
+			if (value >= 0 && value < Patterns.Count)
+			{
+				Settings.PlayerLedPattern = Patterns[value].Value;
+			}
+		}
+	}
+
+	public int LedLevelIndex
+	{
+		get => IndexOf(LedLevels, Settings.PlayerLedBrightness);
+		set
+		{
+			if (value >= 0 && value < LedLevels.Count)
+			{
+				Settings.PlayerLedBrightness = LedLevels[value].Value;
+			}
+		}
+	}
+
+	private static int IndexOf<T>(IReadOnlyList<LightChoice<T>> choices, T value)
+	{
+		for (int i = 0; i < choices.Count; i++)
+		{
+			if (EqualityComparer<T>.Default.Equals(choices[i].Value, value))
+			{
+				return i;
+			}
+		}
+		return -1;
+	}
+
 	public LightChoice<LedBrightness>? SelectedLedLevel
 	{
 		get => LedLevels.FirstOrDefault(m => m.Value == Settings.PlayerLedBrightness);
@@ -165,10 +203,12 @@ public sealed partial class LightViewModel
 				break;
 			case nameof(SettingsState.PlayerLedPattern):
 				OnPropertyChanged(nameof(SelectedPattern));
+				OnPropertyChanged(nameof(PatternIndex));
 				OnPropertyChanged(nameof(PreviewPlayerMask));
 				break;
 			case nameof(SettingsState.PlayerLedBrightness):
 				OnPropertyChanged(nameof(SelectedLedLevel));
+				OnPropertyChanged(nameof(LedLevelIndex));
 				break;
 			case nameof(SettingsState.BreathingPeriod):
 				OnPropertyChanged(nameof(BreathingPeriodText));

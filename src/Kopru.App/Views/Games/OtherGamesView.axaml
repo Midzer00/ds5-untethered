@@ -1,24 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" xmlns:s="using:Kopru.App.Services" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.OtherGamesView" x:DataType="vm:OtherGamesViewModel">
-  <!-- "Titreşim ve Tetikler": the active profile's settings in two cards, the game's own effects and classic rumble (used
-       where the game sends nothing); classic rumble ends with a row of try buttons; a link to the unsupported games -->
+  <!-- "Titreşim ve Tetikler": the active profile's settings in two tabs of one card each, the game's own effects and Xbox And
+       DS4 Rumble (used where the game sends nothing); the rumble tab ends with a row of try buttons; a link to the
+       unsupported games. The tab is the card's title, so a card starts with its caption. The rows keep the shared metrics
+       (Grid.settingRow, StackPanel.text); each tab fits the window without scrolling (the scroll viewer is only a safety net) -->
+  <UserControl.Resources>
+    <!-- A segmented choice's label (as in a game's pop-up): one line, cut with its full name as the tooltip if it ever must be -->
+    <DataTemplate x:Key="SegmentText" x:DataType="vm:LabelledChoice">
+      <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}"
+                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center"
+                 ToolTip.Tip="{Binding Name}" />
+    </DataTemplate>
+  </UserControl.Resources>
   <UserControl.Styles>
-    <Style Selector="StackPanel.page">
-      <Setter Property="Margin" Value="32,8" />
-    </Style>
-    <Style Selector="Border.panel">
-      <Setter Property="Padding" Value="20,8" />
-    </Style>
-    <Style Selector="StackPanel.cardHeader">
-      <Setter Property="Margin" Value="0,0,0,4" />
-    </Style>
-    <Style Selector="Grid.settingRow">
-      <Setter Property="MinHeight" Value="34" />
-    </Style>
-    <Style Selector="Grid.settingRow > StackPanel">
-      <Setter Property="Margin" Value="0,2" />
-      <Setter Property="Spacing" Value="1" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
     <Style Selector="Grid.settingRow TextBlock.body">
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -31,9 +24,15 @@
       <Setter Property="TextWrapping" Value="NoWrap" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <!-- The tabs: the Settings page's segmented look (items sized to their text, two lines only if a translation needs it) -->
+    <Style Selector="ListBox#HapticsTabs ListBoxItem">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinHeight" Value="{StaticResource SegmentItemHeight}" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
   </UserControl.Styles>
   <ScrollViewer Classes="page" Name="PageScroll">
-    <StackPanel Spacing="8" Classes="page">
+    <StackPanel Spacing="{StaticResource GapLarge}" Classes="page">
       <!-- Header: title and intro, the profile these settings are saved to on the right -->
       <Grid Classes="pageHeader" ColumnDefinitions="*,Auto">
         <StackPanel Spacing="4">
@@ -49,161 +48,163 @@
         </StackPanel>
       </Grid>
 
-      <!-- The game's own effects: how strong the haptics and trigger effects the game sends feel -->
-      <Border Classes="panel" Name="GameEffectsCard">
-        <StackPanel>
-          <StackPanel Classes="cardHeader">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Haptics}" />
-              <TextBlock Classes="h2" Text="{Binding Feel.GameCardTitle}" VerticalAlignment="Center" />
-            </StackPanel>
-            <TextBlock Classes="caption" Text="{Binding Feel.GameCardHint}" TextWrapping="Wrap" />
-          </StackPanel>
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding Feel.GameHapticsLabel}" />
-              <TextBlock Classes="body" Text="{Binding Feel.GameHapticsHint}" />
-            </StackPanel>
-            <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-              <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.GameHapticsLevel}" />
-              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.GameHapticsText}" />
-            </Grid>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" />
-              <TextBlock Classes="body" Text="{Binding Feel.TriggerHint}" />
-            </StackPanel>
-            <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-              <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" />
-              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" />
-            </Grid>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="PauseHapticsRow" ToolTip.Tip="{Binding PauseHapticsHint}">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding PauseHapticsLabel}" />
-              <TextBlock Classes="body" Text="{Binding PauseHapticsShort, Converter={x:Static v:KeepLastWords.Instance}}" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" Name="PauseHapticsSwitch" IsChecked="{Binding Settings.PauseHapticsInSilence}" OnContent="{x:Null}" OffContent="{x:Null}"
-                          AutomationProperties.Name="{Binding PauseHapticsLabel}" AutomationProperties.HelpText="{Binding PauseHapticsHint}" />
-          </Grid>
-        </StackPanel>
-      </Border>
+      <!-- The tabs (the card titles); the selected one is kept while the app runs -->
+      <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="600"
+               Height="NaN" MinHeight="{StaticResource ControlHeight}" Name="HapticsTabs">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate><c:ProportionalRowPanel /></ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:TabOption">
+            <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="Wrap" MaxLines="2"
+                       TextTrimming="CharacterEllipsis" TextAlignment="Center" ToolTip.Tip="{Binding Name}" Margin="6,0" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
 
-      <!-- Classic rumble: level and feel, the fallback trigger effect and its strength (its shape is set per game, in the game's
-           pop-up), then a row of try buttons (the rumble,
-           one side, and the fallback effect while one is chosen) -->
-      <Border Classes="panel" Name="ClassicRumbleCard">
-        <StackPanel>
-          <StackPanel Classes="cardHeader">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <c:IconSlot Classes="accent" Data="{x:Static c:IconPaths.Haptics}" />
-              <TextBlock Classes="h2" Text="{Binding Feel.RumbleCardTitle}" VerticalAlignment="Center" />
+      <Panel Name="TabHost">
+        <!-- The game's own effects: how strong the haptics and trigger effects the game sends feel -->
+        <Border Classes="panel" Name="GameEffectsCard" IsVisible="{Binding IsGameEffectsTab}">
+          <StackPanel>
+            <StackPanel Classes="cardHeader">
+              <TextBlock Classes="caption" Text="{Binding Feel.GameCardHint}" TextWrapping="Wrap" />
             </StackPanel>
-            <TextBlock Classes="caption" Text="{Binding Feel.RumbleCardHint}" TextWrapping="Wrap" />
-          </StackPanel>
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding Feel.RumbleLabel}" />
-              <TextBlock Classes="body" Text="{Binding Feel.RumbleHint}" />
-            </StackPanel>
-            <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-              <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.RumbleLevel}" />
-              <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.RumbleText}" />
-            </Grid>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding Feel.FeelLabel}" />
-              <TextBlock Classes="body" Text="{Binding Feel.FeelHint}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsSoft}" Content="{Binding Feel.SoftText}" />
-              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsPunchy}" Content="{Binding Feel.PunchyText}" />
-            </StackPanel>
-          </Grid>
-          <Border Classes="divider" />
-          <!-- The fallback effect (picker) and its strength beside it (off while the effect is Off), one row -->
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="FallbackRow">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding Feel.FallbackLabel}" />
-              <TextBlock Classes="body" Text="{Binding Feel.FallbackHint}" />
-            </StackPanel>
-            <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-              <ComboBox Name="FallbackPicker" Width="132" ItemsSource="{Binding Feel.FallbackChoices}" SelectedIndex="{Binding Feel.FallbackIndex}"
-                        AutomationProperties.Name="{Binding Feel.FallbackLabel}" VerticalAlignment="Center" />
-              <Slider Grid.Column="1" Name="FallbackStrengthSlider" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.FallbackStrength}"
-                      IsEnabled="{Binding Feel.HasFallback}" ToolTip.Tip="{Binding Feel.FallbackStrengthHint}" AutomationProperties.Name="{Binding Feel.FallbackStrengthLabel}" />
-              <TextBlock Grid.Column="2" Classes="value" Text="{Binding Feel.FallbackStrengthText}" IsEnabled="{Binding Feel.HasFallback}" />
-            </Grid>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="XboxTriggerRumbleRow" ToolTip.Tip="{Binding XboxTriggerRumbleHint}">
-            <StackPanel Spacing="2">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="label" Name="XboxTriggerRumbleTitle" Text="{Binding XboxTriggerRumbleTitle}" />
-                <TextBlock Classes="caption" Name="XboxTriggerRumbleTag" Text="{Binding ExperimentalTag}" VerticalAlignment="Center" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <StackPanel Classes="text">
+                <TextBlock Classes="label" Text="{Binding Feel.GameHapticsLabel}" />
+                <TextBlock Classes="body" Text="{Binding Feel.GameHapticsHint}" />
               </StackPanel>
-              <TextBlock Classes="body" Name="XboxTriggerRumbleLine" Text="{Binding XboxTriggerRumbleShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+              <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Slider Maximum="300" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.GameHapticsLevel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.GameHapticsText}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <StackPanel Classes="text">
+                <TextBlock Classes="label" Text="{Binding Feel.TriggerLabel}" />
+                <TextBlock Classes="body" Text="{Binding Feel.TriggerHint}" />
+              </StackPanel>
+              <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Slider Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.TriggerStrength}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.TriggerStrengthText}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="PauseHapticsRow" ToolTip.Tip="{Binding PauseHapticsHint}">
+              <StackPanel Classes="text">
+                <TextBlock Classes="label" Text="{Binding PauseHapticsLabel}" />
+                <TextBlock Classes="body" Text="{Binding PauseHapticsShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" Name="PauseHapticsSwitch" IsChecked="{Binding Settings.PauseHapticsInSilence}" OnContent="{x:Null}" OffContent="{x:Null}"
+                            AutomationProperties.Name="{Binding PauseHapticsLabel}" AutomationProperties.HelpText="{Binding PauseHapticsHint}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- Classic rumble: level and feel, the fallback trigger effect and its strength (its shape is set per game, in the
+             game's pop-up), Xbox Trigger Rumble, then a row of try buttons (the rumble, one side, and the fallback effect while
+             one is chosen) -->
+        <Border Classes="panel" Name="ClassicRumbleCard" IsVisible="{Binding IsRumbleTab}">
+          <StackPanel>
+            <StackPanel Classes="cardHeader">
+              <TextBlock Classes="caption" Text="{Binding Feel.RumbleCardHint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" Name="XboxTriggerRumbleSwitch" IsChecked="{Binding Settings.XboxTriggerRumbleOn}" OnContent="{x:Null}" OffContent="{x:Null}"
-                          AutomationProperties.Name="{Binding XboxTriggerRumbleLabel}" AutomationProperties.HelpText="{Binding XboxTriggerRumbleHint}" />
-          </Grid>
-          <!-- Trigger Rumble: how the Xbox Series pad's trigger rumble feels on the adaptive triggers (only that type sends it;
-               shown while the experimental Xbox Trigger Rumble setting is on) -->
-          <Border Classes="divider" IsVisible="{Binding Feel.ShowsTriggerRumble}" />
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="TriggerRumbleRow" IsVisible="{Binding Feel.ShowsTriggerRumble}">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding Feel.TriggerRumbleLabel}" />
-              <TextBlock Classes="body" Text="{Binding Feel.TriggerRumbleHint}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsTriggerRumbleOff}" Content="{Binding Feel.OffText}" />
-              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsTriggerRumbleXboxLike}" Content="{Binding Feel.XboxLikeText}" />
-              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsTriggerRumbleSoft}" Content="{Binding Feel.TriggerSoftText}" />
-              <ToggleButton Theme="{StaticResource ChipToggle}" IsChecked="{Binding Feel.IsTriggerRumbleSharp}" Content="{Binding Feel.TriggerSharpText}" />
-            </StackPanel>
-          </Grid>
-          <Border Classes="divider" />
-          <!-- Try it: the rumble (both sides), one side, and the fallback trigger effect while one is chosen -->
-          <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="TryRow">
-            <StackPanel Spacing="2">
-              <TextBlock Classes="label" Text="{Binding TryLabel}" />
-              <TextBlock Classes="body" Text="{Binding TryHint}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Name="RumbleTests" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-              <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestRumbleCommand}" ToolTip.Tip="{Binding RumbleTryHint}">
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <StackPanel Classes="text">
+                <TextBlock Classes="label" Text="{Binding Feel.RumbleLabel}" />
+                <TextBlock Classes="body" Text="{Binding Feel.RumbleHint}" />
+              </StackPanel>
+              <Grid Grid.Column="1" Classes="control" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <Slider Maximum="200" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding Feel.RumbleLevel}" />
+                <TextBlock Grid.Column="1" Classes="value" Text="{Binding Feel.RumbleText}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+              <StackPanel Classes="text">
+                <TextBlock Classes="label" Text="{Binding Feel.FeelLabel}" />
+                <TextBlock Classes="body" Text="{Binding Feel.FeelHint}" />
+              </StackPanel>
+              <ListBox Grid.Column="1" Name="RumbleFeelChoice" Theme="{StaticResource Segmented}" Width="{StaticResource ControlWidth}" HorizontalAlignment="Right"
+                       VerticalAlignment="Center" ItemsSource="{Binding Feel.FeelChoices}" SelectedIndex="{Binding Feel.FeelIndex}"
+                       ItemTemplate="{StaticResource SegmentText}" AutoScrollToSelectedItem="False" AutomationProperties.Name="{Binding Feel.FeelLabel}" />
+            </Grid>
+            <Border Classes="divider" />
+            <!-- The fallback effect (picker) and its strength beside it (off while the effect is Off), one row -->
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="FallbackRow">
+              <StackPanel Classes="text">
+                <TextBlock Classes="label" Text="{Binding Feel.FallbackLabel}" />
+                <TextBlock Classes="body" Text="{Binding Feel.FallbackHint}" />
+              </StackPanel>
+              <Grid Grid.Column="1" Classes="control wide" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <ComboBox Name="FallbackPicker" Width="132" ItemsSource="{Binding Feel.FallbackChoices}" SelectedIndex="{Binding Feel.FallbackIndex}"
+                          AutomationProperties.Name="{Binding Feel.FallbackLabel}" VerticalAlignment="Center" />
+                <Slider Grid.Column="1" Name="FallbackStrengthSlider" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Feel.FallbackStrength}"
+                        IsEnabled="{Binding Feel.HasFallback}" ToolTip.Tip="{Binding Feel.FallbackStrengthHint}" AutomationProperties.Name="{Binding Feel.FallbackStrengthLabel}" />
+                <TextBlock Grid.Column="2" Classes="value" Text="{Binding Feel.FallbackStrengthText}" IsEnabled="{Binding Feel.HasFallback}" />
+              </Grid>
+            </Grid>
+            <Border Classes="divider" />
+            <!-- Xbox Trigger Rumble (experimental): Off turns the setting off; the others turn it on and pick how the Xbox Series
+                 pad's trigger rumble feels on the adaptive triggers, for this profile (the Games page's Xbox view has a switch
+                 for the same setting) -->
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="XboxTriggerRow" ToolTip.Tip="{Binding XboxTriggerRumbleHint}">
+              <StackPanel Classes="text">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Haptics}" />
-                  <TextBlock Text="{Binding RumbleTestText}" />
+                  <TextBlock Classes="label" Name="XboxTriggerRumbleTitle" Text="{Binding XboxTriggerRumbleTitle}" />
+                  <TextBlock Classes="caption" Name="XboxTriggerRumbleTag" Text="{Binding ExperimentalTag}" VerticalAlignment="Center" />
                 </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}" ToolTip.Tip="{Binding RumbleTryHint}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Left}" />
-                  <TextBlock Text="{Binding LeftText}" />
-                </StackPanel>
-              </Button>
-              <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}" ToolTip.Tip="{Binding RumbleTryHint}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Right}" />
-                  <TextBlock Text="{Binding RightText}" />
-                </StackPanel>
-              </Button>
-              <Button Name="TriggerTestButton" Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestTriggerCommand}" ToolTip.Tip="{Binding TriggerTryHint}"
-                      IsVisible="{Binding Feel.HasFallback}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Trigger}" />
-                  <TextBlock Text="{Binding TriggerTestText}" />
-                </StackPanel>
-              </Button>
-            </StackPanel>
-          </Grid>
-        </StackPanel>
-      </Border>
+                <TextBlock Classes="body" Name="XboxTriggerRumbleLine" Text="{Binding XboxTriggerRumbleShort, Converter={x:Static v:KeepLastWords.Instance}}" />
+              </StackPanel>
+              <!-- Four choices: the shared wide control width (in ControlWidth the names are cut), each segment as wide as its
+                   name, the row filled edge to edge -->
+              <ListBox Grid.Column="1" Name="XboxTriggerChoice" Theme="{StaticResource Segmented}" Width="{StaticResource ControlWidthWide}" HorizontalAlignment="Right"
+                       VerticalAlignment="Center" ItemsSource="{Binding Feel.TriggerRumbleChoices}" SelectedIndex="{Binding Feel.XboxTriggerIndex}"
+                       ItemTemplate="{StaticResource SegmentText}" AutoScrollToSelectedItem="False" AutomationProperties.Name="{Binding XboxTriggerRumbleLabel}">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate><c:ProportionalRowPanel /></ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+              </ListBox>
+            </Grid>
+            <Border Classes="divider" />
+            <!-- Try it: the rumble (both sides), one side, and the fallback trigger effect while one is chosen -->
+            <Grid Classes="settingRow" ColumnDefinitions="*,Auto" Name="TryRow">
+              <StackPanel Classes="text">
+                <!-- The hint is the label's tooltip: beside four buttons the text column is too narrow for it -->
+                <TextBlock Classes="label" Name="TryLabel" Text="{Binding TryLabel}" ToolTip.Tip="{Binding TryHint}" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Name="RumbleTests" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestRumbleCommand}" ToolTip.Tip="{Binding RumbleTryHint}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Haptics}" />
+                    <TextBlock Text="{Binding RumbleTestText}" />
+                  </StackPanel>
+                </Button>
+                <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Left}" ToolTip.Tip="{Binding RumbleTryHint}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Left}" />
+                    <TextBlock Text="{Binding LeftText}" />
+                  </StackPanel>
+                </Button>
+                <Button Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestHapticsCommand}" CommandParameter="{x:Static s:HapticSide.Right}" ToolTip.Tip="{Binding RumbleTryHint}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Right}" />
+                    <TextBlock Text="{Binding RightText}" />
+                  </StackPanel>
+                </Button>
+                <Button Name="TriggerTestButton" Theme="{StaticResource QuietButton}" Classes="test" Command="{Binding TestTriggerCommand}" ToolTip.Tip="{Binding TriggerTryHint}"
+                        IsVisible="{Binding Feel.HasFallback}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:IconSlot Classes="small accent" Data="{x:Static c:IconPaths.Trigger}" />
+                    <TextBlock Text="{Binding TriggerTestText}" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </Panel>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

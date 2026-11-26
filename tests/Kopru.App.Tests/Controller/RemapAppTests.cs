@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Threading;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
@@ -14,7 +15,8 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.Tests;
 
-// The remap & gyro tab of the sticks page: settings reach the service and the store, live gyro offset, calibration.
+// The controller page's remap tabs (Buttons, Gyro & Sticks, Edge): settings reach the service and the store, live gyro
+// offset, calibration.
 public class RemapAppTests
 {
 	private static (MainWindowViewModel Vm, FakeControllerService Fake) NewViewModel(ISettingsStore? store = null)
@@ -171,32 +173,163 @@ public class RemapAppTests
 		}
 	}
 
+	// The former Remap & Gyro tab is split: Buttons holds only the remap card, Gyro & Sticks the gyro, its calibration and the
+	// stick swap and invert, Edge the paddles. Each control is on its new tab and on no other, in both languages.
 	[AvaloniaFact]
-	public void Tabs_SwitchBetweenTuningAndRemap_InBothLanguages()
+	public void RemapTabs_HoldTheirControls_AndOnlyThose_InBothLanguages()
 	{
 		foreach (Language language in new[] { Language.Turkish, Language.English })
 		{
 			WithLanguage(language, () =>
 			{
-				(MainWindowViewModel vm, _) = NewViewModel();
+				var fake = new FakeControllerService(ControllerKind.DualSenseEdge, animate: false);
+				var vm = new MainWindowViewModel(fake, new AppEnvironment(null));
+				vm.Sticks.StopPreview();
 				vm.Navigate(vm.Controller);
 				var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 				window.Show();
-				vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
-				Settle();
-				Assert.True(vm.Controller.IsRemapTab);
-				RemapView view = window.GetLogicalDescendants().OfType<RemapView>().Single();
-				Assert.True(view.IsEffectivelyVisible);
-				List<string> texts = view.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text ?? "").ToList();
-				Assert.Contains(Text.ButtonRemapping(language), texts);
-				Assert.Contains(Text.GyroAiming(language), texts);
-				Assert.Contains(Text.GyroCalibration(language), texts);
+				string[] buttons = [Text.ButtonRemapping(language)];
+				string[] gyro = [Text.GyroAiming(language), Text.GyroModeLabel(language), Text.GyroTargetLabel(language), Text.GyroSensitivityX(language),
+					Text.GyroSmoothing(language), Text.GyroDeadzone(language), Text.GyroInvert(language), Text.GyroCalibration(language),
+					Text.StickSwapInvert(language), Text.SwapSticks(language), Text.InvertLeftStick(language), Text.InvertRightStick(language)];
+				string[] edge = [Text.EdgePaddlesTitle(language), Text.PresentAsEdge(language)];
+				Assert.Equal(["Test", Text.ControllerTabDeviceTests(language), Text.ControllerTabButtons(language), Text.ControllerTabGyroSticks(language), "Edge"],
+					vm.Controller.Tabs.Select(t => t.Name));
+				Assert.Equal(Text.RemapIntro(language), vm.Controller.Tabs[ControllerPageViewModel.ButtonsTab].Tip);
+				foreach ((int tab, string[] own) in new[] { (ControllerPageViewModel.ButtonsTab, buttons), (ControllerPageViewModel.GyroTab, gyro),
+					(ControllerPageViewModel.EdgeTab, edge), (ControllerPageViewModel.TestTab, Array.Empty<string>()), (ControllerPageViewModel.OutputsTab, Array.Empty<string>()) })
+				{
+					vm.Controller.SelectedTab = tab;
+					Settle();
+					ControllerView page = window.GetLogicalDescendants().OfType<ControllerView>().Single();
+					HashSet<string> shown = page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text ?? "").ToHashSet();
+					foreach (string label in own)
+					{
+						Assert.True(shown.Contains(label), $"{language.Code} tab {tab}: '{label}' missing");
+					}
+					foreach (string label in buttons.Concat(gyro).Concat(edge).Except(own))
+					{
+						Assert.False(shown.Contains(label), $"{language.Code} tab {tab}: '{label}' shown");
+					}
+					// The intro line and the hints are tooltips now, not lines on the tab.
+					Assert.DoesNotContain(Text.RemapIntro(language), shown);
+					Assert.DoesNotContain(Text.ButtonRemappingHint(language), shown);
+					Assert.DoesNotContain(Text.GyroAimingHint(language), shown);
+					Assert.DoesNotContain(Text.GyroTargetHint(language), shown);
+				}
+				// The Buttons tab holds only the remap card; each part of the old tab is a view of its own.
+				Assert.Equal(1, window.GetLogicalDescendants().OfType<RemapView>().Single().GetLogicalDescendants().OfType<Border>()
+					.Count(b => b.Classes.Contains("panel")));
+				Assert.Single(window.GetLogicalDescendants().OfType<GyroSticksView>());
+				Assert.Single(window.GetLogicalDescendants().OfType<EdgeRemapView>());
 				window.Close();
 			});
 		}
 	}
 
-	// Renders the remap & gyro tab to docs/screens/remap-{tr,en}.png when KOPRU_RENDER_SCREENS=1.
+	// The Edge tab is there only while an Edge is connected; asked for without an Edge, the page shows Buttons.
+	[AvaloniaFact]
+	public void EdgeTab_ComesAndGoes_WithTheEdge()
+	{
+		var plain = new MainWindowViewModel(new FakeControllerService(ControllerKind.DualSense, animate: false), new AppEnvironment(null));
+		plain.Sticks.StopPreview();
+		Assert.False(plain.Controller.HasEdgeTab);
+		Assert.False(plain.Controller.Tabs[ControllerPageViewModel.EdgeTab].IsVisible);
+		plain.OpenController(ControllerPageViewModel.EdgeTab);
+		Assert.True(plain.Controller.IsButtonsTab);
+		var window = new MainWindow { DataContext = plain, Width = 1100, Height = 700 };
+		window.Show();
+		Settle();
+		ListBox tabs = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "ControllerTabs");
+		Assert.Equal(4, tabs.GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsVisible));
+		window.Close();
+
+		var fake = new FakeControllerService(ControllerKind.DualSenseEdge, animate: false);
+		var vm = new MainWindowViewModel(fake, new AppEnvironment(null));
+		vm.Sticks.StopPreview();
+		Assert.True(vm.Controller.HasEdgeTab);
+		vm.OpenController(ControllerPageViewModel.EdgeTab);
+		Assert.True(vm.Controller.IsEdgeTab);
+		window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+		window.Show();
+		Settle();
+		tabs = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "ControllerTabs");
+		Assert.Equal(5, tabs.GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsVisible));
+		Assert.Equal(ControllerPageViewModel.EdgeTab, tabs.SelectedIndex);
+		window.Close();
+	}
+
+	// The invert strips (gyro Horizontal / Vertical, each stick's X / Y) write and show the same settings as the switches
+	// they replace (InvertX ... InvertRightY), both ways.
+	[AvaloniaFact]
+	public void InvertStrips_AreBoundToTheInvertSettings()
+	{
+		(MainWindowViewModel vm, FakeControllerService fake) = NewViewModel();
+		RemapViewModel page = vm.Sticks.Remap;
+		vm.Settings.Gyro = vm.Settings.Gyro with { Mode = GyroMode.Always };
+		vm.OpenController(ControllerPageViewModel.GyroTab);
+		var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+		window.Show();
+		Settle();
+		ListBox Strip(string name) => window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == name);
+		var strips = new (string Name, ToggleChoices Choices, Func<bool>[] Settings)[]
+		{
+			("GyroInvertChoice", page.GyroInvert, [() => fake.Settings.Gyro.InvertX, () => fake.Settings.Gyro.InvertY]),
+			("LeftStickInvertChoice", page.LeftStickInvert, [() => fake.Settings.Remap.InvertLeftX, () => fake.Settings.Remap.InvertLeftY]),
+			("RightStickInvertChoice", page.RightStickInvert, [() => fake.Settings.Remap.InvertRightX, () => fake.Settings.Remap.InvertRightY]),
+		};
+		foreach ((string name, ToggleChoices choices, Func<bool>[] settings) in strips)
+		{
+			ListBox strip = Strip(name);
+			Assert.True(strip.IsEffectivelyVisible, name);
+			Assert.Same(choices.Selection, strip.Selection);
+			Assert.Equal(SelectionMode.Multiple | SelectionMode.Toggle, strip.SelectionMode);
+			for (int i = 0; i < 2; i++)
+			{
+				// A segment clicked: its setting turns on and the other stays off; clicked again: off.
+				ListBoxItem item = strip.GetVisualDescendants().OfType<ListBoxItem>().ElementAt(i);
+				Click(window, item);
+				Assert.True(settings[i](), $"{name} {i} on");
+				Assert.False(settings[1 - i](), $"{name} {1 - i} stays off");
+				Assert.True(item.IsSelected);
+				Click(window, item);
+				Assert.False(settings[i](), $"{name} {i} off");
+				Assert.False(item.IsSelected);
+			}
+			// Both on at once.
+			Click(window, strip.GetVisualDescendants().OfType<ListBoxItem>().ElementAt(0));
+			Click(window, strip.GetVisualDescendants().OfType<ListBoxItem>().ElementAt(1));
+			Assert.True(settings[0]() && settings[1](), $"{name} both on");
+		}
+		Assert.True(page.InvertX && page.InvertY && page.InvertLeftX && page.InvertLeftY && page.InvertRightX && page.InvertRightY);
+		// The settings changed elsewhere (Reset, a profile): the strips follow.
+		page.ResetRemapCommand.Execute(null);
+		page.ResetGyroCommand.Execute(null);
+		Settle();
+		foreach ((string name, _, _) in strips)
+		{
+			Assert.DoesNotContain(Strip(name).GetVisualDescendants().OfType<ListBoxItem>(), i => i.IsSelected);
+		}
+		vm.Settings.Remap = vm.Settings.Remap with { InvertLeftY = true };
+		Settle();
+		Assert.Equal([false, true], Strip("LeftStickInvertChoice").GetVisualDescendants().OfType<ListBoxItem>().Select(i => i.IsSelected));
+		// Their accessible names and tooltips are the whole settings.
+		Assert.Equal([Text.InvertLeftX(), Text.InvertLeftY()], page.LeftStickInvert.Choices.Select(c => c.AccessibleName));
+		ListBoxItem horizontal = Strip("GyroInvertChoice").GetVisualDescendants().OfType<ListBoxItem>().First();
+		Assert.Equal(Text.GyroInvertX(), Avalonia.Automation.AutomationProperties.GetName(horizontal));
+		Assert.Equal(Text.GyroInvertX(), ToolTip.GetTip(horizontal));
+		window.Close();
+	}
+
+	private static void Click(Window window, Avalonia.Visual target)
+	{
+		Avalonia.Point center = FitCheck.Bounds(target, window).Center;
+		window.MouseDown(center, Avalonia.Input.MouseButton.Left);
+		window.MouseUp(center, Avalonia.Input.MouseButton.Left);
+		FitCheck.Settle(window);
+	}
+
+	// Renders the Gyro & Sticks and the Buttons tabs to docs/screens/remap-{gyro-sticks,buttons}-{tr,en}.png when KOPRU_RENDER_SCREENS=1.
 	[AvaloniaFact]
 	public void RenderRemapScreens()
 	{
@@ -211,7 +344,7 @@ public class RemapAppTests
 					.With(DsButton.Mute, DsButton.None);
 				vm.Settings.Gyro = new GyroSettings { Mode = GyroMode.WhileL2, SensitivityX = 1.5, Smoothing = 20, Target = GyroTarget.Mouse };
 				fake.RawInput = GyroBody(-500, 900, buttons1: 0x04);
-				vm.OpenController(ControllerPageViewModel.RemapTab);
+				vm.OpenController(ControllerPageViewModel.GyroTab);
 				for (int i = 0; i < 20; i++)
 				{
 					vm.Sticks.RefreshInput();
@@ -224,12 +357,15 @@ public class RemapAppTests
 				Assert.NotNull(frame);
 				if (writeFiles)
 				{
-					frame!.Save(Path.Combine(outDir, $"remap-{code}.png"));
-					// The whole tab, scrolled to the end, for checking the lower panels.
-					window.GetLogicalDescendants().OfType<ScrollViewer>().First(s => s.Classes.Contains("page")).ScrollToEnd();
-					Settle();
-					using var end = window.CaptureRenderedFrame();
-					end!.Save(Path.Combine(outDir, $"remap-end-{code}.png"));
+					frame!.Save(Path.Combine(outDir, $"remap-gyro-sticks-{code}.png"));
+				}
+				vm.Controller.SelectedTab = ControllerPageViewModel.ButtonsTab;
+				Settle();
+				using var buttons = window.CaptureRenderedFrame();
+				Assert.NotNull(buttons);
+				if (writeFiles)
+				{
+					buttons!.Save(Path.Combine(outDir, $"remap-buttons-{code}.png"));
 				}
 				window.Close();
 			});

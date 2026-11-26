@@ -6,8 +6,8 @@ using Kopru.Core.Localization;
 
 namespace Kopru.App.ViewModels;
 
-// One chip in the Overview health strip, shown from a Core HealthChip: name, a short state, the reason in the tooltip and,
-// when the model has a fix, a "Fix" button that runs it.
+// One item of the Overview health line, from a Core HealthChip: name, a short state, the reason (the line's tooltip) and,
+// when the model has a fix, the command that runs it (the line's "Fix ›" link).
 public sealed partial class HealthChipViewModel(HealthChipKind kind, Func<FixAction, Task> runFix) : ViewModelBase
 {
 	public HealthChipKind Kind { get; } = kind;
@@ -26,7 +26,7 @@ public sealed partial class HealthChipViewModel(HealthChipKind kind, Func<FixAct
 	private string _reason = " ";
 
 	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(HasAction), nameof(ActionText), nameof(ActionTip))]
+	[NotifyPropertyChangedFor(nameof(HasAction), nameof(ActionText), nameof(ActionTip), nameof(FixLabel))]
 	private FixAction _fix;
 
 	public bool IsGood => Level == HealthLevel.Ok;
@@ -34,6 +34,8 @@ public sealed partial class HealthChipViewModel(HealthChipKind kind, Func<FixAct
 	public bool IsProblem => Level == HealthLevel.Error;
 	public bool HasAction => Fix != FixAction.None;
 	public string ActionText => Text.HealthFix();
+	// The fix by name (a line of the health line's fix menu when several items have one).
+	public string FixLabel => HealthFixes.Label(Fix);
 	// The button's tooltip: the reason, then what the fix does.
 	public string ActionTip => HasAction ? Reason + Environment.NewLine + HealthFixes.Label(Fix) : Reason;
 
@@ -66,6 +68,13 @@ public static class HealthFixes
 		FixAction.ReconnectController => Text.ReconnectController(),
 		_ => string.Empty
 	};
+
+	// One group of the health line ("Dikkat: Sanal Kumanda, Steam Girişi"): the level and the items, joined like the other
+	// one-line summaries (the words are the localized level and item names).
+	public static string Group(string level, string names) => level + ": " + names;
+
+	// One line of the health line's tooltip: the item, its level and the reason.
+	public static string Detail(string name, string level, string reason) => name + ": " + level + " · " + reason;
 
 	public static string LevelText(HealthLevel level) => level switch
 	{

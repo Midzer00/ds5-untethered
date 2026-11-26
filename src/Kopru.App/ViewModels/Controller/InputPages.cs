@@ -8,7 +8,13 @@ using Kopru.Core.Localization;
 namespace Kopru.App.ViewModels;
 
 // One tab of a segmented switch; the name follows the language.
-public sealed class TabOption(Func<string> name) : LabelledChoice(name);
+// A tab of a segmented tab strip, with an optional tooltip; one that is only sometimes there (the controller page's Edge
+// tab) says so through IsVisible (its strip hides it; Refresh after the condition changed).
+public sealed class TabOption(Func<string> name, Func<bool>? isVisible = null, Func<string>? tip = null) : LabelledChoice(name)
+{
+	public bool IsVisible => isVisible?.Invoke() ?? true;
+	public string? Tip => tip?.Invoke();
+}
 
 public sealed class CurveOption(ResponseCurve curve) : LabelledChoice(() => Text.CurveName(curve))
 {

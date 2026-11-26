@@ -24,10 +24,6 @@ public static partial class Text
 	public static string SetupAdapterTitle(Language? l = null) => T(l, "Setup.AdapterTitle");
 	public static string SetupAdapterInstructions(Language? l = null) => T(l, "Setup.AdapterInstructions");
 
-	public static string SetupDoneTitle(Language? l = null) => T(l, "Setup.DoneTitle");
-	public static string SetupDoneInstructions(Language? l = null) => T(l, "Setup.DoneInstructions");
-	public static string SetupNotDoneInstructions(Language? l = null) => T(l, "Setup.NotDoneInstructions");
-
 	public static string SetupActionRecheck(Language? l = null) => T(l, "Setup.ActionRecheck");
 	public static string SetupActionDownloadUsbIp(Language? l = null) => T(l, "Setup.ActionDownloadUsbIp");
 	public static string SetupActionDownloadHidHide(Language? l = null) => T(l, "Setup.ActionDownloadHidHide");

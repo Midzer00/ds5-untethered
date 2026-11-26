@@ -85,11 +85,20 @@ public sealed class LocalizationFitTests
 					FitCheck.Settle(window);
 					problems.AddRange(ControllerTestFitTests.Check(window, allowVerticalSafetyNet).Select(p => $"{at} controller-test: {p}"));
 
-					foreach ((int tab, string tabName) in new[] { (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.RemapTab, "remap") })
+					foreach ((int tab, string tabName) in new[] { (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.ButtonsTab, "buttons"), (ControllerPageViewModel.GyroTab, "gyro-sticks") })
 					{
+						Kopru.Core.Input.GyroSettings savedGyro = vm.Settings.Gyro;
+						if (tab == ControllerPageViewModel.GyroTab)
+						{
+							vm.Settings.Gyro = savedGyro with { Mode = Kopru.Core.Input.GyroMode.WhileL2 };
+						}
 						vm.OpenController(tab);
 						FitCheck.Settle(window);
-						CheckScrollableOrSinglePage(window, $"{at} controller-{tabName}", checkScroll: false, problems);
+						CheckScrollableOrSinglePage(window, $"{at} controller-{tabName}", checkScroll: !allowVerticalSafetyNet, problems);
+						if (tab == ControllerPageViewModel.GyroTab)
+						{
+							vm.Settings.Gyro = savedGyro;
+						}
 					}
 
 					// 5. Light
@@ -224,15 +233,28 @@ public sealed class LocalizationFitTests
 	private static void CheckOtherGames(MainWindow window, string at, List<string> problems)
 	{
 		OtherGamesView view = window.GetVisualDescendants().OfType<OtherGamesView>().Single(v => v.IsEffectivelyVisible);
-		foreach (ScrollViewer sv in view.GetVisualAncestors().OfType<ScrollViewer>())
+		OtherGamesViewModel page = (OtherGamesViewModel)view.DataContext!;
+		int before = page.SelectedTab;
+		// Both tabs, with the fourth try button showing; no scrolling at all, in every language and the pseudo-locale too (the
+		// page's scroll viewer is only a safety net).
+		int fallback = page.Feel.FallbackIndex;
+		page.Feel.FallbackIndex = 1;
+		foreach ((int tab, string tabName) in new[] { (OtherGamesViewModel.GameEffectsTab, "game"), (OtherGamesViewModel.RumbleTab, "rumble") })
 		{
-			problems.AddRange(FitCheck.Scrolls(sv, "haptics").Select(p => $"{at} haptics: {p}"));
+			page.SelectedTab = tab;
+			FitCheck.Settle(window);
+			foreach (ScrollViewer sv in view.GetVisualAncestors().OfType<ScrollViewer>())
+			{
+				problems.AddRange(FitCheck.Scrolls(sv, "haptics").Select(p => $"{at} haptics-{tabName}: {p}"));
+			}
+			foreach (ScrollViewer sv in view.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s.IsEffectivelyVisible))
+			{
+				problems.AddRange(FitCheck.Scrolls(sv, "haptics-inner").Select(p => $"{at} haptics-{tabName}: {p}"));
+			}
+			problems.AddRange(FitCheck.CutText(view).Select(p => $"{at} haptics-{tabName}: {p}"));
 		}
-		foreach (ScrollViewer sv in view.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s.IsEffectivelyVisible))
-		{
-			problems.AddRange(FitCheck.Scrolls(sv, "haptics-inner").Select(p => $"{at} haptics: {p}"));
-		}
-		problems.AddRange(FitCheck.CutText(view).Select(p => $"{at} haptics: {p}"));
+		page.Feel.FallbackIndex = fallback;
+		page.SelectedTab = before;
 	}
 
 	private static void CheckLight(MainWindow window, string at, List<string> problems)

@@ -57,7 +57,9 @@ public sealed partial class SettingsState
 		bool ready = _service.CanStartBridge && _autoStartHold?.Invoke() != true;
 		if (_autoStart.Update(AutoStartBridge, ready, _service.IsConnected, _service.IsBridgeRunning))
 		{
-			Kopru.Core.Diagnostics.AppLog.Write("auto start: controller connected, starting the virtual controller");
+			Kopru.Core.Diagnostics.AppLog.Write(_service.IsCableOnly
+				? "auto start: wired mode, a remembered controller is on the cable alone; starting the virtual controller to take it over"
+				: "auto start: controller connected, starting the virtual controller");
 			_ = AutoStartAsync();
 		}
 	}

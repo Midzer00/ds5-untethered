@@ -440,7 +440,7 @@ public class MouseModeAutoOffAppTests
 		Assert.True(host.Shortcuts.MouseModeOn!());
 	}
 
-	// The window tells the service when the controller page's Test or Remap tab is in view (the double press is off there).
+	// The window tells the service when the controller page's Test tab or one of its remap tabs (Buttons, Gyro & Sticks, Edge) is in view (the double press is off there).
 	[AvaloniaFact]
 	public void ButtonPage_FollowsTheControllerPagesTestAndRemapTabs()
 	{
@@ -450,7 +450,9 @@ public class MouseModeAutoOffAppTests
 		Assert.True(h.Fake.ButtonPageShown);
 		h.Vm.Controller.SelectedTab = ControllerPageViewModel.OutputsTab;
 		Assert.False(h.Fake.ButtonPageShown);
-		h.Vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
+		h.Vm.Controller.SelectedTab = ControllerPageViewModel.ButtonsTab;
+		Assert.True(h.Fake.ButtonPageShown);
+		h.Vm.Controller.SelectedTab = ControllerPageViewModel.GyroTab;
 		Assert.True(h.Fake.ButtonPageShown);
 		h.Vm.Navigate(h.Vm.Overview);
 		Assert.False(h.Fake.ButtonPageShown);

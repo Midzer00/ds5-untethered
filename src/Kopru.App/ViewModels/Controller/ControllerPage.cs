@@ -11,16 +11,20 @@ public sealed class CableModeOption(CableMode mode, Func<string> name) : Labelle
 	public CableMode Mode { get; } = mode;
 }
 
-// The controller page: three tabs. Test (live input with every stick setting, the trigger ranges and drift calibration
-// beside it, fitted to one window), Output Tests (vibration, trigger effects and strength, light; plus the cable mode
-// setting) and Remap & Gyro. Every setting is on one tab only. The live readouts run only while the page is shown and
-// the tab with them is selected: the Test tab holds the controller (TesterViewModel), the Remap tab polls the virtual
-// controller's input for its gyro preview (SticksViewModel). The selected tab is kept while the app runs.
+// The controller page's tabs, each fitted to one window: Test (live input with every stick setting, the trigger ranges and
+// drift calibration beside it), Tests & Cable (vibration, trigger effects and strength, light; plus the cable mode
+// setting), Buttons (button remapping), Gyro & Sticks (gyro aiming and calibration, stick swap and invert) and, only while
+// a DualSense Edge is connected, Edge (back paddles and presentation). Every setting is on one tab only. The live readouts
+// run only while the page is shown and the tab with them is selected: the Test tab holds the controller
+// (TesterViewModel), the Gyro & Sticks tab polls the virtual controller's input for its gyro preview (SticksViewModel).
+// The selected tab is kept while the app runs.
 public sealed partial class ControllerPageViewModel : PageViewModel
 {
 	public const int TestTab = 0;
 	public const int OutputsTab = 1;
-	public const int RemapTab = 2;
+	public const int ButtonsTab = 2;
+	public const int GyroTab = 3;
+	public const int EdgeTab = 4;
 
 	private readonly SettingsState _settings;
 	private int _selectedTab = TestTab;
@@ -44,7 +48,27 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 				SelectedCableMode = CableModes.First(o => o.Mode == _settings.CableMode);
 			}
 		};
+		_edgeTabOption = new TabOption(() => "Edge", () => HasEdgeTab);
+		Tabs = [new(() => "Test"), new(() => Text.ControllerTabDeviceTests()), new(() => Text.ControllerTabButtons(), tip: () => Text.RemapIntro()), new(() => Text.ControllerTabGyroSticks()), _edgeTabOption];
+		// The Edge tab comes and goes with the Edge; on its tab when the Edge leaves, the page shows Buttons.
+		Tuning.Remap.Edge.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName is nameof(EdgeRemapPanel.IsVisible) or "" or null)
+			{
+				_edgeTabOption.Refresh();
+				OnPropertyChanged(nameof(HasEdgeTab));
+				if (SelectedTab == EdgeTab && !HasEdgeTab)
+				{
+					SelectedTab = ButtonsTab;
+				}
+			}
+		};
 	}
+
+	private readonly TabOption _edgeTabOption;
+
+	// A DualSense Edge is connected: its tab (back paddles, presentation) is there.
+	public bool HasEdgeTab => Tuning.Remap.Edge.IsVisible;
 
 	public TesterViewModel Test { get; }
 
@@ -74,8 +98,9 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 	}
 
 	// Tabs for the segmented switch. The list stays the same on a language switch (only the names change), so the
-	// switch never loses its selection. "Test" is the same word in both languages.
-	public IReadOnlyList<TabOption> Tabs { get; } = [new(() => "Test"), new(() => Text.ControllerTabDeviceTests()), new(() => Text.RemapTab())];
+	// switch never loses its selection; the Edge tab stays in it and is hidden without an Edge. "Test" and "Edge" are the
+	// same words in both languages.
+	public IReadOnlyList<TabOption> Tabs { get; }
 
 	// The shown tab; out of range values (-1: nothing selected) are ignored.
 	public int SelectedTab
@@ -83,7 +108,7 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 		get => _selectedTab;
 		set
 		{
-			if (value is < TestTab or > RemapTab || value == _selectedTab)
+			if (value is < TestTab or > EdgeTab || value == _selectedTab)
 			{
 				return;
 			}
@@ -91,18 +116,26 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(IsTestTab));
 			OnPropertyChanged(nameof(IsOutputsTab));
+			OnPropertyChanged(nameof(IsButtonsTab));
+			OnPropertyChanged(nameof(IsGyroTab));
+			OnPropertyChanged(nameof(IsEdgeTab));
 			OnPropertyChanged(nameof(IsRemapTab));
 			UpdateLive();
 		}
 	}
 
-	// Reset (stick and trigger tuning) shows with the Test tab, where that tuning is; the remap tab has its own.
+	// Reset (stick and trigger tuning) shows with the Test tab, where that tuning is; the other tabs have their own.
 	public bool IsTestTab => SelectedTab == TestTab;
 	public bool IsOutputsTab => SelectedTab == OutputsTab;
-	public bool IsRemapTab => SelectedTab == RemapTab;
+	public bool IsButtonsTab => SelectedTab == ButtonsTab;
+	public bool IsGyroTab => SelectedTab == GyroTab;
+	public bool IsEdgeTab => SelectedTab == EdgeTab;
+	// One of the remap tabs (Buttons, Gyro & Sticks, Edge): the user is trying buttons there too.
+	public bool IsRemapTab => IsButtonsTab || IsGyroTab || IsEdgeTab;
 
-	// Opens a tab by number; one that does not exist (such as the former Triggers tab) opens Test.
-	public void ShowTab(int tab) => SelectedTab = tab is >= TestTab and <= RemapTab ? tab : TestTab;
+	// Opens a tab by number; one that does not exist (such as the former Triggers tab) opens Test, the Edge tab without an
+	// Edge opens Buttons.
+	public void ShowTab(int tab) => SelectedTab = tab == EdgeTab && !HasEdgeTab ? ButtonsTab : tab is >= TestTab and <= EdgeTab ? tab : TestTab;
 
 	public bool IsVisible { get; private set; }
 
@@ -116,6 +149,6 @@ public sealed partial class ControllerPageViewModel : PageViewModel
 	private void UpdateLive()
 	{
 		Test.SetVisible(IsVisible && IsTestTab);
-		Tuning.SetVisible(IsVisible && IsRemapTab);
+		Tuning.SetVisible(IsVisible && IsGyroTab);
 	}
 }

@@ -113,25 +113,6 @@
     <Style Selector="StackPanel.heroBattery > TextBlock.low">
       <Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" />
     </Style>
-    <!-- Click target over a health chip that has a fix -->
-    <Style Selector="Button.chipHit">
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="VerticalAlignment" Value="Stretch" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="Button.chipHit:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#12FFFFFF" />
-    </Style>
-    <Style Selector="Button.chipHit:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#1CFFFFFF" />
-    </Style>
-    <!-- Health chip state words: amber when it needs a look, red when it blocks -->
-    <Style Selector="TextBlock.chipState.attention"><Setter Property="Foreground" Value="{StaticResource IndicatorWaitBrush}" /></Style>
-    <Style Selector="TextBlock.chipState.problem"><Setter Property="Foreground" Value="{StaticResource DangerBrush}" /></Style>
 
     <!-- Quick settings tiles: label over a muted state word (On / Off picked by the tile's own state) -->
     <Style Selector="ToggleButton StackPanel.tileText">
@@ -253,6 +234,14 @@
     <Style Selector="Button.link:pointerover TextBlock">
       <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
     </Style>
+    <!-- The health line's "Fix ›": an action, so in the accent colour (as the health cards' Fix was), semibold -->
+    <Style Selector="Button.link.fix TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.link.fix:pointerover TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
   </UserControl.Styles>
 
   <!-- One screen by state: header with a plain status line and the one action, the controller and the live link on the
@@ -263,7 +252,7 @@
        squeezed: the page keeps its natural height and its bottom is cut off, as with plain Auto rows. -->
   <Border>
     <c:ElasticHeight MaxExtra="80" VerticalAlignment="Top">
-    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{StaticResource Gap}" Classes="page wide">
+    <Grid RowDefinitions="Auto,*,Auto" Classes="page wide">
 
       <!-- Header: title with the status line under it, back to the game (while a known game runs; GameReturn), turn off
            (with a controller) and, only while the virtual controller is off, its start or the blocking issue's fix (stopping
@@ -325,7 +314,7 @@
 
       <!-- The two columns end on one line: the row is as tall as the taller column, and the live card (left) and the quick
            settings (right) stretch to it; neither grows with the window -->
-      <Grid Grid.Row="1" ColumnDefinitions="10*,11*" ColumnSpacing="{StaticResource GapLarge}">
+      <Grid Grid.Row="1" ColumnDefinitions="10*,11*" ColumnSpacing="{StaticResource GapLarge}" Margin="0,12,0,0">
         <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource GapLarge}">
           <!-- Hero: the controller drawing (light in the chosen colour, buttons lit while pressed) beside its name, battery and the
                type games see, and under both the connection line (the links' icons, the mode, "Deneysel" on the cable). The
@@ -737,35 +726,34 @@
         </Border>
       </Grid>
 
-      <!-- Health: one quiet line while everything is fine; the items (with a fix where there is one) when something needs a look -->
-      <TextBlock Grid.Row="2" Classes="caption" Text="{Binding HealthSummary}" IsVisible="{Binding IsHealthAllGood}" TextWrapping="NoWrap"
-                 TextTrimming="CharacterEllipsis" Margin="4,0,0,0" />
-      <ItemsControl Grid.Row="2" ItemsSource="{Binding HealthChips}" IsVisible="{Binding ShowsHealthChips}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate><UniformGrid Rows="1" ColumnSpacing="{StaticResource GapSmall}" /></ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:HealthChipViewModel">
-            <!-- A panel; when there is a fix the whole chip is its button (a "›" shows it, the tooltip names it) -->
-            <Panel>
-              <Border Classes="panel" Padding="12,0" Height="50" ToolTip.Tip="{Binding Reason}">
-                <!-- The name has the full width (long names like "Sanal Kumanda" fit); the fix sits next to the state -->
-                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                  <TextBlock Grid.ColumnSpan="2" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Grid.Row="1" Classes="caption chipState" Classes.attention="{Binding IsAttention}" Classes.problem="{Binding IsProblem}"
-                             Text="{Binding StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                  <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="5" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasAction}">
-                    <TextBlock Text="{Binding ActionText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
-                    <Path Data="M1,1 L5,5 L1,9" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
-                          Width="6" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
-                  </StackPanel>
-                </Grid>
-              </Border>
-              <Button Classes="chipHit" Command="{Binding RunCommand}" IsVisible="{Binding HasAction}" ToolTip.Tip="{Binding ActionTip}" />
-            </Panel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+      <!-- Health: one quiet line, only while something needs a look: those items, grouped by level, and "Fix ›" at the end (a
+           menu when several items have a fix). Every item's level and reason are in the tooltip. The line shrinks to its
+           text so the link follows it; a long line is trimmed, never wrapped. All good: no line, and no gap above it (the
+           gap is the line's top margin, not the page grid's row spacing). -->
+      <Grid Grid.Row="2" Name="HealthLine" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}" HorizontalAlignment="Left" Margin="4,12,0,0"
+            IsVisible="{Binding ShowsHealthLine}">
+        <TextBlock Name="HealthSummary" Classes="caption" Text="{Binding HealthSummary}" ToolTip.Tip="{Binding HealthDetails}" TextWrapping="NoWrap"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Name="HealthFixButton" Classes="link fix" VerticalAlignment="Center" Command="{Binding HealthFixCommand}" IsVisible="{Binding HasHealthFix}"
+                ToolTip.Tip="{Binding HealthFixTip}" AutomationProperties.Name="{Binding HealthFixText}">
+          <TextBlock Text="{Binding HealthFixText}" />
+        </Button>
+        <Button Grid.Column="1" Name="HealthFixMenuButton" Classes="link fix" VerticalAlignment="Center" IsVisible="{Binding HasHealthFixes}"
+                AutomationProperties.Name="{Binding HealthFixText}">
+          <TextBlock Text="{Binding HealthFixText}" />
+          <Button.Flyout>
+            <MenuFlyout Placement="TopEdgeAlignedLeft" ItemsSource="{Binding HealthFixItems}">
+              <MenuFlyout.ItemContainerTheme>
+                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:HealthChipViewModel">
+                  <Setter Property="Header" Value="{Binding FixLabel}" />
+                  <Setter Property="Command" Value="{Binding RunCommand}" />
+                  <Setter Property="ToolTip.Tip" Value="{Binding Reason}" />
+                </ControlTheme>
+              </MenuFlyout.ItemContainerTheme>
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+      </Grid>
     </Grid>
     </c:ElasticHeight>
   </Border>

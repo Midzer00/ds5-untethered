@@ -188,12 +188,15 @@ public sealed class XboxSeriesAppTests
 			var window = new MainWindow { DataContext = vm, Width = 1152, Height = 700 };
 			window.Show();
 			vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
+			vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
 			FitCheck.Settle(window);
-			Grid row = window.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "TriggerRumbleRow");
+			// The card: one Xbox Trigger Rumble row, the setting and the feel together (its hint is the setting's).
+			Grid row = window.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "XboxTriggerRow");
 			Border card = row.GetVisualAncestors().OfType<Border>().First(b => b.Name == "ClassicRumbleCard");
 			Assert.NotNull(card);
-			Assert.Equal(["Kapalı", "Xbox Gibi", "Yumuşak", "Keskin"], row.GetVisualDescendants().OfType<ToggleButton>().Select(t => t.Content as string));
-			Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Text.TriggerRumbleHint() && t.IsEffectivelyVisible);
+			ListBox choice = row.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "XboxTriggerChoice");
+			Assert.Equal(["Kapalı", "Xbox Gibi", "Yumuşak", "Keskin"], choice.ItemsSource!.Cast<LabelledChoice>().Select(c => c.Name));
+			Assert.Equal(Text.XboxTriggerRumbleSettingHint(), ToolTip.GetTip(row));
 			Assert.Empty(FitCheck.Inside(card, window));
 			if (Environment.GetEnvironmentVariable("KOPRU_XBOX_PREVIEW_DIR") is { Length: > 0 } dir)
 			{

@@ -10,12 +10,13 @@ public enum ControllerModel
 }
 
 // One remembered controller as saved in settings.json (AppSettings.KnownControllers). Id is the same key the
-// per-controller profile uses (the device instance id, see ControllerEntry.Id). Name is the user's name, null for the
+// per-controller profile uses (the device instance id, see ControllerEntry.Id). Address is its own Bluetooth address
+// (feature 0x09) once read: it finds the same controller (the same Id) when it comes on the cable alone. Name is the user's name, null for the
 // model name. LastBattery is in percent, null until a reading was seen. While connected LastSeen is when it connected.
 // Look is how the app draws it: null for the default art, OwnLook for the user's own picture (OwnImage: its file name in
 // the app's looks folder), otherwise a pack variant's id. OwnImage stays while another look is chosen, until removed.
 public sealed record KnownController(string Id, ControllerModel Model, string? Name, DateTimeOffset FirstSeen, DateTimeOffset LastSeen,
-	double? LastBattery = null, string? Look = null, string? OwnImage = null)
+	double? LastBattery = null, string? Look = null, string? OwnImage = null, ulong? Address = null)
 {
 	public const string OwnLook = "own";
 
@@ -94,6 +95,69 @@ public sealed class ControllerRegistry
 	// The user's name, or the model name.
 	public string NameOf(string id, bool isEdge) => Find(id)?.Name ?? KnownController.ModelName(isEdge);
 
+	// The remembered controller with this Bluetooth address (its 0x09 answer), or null. Two entries can carry the same
+	// address only when one controller was paired twice (another adapter gives it another Bluetooth id): the one seen
+	// last is taken.
+	public string? FindIdByAddress(ulong address)
+	{
+		lock (_gate)
+		{
+			return _items.Where(c => c.Address == address).MaxBy(c => c.LastSeen)?.Id;
+		}
+	}
+
+	// The remembered controllers that have no Address yet (remembered before the address was kept, or whose 0x09 read
+	// failed), minus the ones in skip.
+	public IReadOnlyList<string> IdsWithoutAddress(IReadOnlySet<string>? skip = null)
+	{
+		lock (_gate)
+		{
+			return [.. _items.Where(c => c.Address == null && skip?.Contains(c.Id) != true).Select(c => c.Id)];
+		}
+	}
+
+	// Fills in the Bluetooth address of remembered controllers that have none. resolve gives the address of one id (its
+	// own Bluetooth node in Windows, never a guess across controllers), or null. Returns the ids filled in; Changed once
+	// when there are any (the address is saved).
+	public IReadOnlyList<string> FillAddresses(IEnumerable<string> ids, Func<string, ulong?> resolve)
+	{
+		List<(string Id, ulong Address)> found = [];
+		foreach (string id in ids)
+		{
+			ulong? address;
+			try
+			{
+				address = resolve(id);
+			}
+			catch (Exception)
+			{
+				address = null;
+			}
+			if (address is { } a && a != 0 && !Kopru.Core.Hid.PairingInfo.IsVirtual(a))
+			{
+				found.Add((id, a));
+			}
+		}
+		List<string> filled = [];
+		lock (_gate)
+		{
+			foreach ((string id, ulong address) in found)
+			{
+				int index = _items.FindIndex(c => SameId(c.Id, id));
+				if (index >= 0 && _items[index].Address == null)
+				{
+					_items[index] = _items[index] with { Address = address };
+					filled.Add(_items[index].Id);
+				}
+			}
+		}
+		if (filled.Count > 0)
+		{
+			Raise([]);
+		}
+		return filled;
+	}
+
 	// Follows the controllers present now: a new one is remembered, one that joins or leaves gets LastSeen, the battery is
 	// kept (rounded). Changed only when something is different.
 	public void Observe(IReadOnlyList<ControllerEntry> present)
@@ -113,7 +177,7 @@ public sealed class ControllerRegistry
 				int index = _items.FindIndex(c => SameId(c.Id, e.Id));
 				if (index < 0)
 				{
-					_items.Add(new KnownController(e.Id, model, null, now, now, battery));
+					_items.Add(new KnownController(e.Id, model, null, now, now, battery, Address: e.Address));
 					changed = true;
 				}
 				else
@@ -123,7 +187,8 @@ public sealed class ControllerRegistry
 					{
 						Model = model,
 						LastSeen = _connected.Contains(e.Id) ? c.LastSeen : now,
-						LastBattery = battery ?? c.LastBattery
+						LastBattery = battery ?? c.LastBattery,
+						Address = e.Address ?? c.Address
 					};
 					if (next != c)
 					{

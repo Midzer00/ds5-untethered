@@ -67,6 +67,14 @@ public static class OutputBlock
 		block[MotorPowerReduction] = 0;
 	}
 
+	// Over USB (wired mode, Bluetooth disconnected) the block goes out as a wired game sends it: only the rumble bits
+	// are cleared, so the controller keeps playing USB audio channels 3-4 as haptics. The Bluetooth-only controls of
+	// SetHapticsMode (power save, low pass, motor power) are not added.
+	public static void SetUsbHapticsMode(Span<byte> block)
+	{
+		block[Flag0] &= unchecked((byte)~(CompatibleVibration | HapticsSelect));
+	}
+
 	public static void SetTriggers(Span<byte> block, ReadOnlySpan<byte> right, ReadOnlySpan<byte> left)
 	{
 		block[Flag0] |= RightTriggerEffect | LeftTriggerEffect;

@@ -75,7 +75,7 @@ public class SetupTests
 	public void StepsAreOrdered()
 	{
 		Assert.Equal(
-			[SetupStepId.Language, SetupStepId.Drivers, SetupStepId.PairController, SetupStepId.AdapterTest, SetupStepId.Done],
+			[SetupStepId.Language, SetupStepId.Drivers, SetupStepId.PairController, SetupStepId.AdapterTest],
 			AllGood().Steps.Select(s => s.Id));
 	}
 
@@ -180,7 +180,6 @@ public class SetupTests
 		// Optional: an untested adapter does not block finishing.
 		Assert.Null(w.FirstIncomplete);
 		Assert.True(w.CanFinish);
-		Assert.Equal(StepStatus.Done, StatusOf(w, SetupStepId.Done));
 		w.AdapterVerdict = AdapterVerdict.Borderline;
 		Assert.Equal(StepStatus.Warning, StatusOf(w, SetupStepId.AdapterTest));
 		w.AdapterVerdict = AdapterVerdict.Unsuitable;

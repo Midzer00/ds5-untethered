@@ -19,8 +19,26 @@ function fakeCore() {
   };
 }
 
-function apiCommit(sha, date, login, message, author) {
-  return { sha, author: author === undefined ? BOT : author, commit: { message: message || 'Translation\n\nCo-authored-by: ' + login + ' <1+' + login + '@users.noreply.github.com>\n', author: { date } } };
+// A commit of the intake today: the volunteer is the author (noreply address), the bot the committer.
+function volunteerCommit(sha, date, login, id, linked) {
+  return {
+    sha,
+    author: linked === false ? null : { login, type: 'User' },
+    committer: BOT,
+    commit: {
+      message: 'Translation: de (5 strings)\n',
+      author: { name: login, email: id + '+' + login + '@users.noreply.github.com', date },
+      committer: { name: 'github-actions[bot]', email: '41898282+github-actions[bot]@users.noreply.github.com', date }
+    }
+  };
+}
+
+// A legacy intake commit (bot author, the volunteer as co-author) by default. Its co-author counts only on the legacy
+// SHA allowlist (credits.LEGACY_INTAKE_SHAS), so LEGACY is that SHA.
+const LEGACY = '0be59dfb6cf5d812b771b4fddc12458a73547dcd';
+function apiCommit(sha, date, login, message, author, committer) {
+  return { sha, author: author === undefined ? BOT : author, committer: committer || null,
+    commit: { message: message || 'Translation: de (5 strings)\n\nCo-authored-by: ' + login + ' <1+' + login + '@users.noreply.github.com>\n', author: { date } } };
 }
 
 // state: { history: { path: [api commits] }, hidden?, data? (existing branch: { parents, entries, text }) }
@@ -78,11 +96,12 @@ function history() {
     [DIR + '/en.json']: [apiCommit('e1', '2026-12-01T10:00:00Z', 'x', 'Release', { login: 'owner', type: 'User' })],
     [DIR + '/tr.json']: [apiCommit('t1', '2026-12-01T10:00:00Z', 'x', 'Release', { login: 'owner', type: 'User' })],
     [DIR + '/de.json']: [
-      apiCommit('d2', '2026-12-20T10:00:00Z', 'anna'),
+      apiCommit(LEGACY, '2026-12-20T10:00:00Z', 'anna'),
       apiCommit('r1', '2026-12-05T10:00:00Z', 'x', 'Release strings', { login: 'owner', type: 'User' }),
-      apiCommit('d1', '2026-12-01T10:00:00Z', 'lukas')
+      volunteerCommit('d1', '2026-12-01T10:00:00Z', 'lukas', 3131)
     ],
-    [DIR + '/fr.json']: [apiCommit('f1', '2026-12-03T10:00:00Z', 'claire', 'Translation\n\nCo-authored-by: claire <2+claire@users.noreply.github.com>\nTranslator-Listing: hidden\n')]
+    // A hidden send of the intake today: bot author and committer, the trailer, nobody credited.
+    [DIR + '/fr.json']: [apiCommit('f1', '2026-12-03T10:00:00Z', 'claire', 'Translation: fr (4 strings)\n\nTranslator-Listing: hidden\n', BOT, BOT)]
   };
 }
 
@@ -145,4 +164,22 @@ test('translators data: the same people leave the branch alone; a branch with an
 
   const broken = fakeGithub({ history: history(), data: { entries: [{ path: 'translators.json', type: 'blob' }], text: '{not json' } });
   assert.equal(await actions.translatorsData({ github: broken, context: ctx, core: fakeCore(), now: NOW }), 'updated');
+});
+
+test('translators data: volunteer-authored intake commits are credited next to legacy co-author commits', async () => {
+  const h = history();
+  h[DIR + '/de.json'] = [
+    volunteerCommit('n2', '2026-12-22T10:00:00Z', 'mia', 5151, false),
+    volunteerCommit('n1', '2026-12-21T10:00:00Z', 'anna', 4242)
+  ].concat(h[DIR + '/de.json']);
+  h[DIR + '/fr.json'] = h[DIR + '/fr.json'].concat([apiCommit('f0', '2026-12-02T10:00:00Z', 'x', 'Translation: fr (3 strings)\n\nTranslator-Listing: hidden\n')]);
+  const github = fakeGithub({ history: h });
+  assert.equal(await actions.translatorsData({ github, context: ctx, core: fakeCore(), now: NOW }), 'created');
+  const data = JSON.parse(github.called('git.createTree')[0].p.tree[0].content);
+  assert.deepEqual(data.languages.de, [
+    { login: 'mia', commits: 1, first: '2026-12-22', last: '2026-12-22' },
+    { login: 'anna', commits: 2, first: '2026-12-20', last: '2026-12-21' },
+    { login: 'lukas', commits: 1, first: '2026-12-01', last: '2026-12-01' }
+  ]);
+  assert.equal(data.languages.fr, undefined, 'a hidden bot-authored commit credits nobody');
 });

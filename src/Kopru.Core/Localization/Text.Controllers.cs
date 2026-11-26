@@ -49,4 +49,8 @@ public static partial class Text
 	public static string ControllerForgetAsk(string name, Language? l = null) => T(l, "Controller.ForgetAsk", A("name", name));
 
 	public static string ControllerTabDeviceTests(Language? l = null) => T(l, "Controller.TabDeviceTests");
+
+	public static string ControllerTabButtons(Language? l = null) => T(l, "Controller.TabButtons");
+
+	public static string ControllerTabGyroSticks(Language? l = null) => T(l, "Controller.TabGyroSticks");
 }

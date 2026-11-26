@@ -92,7 +92,7 @@ public sealed class ControllerTestFitTests
 				{
 					window.Width = width;
 					window.Height = height;
-					foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.RemapTab })
+					foreach (int tab in new[] { ControllerPageViewModel.TestTab, ControllerPageViewModel.OutputsTab, ControllerPageViewModel.ButtonsTab, ControllerPageViewModel.GyroTab, ControllerPageViewModel.EdgeTab })
 					{
 						vm.OpenController(tab);
 						Settle(window);

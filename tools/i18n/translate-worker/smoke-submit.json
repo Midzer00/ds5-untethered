@@ -1,0 +1,9 @@
+{
+  "code": "0000000000smoketest",
+  "code_verifier": "smoke-test-verifier-00000000000000000000000000000000000000000000",
+  "redirect_uri": "https://ds5untethered.com/translate/oauth-callback.html",
+  "title": "Translation: de",
+  "body": "<!-- ds5-translate v1 -->\n**Language:** de (Deutsch)\n**Strings:** 0 of 0 · smoke test, not a real translation\n\n<details><summary>Translation file (compressed)</summary>\n\n```ds5-translate part=1/1 encoding=gzip+base64 sha256=0000000000000000000000000000000000000000000000000000000000000000\nAAAA\n```\n</details>\n",
+  "comments": [],
+  "listing": "shown"
+}

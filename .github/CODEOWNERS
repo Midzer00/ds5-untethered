@@ -1,0 +1,4 @@
+# Changes to the workflows and to the translation checks they run need the owner's review once the ruleset on main
+# requires review from Code Owners (see tools/i18n/README.md, "Trust and the validate check").
+/.github/ @Midzer00
+/tools/i18n/ @Midzer00

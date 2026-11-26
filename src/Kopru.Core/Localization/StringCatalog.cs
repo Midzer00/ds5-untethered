@@ -103,6 +103,16 @@ internal static class StringCatalog
 			return PseudoLocale.Transform(key);
 		}
 
+		if (KeyTagLocale.IsKeyTag(code))
+		{
+			LanguageBundle en = English;
+			CultureInfo enCulture = Localizer.Culture(Language.English);
+			string enText = en.Messages.TryGetValue(key, out IcuMessage? enMsg) && enMsg.TryFormat("en", enCulture, args, out string formatted)
+				? formatted
+				: key;
+			return KeyTagLocale.Wrap(key, enText);
+		}
+
 		LanguageBundle? bundle = GetBundle(code);
 		if (bundle != null
 			&& bundle.Messages.TryGetValue(key, out IcuMessage? msg)

@@ -3,8 +3,10 @@
 # branch translation-data to a single parentless commit holding only that file. The site reads it from
 # https://raw.githubusercontent.com/Midzer00/ds5-untethered/translation-data/translators.json
 #
-# Credited: commit authors and noreply Co-authored-by logins. Never listed: en, tr, qps, qtg, the repository owner,
-# bots, logins in tools/i18n/translators-hidden.txt, and anyone credited by a commit with "Translator-Listing: hidden".
+# Credited: commit authors (the GitHub account, or the login of a noreply author address). Co-authored-by lines and the
+# "Translator-Listing: hidden" trailer count only on the intake's own commits (committed by github-actions[bot] in its
+# exact message format; Co-authored-by only on the allowlisted older intake commits), never on other commits.
+# Never listed: en, tr, qps, qtg, the repository owner, bots and logins in tools/i18n/translators-hidden.txt.
 #
 # Security: only the checks folder of the default branch is checked out (no credentials kept); commit messages are
 # parsed inside actions/github-script and never reach a shell. The branch is written through the Git data API.

@@ -5,11 +5,12 @@ using Kopru.Core.Hid;
 namespace Kopru.Core.Bridge;
 
 // EXPERIMENTAL wired mode: while the bridged controller is also on a USB cable (and its twin is hidden from games),
-// the running connection's session carries input and output over the cable (BluetoothSession.AttachWired, reports
-// 0x01/0x02), and when the controller's own USB audio endpoint could be opened (OpenWiredAudio) the haptics stream's
-// blocks and the game's speaker audio go over it too; its USB capture endpoint is the mic's source the same way
-// (OpenWiredMic). Bluetooth stays connected — haptics and speaker without an audio sink, and the mic without a USB
-// capture, keep using it — and takes everything back over when the cable is out. An endpoint missing at enter or
+// the running connection's session moves over to the cable (BluetoothSession.AttachWired: input 0x01, output 0x02),
+// and when the controller's own USB audio endpoint could be opened (OpenWiredAudio) the haptics stream's blocks and
+// the game's speaker audio go over it; its USB capture endpoint is the mic's source the same way (OpenWiredMic).
+// Once USB input is live the controller's Bluetooth link is disconnected (HandOffBluetoothAsync; owner decision
+// 2026-11-24: wired mode runs over USB alone, no dual-link fallback). The session and the virtual pad stay through the
+// switch; when the cable is pulled the controller is simply gone until it reconnects over Bluetooth. An endpoint missing at enter or
 // lost later is asked for again every WiredAudioRetryInterval while wired (the endpoints can appear a moment after
 // the cable is in), slower once WiredAudioBackoffTries misses say it is not coming soon. The virtual pad, the
 // server and the bridge objects are never touched by entering or leaving.
@@ -41,9 +42,22 @@ public sealed partial class BridgeHost
 
 	public bool IsWired => current?.Session.IsWired ?? false;
 
+	// Disconnect the controller's Bluetooth link once wired mode has USB input (the default). Off: Bluetooth stays
+	// connected beside the cable (a failed USB link then falls back to it).
+	public bool DisconnectBluetoothWhenWired { get; set; } = true;
+
+	// How long the hand-off waits for the first USB input report before it keeps Bluetooth connected.
+	public TimeSpan WiredInputWait { get; set; } = TimeSpan.FromSeconds(2);
+
+	// The last Bluetooth hand-off (tests wait for it).
+	internal Task? BluetoothHandOff { get; private set; }
+
 	public HidDevice? WiredDevice => current?.Session.WiredDevice;
 
 	public bool IsWiredAudio => current?.Session.IsWiredAudio ?? false;
+
+	// The running connection was opened on the controller's USB link (taken over on the cable alone).
+	public bool IsUsbOnly => current?.Session.IsUsbOnly ?? false;
 
 	// Switches the running connection to the controller's own USB link. Null on success, else a short fixed reason
 	// ("no running connection", "usb device not opened", "usb device not opened (<ExceptionTypeName>)").
@@ -97,14 +111,126 @@ public sealed partial class BridgeHost
 		}
 		if (!session.IsWired)
 		{
-			// The link's first write already fell the session back to Bluetooth.
+			// The link already fell the session back to Bluetooth (its reader failed at once).
 			return "usb link dropped right after it was opened";
 		}
 		Diagnostics.AppLog.Write($"wired{LogSlot}: on (input and output over USB)");
 		// A transport change: the first seconds after it say nothing about the radio (as on connect).
 		linkQuality.Restart(NowMs, "wired");
 		ReapplyMicForTransport(c);
+		if (DisconnectBluetoothWhenWired)
+		{
+			BluetoothHandOff = Task.Run(() => HandOffBluetoothAsync(c, usb));
+		}
 		return null;
+	}
+
+	// Disconnects the controller's Bluetooth link once the wired link delivered input (as Power Off does; the
+	// controller stays powered over the cable). The session ends its Bluetooth reader quietly and runs on USB alone.
+	// Nothing happens when the connection or the wired link changed meanwhile, when no USB input came within
+	// WiredInputWait, or when the address is unknown; a refused disconnect keeps Bluetooth (logged).
+	private async Task HandOffBluetoothAsync(Connection c, HidDevice usb)
+	{
+		long until = Environment.TickCount64 + (long)WiredInputWait.TotalMilliseconds;
+		while (!c.Session.IsWiredInputLive)
+		{
+			if (!ReferenceEquals(current, c) || c.Session.WiredDevice?.Path != usb.Path)
+			{
+				return;
+			}
+			if (Environment.TickCount64 > until)
+			{
+				Diagnostics.AppLog.Write($"wired{LogSlot}: no USB input yet, Bluetooth stays connected");
+				return;
+			}
+			await Task.Delay(20).ConfigureAwait(false);
+		}
+		ulong? address;
+		try
+		{
+			address = power.FindAddress(c.Session.Device);
+		}
+		catch (Exception)
+		{
+			address = null;
+		}
+		if (address is not ulong a)
+		{
+			Diagnostics.AppLog.Write($"wired{LogSlot}: Bluetooth address unknown, Bluetooth stays connected");
+			return;
+		}
+		bool ok;
+		try
+		{
+			ok = await power.DisconnectAsync(a).ConfigureAwait(false);
+		}
+		catch (Exception e)
+		{
+			Diagnostics.AppLog.Write($"wired{LogSlot}: Bluetooth disconnect failed ({e.GetType().Name}), Bluetooth stays connected");
+			return;
+		}
+		Diagnostics.AppLog.Write(ok
+			? $"wired{LogSlot}: Bluetooth disconnected, the controller runs over USB only"
+			: $"wired{LogSlot}: the radio refused the Bluetooth disconnect, Bluetooth stays connected");
+	}
+
+	// A connection opened on the controller's USB link (wired mode took over a controller on the cable alone, see
+	// CableControllerSource): its USB audio endpoint carries haptics and speaker from the start; a missing one is asked
+	// for again like in wired mode.
+	private void StartUsbOnly(Connection c, HidDevice usb)
+	{
+		Volatile.Write(ref c.WiredAudioMiss, null);
+		Volatile.Write(ref c.WiredAudioTries, 0);
+		Volatile.Write(ref c.WiredAudioStrikes, 0);
+		if (OpenWiredAudioLogged(c, usb) is { } audio && c.Session.AttachWiredAudio(usb, audio))
+		{
+			Volatile.Write(ref c.WiredAudioSince, time.GetUtcNow().UtcTicks);
+		}
+		Diagnostics.AppLog.Write($"wired{LogSlot}: on (controller on the cable alone, no Bluetooth)");
+		linkQuality.Restart(NowMs, "wired");
+	}
+
+	private long lastStrayDisconnect = long.MinValue;
+
+	// The controller held on the cable alone also came up over Bluetooth (the user pressed the ø button): that link is
+	// disconnected again, as the wired hand-off does (USB audio haptics do not play while Bluetooth is connected).
+	// Only for this host's own controller (same address), at most every 5 s. True when the radio accepted.
+	public async Task<bool> DisconnectStrayBluetoothAsync(HidDevice bluetooth)
+	{
+		Connection? c = current;
+		if (c == null || !c.Session.IsUsbOnly || Details?.Address is not ulong mine)
+		{
+			return false;
+		}
+		ulong? address;
+		try
+		{
+			address = power.FindAddress(bluetooth);
+		}
+		catch (Exception)
+		{
+			address = null;
+		}
+		long now = Environment.TickCount64;
+		if (address != mine || now - Interlocked.Read(ref lastStrayDisconnect) < 5000)
+		{
+			return false;
+		}
+		Interlocked.Exchange(ref lastStrayDisconnect, now);
+		bool ok;
+		try
+		{
+			ok = await power.DisconnectAsync(mine).ConfigureAwait(false);
+		}
+		catch (Exception e)
+		{
+			Diagnostics.AppLog.Write($"wired{LogSlot}: Bluetooth disconnect failed ({e.GetType().Name})");
+			return false;
+		}
+		Diagnostics.AppLog.Write(ok
+			? $"wired{LogSlot}: the controller also came up over Bluetooth; disconnected it, it stays on USB"
+			: $"wired{LogSlot}: the controller also came up over Bluetooth; the radio refused the disconnect");
+		return ok;
 	}
 
 	// Back to Bluetooth over everything; a no-op while not wired.

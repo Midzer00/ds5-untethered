@@ -85,9 +85,59 @@ test('the summary escapes untrusted text', () => {
   assert.doesNotMatch(md, /!\[x\]\(/);
   assert.doesNotMatch(md, /<b>/);
   assert.doesNotMatch(md, /(^|[^\\])@someone/);
-  assert.match(md, /\| src\/Kopru\.Core\/Localization\/strings\/de\.json \| de \| 0 of \d+ \| 2 \| 1 \|/);
+  assert.match(md, /\| `src\/Kopru\.Core\/Localization\/strings\/de\.json` \| `de` \| 0 of \d+ \| 2 \| 1 \|/);
 });
 
+const Z = '​';
+
 test('mdEscape neutralises links, mentions, html and newlines', () => {
-  assert.equal(prCheck.mdEscape('a\n@b [c](d) <e> `f`'), 'a \\@b \\[c\\]\\(d\\) &lt;e&gt; \\`f\\`');
+  assert.equal(prCheck.mdEscape('a\n@b [c](d) <e> `f`'), 'a \\@' + Z + 'b \\[c\\]\\(d\\) &lt;e&gt; \\`f\\`');
+});
+
+// What GitHub would turn into a link or a notification in plain comment text (after markdown escapes are undone).
+function autolinkable(md) {
+  const t = md.replace(/\\/g, '');
+  return /[a-z][a-z0-9+.-]*:\/\//i.test(t) || /www\./i.test(t) || /@[A-Za-z0-9]/.test(t) || /#[0-9]/.test(t) ||
+    /[A-Za-z0-9._%+-]@[A-Za-z0-9-]+\.[A-Za-z]/.test(t);
+}
+
+test('mdEscape breaks bare URLs, www. links, e-mail addresses, mentions and issue references', () => {
+  for (const s of ['https://evil.example/x', 'HTTP://EVIL.example', 'ftp://evil.example', 'see www.evil.example now',
+    'WWW.evil.example', '_www.evil.example', 'mail me@evil.example', '@someone', 'fixes #12', 'javascript://x']) {
+    assert.ok(autolinkable(s), 'the check itself sees ' + s);
+    const out = prCheck.mdEscape(s);
+    assert.equal(autolinkable(out), false, s + ' -> ' + JSON.stringify(out));
+  }
+});
+
+test('mdCode puts untrusted text in one code span, whatever backticks it holds', () => {
+  assert.equal(prCheck.mdCode('de'), '`de`');
+  assert.equal(prCheck.mdCode('a`b'), '``a`b``');
+  assert.equal(prCheck.mdCode('```x'), '```` ```x ````');
+  assert.equal(prCheck.mdCode('x`'), '`` x` ``');
+  assert.equal(prCheck.mdCode('a\nb'), '`a b`');
+  assert.equal(prCheck.mdCode(''), '');
+  assert.equal(prCheck.mdCode('a|b', true), '`a\\|b`');
+  assert.equal(prCheck.mdCode('a|b'), '`a|b`');
+});
+
+// Removes inline code spans (literal on GitHub) so only the prose around them is left.
+function prose(md) { return md.replace(/(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, ''); }
+
+test('a URL used as a key gives no clickable link in the summary', () => {
+  const r = run([{ path: DIR + 'de.json', status: 'added', text: json({ 'https://evil.example/login': 'x', 'www.evil.example': 'y', 'a@evil.example': 'z' }) }]);
+  assert.equal(r.files[0].errors.filter((e) => e.rule === 'key.unknown').length, 3);
+  const md = prCheck.summaryMarkdown(r);
+  assert.equal(autolinkable(prose(md)), false, md);
+  assert.doesNotMatch(md, /https:\/\/evil/);
+  assert.doesNotMatch(md, /www\.evil/);
+});
+
+test('a file name with a pipe or backticks stays in its table cell', () => {
+  const path = DIR + 'a|`b.json';
+  const r = { ok: false, errorCount: 1, warningCount: 0, files: [{ path, name: 'a|`b.json', code: null, counts: null, errors: [{ level: 'error', rule: 'file.name', message: 'm' }], warnings: [] }] };
+  const row = prCheck.summaryMarkdown(r).split('\n').find((l) => l.indexOf('a\\|') >= 0);
+  assert.ok(row, 'row with the escaped pipe');
+  assert.equal(row.split(/(?<!\\)\|/).length, 7, row);
+  assert.ok(row.indexOf('``' + DIR + 'a\\|`b.json``') > 0, row);
 });

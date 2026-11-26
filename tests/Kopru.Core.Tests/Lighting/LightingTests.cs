@@ -74,6 +74,10 @@ public class LightingTests
 		Assert.False(LightAnimator.IsAnimated(light, new BatteryStatus(10, ChargeState.Discharging)));
 		// Unknown battery: the user's colour.
 		Assert.Equal(new Rgb(0x2F, 0x6B, 0xFF), LightAnimator.ColourAt(light, TimeSpan.Zero, null));
+		// Charging with the level not reported (USB): the user's colour too, not the 0 % red.
+		BatteryStatus levelUnknown = new(0, ChargeState.Charging, LevelKnown: false);
+		Assert.Equal(new Rgb(0x2F, 0x6B, 0xFF), LightAnimator.ColourAt(light, TimeSpan.Zero, levelUnknown));
+		Assert.False(LightAnimator.IsAnimated(light, levelUnknown));
 	}
 
 	[Fact]

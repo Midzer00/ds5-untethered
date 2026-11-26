@@ -34,6 +34,29 @@ public static partial class BluetoothAddress
 		return m.Success && ulong.TryParse(m.Groups[1].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong a) && a != 0 ? a : null;
 	}
 
+	// The address of a controller remembered under its Bluetooth HID node's instance ID (HID\{00001124-...}\...), read
+	// from that node's parent (the BTHENUM service node) as Windows recorded it: works while the controller is off or on
+	// the cable alone, as long as it stays paired. Null for any other kind of ID or when Windows has no such node.
+	// parentOf: the parent lookup (tests pass one; default DeviceInstance.KnownParent).
+	public static ulong? OfBluetoothHid(string? instanceId, Func<string, string?>? parentOf = null)
+	{
+		if (!DeviceInstance.IsBluetoothHid(instanceId))
+		{
+			return null;
+		}
+		string? parent;
+		try
+		{
+			parent = (parentOf ?? DeviceInstance.KnownParent)(instanceId!);
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+		// Only a Bluetooth service node carries the address; anything else is not trusted.
+		return parent != null && parent.StartsWith(@"BTHENUM\", StringComparison.OrdinalIgnoreCase) ? FromInstanceId(parent) : null;
+	}
+
 	// Feature report 0x09 (pairing info): the controller's own address in bytes 1..6, least significant byte first.
 	public static ulong? FromPairingFeature(ReadOnlySpan<byte> report)
 	{

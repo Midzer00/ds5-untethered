@@ -92,7 +92,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 			(nameof(IsEdge), () => IsEdge), (nameof(DeviceName), () => DeviceName), (nameof(DeviceConnection), () => DeviceConnection),
 			(nameof(DeviceBattery), () => DeviceBattery), (nameof(IsConnected), () => IsConnected), (nameof(BatteryPercent), () => BatteryPercent),
 			(nameof(HasBattery), () => HasBattery), (nameof(IsCharging), () => IsCharging), (nameof(BatteryShort), () => BatteryShort),
-			(nameof(BatteryRowText), () => BatteryRowText), (nameof(BatteryRowTip), () => BatteryRowTip));
+			(nameof(BatteryRowText), () => BatteryRowText), (nameof(BatteryRowTip), () => BatteryRowTip),
+			(nameof(ChargingLevelUnknown), () => ChargingLevelUnknown));
 		// Only the sidebar values the service drives, and only the ones that changed.
 		_service.StateChanged += (_, _) => RunOnUi(() =>
 		{
@@ -223,19 +224,24 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 	public string DeviceName => _service.IsConnected ? _service.DeviceName : Text.DeviceNoController();
 	// The link line of the sidebar card: the same words as the Overview's status line ("Bluetooth", "USB Kablosu (Deneysel)", ...).
 	public string DeviceConnection => Overview.SidebarLinkText;
-	public string DeviceBattery => !_service.HasBattery ? Text.BatteryUnknown() : _service.IsCharging
+	public string DeviceBattery => !_service.HasBattery ? ChargingLevelUnknown ? Text.BatteryCharging() : Text.BatteryUnknown()
+		: _service.IsCharging
 		? Text.BatteryCharging(Math.Round(_service.BatteryPercent))
 		: Text.BatteryPercent(Math.Round(_service.BatteryPercent));
 	public bool IsConnected => _service.IsConnected;
 	public double BatteryPercent => _service.BatteryPercent;
 	public bool HasBattery => _service.IsConnected && _service.HasBattery;
 	public bool IsCharging => _service.IsCharging;
-	// Short battery reading for the sidebar ("%78" / "78%"), or "unknown".
-	public string BatteryShort => HasBattery ? Text.BatteryValue(Math.Round(_service.BatteryPercent)) : Text.BatteryUnknown();
-	// The battery in the controller card's status row: the reading, or a dash without one ("battery unknown" is in the
-	// tooltip, DeviceBattery), so the virtual controller's state beside it keeps its room.
-	public string BatteryRowText => HasBattery ? Text.BatteryValue(Math.Round(_service.BatteryPercent)) : "—";
-	public string BatteryRowTip => HasBattery ? DeviceBattery : Text.BatteryUnknown();
+	// Charging, but the level is not reported (on the USB cable): "Charging" in place of a number, never "%0".
+	public bool ChargingLevelUnknown => _service.IsConnected && !_service.HasBattery && _service.IsCharging;
+	// Short battery reading for the sidebar ("%78" / "78%"), "Charging" without a level, or "unknown".
+	public string BatteryShort => HasBattery ? Text.BatteryValue(Math.Round(_service.BatteryPercent))
+		: ChargingLevelUnknown ? Text.Charging() : Text.BatteryUnknown();
+	// The battery in the controller card's status row: the reading, "Charging" without a level, or a dash without one
+	// ("battery unknown" is in the tooltip, DeviceBattery), so the virtual controller's state beside it keeps its room.
+	public string BatteryRowText => HasBattery ? Text.BatteryValue(Math.Round(_service.BatteryPercent))
+		: ChargingLevelUnknown ? Text.Charging() : "—";
+	public string BatteryRowTip => HasBattery || ChargingLevelUnknown ? DeviceBattery : Text.BatteryUnknown();
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(CurrentPage))]

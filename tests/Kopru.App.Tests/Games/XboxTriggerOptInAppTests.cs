@@ -10,15 +10,17 @@ using Kopru.App.Controls;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
 using Kopru.App.Views;
+using Kopru.Core.Bridge;
 using Kopru.Core.Games;
 using Kopru.Core.Localization;
 using Kopru.Core.Virtual;
 
 namespace Kopru.App.Tests;
 
-// The experimental Xbox Trigger Rumble setting (Settings > Controllers): off by default for new and existing users; off,
-// Automatic never gives Xbox Series (an Xbox Series choice still holds, without trigger rumble), the Games page's Xbox
-// view says so with Turn On, and the Trigger Rumble rows are hidden. With KOPRU_OPTIN_PREVIEW_DIR set, renders optin2-settings-{off|on}-{w}x{h}-tr.png,
+// The experimental Xbox Trigger Rumble setting: off by default for new and existing users; off, Automatic never gives Xbox
+// Series (an Xbox Series choice still holds, without trigger rumble). Haptics And Triggers sets it with the profile's feel
+// in one row (Off | Xbox-Like | Soft | Sharp), the Games page's Xbox view has a switch for it, and a game's pop-up hides its
+// Trigger Rumble row while it is off. With KOPRU_OPTIN_PREVIEW_DIR set, renders optin2-settings-{off|on}-{w}x{h}-tr.png,
 // optin2-haptics-{off|on}-1152x700-tr.png and optin-games-tr.png there (made-up games).
 public sealed class XboxTriggerOptInAppTests
 {
@@ -135,12 +137,11 @@ public sealed class XboxTriggerOptInAppTests
 		Assert.Equal(VirtualPadType.Xbox360, service.Games.AutomaticPadTypeFor("steam:9030"));
 	}
 
-	// The switch has its own Triggers card in the Controllers tab's right column, under DSX Mod Support, styled like the other
-	// switch cards: the section label over a panel, the title with a muted Experimental tag, one description line, the switch
-	// The Xbox Trigger Rumble (Experimental) switch lives on Haptics & Triggers (Classic Rumble card), with its title,
-	// muted Experimental tag, short description and switch on the right, and is no longer on Settings → Devices & Profiles.
+	// Haptics And Triggers, Xbox And DS4 Rumble tab: one Xbox Trigger Rumble row (title, muted Experimental tag, short
+	// description, the setting's hint as its tooltip) with Off | Xbox-Like | Soft | Sharp on the right; the old switch row and
+	// the separate Trigger Rumble row are gone, and Settings has neither.
 	[AvaloniaFact]
-	public void HapticsPage_XboxTriggerRumbleRow_WithTitleTagLineAndSwitch_AndGoneFromSettings()
+	public void HapticsPage_XboxTriggerRow_WithTitleTagLineAndChoice_AndNoSwitchRow()
 	{
 		Language? before = Localizer.Chosen;
 		try
@@ -160,7 +161,8 @@ public sealed class XboxTriggerOptInAppTests
 					? "Açıkken Xbox tetik titreşimi olan oyunlara Xbox Series kumanda gösterilir; Xbox Series türünde oyunun tetik titreşimi DualSense tetiklerinde hissedilir. Kapalıyken oyunun tetik titreşimi yok sayılır."
 					: "When on, games with Xbox trigger rumble see an Xbox Series controller, and with the Xbox Series type the game's trigger rumble plays on the DualSense triggers. When off, the game's trigger rumble is ignored.",
 					page.XboxTriggerRumbleHint);
-				foreach ((double width, double height) in Sizes)
+				string[] names = code == "tr" ? ["Kapalı", "Xbox Gibi", "Yumuşak", "Keskin"] : ["Off", "Xbox-Like", "Soft", "Sharp"];
+				foreach ((double width, double height) in FitCheck.ReviewSizes)
 				{
 					var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 					window.Show();
@@ -169,14 +171,20 @@ public sealed class XboxTriggerOptInAppTests
 					Assert.Empty(SettingsFitTests.Check(window));
 					SettingsView settingsView = window.GetVisualDescendants().OfType<SettingsView>().Single();
 					List<Control> settingsControls = settingsView.GetVisualDescendants().OfType<Control>().ToList();
-					Assert.DoesNotContain(settingsControls, c => c.Name is "ExperimentalPanel" or "XboxTriggerRumblePanel" or "XboxTriggerRumbleRow" or "XboxTriggerRumbleSwitch" or "HapticsPanel" or "PauseHapticsRow");
+					Assert.DoesNotContain(settingsControls, c => c.Name is "ExperimentalPanel" or "XboxTriggerRumblePanel" or "XboxTriggerRumbleRow" or "XboxTriggerRumbleSwitch"
+						or "XboxTriggerRow" or "HapticsPanel" or "PauseHapticsRow");
 
 					vm.Navigate(vm.OtherGames);
+					page.SelectedTab = OtherGamesViewModel.RumbleTab;
 					FitCheck.Settle(window);
-					List<Control> all = window.GetVisualDescendants().OfType<Control>().ToList();
+					OtherGamesView view = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
+					List<Control> all = view.GetVisualDescendants().OfType<Control>().ToList();
+					Assert.DoesNotContain(all, c => c.Name is "XboxTriggerRumbleRow" or "XboxTriggerRumbleSwitch" or "TriggerRumbleRow");
+					Assert.Empty(all.OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null && t.IsEffectivelyVisible));
 					Border card = all.OfType<Border>().Single(b => b.Name == "ClassicRumbleCard");
-					Grid row = all.OfType<Grid>().Single(g => g.Name == "XboxTriggerRumbleRow");
-					Assert.Same(card, row.GetVisualAncestors().OfType<Border>().First());
+					Grid row = all.OfType<Grid>().Single(g => g.Name == "XboxTriggerRow");
+					Assert.Same(card, row.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("panel")));
+					Assert.Contains("settingRow", row.Classes);
 					Assert.Equal(page.XboxTriggerRumbleHint, ToolTip.GetTip(row));
 					TextBlock title = all.OfType<TextBlock>().Single(t => t.Name == "XboxTriggerRumbleTitle");
 					TextBlock tag = all.OfType<TextBlock>().Single(t => t.Name == "XboxTriggerRumbleTag");
@@ -190,19 +198,30 @@ public sealed class XboxTriggerOptInAppTests
 					Rect titleBox = FitCheck.Bounds(title, window), tagBox = FitCheck.Bounds(tag, window), lineBox = FitCheck.Bounds(line, window);
 					Assert.True(tagBox.Left > titleBox.Right && Math.Abs(tagBox.Center.Y - titleBox.Center.Y) < 4, $"{code} {width}: the tag is not beside the title");
 					Assert.True(lineBox.Top >= titleBox.Bottom, $"{code} {width}: the line is not under the title");
-					ToggleSwitch toggle = all.OfType<ToggleSwitch>().Single(t => t.Name == "XboxTriggerRumbleSwitch");
-					Assert.Equal(page.XboxTriggerRumbleLabel, Avalonia.Automation.AutomationProperties.GetName(toggle));
-					Rect toggleBox = FitCheck.Bounds(toggle, window);
-					Assert.True(toggleBox.Left > Math.Max(tagBox.Right, lineBox.Right) && toggleBox.Right <= cardBox.Right, $"{code} {width}: the switch is not on the right");
-					Assert.False(toggle.IsChecked);
 
-					// On: the setting is on; off from elsewhere: the switch follows.
-					toggle.IsChecked = true;
-					Assert.True(fake.Games.XboxTriggerRumbleOn);
+					ListBox choice = all.OfType<ListBox>().Single(l => l.Name == "XboxTriggerChoice");
+					Assert.Equal(names, choice.ItemsSource!.Cast<LabelledChoice>().Select(c => c.Name));
+					Assert.Equal(page.XboxTriggerRumbleLabel, Avalonia.Automation.AutomationProperties.GetName(choice));
+					Rect choiceBox = FitCheck.Bounds(choice, window);
+					Assert.True(choiceBox.Left > Math.Max(tagBox.Right, lineBox.Right) && choiceBox.Right <= cardBox.Right, $"{code} {width}: the choice is not on the right");
+					// Every name whole (none cut to an ellipsis).
+					Assert.All(choice.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)),
+						t => Assert.False(t.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{code} {width}: \"{t.Text}\" is cut"));
+					Assert.Empty(FitCheck.CutText(row));
+					// Off by default: Off is selected.
+					Assert.Equal(0, choice.SelectedIndex);
+
+					// Soft: the setting is on and the profile's feel is Soft; off from elsewhere: Off is selected again.
+					choice.SelectedIndex = 2;
 					FitCheck.Settle(window);
+					Assert.True(fake.Games.XboxTriggerRumbleOn);
+					Assert.Equal(TriggerRumbleFeel.Soft, vm.Settings.TriggerRumble);
 					fake.Games.XboxTriggerRumbleOn = false;
 					Dispatcher.UIThread.RunJobs();
-					Assert.False(toggle.IsChecked);
+					Assert.Equal(0, choice.SelectedIndex);
+					Assert.Equal(TriggerRumbleFeel.Soft, vm.Settings.TriggerRumble);
+					vm.Settings.TriggerRumble = TriggerRumbleFeel.XboxLike;
+					page.SelectedTab = OtherGamesViewModel.GameEffectsTab;
 					window.Close();
 				}
 			}
@@ -211,6 +230,65 @@ public sealed class XboxTriggerOptInAppTests
 		{
 			Localizer.Chosen = before;
 		}
+	}
+
+	// The merged row's choice: Off turns the setting off and keeps the profile's feel; any other turns it on and picks that feel
+	// for the active profile (another profile keeps its own).
+	[AvaloniaFact]
+	public async Task XboxTriggerIndex_SetsTheSettingAndTheProfilesFeel()
+	{
+		(MainWindowViewModel vm, FakeControllerService service, _) = await OpenAsync();
+		ProfileFeelViewModel feel = vm.OtherGames.Feel;
+		List<string> changed = [];
+		feel.PropertyChanged += (_, e) => changed.Add(e.PropertyName ?? string.Empty);
+		Assert.False(vm.Settings.XboxTriggerRumbleOn);
+		Assert.Equal(TriggerRumbleFeel.XboxLike, vm.Settings.TriggerRumble);
+		Assert.Equal(0, feel.XboxTriggerIndex);
+		WithLanguage(Language.English, () => Assert.Equal(["Off", "Xbox-Like", "Soft", "Sharp"], feel.TriggerRumbleChoices.Select(c => c.Name)));
+		WithLanguage(Language.Turkish, () => Assert.Equal(["Kapalı", "Xbox Gibi", "Yumuşak", "Keskin"], feel.TriggerRumbleChoices.Select(c => c.Name)));
+
+		feel.XboxTriggerIndex = 3;
+		Assert.True(vm.Settings.XboxTriggerRumbleOn);
+		Assert.True(service.Games.XboxTriggerRumbleOn);
+		Assert.Equal(TriggerRumbleFeel.Sharp, vm.Settings.TriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.Sharp, vm.Settings.Profiles.Find(vm.Settings.Profiles.ActiveId)!.Values.TriggerRumble);
+		Assert.Equal(3, feel.XboxTriggerIndex);
+
+		changed.Clear();
+		feel.XboxTriggerIndex = 0;
+		Assert.False(vm.Settings.XboxTriggerRumbleOn);
+		Assert.Equal(TriggerRumbleFeel.Sharp, vm.Settings.TriggerRumble);
+		Assert.Equal(0, feel.XboxTriggerIndex);
+		Assert.Contains(nameof(ProfileFeelViewModel.XboxTriggerIndex), changed);
+
+		// Out of range: nothing changes.
+		feel.XboxTriggerIndex = -1;
+		feel.XboxTriggerIndex = 4;
+		Assert.False(vm.Settings.XboxTriggerRumbleOn);
+		Assert.Equal(TriggerRumbleFeel.Sharp, vm.Settings.TriggerRumble);
+
+		// On from elsewhere (the Games page's switch): the row shows the profile's feel and says so.
+		changed.Clear();
+		vm.Settings.XboxTriggerRumbleOn = true;
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal(3, feel.XboxTriggerIndex);
+		Assert.Contains(nameof(ProfileFeelViewModel.XboxTriggerIndex), changed);
+
+		// On with the profile's feel Off: Off shows (nothing plays).
+		vm.Settings.TriggerRumble = TriggerRumbleFeel.Off;
+		Assert.Equal(0, feel.XboxTriggerIndex);
+		feel.XboxTriggerIndex = 1;
+		Assert.True(vm.Settings.XboxTriggerRumbleOn);
+		Assert.Equal(TriggerRumbleFeel.XboxLike, vm.Settings.TriggerRumble);
+
+		// Another profile's feel stays its own: a game's profile edited in its pop-up keeps Soft while the active one changes.
+		vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == "Glass Comet"));
+		vm.SupportedGames.Panel.UseOwnSettingsCommand.Execute(null);
+		vm.SupportedGames.Panel.SaveProfileNameCommand.Execute(null);
+		vm.SupportedGames.Panel.Feel.TriggerRumbleIndex = 2;
+		feel.XboxTriggerIndex = 3;
+		Assert.Equal(TriggerRumbleFeel.Soft, vm.Settings.Profiles.Profiles.Single(p => p.Name == "Glass Comet").Values.TriggerRumble);
+		Assert.Equal(TriggerRumbleFeel.Sharp, vm.Settings.TriggerRumble);
 	}
 
 	// ---- the Games page ----
@@ -308,15 +386,24 @@ public sealed class XboxTriggerOptInAppTests
 						Save(window, "optin3-games-on-tr.png");
 					}
 
-					// Haptics & Triggers shows it on; off there, the Games switch follows.
+					// Haptics & Triggers shows it on (the profile's feel, Xbox-Like by default); Off there, the Games switch follows.
 					vm.Navigate(vm.OtherGames);
+					vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
 					FitCheck.Settle(window);
-					ToggleSwitch hapticsToggle = window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => t.Name == "XboxTriggerRumbleSwitch");
-					Assert.True(hapticsToggle.IsChecked);
-					hapticsToggle.IsChecked = false;
+					ListBox hapticsChoice = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "XboxTriggerChoice");
+					Assert.Equal(1, hapticsChoice.SelectedIndex);
+					hapticsChoice.SelectedIndex = 0;
 					Dispatcher.UIThread.RunJobs();
 					Assert.False(service.Games.XboxTriggerRumbleOn);
 					Assert.False(toggle.IsChecked);
+					// And back on from there (Sharp): the Games switch is on again.
+					hapticsChoice.SelectedIndex = 3;
+					Dispatcher.UIThread.RunJobs();
+					Assert.True(service.Games.XboxTriggerRumbleOn);
+					Assert.True(toggle.IsChecked);
+					vm.OtherGames.Feel.XboxTriggerIndex = 0;
+					vm.Settings.TriggerRumble = TriggerRumbleFeel.XboxLike;
+					vm.OtherGames.SelectedTab = OtherGamesViewModel.GameEffectsTab;
 					window.Close();
 				}
 			}
@@ -329,8 +416,10 @@ public sealed class XboxTriggerOptInAppTests
 
 	// ---- the Trigger Rumble rows ----
 
+	// Haptics And Triggers keeps its Xbox Trigger Rumble row whether the setting is on or off (Off is one of its choices); a
+	// game's pop-up shows its Trigger Rumble row only while the setting is on.
 	[AvaloniaFact]
-	public async Task TriggerRumbleRows_ShowOnlyWhileTheSettingIsOn()
+	public async Task TriggerRumbleRows_HapticsRowAlways_PopUpRowOnlyWhileTheSettingIsOn()
 	{
 		(MainWindowViewModel vm, _, _) = await OpenAsync();
 		Language? before = Localizer.Chosen;
@@ -341,10 +430,11 @@ public sealed class XboxTriggerOptInAppTests
 			var window = new MainWindow { DataContext = vm, Width = 1152, Height = 700 };
 			window.Show();
 			vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
+			vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
 			FitCheck.Settle(window);
-			Grid row = window.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "TriggerRumbleRow");
+			Grid row = window.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "XboxTriggerRow");
 			Border card = row.GetVisualAncestors().OfType<Border>().First(b => b.Name == "ClassicRumbleCard");
-			Assert.False(row.IsEffectivelyVisible);
+			Assert.True(row.IsEffectivelyVisible);
 			Assert.Empty(FitCheck.Inside(card, window));
 			Save(window, "optin2-haptics-off-1152x700-tr.png");
 			vm.Settings.XboxTriggerRumbleOn = true;
@@ -354,7 +444,7 @@ public sealed class XboxTriggerOptInAppTests
 			Assert.Empty(FitCheck.Inside(card, window));
 			Save(window, "optin2-haptics-on-1152x700-tr.png");
 
-			// A game's pop-up: the same.
+			// A game's pop-up: only while on.
 			vm.Settings.XboxTriggerRumbleOn = false;
 			vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.SupportedGames);
 			vm.SupportedGames.OpenGameCommand.Execute(vm.SupportedGames.Games.Single(g => g.Name == "Glass Comet"));

@@ -40,20 +40,26 @@ internal sealed class InfoHidLink(Transport transport, ulong address) : IHidLink
 
 	public int Read(Span<byte> buffer)
 	{
+		if (FailReads)
+		{
+			throw new IOException("boom");
+		}
 		closed.Token.WaitHandle.WaitOne();
 		throw new IOException("closed");
 	}
 
-	public void Write(ReadOnlySpan<byte> report)
+	// Every read fails at once (a USB link that dies right after it was opened).
+	public bool FailReads;
+
+	// The link drops (Bluetooth disconnected, cable pulled): a blocked read and every later one fail.
+	public void Drop()
 	{
-		if (FailWrites)
-		{
-			throw new IOException("boom");
-		}
-		Interlocked.Increment(ref Writes);
+		FailReads = true;
+		closed.Cancel();
 	}
 
-	public bool FailWrites;
+	public void Write(ReadOnlySpan<byte> report) => Interlocked.Increment(ref Writes);
+
 
 	public byte[] GetFeature(byte reportId)
 	{
@@ -549,8 +555,9 @@ public class ControllerInfoAppTests
 		await service.StopBridgeAsync();
 	}
 
-	// CableMode.Wired (EXPERIMENTAL): once the twin is hidden the bridge moves input and output to its USB link while
-	// Bluetooth stays connected (the bridge never stops, games never see the wired pad). Cable out of the listing: a
+	// CableMode.Wired (EXPERIMENTAL): once the twin is hidden the bridge moves input and output to its USB link (the
+	// bridge never stops, games never see the wired pad; here Bluetooth is not disconnected, as the test controller has
+	// no Bluetooth address the radio knows, so it stays as in a refused hand-off). Cable out of the listing: a
 	// one-tick gap keeps the wired link, the second tick leaves it (no time advance), the twin still hidden, unhidden
 	// after the usual delay.
 	[Fact]
@@ -766,22 +773,25 @@ public class ControllerInfoAppTests
 		await service.StopBridgeAsync();
 	}
 
-	// Bluetooth lost while cabled and wired: the bridge leaves the USB link at once (its session is about to go with
-	// the bridge), then the stop works exactly as in charge-only mode.
+	// Wired mode disconnects Bluetooth on purpose: with the controller held over the cable, Bluetooth gone from the
+	// listing neither leaves wired mode nor stops the bridge (no "cable connected" stop, the virtual pad stays). When
+	// the cable is pulled too, the controller is simply gone: the bridge keeps running and waits for Bluetooth.
 	[Fact]
-	public async Task Cable_WiredMode_BluetoothLostWhileCabled_LeavesWiredThenStopsAsBefore()
+	public async Task Cable_WiredMode_BluetoothGoneWhileCabled_KeepsTheBridgeOnUsb_UntilTheCableIsPulled()
 	{
 		List<ServiceNotice> notices = [];
 		TestHiding hiding = new();
 		StepTime time = new();
 		using RealControllerService service = Service(hiding, notices, time);
-		controllers.Links.Enqueue(new InfoHidLink(Transport.Bluetooth, Address));
+		InfoHidLink bt = new(Transport.Bluetooth, Address);
+		controllers.Links.Enqueue(bt);
 		controllers.Paired.Add(BtPad);
 		await service.StartBridgeAsync();
 		WaitUntil(() => service.IsGameConnected && service.Details?.Address == Address);
 
 		service.CableMode = CableMode.Wired;
-		host!.OpenWired = _ => new InfoHidLink(Transport.Usb, Address);
+		InfoHidLink? usbLink = null;
+		host!.OpenWired = _ => usbLink = new InfoHidLink(Transport.Usb, Address);
 		host.OpenWiredAudio = _ => null;
 		host.OpenWiredMic = (_, _) => null;
 		service.OpenUsbReadOnly = _ => new InfoHidLink(Transport.Usb, Address);
@@ -789,21 +799,34 @@ public class ControllerInfoAppTests
 		service.DeviceTick();
 		WaitWired(service);
 
+		// Bluetooth disconnected (as the hand-off does): its link drops and it leaves the listing.
+		bt.Drop();
 		controllers.Paired.Remove(BtPad);
-		service.DeviceTick();
-		// A one-tick listing gap keeps the wired link; the second tick leaves it.
+		for (int i = 0; i < 4; i++)
+		{
+			service.DeviceTick();
+			time.Advance(RealControllerService.CableResumeDelay);
+		}
+		await Task.Delay(150);
 		Assert.True(service.IsWired);
+		Assert.True(service.IsBridgeRunning);
+		Assert.True(service.IsGameConnected);
+		Assert.False(service.IsPausedForCable);
+		Assert.False(HasCall(hiding, "unhide usb " + UsbId));
+		lock (notices)
+		{
+			Assert.DoesNotContain(notices, n => n.Kind == ServiceNoticeKind.CableConnected);
+		}
+
+		// The cable is pulled: the USB link fails, the controller is gone; the bridge stays started, waiting.
+		usbLink!.Drop();
+		controllers.Paired.Remove(UsbPad);
 		service.DeviceTick();
 		WaitNotWired(service);
+		WaitUntil(() => !service.IsGameConnected);
 		Assert.True(service.IsBridgeRunning);
-		time.Advance(RealControllerService.CableResumeDelay);
-		service.DeviceTick();
-		// StopForCable runs StopBridgeAsync (including RestoreHidingAsync) and then raises CableConnected;
-		// waiting on the notice guarantees the stop and restore have both finished before checking hiding calls.
-		WaitUntil(() => { lock (notices) return notices.Any(n => n.Kind == ServiceNoticeKind.CableConnected); });
-		Assert.False(service.IsBridgeRunning);
-		Assert.True(service.IsPausedForCable);
-		Assert.Equal("restore", Calls(hiding)[^1]);
+		Assert.False(service.IsPausedForCable);
+		await service.StopBridgeAsync();
 	}
 
 	// A wired link that cannot be opened yet leaves the bridge on Bluetooth; the twin stays hidden and the entry is
@@ -1336,10 +1359,11 @@ public class ControllerInfoAppTests
 		await service.StopBridgeAsync();
 	}
 
-	// A USB link whose first write fails: the session falls back to Bluetooth at once, the enter counts as failed
-	// (the twin stays hidden, a retry comes only after the interval) — never an open -> drop -> open loop.
+	// A USB link whose reads fail at once (Bluetooth still connected): the session falls back to Bluetooth by itself
+	// right after the enter, which counts as a failure (the twin stays hidden, a retry comes only after the interval)
+	// — never an open -> drop -> open loop.
 	[Fact]
-	public async Task Cable_WiredMode_AUsbLinkThatFailsItsFirstWrite_IsNotReopenedInALoop()
+	public async Task Cable_WiredMode_AUsbLinkWhoseReadsFailAtOnce_IsNotReopenedInALoop()
 	{
 		TestHiding hiding = new();
 		StepTime time = new();
@@ -1351,10 +1375,16 @@ public class ControllerInfoAppTests
 
 		service.CableMode = CableMode.Wired;
 		int opens = 0;
+		List<InfoHidLink> usbLinks = [];
 		host!.OpenWired = _ =>
 		{
 			opens++;
-			return new InfoHidLink(Transport.Usb, Address) { FailWrites = true };
+			InfoHidLink link = new(Transport.Usb, Address) { FailReads = true };
+			lock (usbLinks)
+			{
+				usbLinks.Add(link);
+			}
+			return link;
 		};
 		host.OpenWiredAudio = _ => null;
 		host.OpenWiredMic = (_, _) => null;
@@ -1374,6 +1404,10 @@ public class ControllerInfoAppTests
 		service.DeviceTick();
 		WaitUntil(() => opens == 2);
 		await service.StopBridgeAsync();
+		lock (usbLinks)
+		{
+			Assert.Equal(2, usbLinks.Count);
+		}
 	}
 
 	// A link whose reads start failing inside the enter itself (the mic re-apply opens the USB microphone, and the

@@ -139,8 +139,9 @@ public sealed partial class RealControllerService : IControllerService, IMicLeve
 	public ControllerKind Kind => Device is { } d ? d.IsEdge ? ControllerKind.DualSenseEdge : ControllerKind.DualSense : ControllerKind.None;
 	public string DeviceName => Kind == ControllerKind.DualSenseEdge ? "DualSense Edge" : "DualSense";
 	public bool IsConnected => Device != null;
-	public bool HasBattery => Status.Battery != null;
-	public double BatteryPercent => Status.Battery?.Percent ?? 0;
+	// A reading without a level (USB "charging, level not reported") is no battery reading; IsCharging still says so.
+	public bool HasBattery => Status.Battery is { LevelKnown: true };
+	public double BatteryPercent => Status.Battery is { LevelKnown: true } b ? b.Percent : 0;
 	public bool IsCharging => Status.Battery?.State is ChargeState.Charging;
 	public double InputRateHz => Status.InputRateHz;
 

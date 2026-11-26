@@ -46,7 +46,7 @@ public sealed class OverviewFitTests
 				Assert.Equal(UiScale.Factor(w, h), window.ContentScale, 3);
 				CheckRhythm(layout, at);
 
-				// Nothing scrolls and nothing is cut off at the bottom: the footer (the health line or chips) is the page's last
+				// Nothing scrolls and nothing is cut off at the bottom: the footer (the health line) is the page's last
 				// row and ends inside the page area.
 				Assert.DoesNotContain(layout.View.GetVisualAncestors().OfType<ScrollViewer>(), s => s.Extent.Height > s.Viewport.Height + 0.5);
 				double viewHeight = layout.View.Bounds.Height;
@@ -370,8 +370,12 @@ public sealed class OverviewFitTests
 		double[] gaps = rows.Zip(rows.Skip(1), (a, b) => b.Min(c => Rect(c, card).Top) - a.Max(c => Rect(c, card).Bottom)).ToArray();
 		Grid page = view.GetVisualDescendants().OfType<Grid>().Single(g => g.Classes.Contains("page"));
 		Control[] footer = page.Children.Where(c => Grid.GetRow(c) == 2 && c.IsVisible).ToArray();
-		return new Layout(view, card, tiles, controls, gaps, Rect(card, view).Bottom, Rect(live, view).Bottom,
-			footer.Min(c => Rect(c, view).Top), footer.Max(c => Rect(c, view).Bottom));
+		double cardBottom = Rect(card, view).Bottom;
+		double liveBottom = Rect(live, view).Bottom;
+		double cardsBottom = Math.Max(cardBottom, liveBottom);
+		return new Layout(view, card, tiles, controls, gaps, cardBottom, liveBottom,
+			footer.Length > 0 ? footer.Min(c => Rect(c, view).Top) : cardsBottom,
+			footer.Length > 0 ? footer.Max(c => Rect(c, view).Bottom) : cardsBottom);
 	}
 
 	private static double[] Gaps(Control[] items, Visual to)

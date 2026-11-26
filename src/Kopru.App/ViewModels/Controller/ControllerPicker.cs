@@ -20,7 +20,9 @@ public sealed class ControllerChipViewModel(ControllerEntry entry, bool selected
 	public bool HasBattery => Entry.HasBattery;
 	public double BatteryPercent => Entry.BatteryPercent;
 	public bool IsCharging => Entry.IsCharging;
-	public string BatteryShort => Entry.HasBattery ? Text.BatteryValue(Math.Round(Entry.BatteryPercent)) : Text.BatteryUnknown();
+	// "Charging" alone while the level is not reported (on the USB cable).
+	public string BatteryShort => Entry.HasBattery ? Text.BatteryValue(Math.Round(Entry.BatteryPercent))
+		: Entry.IsCharging ? Text.Charging() : Text.BatteryUnknown();
 	public bool IsSelected { get; } = selected;
 	public IRelayCommand SelectCommand { get; } = new RelayCommand(() => select(entry.Id));
 }

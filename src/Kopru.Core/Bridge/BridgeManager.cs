@@ -75,9 +75,13 @@ public sealed class BridgeManager : IGameBridge, IAsyncDisposable
 		}
 	}
 
+	// The cable-only offers when the source is a CableControllerSource (wired mode takes over a controller that is on
+	// the cable alone); null otherwise.
+	public CableControllerSource? Cable => source as CableControllerSource;
+
 	public static BridgeManager CreateDefault(BridgeHost primary)
 	{
-		WindowsControllerSource source = new();
+		CableControllerSource source = new(new WindowsControllerSource());
 		return new BridgeManager(source, primary, slot => new BridgeHost(source, IdentitySources.Default(), new UsbIpExeAttacher())
 		{
 			StateFile = new BridgeStateFile(Path.Combine(AppPaths.DataDirectory, $"bridge-state-{slot}.json")),

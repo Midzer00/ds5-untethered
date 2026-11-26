@@ -69,6 +69,35 @@ public class ControllerPowerTests
 		Assert.Equal("A0:AB:51:12:34:56", BluetoothAddress.Format(0xA0AB51123456));
 	}
 
+	// A remembered controller's id is its Bluetooth HID node; the address comes from that node's (last known) parent, the
+	// BTHENUM service node, also while the controller is off. Anything else gives no address. Made-up address.
+	[Fact]
+	public void Address_OfARememberedBluetoothHidId_ComesFromItsBthEnumParent()
+	{
+		const string id = @"HID\{00001124-0000-1000-8000-00805F9B34FB}_VID&0002054C_PID&0CE6\B&1A2B3C4D&3&0000";
+		const string parent = @"BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0002054c_PID&0ce6\a&ca9eb81&0&A0AB51123456_C00000000";
+		List<string> asked = [];
+		string? Parent(string i)
+		{
+			asked.Add(i);
+			return parent;
+		}
+		Assert.Equal(0xA0AB51123456UL, BluetoothAddress.OfBluetoothHid(id, Parent));
+		Assert.Equal([id], asked);
+
+		// Not a Bluetooth HID id (a USB pad, our virtual pad, a path): Windows is not even asked.
+		Assert.Null(BluetoothAddress.OfBluetoothHid(@"HID\VID_054C&PID_0CE6&MI_03\7&1&0&0000", Parent));
+		Assert.Null(BluetoothAddress.OfBluetoothHid(null, Parent));
+		Assert.Single(asked);
+		// A parent that is not a Bluetooth service node, none at all, or a failing lookup: no address.
+		Assert.Null(BluetoothAddress.OfBluetoothHid(id, _ => @"USB\VID_054C&PID_0CE6\A0AB51123456_C00000000"));
+		Assert.Null(BluetoothAddress.OfBluetoothHid(id, _ => null));
+		Assert.Null(BluetoothAddress.OfBluetoothHid(id, _ => throw new InvalidOperationException()));
+		// Windows has no such node: null, no exception (the real lookup, read-only).
+		Assert.Null(BluetoothAddress.OfBluetoothHid(@"HID\{00001124-0000-1000-8000-00805F9B34FB}_VID&0002054C_PID&0CE6\kopru-test-none"));
+		Assert.Null(DeviceInstance.KnownParent(@"hid\{00001124-0000-1000-8000-00805f9b34fb}_vid&0002054c_pid&0ce6\kopru-test-none"));
+	}
+
 	[Fact]
 	public void Address_FromPairingFeature_IsLittleEndian()
 	{

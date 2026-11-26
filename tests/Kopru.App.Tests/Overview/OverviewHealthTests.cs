@@ -13,7 +13,7 @@ using Kopru.Core.Steam;
 
 namespace Kopru.App.Tests;
 
-// The Overview shows the Core health model: chips, the blocking issue as the main action, the last-known battery, the
+// The Overview shows the Core health model: its items, the blocking issue as the main action, the last-known battery, the
 // "why disabled" reasons; the fixes that need a page are routed by the main window.
 public class OverviewHealthTests
 {

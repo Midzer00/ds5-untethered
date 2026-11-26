@@ -20,7 +20,10 @@ public enum ConnectionKind
 	PairedNotConnected,
 	ConnectedBluetooth,
 	// On a USB cable: games see it as a wired pad already, the bridge is not needed.
-	ConnectedUsb
+	ConnectedUsb,
+	// On a USB cable alone, with cable mode Wired: a remembered controller the bridge runs over USB (or takes over once
+	// it starts). Needs no Bluetooth at all.
+	ConnectedWired
 }
 
 // Where the controller stands. IsEdge: the connected (or paired) controller is a DualSense Edge.
@@ -28,7 +31,7 @@ public sealed record ConnectionState(ConnectionKind Kind, bool IsEdge = false)
 {
 	public static ConnectionState Unknown { get; } = new(ConnectionKind.NeverPaired);
 
-	public bool IsConnected => Kind is ConnectionKind.ConnectedBluetooth or ConnectionKind.ConnectedUsb;
+	public bool IsConnected => Kind is ConnectionKind.ConnectedBluetooth or ConnectionKind.ConnectedUsb or ConnectionKind.ConnectedWired;
 
 	public string Label(Language? l = null) => Kind switch
 	{
@@ -37,6 +40,7 @@ public sealed record ConnectionState(ConnectionKind Kind, bool IsEdge = false)
 		ConnectionKind.NeverPaired => Text.ConnectionNeverPaired(l),
 		ConnectionKind.PairedNotConnected => Text.ConnectionPairedNotConnected(l),
 		ConnectionKind.ConnectedBluetooth => Text.ConnectionOnBluetooth(l),
+		ConnectionKind.ConnectedWired => Text.ConnectionWired(l),
 		_ => Text.ConnectionOnUsb(l)
 	};
 
@@ -47,11 +51,15 @@ public sealed record ConnectionState(ConnectionKind Kind, bool IsEdge = false)
 		ConnectionKind.NeverPaired => Text.ConnectionNeverPairedReason(l),
 		ConnectionKind.PairedNotConnected => Text.ConnectionPairedNotConnectedReason(l),
 		ConnectionKind.ConnectedBluetooth => Text.ConnectionBluetoothReason(l),
+		ConnectionKind.ConnectedWired => Text.ReasonUsbOnly(l),
 		_ => Text.ConnectionUsbReason(l)
 	};
 
-	// A HID controller wins (Bluetooth before USB); then the radio; then the Windows paired-device list.
-	public static ConnectionState Detect(RadioState radio, IEnumerable<HidDevice> controllers, IEnumerable<PairedController> paired)
+	// A HID controller wins (Bluetooth before USB); then the radio; then the Windows paired-device list. wiredCableOnly:
+	// cable mode Wired holds (or takes over) a remembered controller on the cable alone, so a USB controller is
+	// ConnectedWired rather than "games use the wired pad".
+	public static ConnectionState Detect(RadioState radio, IEnumerable<HidDevice> controllers, IEnumerable<PairedController> paired,
+		bool wiredCableOnly = false)
 	{
 		List<HidDevice> hid = [.. controllers];
 		if (hid.FirstOrDefault(d => d.Transport == Transport.Bluetooth) is { } bt)
@@ -60,7 +68,7 @@ public sealed record ConnectionState(ConnectionKind Kind, bool IsEdge = false)
 		}
 		if (hid.FirstOrDefault() is { } usb)
 		{
-			return new(ConnectionKind.ConnectedUsb, usb.IsEdge);
+			return new(wiredCableOnly ? ConnectionKind.ConnectedWired : ConnectionKind.ConnectedUsb, usb.IsEdge);
 		}
 		if (radio == RadioState.Missing)
 		{

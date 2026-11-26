@@ -48,7 +48,7 @@ public sealed class AuditRenderTests
 					Save(window, outDir, $"overview-{size}-{code}.png");
 					vm.Navigate(vm.OtherGames);
 					Save(window, outDir, $"haptics-{size}-{code}.png");
-					foreach ((int tab, string name) in new[] { (ControllerPageViewModel.TestTab, "test"), (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.RemapTab, "remap") })
+					foreach ((int tab, string name) in new[] { (ControllerPageViewModel.TestTab, "test"), (ControllerPageViewModel.OutputsTab, "outputs"), (ControllerPageViewModel.ButtonsTab, "buttons"), (ControllerPageViewModel.GyroTab, "gyro-sticks") })
 					{
 						vm.OpenController(tab);
 						Save(window, outDir, $"controller-{name}-{size}-{code}.png");

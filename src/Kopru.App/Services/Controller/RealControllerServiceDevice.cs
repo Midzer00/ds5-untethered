@@ -68,6 +68,27 @@ public sealed partial class RealControllerService
 	private readonly Dictionary<ulong, (string Path, DateTimeOffset Since)> wiredEntered = [];
 	private readonly Dictionary<ulong, int> wiredFallbacks = [];
 	private readonly HashSet<ulong> wiredGivenUp = [];
+	// CableMode.Wired, a controller on the cable alone: its 0x09 address -> the id it has over Bluetooth (the
+	// remembered controllers' lookup, set by the settings; null until then), the cable-only controllers wanted this
+	// tick (address -> id), and the "not taken over" reasons already logged (once per address or USB path).
+	private Func<ulong, string?>? idForAddress;
+	private IReadOnlyDictionary<ulong, string> wantedCableOnly = new Dictionary<ulong, string>();
+	private readonly HashSet<string> cableOnlyLogged = new(StringComparer.OrdinalIgnoreCase);
+
+	public void UseKnownIdentities(Func<ulong, string?> lookup) => Volatile.Write(ref idForAddress, lookup);
+
+	// The Bluetooth address Windows recorded for a remembered id (BluetoothAddress.OfBluetoothHid: the parent of its
+	// Bluetooth HID node, also while that node is not present); tests swap it.
+	public Func<string, ulong?> AddressOfId { get; set; } = id => Kopru.Core.Bluetooth.BluetoothAddress.OfBluetoothHid(id);
+
+	public ulong? BluetoothAddressOf(string id) => AddressOfId(id);
+
+	// CableMode.Wired: the USB pad of a remembered controller on the cable alone that no bridge holds (taken over once
+	// the bridge runs), published every tick; null when there is none.
+	private HidDevice? cableOnlyPad;
+
+	public bool IsCableOnly => Selected.IsUsbOnly ||
+		Selected.Device == null && Volatile.Read(ref cableOnlyPad) is { } pad && Device is { } shown && string.Equals(shown.Path, pad.Path, StringComparison.OrdinalIgnoreCase);
 	// Self-fallbacks before wired mode is given up for this plug.
 	public const int WiredFallbackLimit = 3;
 	// Continuous wired operation after which earlier self-fallbacks on this plug are forgotten.
@@ -255,6 +276,12 @@ public sealed partial class RealControllerService
 				usbPads.Add((usb, read!.Address!.Value));
 				usbKey ??= usb.Path;
 			}
+			else if (CableMode == CableMode.Wired && read is { Address: null } && CableOnlyLogOnce("no-address:" + usb.Path))
+			{
+				// Without its address the controller cannot be told apart, so it is never taken over (no settings
+				// entry under another key).
+				AppLog.Write("cable: a USB DualSense did not answer with its Bluetooth address (0x09); it is not taken over, games use it");
+			}
 		}
 		bool newConnection = false;
 		lock (deviceGate)
@@ -278,10 +305,32 @@ public sealed partial class RealControllerService
 		}
 		if (newConnection && host.Device == null)
 		{
-			// Read the details again for this connection (the next battery probe does it).
-			host.ForgetDetails();
+			// Read the details again for this connection (the next battery probe does it). Kept while the bridge runs:
+			// it reads them itself on connect, possibly just before this tick (its Device is still null until the
+			// connection is published).
+			host.ForgetDetailsIfStopped();
 		}
 		List<ulong> ours = KnownAddresses();
+		Dictionary<ulong, string> cableOnly = CableOnlyCandidates(usbPads, all);
+		// Published while stopped too: such a controller counts as connected (automatic start, Start button, Overview)
+		// and, after a stop for the cable, resumes the bridge (CableSwitch). One a bridge holds on the cable alone stays
+		// published: right after a stop it must not count as gone for a moment (the automatic start would take its return
+		// for a new connection and undo the user's stop).
+		HidDevice? pad = usbPads.FirstOrDefault(p => cableOnly.ContainsKey(p.Address)).Device ??
+			(CableMode == CableMode.Wired
+				? usbPads.FirstOrDefault(p => (multi?.Hosts ?? [host]).Any(h => h.IsUsbOnly && h.Details?.Address == p.Address)).Device
+				: null);
+		HidDevice? padBefore = Interlocked.Exchange(ref cableOnlyPad, pad);
+		if (!string.Equals(padBefore?.Path, pad?.Path, StringComparison.OrdinalIgnoreCase))
+		{
+			changed = true;
+			if (pad != null && padBefore == null && !started)
+			{
+				AppLog.Write("cable: wired mode, a remembered controller is on the cable alone; it is taken over once the virtual controller runs");
+			}
+			// The connection state (and whether the bridge may start) follows at once, not on the next health interval.
+			RequestHealthRefresh(full: false);
+		}
 		// Bluetooth counts as up only while Windows lists it: the bridge may still hold a link that just dropped.
 		bool bluetoothListed = all.Any(d => d.Transport == Transport.Bluetooth);
 		List<(ulong Address, BridgeHost Host)> bridged = BridgedHosts(all);
@@ -294,7 +343,9 @@ public sealed partial class RealControllerService
 		bool keysChanged;
 		lock (cableGate)
 		{
-			decision = cable.Next(started, usbPads.Select(p => p.Address).ToList(), bridged.Select(b => b.Address).ToList(), ours, bluetoothListed, now);
+			decision = cable.Next(started, usbPads.Select(p => p.Address).ToList(), bridged.Select(b => b.Address).ToList(), ours, bluetoothListed, now,
+				[.. cableOnly.Keys]);
+			Volatile.Write(ref wantedCableOnly, cable.CableOnlyTwins.Where(cableOnly.ContainsKey).ToDictionary(a => a, a => cableOnly[a]));
 			HashSet<ulong> givenUp;
 			lock (twinGate)
 			{
@@ -433,7 +484,9 @@ public sealed partial class RealControllerService
 				});
 				break;
 			case CableDecision.Resume:
-				_ = Task.Run(() => StartBridgeAsync("cable: controller back on Bluetooth"));
+				_ = Task.Run(() => StartBridgeAsync(!bluetoothListed && cableOnly.Count > 0
+					? "cable: wired mode, controller on the cable alone"
+					: "cable: controller back on Bluetooth"));
 				break;
 		}
 		if (decision != CableDecision.StopForCable)
@@ -461,6 +514,8 @@ public sealed partial class RealControllerService
 				ClearTwinWarning();
 			}
 		}
+		UpdateCableOffers(usbPads);
+		DisconnectStrayBluetooth(all);
 		// Wired mode started or ended since the last tick (the reconcile flight or a session's own fallback).
 		bool wiredNow = IsWired;
 		changed |= wiredNow != lastWired;
@@ -471,19 +526,119 @@ public sealed partial class RealControllerService
 		}
 	}
 
+	// CableMode.Wired, bridge started or not: the listed real USB pads no running bridge holds, whose 0x09 address is a
+	// remembered controller's (address -> its Bluetooth id). One whose address no remembered controller has is left to
+	// games (logged once): it would otherwise become a second controller under another key. While the bridge is
+	// stopped they only make the controller count as connected (CableSwitch takes nothing over then).
+	private Dictionary<ulong, string> CableOnlyCandidates(List<(HidDevice Device, ulong Address)> usbPads, IReadOnlyList<HidDevice> all)
+	{
+		Dictionary<ulong, string> found = [];
+		if (CableMode != CableMode.Wired || multi?.Cable == null)
+		{
+			return found;
+		}
+		HashSet<ulong> held = [.. BridgedHosts(all).Select(b => b.Address)];
+		Func<ulong, string?>? lookup = Volatile.Read(ref idForAddress);
+		foreach ((HidDevice _, ulong address) in usbPads)
+		{
+			if (held.Contains(address))
+			{
+				continue;
+			}
+			if (lookup?.Invoke(address) is { } id)
+			{
+				found[address] = id;
+			}
+			else if (lookup != null && CableOnlyLogOnce("unknown:" + address.ToString("X12", System.Globalization.CultureInfo.InvariantCulture)))
+			{
+				AppLog.Write("cable: a controller on the cable alone that the app never saw over Bluetooth is not taken over (connect it over Bluetooth once)");
+			}
+		}
+		return found;
+	}
+
+	private bool CableOnlyLogOnce(string key)
+	{
+		lock (cableOnlyLogged)
+		{
+			return cableOnlyLogged.Add(key);
+		}
+	}
+
+	// Offers the cable-only controllers whose USB instance is hidden by now (on the same path) to the bridge manager, under
+	// their Bluetooth id; everything else is withdrawn.
+	private void UpdateCableOffers(List<(HidDevice Device, ulong Address)> usbPads)
+	{
+		if (multi?.Cable is not { } source)
+		{
+			return;
+		}
+		List<ControllerPresence> offers = [];
+		IReadOnlyDictionary<ulong, string> wanted = started ? Volatile.Read(ref wantedCableOnly) : new Dictionary<ulong, string>();
+		lock (twinGate)
+		{
+			foreach ((ulong address, string id) in wanted)
+			{
+				if (usbPads.FirstOrDefault(p => p.Address == address).Device is { } usb &&
+					hiddenTwins.TryGetValue(address, out (string Path, string Id) rec) &&
+					string.Equals(rec.Path, usb.Path, StringComparison.OrdinalIgnoreCase))
+				{
+					offers.Add(new ControllerPresence(id, usb));
+				}
+			}
+		}
+		// A controller already held on the cable alone stays offered (the manager keeps its slot while it is listed).
+		Func<ulong, string?>? lookup = Volatile.Read(ref idForAddress);
+		foreach (BridgeHost h in multi.Hosts)
+		{
+			if (started && h.IsUsbOnly && h.WiredDevice is { } held && h.Details?.Address is { } a && lookup?.Invoke(a) is { } heldId &&
+				usbPads.Any(p => string.Equals(p.Device.Path, held.Path, StringComparison.OrdinalIgnoreCase)) &&
+				!offers.Any(o => string.Equals(o.Id, heldId, StringComparison.OrdinalIgnoreCase)))
+			{
+				offers.Add(new ControllerPresence(heldId, held));
+			}
+		}
+		bool was = source.Offered.Count > 0;
+		source.Offer(offers);
+		if (offers.Count > 0 && !was)
+		{
+			AppLog.Write("cable: wired mode, taking over the controller on the cable alone (no Bluetooth)");
+			_ = multi.RefreshAsync();
+		}
+	}
+
+	// A controller held on the cable alone that also came up over Bluetooth: its Bluetooth link is disconnected again.
+	private void DisconnectStrayBluetooth(IReadOnlyList<HidDevice> all)
+	{
+		foreach (BridgeHost h in multi?.Hosts ?? [host])
+		{
+			if (!h.IsUsbOnly)
+			{
+				continue;
+			}
+			foreach (HidDevice bt in all.Where(d => d.Transport == Transport.Bluetooth))
+			{
+				_ = h.DisconnectStrayBluetoothAsync(bt);
+			}
+		}
+	}
+
 	// The (address, host) pairs a running bridge holds right now and Windows still lists: only these decide which USB
-	// twin gets hidden (a paired but not bridged controller on USB never does) or wired.
+	// twin gets hidden (a paired but not bridged controller on USB never does) or wired. A host in wired mode counts
+	// while its USB pad is listed, whether or not its Bluetooth link still is (wired mode disconnects Bluetooth).
 	private List<(ulong Address, BridgeHost Host)> BridgedHosts(IReadOnlyList<HidDevice> all)
 	{
 		List<(ulong, BridgeHost)> bridged = [];
 		foreach (BridgeHost h in multi?.Hosts ?? [host])
 		{
-			if (h.Device is { Transport: Transport.Bluetooth } d &&
-				h.Details is { Transport: Transport.Bluetooth, Address: { } a, Path: { } p } &&
+			if (h.Device is { } d &&
+				h.Details is { Address: { } a, Path: { } p } details && details.Transport == d.Transport &&
 				string.Equals(p, d.Path, StringComparison.OrdinalIgnoreCase) &&
 				!PairingInfo.IsVirtual(a) &&
-				all.Any(l => string.Equals(l.Path, d.Path, StringComparison.OrdinalIgnoreCase)))
+				(all.Any(l => string.Equals(l.Path, d.Path, StringComparison.OrdinalIgnoreCase)) ||
+					h.WiredDevice is { } wd && all.Any(l => string.Equals(l.Path, wd.Path, StringComparison.OrdinalIgnoreCase))))
 			{
+				// Over Bluetooth, or (wired mode taking over a controller on the cable alone) over its USB link.
 				bridged.Add((a, h));
 			}
 		}
@@ -633,7 +788,7 @@ public sealed partial class RealControllerService
 								string.Equals(held.Path, entry.Value.Usb.Path, StringComparison.OrdinalIgnoreCase))
 							{
 								lastTwinProblem = null;
-								AppLog.Write("cable: wired mode, controller input and output over USB; Bluetooth stays connected");
+								AppLog.Write("cable: wired mode, controller over USB; Bluetooth is disconnected once USB input runs");
 							}
 							else
 							{

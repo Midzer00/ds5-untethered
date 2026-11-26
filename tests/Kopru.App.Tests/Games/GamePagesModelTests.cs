@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Kopru.App.Controls;
 using Kopru.App.Services;
 using Kopru.App.ViewModels;
 using Kopru.App.Views;
@@ -111,7 +114,7 @@ public sealed class GamePagesModelTests
 		FitCheck.Settle(window);
 		SupportedGamesView games = window.GetVisualDescendants().OfType<SupportedGamesView>().Single();
 		Assert.Empty(games.GetVisualDescendants().OfType<Slider>());
-		// The one exception: the Xbox view's Xbox Trigger Rumble switch, the same setting as in Settings (kept in step).
+		// The one exception: the Xbox view's Xbox Trigger Rumble switch, the same setting as Haptics And Triggers' chips (kept in step).
 		Assert.Empty(games.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null && t.Name != "GamesXboxTriggerRumbleSwitch"));
 
 		vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
@@ -121,17 +124,125 @@ public sealed class GamePagesModelTests
 			.Where(t => t.TemplatedParent == null)
 			.Select(t => t.Name ?? string.Empty)
 			.ToArray();
-		Assert.Equal(["PauseHapticsSwitch", "XboxTriggerRumbleSwitch"], hapticsSwitches);
+		// Xbox Trigger Rumble is a row of chips here (Off and the three feels), not a switch.
+		Assert.Equal(["PauseHapticsSwitch"], hapticsSwitches);
 		Assert.Empty(haptics.GetVisualDescendants().OfType<GameRowList>());
 		string[] cards = haptics.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("panel")).Select(b => b.Name ?? string.Empty).ToArray();
 		Assert.Equal(["GameEffectsCard", "ClassicRumbleCard"], cards);
 		Assert.Equal(2, CardSliders(haptics, "GameEffectsCard"));
+		vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
+		FitCheck.Settle(window);
 		Assert.Equal(2, CardSliders(haptics, "ClassicRumbleCard"));
+		Assert.Empty(haptics.GetVisualDescendants().OfType<ToggleSwitch>().Where(t => t.TemplatedParent == null && t.IsEffectivelyVisible));
 		window.Close();
 	}
 
-	// Haptics And Triggers at every size of the fit matrix, in both languages: no page scrolling, every card's controls inside
-	// it and no text cut off.
+	// Haptics And Triggers has two tabs under its header, named after the cards (the game's own effects first, the default);
+	// each shows one card, which starts with its caption (no icon or title line: the tab is the title). The selected tab is
+	// kept while the app runs, across page switches.
+	[AvaloniaFact]
+	public void HapticsPage_TwoTabs_OneCardEach_KeptWhileTheAppRuns()
+	{
+		Language? before = Localizer.Chosen;
+		try
+		{
+			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
+			{
+				Localizer.Chosen = language;
+				MainWindowViewModel vm = GameListScrollTests.Open(installedOnly: false, code);
+				string[] names = code == "tr" ? ["Oyunun Kendi Efektleri", "Xbox ve DS4 Titreşimi"] : ["Game's Own Effects", "Xbox And DS4 Rumble"];
+				Assert.Equal(names, vm.OtherGames.Tabs.Select(t => t.Name));
+				Assert.Equal([Text.GameEffectsCard(), Text.ClassicRumbleCard()], vm.OtherGames.Tabs.Select(t => t.Name));
+				Assert.Equal(OtherGamesViewModel.GameEffectsTab, vm.OtherGames.SelectedTab);
+
+				var window = new MainWindow { DataContext = vm, Width = 1152, Height = 700 };
+				window.Show();
+				vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
+				FitCheck.Settle(window);
+				OtherGamesView view = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
+				ListBox tabs = view.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "HapticsTabs");
+				Assert.Same(Application.Current!.FindResource("Segmented"), tabs.Theme);
+				Assert.Equal(0, tabs.SelectedIndex);
+				Border game = view.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "GameEffectsCard");
+				Border rumble = view.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ClassicRumbleCard");
+				Grid header = view.GetVisualDescendants().OfType<Grid>().Single(g => g.Classes.Contains("pageHeader"));
+				Assert.True(FitCheck.Bounds(tabs, window).Top >= FitCheck.Bounds(header, window).Bottom);
+				Assert.True(game.IsEffectivelyVisible);
+				Assert.False(rumble.IsEffectivelyVisible);
+				Assert.True(FitCheck.Bounds(game, window).Top >= FitCheck.Bounds(tabs, window).Bottom);
+
+				tabs.SelectedIndex = 1;
+				FitCheck.Settle(window);
+				Assert.Equal(OtherGamesViewModel.RumbleTab, vm.OtherGames.SelectedTab);
+				Assert.False(game.IsEffectivelyVisible);
+				Assert.True(rumble.IsEffectivelyVisible);
+
+				// No icon or title line in either card: the caption comes first.
+				foreach ((Border card, string caption) in new[] { (game, Text.GameEffectsCardHint()), (rumble, Text.ClassicRumbleCardHint()) })
+				{
+					Assert.Empty(card.GetVisualDescendants().OfType<IconSlot>().Where(i => i.GetVisualAncestors().OfType<StackPanel>().Any(p => p.Classes.Contains("cardHeader"))));
+					Assert.DoesNotContain(card.GetVisualDescendants().OfType<TextBlock>(), t => t.Classes.Contains("h2"));
+					TextBlock first = card.GetLogicalDescendants().OfType<TextBlock>().First();
+					Assert.Equal(caption, first.Text);
+					Assert.Contains("caption", first.Classes);
+				}
+
+				// Another page and back: still the rumble tab; out of range values are ignored.
+				vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.SupportedGames);
+				FitCheck.Settle(window);
+				vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
+				FitCheck.Settle(window);
+				Assert.Equal(OtherGamesViewModel.RumbleTab, vm.OtherGames.SelectedTab);
+				Assert.True(view.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ClassicRumbleCard").IsEffectivelyVisible);
+				vm.OtherGames.SelectedTab = -1;
+				vm.OtherGames.SelectedTab = 2;
+				Assert.Equal(OtherGamesViewModel.RumbleTab, vm.OtherGames.SelectedTab);
+				window.Close();
+			}
+		}
+		finally
+		{
+			Localizer.Chosen = before;
+		}
+	}
+
+	// The Try row: its label alone, the hint as the label's tooltip; the rumble feel and Xbox Trigger Rumble are segmented
+	// choices in the shared control widths.
+	[AvaloniaFact]
+	public void HapticsPage_TryHintIsATooltip_ChoicesAreSegmented()
+	{
+		MainWindowViewModel vm = GameListScrollTests.Open(installedOnly: false, "tr");
+		var window = new MainWindow { DataContext = vm, Width = 960, Height = 640 };
+		window.Show();
+		vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
+		vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
+		FitCheck.Settle(window);
+		OtherGamesView view = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
+		Grid tryRow = view.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "TryRow");
+		TextBlock label = tryRow.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "TryLabel");
+		Assert.Equal(vm.OtherGames.TryLabel, label.Text);
+		Assert.Equal(vm.OtherGames.TryHint, ToolTip.GetTip(label));
+		Assert.DoesNotContain(view.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == vm.OtherGames.TryHint);
+		object segmented = Application.Current!.FindResource("Segmented")!;
+		ListBox feel = view.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "RumbleFeelChoice");
+		ListBox xbox = view.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "XboxTriggerChoice");
+		Assert.Same(segmented, feel.Theme);
+		Assert.Same(segmented, xbox.Theme);
+		Assert.Equal((double)Application.Current!.FindResource("ControlWidth")!, feel.Bounds.Width, 0.5);
+		Assert.Equal((double)Application.Current!.FindResource("ControlWidthWide")!, xbox.Bounds.Width, 0.5);
+		Assert.Equal(["Yumuşak", "Sert"], feel.ItemsSource!.Cast<LabelledChoice>().Select(c => c.Name));
+		Assert.Empty(view.GetVisualDescendants().OfType<ToggleButton>().Where(t => t.TemplatedParent == null && t.IsEffectivelyVisible));
+		feel.SelectedIndex = 1;
+		Assert.True(vm.OtherGames.Feel.IsPunchy);
+		feel.SelectedIndex = 0;
+		Assert.True(vm.OtherGames.Feel.IsSoft);
+		window.Close();
+	}
+
+	// Haptics And Triggers at every size of the fit matrix, in both languages, on both tabs: the shared row metrics (every
+	// row at least SettingRowHeight, its text 10 clear of the dividers), no scrolling at all (the page's scroll viewer is only a
+	// safety net: its extent is never taller than its viewport), every card's controls inside it and no text cut off. The
+	// Try row is the last row of the rumble tab, in view without scrolling.
 	[AvaloniaFact]
 	public void HapticsPage_FitsAtEverySize()
 	{
@@ -143,26 +254,26 @@ public sealed class GamePagesModelTests
 			foreach ((Language language, string code) in new[] { (Language.Turkish, "tr"), (Language.English, "en") })
 			{
 				Localizer.Chosen = language;
-				foreach ((double width, double height) in FitCheck.Matrix)
+				foreach ((double width, double height) in FitCheck.Matrix.Union(FitCheck.ReviewSizes))
 				{
 					MainWindowViewModel vm = GameListScrollTests.Open(installedOnly: false, code);
+					// The fourth try button (the fallback effect) shows: the widest Try row.
+					vm.OtherGames.Feel.FallbackIndex = 1;
 					var window = new MainWindow { DataContext = vm, Width = width, Height = height };
 					window.Show();
 					vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
-					FitCheck.Settle(window);
-					string where = $"{width}x{height} {code}";
-					OtherGamesView view = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
-					problems.AddRange(FitCheck.Scrolls(view.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "PageScroll"), where));
-					problems.AddRange(FitCheck.CutText(view).Select(p => $"{where}: {p}"));
-					foreach (Border card in view.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("panel")))
+					foreach ((int tab, string tabName) in new[] { (OtherGamesViewModel.GameEffectsTab, "game"), (OtherGamesViewModel.RumbleTab, "rumble") })
 					{
-						problems.AddRange(FitCheck.Inside(card, window).Select(p => $"{where}: {p}"));
-					}
-					if (outDir != null)
-					{
-						using var frame = window.CaptureRenderedFrame();
-						Directory.CreateDirectory(outDir);
-						frame!.Save(Path.Combine(outDir, $"haptics-fit-{width}x{height}-{code}.png"));
+						vm.OtherGames.SelectedTab = tab;
+						FitCheck.Settle(window);
+						string where = $"{width}x{height} {code} {tabName}";
+						problems.AddRange(CheckHapticsTab(window, where));
+						if (outDir != null)
+						{
+							using var frame = window.CaptureRenderedFrame();
+							Directory.CreateDirectory(outDir);
+							frame!.Save(Path.Combine(outDir, $"haptics-fit-{width}x{height}-{code}-{tabName}.png"));
+						}
 					}
 					window.Close();
 				}
@@ -173,6 +284,46 @@ public sealed class GamePagesModelTests
 			Localizer.Chosen = before;
 		}
 		Assert.Empty(problems);
+	}
+
+	// The fit checks of the shown Haptics And Triggers tab (also used by the pseudo-locale test).
+	internal static IEnumerable<string> CheckHapticsTab(Window window, string where)
+	{
+		List<string> problems = [];
+		OtherGamesView view = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
+		ScrollViewer scroll = view.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "PageScroll");
+		problems.AddRange(FitCheck.Scrolls(scroll, where));
+		problems.AddRange(FitCheck.CutText(view).Select(p => $"{where}: {p}"));
+		double rowHeight = (double)Application.Current!.FindResource("SettingRowHeight")!;
+		foreach (Grid row in view.GetVisualDescendants().OfType<Grid>().Where(g => g.IsEffectivelyVisible && g.Classes.Contains("settingRow")))
+		{
+			StackPanel text = row.Children.OfType<StackPanel>().Single(p => p.Classes.Contains("text"));
+			Rect t = FitCheck.Bounds(text, row);
+			string label = text.GetVisualDescendants().OfType<TextBlock>().First().Text ?? "?";
+			if (row.Bounds.Height < rowHeight - 0.5 || t.Top < 9.5 || row.Bounds.Height - t.Bottom < 9.5)
+			{
+				problems.Add($"{where}: row \"{label}\" is squeezed (height {row.Bounds.Height:0.#}, text {t.Top:0.#} to {t.Bottom:0.#})");
+			}
+		}
+		Grid tryRow = view.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "TryRow");
+		if (tryRow.IsEffectivelyVisible)
+		{
+			Rect r = FitCheck.Bounds(tryRow, scroll);
+			if (r.Top < -0.5 || r.Bottom > scroll.Viewport.Height + 0.5)
+			{
+				problems.Add($"{where}: the Try row {r} is not in view ({scroll.Viewport.Height:0.#} high)");
+			}
+		}
+		Border[] cards = view.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("panel") && b.IsEffectivelyVisible).ToArray();
+		if (cards.Length != 1)
+		{
+			problems.Add($"{where}: {cards.Length} cards shown, not one");
+		}
+		foreach (Border card in cards)
+		{
+			problems.AddRange(FitCheck.Inside(card, window).Select(p => $"{where}: {p}"));
+		}
+		return problems;
 	}
 
 	// The PNGs for the review: Games (All, Installed, a pending type) and Haptics And Triggers in Turkish at 1100x700 and

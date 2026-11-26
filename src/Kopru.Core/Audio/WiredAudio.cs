@@ -19,6 +19,10 @@ public interface IWiredAudioSink : IDisposable
 	// Speaker audio still buffered.
 	bool HasSpeakerAudio { get; }
 
+	// Channels 1-2 carry (or are about to carry) audible sound, not just silence; the speaker idle volume
+	// (KOPRU_WIRED_SPEAKER_IDLE) applies while this is false.
+	bool SpeakerSounding => HasSpeakerAudio;
+
 	// The stream stopped: the endpoint may stop until the next block; never throws.
 	void Idle();
 }
@@ -32,10 +36,13 @@ public interface IWiredMicCapture : IDisposable
 }
 
 // Turns one haptics block (3 kHz signed 8-bit stereo) plus the buffered speaker audio into one output block of the
-// USB audio endpoint: channels 3-4 get the haptics (16x upsampled, linearly interpolated between the samples so the
-// jump from one 3 kHz step to the next is a ramp, not a stair), channels 1-2 the game's sound. Thread-safe for
-// PushSpeaker vs Build.
-public sealed class WiredAudioFrames
+// USB audio endpoint: channels 3-4 get the haptics (linearly interpolated between the 3 kHz samples so the jump from
+// one step to the next is a ramp, not a stair), channels 1-2 the game's sound. A block is normally 16 output frames
+// per input sample; Build can stretch or squeeze it by a few frames (smooth steering): the interpolation then runs at
+// a slightly different rate and the waveform stays continuous. Tuning (fix 8): haptics gain and soft limiter, a
+// fade-in after a gap or at the start (FadeIn), a fade-out when the haptics turn silent. Thread-safe for PushSpeaker
+// vs Build.
+public sealed class WiredAudioFrames(WiredAudioTuning? tuning = null)
 {
 	public const int Rate = 48000;
 
@@ -52,9 +59,18 @@ public sealed class WiredAudioFrames
 	// (100 ms: a stale tail must not play when the game's audio comes back later).
 	public const int SpeakerFlushFrames = Rate / 10;
 
-	// The haptics samples' scale on the endpoint (full swing by default).
+	// The haptics samples' scale on the endpoint by default (full swing; KOPRU_WIRED_GAIN changes it).
 	public const float HapticsGain = 1.0f;
 
+	// A speaker sample at least this loud (16-bit, about -60 dBFS) counts as sound (SpeakerSounding).
+	public const int SpeakerSoundLevel = 32;
+
+	// Built frames without speaker sound after which the speaker counts as quiet (500 ms).
+	public const int SpeakerQuietAfterFrames = Rate / 2;
+
+	private const int Quiet = int.MaxValue / 2;
+
+	private readonly WiredAudioTuning tuning = tuning ?? WiredAudioTuning.Default;
 	private readonly object gate = new();
 	private readonly Queue<(short Left, short Right)> speaker = new();
 	private float prevLeft, prevRight;
@@ -62,6 +78,17 @@ public sealed class WiredAudioFrames
 	// Output frames built since the last PushSpeaker: the flush timer for a stale tail.
 	private int framesSincePush;
 	private long speakerUnderruns, droppedSpeakerFrames;
+	// The fade-in envelope on every channel (FadeIn): frames done of fadeLength.
+	private int fadeLength, fadePos;
+	// The fade-out of the haptics after their input turned silent (ReleaseFadeFrames).
+	private bool releasing;
+	private float releaseFromLeft, releaseFromRight;
+	private int releasePos;
+	// Frames built (or a push received) since the last speaker sound.
+	private int speakerQuietFrames = Quiet;
+	private float[] shapedLeft = [], shapedRight = [];
+
+	public WiredAudioTuning Tuning => tuning;
 
 	public int SpeakerBuffered
 	{
@@ -83,6 +110,19 @@ public sealed class WiredAudioFrames
 			lock (gate)
 			{
 				return speakerPlaying || speaker.Count >= SpeakerStartFrames;
+			}
+		}
+	}
+
+	// Channels 1-2 carried sound within the last SpeakerQuietAfterFrames built frames, or sound was just pushed (it
+	// plays behind the cushion). Silent game audio does not count.
+	public bool SpeakerSounding
+	{
+		get
+		{
+			lock (gate)
+			{
+				return speakerQuietFrames < SpeakerQuietAfterFrames;
 			}
 		}
 	}
@@ -109,74 +149,167 @@ public sealed class WiredAudioFrames
 					droppedSpeakerFrames++;
 				}
 				speaker.Enqueue((left, right));
+				if (Loud(left) || Loud(right))
+				{
+					speakerQuietFrames = 0;
+				}
+			}
+		}
+	}
+
+	// The next built frames fade in from silence on every channel over `frames` frames (0 = no fade).
+	public void FadeIn(int frames)
+	{
+		lock (gate)
+		{
+			if (frames > 0)
+			{
+				fadeLength = frames;
+				fadePos = 0;
 			}
 		}
 	}
 
 	// Fills output with left.Length * Upsample frames of `channels` channels each; returns the frames written.
+	public int Build(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right, Span<float> output, int channels) =>
+		Build(left, right, output, channels, left.Length * Upsample);
+
+	// Fills output with `frames` frames of `channels` channels (frames near left.Length * Upsample: the haptics are
+	// interpolated across exactly that many frames, ending on the block's last sample); returns frames.
 	// Channels 2-3: the haptics ramp; channels 0-1: the speaker (silence until SpeakerStartFrames are buffered, then
 	// in order until the buffer runs dry, after which the cushion is wanted again); channels beyond 4: silence.
-	public int Build(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right, Span<float> output, int channels)
+	public int Build(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right, Span<float> output, int channels, int frames)
 	{
-		if (channels < 4 || output.Length < left.Length * Upsample * channels)
+		if (channels < 4 || frames < 0 || right.Length != left.Length || output.Length < frames * channels)
 		{
-			throw new ArgumentException("need at least 4 channels and left.Length * 16 frames of output");
+			throw new ArgumentException("need at least 4 channels, equal sides and frames * channels of output");
+		}
+		int n = left.Length;
+		if (n == 0 || frames == 0)
+		{
+			return 0;
 		}
 		lock (gate)
 		{
-			float prevL = prevLeft, prevR = prevRight;
-			for (int i = 0; i < left.Length; i++)
+			if (shapedLeft.Length < n)
 			{
-				float curL = Math.Clamp(left[i] / 127f * HapticsGain, -1f, 1f);
-				float curR = Math.Clamp(right[i] / 127f * HapticsGain, -1f, 1f);
-				for (int k = 0; k < Upsample; k++)
+				shapedLeft = new float[n];
+				shapedRight = new float[n];
+			}
+			bool silent = true;
+			for (int i = 0; i < n; i++)
+			{
+				shapedLeft[i] = Shape(left[i]);
+				shapedRight[i] = Shape(right[i]);
+				silent &= left[i] == 0 && right[i] == 0;
+			}
+			float prevL = prevLeft, prevR = prevRight;
+			bool release = tuning.ReleaseFadeFrames > 0 && silent && (releasing || prevL != 0 || prevR != 0);
+			if (release && !releasing)
+			{
+				releasing = true;
+				releaseFromLeft = prevL;
+				releaseFromRight = prevR;
+				releasePos = 0;
+			}
+			else if (!silent)
+			{
+				releasing = false;
+			}
+			float lastL = prevL, lastR = prevR;
+			for (int j = 0; j < frames; j++)
+			{
+				int at = j * channels;
+				float hl, hr;
+				if (release)
 				{
-					int at = (i * Upsample + k) * channels;
-					float t = (k + 1) / (float)Upsample;
-					output[at + 2] = prevL + (curL - prevL) * t;
-					output[at + 3] = prevR + (curR - prevR) * t;
-					if (speakerPlaying && speaker.Count == 0)
+					releasePos = Math.Min(releasePos + 1, tuning.ReleaseFadeFrames);
+					float g = 1f - releasePos / (float)tuning.ReleaseFadeFrames;
+					hl = releaseFromLeft * g;
+					hr = releaseFromRight * g;
+				}
+				else
+				{
+					// Position in input samples after this frame: (0, n]; the frame at p = i + 1 is sample i itself.
+					double p = (j + 1) * (double)n / frames;
+					int i0 = (int)p;
+					if (i0 >= n)
 					{
-						speakerPlaying = false;
-						speakerUnderruns++;
-					}
-					if (!speakerPlaying && speaker.Count >= SpeakerStartFrames)
-					{
-						speakerPlaying = true;
-					}
-					if (speakerPlaying)
-					{
-						(short sl, short sr) = speaker.Dequeue();
-						output[at] = sl / 32768f;
-						output[at + 1] = sr / 32768f;
+						hl = shapedLeft[n - 1];
+						hr = shapedRight[n - 1];
 					}
 					else
 					{
-						output[at] = 0;
-						output[at + 1] = 0;
-					}
-					for (int c = 4; c < channels; c++)
-					{
-						output[at + c] = 0;
+						float frac = (float)(p - i0);
+						float loL = i0 == 0 ? prevL : shapedLeft[i0 - 1];
+						float loR = i0 == 0 ? prevR : shapedRight[i0 - 1];
+						hl = loL + (shapedLeft[i0] - loL) * frac;
+						hr = loR + (shapedRight[i0] - loR) * frac;
 					}
 				}
-				prevL = curL;
-				prevR = curR;
+				lastL = hl;
+				lastR = hr;
+				if (speakerPlaying && speaker.Count == 0)
+				{
+					speakerPlaying = false;
+					speakerUnderruns++;
+				}
+				if (!speakerPlaying && speaker.Count >= SpeakerStartFrames)
+				{
+					speakerPlaying = true;
+				}
+				float sl = 0, sr = 0;
+				bool sound = false;
+				if (speakerPlaying)
+				{
+					(short l16, short r16) = speaker.Dequeue();
+					sl = l16 / 32768f;
+					sr = r16 / 32768f;
+					sound = Loud(l16) || Loud(r16);
+				}
+				speakerQuietFrames = sound ? 0 : Math.Min(speakerQuietFrames + 1, Quiet);
+				float gain = 1f;
+				if (fadePos < fadeLength)
+				{
+					fadePos++;
+					gain = fadePos / (float)fadeLength;
+				}
+				output[at] = sl * gain;
+				output[at + 1] = sr * gain;
+				output[at + 2] = hl * gain;
+				output[at + 3] = hr * gain;
+				for (int c = 4; c < channels; c++)
+				{
+					output[at + c] = 0;
+				}
 			}
-			prevLeft = prevL;
-			prevRight = prevR;
-			framesSincePush += left.Length * Upsample;
+			if (release)
+			{
+				prevLeft = lastL;
+				prevRight = lastR;
+				if (releasePos >= tuning.ReleaseFadeFrames)
+				{
+					releasing = false;
+					prevLeft = prevRight = 0;
+				}
+			}
+			else
+			{
+				prevLeft = shapedLeft[n - 1];
+				prevRight = shapedRight[n - 1];
+			}
+			framesSincePush += frames;
 			if (!speakerPlaying && speaker.Count > 0 && framesSincePush > SpeakerFlushFrames)
 			{
 				// A stale tail (left by an underrun, never enough to start again) is dropped, not played late.
 				droppedSpeakerFrames += speaker.Count;
 				speaker.Clear();
 			}
-			return left.Length * Upsample;
+			return frames;
 		}
 	}
 
-	// Back to a fresh start (the stream idled): no speaker audio, not playing, no haptics ramp left over.
+	// Back to a fresh start (the stream idled): no speaker audio, not playing, no haptics ramp or fade left over.
 	public void Reset()
 	{
 		lock (gate)
@@ -185,8 +318,19 @@ public sealed class WiredAudioFrames
 			speakerPlaying = false;
 			framesSincePush = 0;
 			prevLeft = prevRight = 0;
+			fadeLength = fadePos = 0;
+			releasing = false;
+			speakerQuietFrames = Quiet;
 		}
 	}
+
+	private float Shape(sbyte sample)
+	{
+		float v = Math.Clamp(sample / 127f * tuning.HapticsGain, -1f, 1f);
+		return tuning.Limit is { } ceiling ? WiredHapticsLimiter.Apply(v, ceiling) : v;
+	}
+
+	private static bool Loud(short sample) => sample >= SpeakerSoundLevel || sample <= -SpeakerSoundLevel;
 }
 
 // Keeps the endpoint's queued audio near a target without whole-block jumps: every written block is nudged a few
@@ -204,9 +348,12 @@ public static class WiredAudioSteering
 
 	// The nudge for the queue size read before a block: 0 inside the deadband, else at least +-1 frame (positive =
 	// repeat frames to stretch, negative = drop frames to shrink), at most MaxFramesPerBlock.
-	public static int Adjust(int queuedFrames)
+	public static int Adjust(int queuedFrames) => Adjust(queuedFrames, TargetFrames);
+
+	// The same around another target (KOPRU_WIRED_BUFFER_MS).
+	public static int Adjust(int queuedFrames, int targetFrames)
 	{
-		int diff = queuedFrames - TargetFrames;
+		int diff = queuedFrames - targetFrames;
 		if (Math.Abs(diff) <= DeadbandFrames)
 		{
 			return 0;
@@ -424,9 +571,12 @@ public static class WiredAudio
 		{
 			return null;
 		}
-		WasapiRenderSink sink = WasapiRenderSink.Open(endpoint.Id);
+		(WiredAudioMode mode, string? note) = WiredAudioModeChoice.FromEnvironment();
+		WasapiRenderSink sink = WasapiRenderSink.Open(endpoint.Id, mode, note);
 		Diagnostics.AppLog.Write(string.Create(System.Globalization.CultureInfo.InvariantCulture,
-			$"wired: USB audio output opened ({sink.Channels} ch, {sink.Format}, {(sink.ChannelMask is { } m ? $"mask 0x{m:X}" : "no mask")})"));
+			$"wired: USB audio output opened ({sink.Channels} ch, {sink.Format}, {(sink.ChannelMask is { } m ? $"mask 0x{m:X}" : "no mask")}; {sink.Mode})"));
+		WiredAudioTuning tuning = WiredAudioTuning.Current;
+		Diagnostics.AppLog.Write("wired: audio tuning " + (tuning.IsDefault ? "(defaults): " : "(environment): ") + tuning.Describe());
 		return sink;
 	}
 

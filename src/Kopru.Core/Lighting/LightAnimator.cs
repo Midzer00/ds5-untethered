@@ -98,7 +98,7 @@ public static class LightAnimator
 	public static bool IsAnimated(LightSettings light, BatteryStatus? battery) => light.Options.Mode switch
 	{
 		LightMode.Breathing or LightMode.Rainbow => true,
-		LightMode.Battery => battery is { } b && b.Percent < CriticalPercent && b.State == ChargeState.Discharging,
+		LightMode.Battery => battery is { LevelKnown: true } b && b.Percent < CriticalPercent && b.State == ChargeState.Discharging,
 		_ => false
 	};
 
@@ -124,7 +124,7 @@ public static class LightAnimator
 				double cycle = LightOptions.RainbowCycleSeconds / Math.Clamp(o.RainbowSpeed, 1, 10);
 				return Hue(seconds % cycle / cycle).Scale(brightness);
 			}
-			case LightMode.Battery when battery is { } b:
+			case LightMode.Battery when battery is { LevelKnown: true } b:
 			{
 				Rgb c = BatteryColour(b.Percent);
 				if (b.Percent < CriticalPercent && b.State == ChargeState.Discharging)

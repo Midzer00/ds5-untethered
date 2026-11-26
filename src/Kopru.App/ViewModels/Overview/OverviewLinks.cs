@@ -10,13 +10,14 @@ namespace Kopru.App.ViewModels;
 public sealed partial class OverviewViewModel
 {
 	// What each link does for the controller shown: the one in use is drawn in the accent, a connected idle one in grey.
-	public LinkUse BluetoothUse => IsOnCable || !_service.IsConnected ? LinkUse.Absent
+	public LinkUse BluetoothUse => IsOnCable || !_service.IsConnected || _service.IsCableOnly ? LinkUse.Absent
 		: _service.IsWired || !_service.IsBridgeRunning ? LinkUse.Standby
 		: LinkUse.InUse;
 
 	public LinkUse UsbUse => IsOnCable ? LinkUse.Direct
 		: !_service.IsConnected ? LinkUse.Absent
 		: _service.IsWired ? LinkUse.InUse
+		: _service.IsCableOnly ? LinkUse.Standby
 		: _service.CablePluggedIn ? LinkUse.ChargeOnly
 		: LinkUse.Absent;
 

@@ -20,23 +20,30 @@ Your draft is kept in your browser, so you can stop and come back later.
      directly in **Settings → General → Language**.
    - Any missing or empty key automatically falls back to English, so partial translations are safe.
 3. Send it in one of three ways (all need a free GitHub account):
-   - **Send with GitHub** (easiest): sign in to GitHub once in the pop-up and the page opens a translation issue in
-     your name. A check runs automatically; if the file passes, a pull request is opened with you as co-author and
-     the issue is closed. If something needs fixing, the problems are listed on the issue.
+   - **Send with GitHub** (easiest): sign in to GitHub in the pop-up. GitHub only confirms who you are: the page asks
+     for no access to your account and sees only your public profile. The project's bot then opens the translation
+     issue for you, with your GitHub name on it as the verified sender. A check runs automatically; if the file
+     passes, a pull request is opened in which you are the author of the translation commit, so you appear among the
+     project's contributors, and the issue is closed. If you tick "Do not list my name among the translators", the
+     bot is the commit author instead and your name is left out of the commit. If something needs fixing, the
+     problems are listed on the issue, and you can send again from the page.
    - **Upload form:** download your `<code>.json` file, then use the page's link to open the
      [Translation issue form](https://github.com/Midzer00/ds5-untethered/issues/new?template=translation.yml), drop the
-     file into its upload field and submit. The same automatic check and pull request follow.
+     file into its upload field and submit. The same automatic check and pull request follow, with you as the commit
+     author.
    - **Paste:** copy the file and use the page's link to open the file on GitHub's web editor; GitHub creates a fork and
      you open the pull request yourself. The same rules are checked on the pull request.
 
 A later send for the same language from the same account updates your existing pull request instead of opening a new
-one. Nothing is merged automatically: the maintainer reviews every translation first.
+one. One account can have up to 3 languages waiting for review at a time; a fourth can be sent once one of them is
+merged or closed. Nothing is merged automatically: the maintainer reviews every translation first.
 
 ### What the automatic check looks for
 
 The page shows the same checks while you translate, so a file the page accepts normally passes:
 
-- the language code is a valid BCP-47 code (not `en`, `tr`, `qps` or `qtg`) and matches the file name;
+- the language code is a valid BCP-47 code of a known language, script and region (not `en`, `tr`, `qps` or `qtg`)
+  and matches the file name;
 - the file is valid JSON (UTF-8), one flat object of `"key": "text"` pairs, at most 1 MB, without duplicate keys;
 - every key exists in `en.json` (plus `@name`);
 - every text keeps the English placeholders, has balanced braces, and keeps `plural` blocks with an `other` branch
@@ -138,13 +145,14 @@ Screenshots are saved to `TestResults\i18n-screenshots\<lang>\` (git-ignored).
 
 Once your translation is merged, your GitHub name is listed under your language on ds5untethered.com: on the home
 page's language list and in the translation page ("Translated by @you"). The list is built from the repository
-history (commit authors and co-authors) and refreshed automatically, so it shows only your public GitHub login,
+history (commit authors) and refreshed automatically, so it shows only your public GitHub login,
 linked to your profile.
 
 If you would rather not be listed:
 
 - **Send with GitHub** or the **upload form:** tick "Do not list my name among the translators" before you send.
-  The choice is kept for all your translations.
+  The project's bot is then the author of the commit, and your name is left out of it, so that send is not credited
+  to you. To be left out everywhere, including earlier sends, ask as described below.
 - **Your own pull request:** write in the pull request that you do not want to be listed; the maintainer adds your
   login to `tools/i18n/translators-hidden.txt`.
 

@@ -58,6 +58,30 @@ public class HealthTests
 	public void Connection_UsbOnly_EvenWithBluetoothOff() =>
 		Assert.Equal(ConnectionKind.ConnectedUsb, ConnectionState.Detect(RadioState.Off, [UsbPad], []).Kind);
 
+	// Cable mode Wired with a remembered controller on the cable alone: connected, nothing blocks the start (no Bluetooth
+	// needed at all); Bluetooth still wins when it is there; tests run once the bridge holds it.
+	[Fact]
+	public void Connection_WiredCableOnly_IsConnected_AndDoesNotBlockTheStart()
+	{
+		ConnectionState wired = ConnectionState.Detect(RadioState.Off, [UsbPad], [], wiredCableOnly: true);
+		Assert.Equal(ConnectionKind.ConnectedWired, wired.Kind);
+		Assert.True(wired.IsConnected);
+		Assert.Equal(ConnectionKind.ConnectedBluetooth, ConnectionState.Detect(RadioState.On, [UsbPad, BtPad], [], wiredCableOnly: true).Kind);
+		Assert.Equal(ConnectionKind.PairedNotConnected, ConnectionState.Detect(RadioState.On, [], [Paired], wiredCableOnly: true).Kind);
+
+		HealthReport stopped = HealthReport.Build(Env(), Run([UsbPad]) with { WiredCableOnly = true }, Now);
+		Assert.Equal(ConnectionKind.ConnectedWired, stopped.Connection.Kind);
+		Assert.True(stopped.CanStartBridge);
+		Assert.Null(stopped.BlockingIssue);
+		Assert.False(stopped.CanTest);
+		HealthReport running = HealthReport.Build(Env(), Run([UsbPad], started: true, state: BridgeState.Running) with { WiredCableOnly = true }, Now);
+		Assert.True(running.CanTest);
+
+		// Without the flag (charge only, or a controller no remembered one matches) the cable still blocks the start.
+		HealthReport chargeOnly = HealthReport.Build(Env(), Run([UsbPad]), Now);
+		Assert.Equal(BlockingKind.UsbConnected, chargeOnly.BlockingIssue?.Kind);
+	}
+
 	[Theory]
 	[InlineData(RadioState.Missing, ConnectionKind.NoRadio)]
 	[InlineData(RadioState.Off, ConnectionKind.BluetoothOff)]

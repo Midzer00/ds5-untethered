@@ -9,8 +9,7 @@ public enum SetupStepId
 	Language,
 	Drivers,
 	PairController,
-	AdapterTest,
-	Done
+	AdapterTest
 }
 
 public enum StepStatus
@@ -57,7 +56,7 @@ public sealed class SetupWizard(SystemCheck check, IUrlLauncher launcher)
 	public IReadOnlyList<SetupStep> Steps => Build(Status);
 
 	// The first required step still to do; optional steps (the adapter test) never count.
-	public SetupStep? FirstIncomplete => Steps.FirstOrDefault(s => s.Id != SetupStepId.Done && !s.IsOptional && s.Status == StepStatus.Needed);
+	public SetupStep? FirstIncomplete => Steps.FirstOrDefault(s => !s.IsOptional && s.Status == StepStatus.Needed);
 
 	// Finishing needs a language, both drivers and a controller on Bluetooth; the adapter test is optional and
 	// warnings (restart pending, borderline adapter) do not block.
@@ -143,10 +142,7 @@ public sealed class SetupWizard(SystemCheck check, IUrlLauncher launcher)
 		var adapter = new SetupStep(SetupStepId.AdapterTest, adapterStatus, Text.SetupAdapterTitle, Text.SetupAdapterInstructions,
 			[], paired ? [new SetupAction(SetupActionKind.RunAdapterTest, Text.SetupActionRunAdapterTest)] : [], IsOptional: true);
 
-		var steps = new List<SetupStep> { language, drivers, pair, adapter };
-		bool finish = steps.All(x => x.IsOptional || x.Status != StepStatus.Needed);
-		steps.Add(new SetupStep(SetupStepId.Done, finish ? StepStatus.Done : StepStatus.Needed,
-			Text.SetupDoneTitle, finish ? Text.SetupDoneInstructions : Text.SetupNotDoneInstructions, [], []));
-		return steps;
+		// No closing "Done" step: the page header's Go To Overview button finishes once the required steps are done.
+		return [language, drivers, pair, adapter];
 	}
 }

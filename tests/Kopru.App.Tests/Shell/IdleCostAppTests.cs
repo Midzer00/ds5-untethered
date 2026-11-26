@@ -168,6 +168,7 @@ public class IdleCostAppTests
 		[nameof(IControllerService.ConnectedSince)] = "polled by the controller info clock",
 		[nameof(IControllerService.CablePluggedIn)] = "device: cable twin set change Raise, bridge stop Raise",
 		[nameof(IControllerService.IsWired)] = "device: wired reconcile Raise, tick Raise on change",
+		[nameof(IControllerService.IsCableOnly)] = "device: tick Raise when the cable-only pad changes, wired reconcile Raise, host status",
 		[nameof(IControllerService.Controllers)] = "manager ControllersChanged Raise, per-slot ShownStatus, own profile Raise",
 		[nameof(IControllerService.SelectedController)] = "SelectController Raise, follows Controllers",
 		[nameof(IControllerService.AudioDevices)] = "AudioDevices.Changed (own event)",
@@ -186,6 +187,19 @@ public class IdleCostAppTests
 		string[] values = [.. typeof(IControllerService).GetProperties().Select(p => p.Name)];
 		Assert.Empty(values.Except(HowServiceValuesReachTheUi.Keys));
 		Assert.Empty(HowServiceValuesReachTheUi.Keys.Except(values));
+	}
+
+	// "Charging, level not reported" (USB) is shown differently from a real 0 % charging reading, so a switch between
+	// them raises StateChanged.
+	[Fact]
+	public void ShownStatus_ChargingWithoutALevel_DiffersFromZeroPercent()
+	{
+		BridgeStatus s = Running();
+		ShownStatus known = ShownStatus.Of(s with { Battery = new BatteryStatus(0, ChargeState.Charging) });
+		ShownStatus unknown = ShownStatus.Of(s with { Battery = new BatteryStatus(0, ChargeState.Charging, LevelKnown: false) });
+		Assert.NotEqual(known, unknown);
+		Assert.Null(unknown.BatteryPercent);
+		Assert.Equal(ChargeState.Charging, unknown.Charge);
 	}
 
 	// Every part of a bridge status is either in ShownStatus (a change raises StateChanged) or explicitly not shown.
@@ -365,8 +379,8 @@ public class IdleCostAppTests
 		Settle();
 		Assert.NotNull(service.LiveHandler);
 
-		// The remap preview.
-		vm.Controller.SelectedTab = ControllerPageViewModel.RemapTab;
+		// The gyro preview (Gyro & Sticks tab).
+		vm.Controller.SelectedTab = ControllerPageViewModel.GyroTab;
 		Assert.True(vm.Sticks.IsPreviewRunning);
 		window.Hide();
 		Settle();

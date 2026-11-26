@@ -5,6 +5,10 @@
 # Security: pull_request (never pull_request_target), read-only token, no secrets. The checks and en.json come from
 # the base commit; the pull request is checked out separately and its files are only read as data, never run.
 # Fork pull requests get no write token, so the result is the job summary and annotations, not PR comments.
+# The result is advisory: GitHub runs this file as the pull request has it, so a fork pull request can change it or the
+# checker. Code owner review and approval of first-time contributors' runs make it binding (tools/i18n/README.md).
+# Pull requests opened by the intake workflow get no run here (workflow-token events start no workflows); the intake
+# already applied the same rules.
 name: Translation validate
 
 on:

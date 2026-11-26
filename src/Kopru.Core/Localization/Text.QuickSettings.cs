@@ -88,6 +88,6 @@ public static partial class Text
 
 	public static string HeroBatteryChargingTip(Language? l = null) => T(l, "Hero.BatteryChargingTip");
 
-	// The health strip when nothing needs attention: one quiet line with what was checked.
-	public static string HealthAllGood(string names, Language? l = null) => T(l, "Health.AllGood", A("names", names));
+	// The text link at the end of the health line that runs the fix.
+	public static string HealthFixLink(Language? l = null) => T(l, "Health.FixLink");
 }

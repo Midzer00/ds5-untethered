@@ -56,7 +56,9 @@ public sealed class SetupFlowTests
 		Assert.Equal(Text.SetupOptional(), adapter.OptionalText);
 		Assert.False(adapter.IsCurrent);
 		Assert.DoesNotContain(vm.Steps, s => s.IsCurrent);
-		Assert.True(vm.Steps.Single(s => s.Id == SetupStepId.Done).IsDone);
+		// No closing "Done" step: the adapter test is the last row.
+		Assert.True(vm.Steps[^1].IsLast);
+		Assert.Equal(SetupStepId.AdapterTest, vm.Steps[^1].Id);
 	}
 
 	[AvaloniaFact]
@@ -75,7 +77,7 @@ public sealed class SetupFlowTests
 		{
 			new(SetupStepId.Drivers, StepStatus.Done, _ => "a", _ => "b", [], []),
 			new(SetupStepId.AdapterTest, StepStatus.Needed, _ => "a", _ => "b", [], [], IsOptional: true),
-			new(SetupStepId.Done, StepStatus.Needed, _ => "a", _ => "b", [], []),
+			new(SetupStepId.PairController, StepStatus.Needed, _ => "a", _ => "b", [], []),
 		};
 		IReadOnlyList<SetupStepItem> items = SetupViewModel.BuildItems(steps, _ => [], "opt");
 		Assert.False(items[1].IsCurrent);

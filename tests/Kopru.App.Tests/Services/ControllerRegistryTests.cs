@@ -21,6 +21,52 @@ public class ControllerRegistryTests
 
 	private static void Settle() => Dispatcher.UIThread.RunJobs();
 
+	// Remembered controllers saved without an address get it filled in from their own id (never one controller's address
+	// for another): only those without one, a failing or virtual answer is skipped, one Changed for the lot.
+	[Fact]
+	public void FillAddresses_FillsOnlyTheOnesWithout_FromTheirOwnId()
+	{
+		ControllerRegistry r = new([
+			new KnownController("fake-old", ControllerModel.DualSense, null, T0, T0),
+			new KnownController("fake-new", ControllerModel.DualSense, null, T0, T0, Address: 0xA0B1C2D3E401),
+			new KnownController("fake-throws", ControllerModel.DualSense, null, T0, T0),
+			new KnownController("fake-virtual", ControllerModel.DualSense, null, T0, T0),
+			new KnownController("fake-unpaired", ControllerModel.DualSense, null, T0, T0)
+		]);
+		int changes = 0;
+		r.Changed += () => changes++;
+		Assert.Equal(["fake-old", "fake-throws", "fake-virtual", "fake-unpaired"], r.IdsWithoutAddress());
+		Assert.Equal(["fake-old", "fake-unpaired"], r.IdsWithoutAddress(new HashSet<string> { "fake-throws", "fake-virtual" }));
+
+		IReadOnlyList<string> filled = r.FillAddresses(r.IdsWithoutAddress(), id => id switch
+		{
+			"fake-old" => 0xA0B1C2D3E402,
+			"fake-throws" => throw new InvalidOperationException(),
+			"fake-virtual" => Kopru.Core.Hid.PairingInfo.VirtualAddress,
+			_ => null
+		});
+
+		Assert.Equal(["fake-old"], filled);
+		Assert.Equal(1, changes);
+		Assert.Equal("fake-old", r.FindIdByAddress(0xA0B1C2D3E402));
+		Assert.Equal(0xA0B1C2D3E401UL, r.Find("fake-new")!.Address);
+		Assert.Null(r.Find("fake-unpaired")!.Address);
+		Assert.Empty(r.FillAddresses(["fake-new"], _ => 0xA0B1C2D3E403));
+		Assert.Equal(1, changes);
+	}
+
+	// One controller paired through two adapters is remembered twice with the same address: the one seen last is matched.
+	[Fact]
+	public void FindIdByAddress_TwoEntriesWithOneAddress_TakesTheOneSeenLast()
+	{
+		ControllerRegistry r = new([
+			new KnownController("fake-first", ControllerModel.DualSense, null, T0, T0, Address: 0xA0B1C2D3E4F5),
+			new KnownController("fake-later", ControllerModel.DualSense, null, T0, T0.AddDays(1), Address: 0xA0B1C2D3E4F5)
+		]);
+		Assert.Equal("fake-later", r.FindIdByAddress(0xA0B1C2D3E4F5));
+		Assert.Null(r.FindIdByAddress(0xA0B1C2D3E400));
+	}
+
 	[Fact]
 	public void Observe_RemembersJoins_AndStampsLeaves()
 	{

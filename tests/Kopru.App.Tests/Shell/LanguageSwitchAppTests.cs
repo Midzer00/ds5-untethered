@@ -31,7 +31,8 @@ public sealed class LanguageSwitchAppTests
 		new("Settings Audio", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.AudioTab); }),
 		new("Settings Shortcuts", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.ShortcutsTab); }),
 		new("Settings Mouse Mode", vm => { vm.Navigate(vm.SettingsPage); vm.SettingsPage.ShowTab(SettingsViewModel.MouseTab); }),
-		new("Controller Remap", vm => { vm.Navigate(vm.Controller); vm.Controller.ShowTab(ControllerPageViewModel.RemapTab); }),
+		new("Controller Buttons", vm => { vm.Navigate(vm.Controller); vm.Controller.ShowTab(ControllerPageViewModel.ButtonsTab); }),
+		new("Controller Gyro & Sticks", vm => { vm.Navigate(vm.Controller); vm.Controller.ShowTab(ControllerPageViewModel.GyroTab); }),
 		new("Light", vm => vm.Navigate(vm.Light)),
 	];
 
@@ -176,6 +177,10 @@ public sealed class LanguageSwitchAppTests
 			{
 				foreach (object o in items)
 				{
+					if (o is TabOption { IsVisible: false })
+					{
+						continue;
+					}
 					string name = NameOf(o);
 					if (name.Length > 0 && o is not ColourPreset)
 					{

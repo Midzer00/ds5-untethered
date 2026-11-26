@@ -120,6 +120,84 @@ public class BridgeControlsTests
 		Assert.Null(host.Device);
 	}
 
+	// Feature 0x09 with a real (non-virtual) controller address, LSB first.
+	private static byte[] Pairing() => [PairingInfo.ReportId, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, .. new byte[14]];
+
+	[Fact]
+	public async Task RunningBridge_KeepsItsDetails_WhenANewConnectionTickForgetsThemBeforeTheConnectionIsPublished()
+	{
+		await using BridgeHost host = Host();
+		// No re-read while running: this checks the reset alone.
+		host.DetailsRetryInterval = Timeout.InfiniteTimeSpan;
+		FakeLink link = new() { FeatureAnswer = id => id == PairingInfo.ReportId ? Pairing() : null };
+		// The presence tick sees the new Bluetooth connection while the bridge has read the details but has not
+		// published the connection yet (Device still null): the hook runs exactly in that window.
+		// (The host swallows a hook's exceptions, so what the hook saw is checked afterwards.)
+		bool hooked = false;
+		HidDevice? deviceInHook = null;
+		ulong? addressInHook = null;
+		host.ControllerOpened = (_, _) =>
+		{
+			deviceInHook = host.Device;
+			addressInHook = host.Details?.Address;
+			host.ForgetDetailsIfStopped();
+			hooked = true;
+			return Task.CompletedTask;
+		};
+		controllers.Links.Enqueue(link);
+
+		await host.StartAsync();
+		Assert.True(SpinWait.SpinUntil(() => host.State == BridgeState.Running, 5000));
+		Assert.True(hooked);
+		Assert.Null(deviceInHook);
+		Assert.NotNull(addressInHook);
+		Assert.Equal(PairingInfo.ParseAddress(Pairing()), host.Details?.Address);
+		await host.StopAsync();
+
+		// Stopped: a new connection forgets them (the next battery probe reads them again).
+		host.ForgetDetailsIfStopped();
+		Assert.Null(host.Details);
+	}
+
+	[Fact]
+	public async Task RunningBridge_ReadsTheDetailsAgain_WhileTheControllerDidNotAnswerItsAddress()
+	{
+		await using BridgeHost host = Host();
+		host.DetailsRetryInterval = TimeSpan.FromMilliseconds(30);
+		int asked = 0;
+		bool answer = false;
+		FakeLink link = new()
+		{
+			FeatureAnswer = id =>
+			{
+				if (id != PairingInfo.ReportId)
+				{
+					return null;
+				}
+				Interlocked.Increment(ref asked);
+				return Volatile.Read(ref answer) ? Pairing() : null;
+			}
+		};
+		controllers.Links.Enqueue(link);
+
+		await host.StartAsync();
+		Assert.True(SpinWait.SpinUntil(() => host.State == BridgeState.Running, 5000));
+		Assert.Null(host.Details?.Address);
+		// Asked again while running, paced by the interval (not on every 10 ms monitor pass).
+		Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref asked) >= 3, 5000));
+		Volatile.Write(ref answer, true);
+		Assert.True(SpinWait.SpinUntil(() => host.Details?.Address != null, 5000));
+		Assert.Equal(PairingInfo.ParseAddress(Pairing()), host.Details!.Address);
+		// Found: no more reads.
+		Thread.Sleep(200);
+		int after = Volatile.Read(ref asked);
+		Thread.Sleep(200);
+		Assert.Equal(after, Volatile.Read(ref asked));
+		// Only feature reads, never an extra output write for them.
+		Assert.DoesNotContain(link.Writes, w => w[0] == PairingInfo.ReportId);
+		await host.StopAsync();
+	}
+
 	[Fact]
 	public void CaptureIdentitySource_LooksInTheAppDataFolderFirst()
 	{

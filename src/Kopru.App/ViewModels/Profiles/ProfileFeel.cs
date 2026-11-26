@@ -56,27 +56,20 @@ public sealed class ProfileFeelViewModel : ObservableObject
 	public string GameHapticsHint => Text.GameHapticsHint();
 	public string TriggerLabel => Text.TriggerStrength();
 	public string TriggerHint => Text.TriggerStrengthHint();
-	public string RumbleCardTitle => Text.ClassicRumbleCard();
 	public string RumbleCardHint => Text.ClassicRumbleCardHint();
 	public string RumbleLabel => Text.RumbleLevel();
 	public string RumbleHint => Text.RumbleHint();
 	public string FeelLabel => Text.RumbleFeelLabel();
 	public string FeelHint => Text.RumbleFeelHint();
-	public string SoftText => Text.RumbleFeelSoft();
-	public string PunchyText => Text.RumbleFeelPunchy();
 	public string FallbackLabel => Text.FallbackTriggerLabel();
 	public string FallbackHint => Text.FallbackTriggerHint();
 	public string FallbackStrengthLabel => Text.FallbackStrength();
 	public string FallbackStrengthHint => Text.FallbackStrengthHint();
-	public string OffText => Text.EffectOff();
 	public string FeedbackText => Text.EffectFeedback();
 	public string WeaponText => Text.EffectWeapon();
 	public string VibrationText => Text.EffectVibration();
 	public string TriggerRumbleLabel => Text.TriggerRumbleLabel();
 	public string TriggerRumbleHint => Text.TriggerRumbleHint();
-	public string XboxLikeText => Text.TriggerRumbleXboxLike();
-	public string TriggerSoftText => Text.TriggerRumbleSoft();
-	public string TriggerSharpText => Text.TriggerRumbleSharp();
 	public string LightLabel => Text.LightFromGame();
 	public string LightHint => Text.LightFromGameHint();
 
@@ -206,8 +199,8 @@ public sealed class ProfileFeelViewModel : ObservableObject
 		}
 	}
 
-	// Trigger Rumble (only the Xbox Series type sends it): Off, Xbox-Like, Soft, Sharp, as chips (the card) or a picker (a
-	// game's pop-up).
+	// Trigger Rumble (only the Xbox Series type sends it): Off, Xbox-Like, Soft, Sharp, as a picker in a game's pop-up (Haptics
+	// And Triggers uses XboxTriggerIndex below).
 	public bool IsTriggerRumbleOff { get => Values.TriggerRumble == TriggerRumbleFeel.Off; set => SetTriggerRumble(TriggerRumbleFeel.Off); }
 	public bool IsTriggerRumbleXboxLike { get => Values.TriggerRumble == TriggerRumbleFeel.XboxLike; set => SetTriggerRumble(TriggerRumbleFeel.XboxLike); }
 	public bool IsTriggerRumbleSoft { get => Values.TriggerRumble == TriggerRumbleFeel.Soft; set => SetTriggerRumble(TriggerRumbleFeel.Soft); }
@@ -224,6 +217,32 @@ public sealed class ProfileFeelViewModel : ObservableObject
 			{
 				SetTriggerRumble(TriggerRumbleOrder[value]);
 			}
+		}
+	}
+
+	// Xbox Trigger Rumble on Haptics And Triggers: the experimental setting and the profile's feel as one segmented choice
+	// (TriggerRumbleChoices: Off, Xbox-Like, Soft, Sharp). Off turns the setting off (the profile keeps its feel); any other
+	// choice turns it on and picks that feel for the profile. Off shows while the setting is off, or on with the profile's
+	// feel Off (nothing plays either way). -1 (nothing selected) is ignored.
+	public int XboxTriggerIndex
+	{
+		get => _settings.XboxTriggerRumbleOn ? TriggerRumbleIndex : 0;
+		set
+		{
+			if (value < 0 || value >= TriggerRumbleOrder.Length)
+			{
+				return;
+			}
+			if (value == 0)
+			{
+				_settings.XboxTriggerRumbleOn = false;
+			}
+			else
+			{
+				SetTriggerRumble(TriggerRumbleOrder[value]);
+				_settings.XboxTriggerRumbleOn = true;
+			}
+			OnPropertyChanged(nameof(XboxTriggerIndex));
 		}
 	}
 
@@ -254,8 +273,8 @@ public sealed class ProfileFeelViewModel : ObservableObject
 		RightTrigger?.Refresh();
 	}
 
-	// The Trigger Rumble row shows only while the experimental Xbox Trigger Rumble setting is on (off, Automatic never gives
-	// Xbox Series, the only type that sends it).
+	// A game's pop-up shows its Trigger Rumble row only while the experimental Xbox Trigger Rumble setting is on (off,
+	// Automatic never gives Xbox Series, the only type that sends it). Haptics And Triggers always shows its row.
 	public bool ShowsTriggerRumble => _settings.XboxTriggerRumbleOn;
 
 	private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
@@ -263,6 +282,7 @@ public sealed class ProfileFeelViewModel : ObservableObject
 		if (e.PropertyName == nameof(SettingsState.XboxTriggerRumbleOn))
 		{
 			OnPropertyChanged(nameof(ShowsTriggerRumble));
+			OnPropertyChanged(nameof(XboxTriggerIndex));
 		}
 		if (e.PropertyName != null && FeelNames.Contains(e.PropertyName) && IsLive)
 		{

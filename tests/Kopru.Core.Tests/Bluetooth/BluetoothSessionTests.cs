@@ -55,10 +55,16 @@ internal sealed class FakeLink(Transport transport = Transport.Bluetooth, int ou
 		Writes.Enqueue(report.ToArray());
 	}
 
+	// The answer to a feature read (null: 64 zero bytes, which parse as "no answer").
+	public Func<byte, byte[]?>? FeatureAnswer { get; set; }
+
 	public byte[] GetFeature(byte reportId)
 	{
-		Features.Add(reportId);
-		return new byte[64];
+		lock (Features)
+		{
+			Features.Add(reportId);
+		}
+		return FeatureAnswer?.Invoke(reportId) ?? new byte[64];
 	}
 
 	public void CancelRead() => closed.Cancel();
@@ -187,9 +193,18 @@ public class BluetoothSessionTests
 		Assert.InRange(perReport, 9.5, 12.5);
 	}
 
+	// A USB link is taken as a controller on the cable alone (wired mode): wired from the start, no Bluetooth.
 	[Fact]
-	public void UsbController_IsRejected() =>
-		Assert.Throws<ArgumentException>(() => new BluetoothSession(new FakeLink(Transport.Usb, 48)));
+	public void UsbController_RunsOnUsbAlone()
+	{
+		using BluetoothSession session = new(new FakeLink(Transport.Usb, 48));
+		Assert.True(session.IsUsbOnly);
+		Assert.True(session.IsWired);
+		Assert.True(session.IsBluetoothGone);
+		using BluetoothSession bluetooth = new(new FakeLink());
+		Assert.False(bluetooth.IsUsbOnly);
+		Assert.False(bluetooth.IsWired);
+	}
 }
 
 public class HapticsMixerTests

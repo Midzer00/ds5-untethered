@@ -183,11 +183,18 @@
             </StackPanel>
           </Grid>
 
-          <!-- Test first (what the controller sends, fixed right beside it), then the output tests, then remap & gyro; the Test
-               tab's reset at the line's right end -->
+          <!-- Test first (what the controller sends, fixed right beside it), then the output tests, the buttons, gyro and
+               sticks, and the Edge's paddles (only while an Edge is connected); the Test tab's reset at the line's right end -->
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Gap}">
             <ListBox Theme="{StaticResource Segmented}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" HorizontalAlignment="Left" MinWidth="420"
-                     VerticalAlignment="Center">
+                     VerticalAlignment="Center" Name="ControllerTabs">
+              <ListBox.Styles>
+                <!-- A tab that is not there now (Edge without an Edge) leaves no gap in the strip -->
+                <Style Selector="ListBoxItem" x:DataType="vm:TabOption">
+                  <Setter Property="IsVisible" Value="{Binding IsVisible}" />
+                  <Setter Property="ToolTip.Tip" Value="{Binding Tip}" />
+                </Style>
+              </ListBox.Styles>
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:TabOption">
                   <!-- Regular, and semibold while selected: two labels with a fixed weight each, so the selected one is always measured
@@ -249,8 +256,16 @@
         </StackPanel>
       </Panel>
 
-      <Panel IsVisible="{Binding IsRemapTab}">
+      <Panel IsVisible="{Binding IsButtonsTab}">
         <v:RemapView DataContext="{Binding Tuning.Remap}" />
+      </Panel>
+
+      <Panel IsVisible="{Binding IsGyroTab}">
+        <v:GyroSticksView DataContext="{Binding Tuning.Remap}" />
+      </Panel>
+
+      <Panel IsVisible="{Binding IsEdgeTab}">
+        <v:EdgeRemapView DataContext="{Binding Tuning.Remap}" />
       </Panel>
     </StackPanel>
   </ScrollViewer>

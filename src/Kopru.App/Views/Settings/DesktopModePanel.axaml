@@ -1,4 +1,16 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views" x:Class="Kopru.App.Views.DesktopModePanel" x:DataType="vm:DesktopModeViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:v="using:Kopru.App.Views"
+             xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.DesktopModePanel" x:DataType="vm:DesktopModeViewModel">
+  <UserControl.Styles>
+    <!-- The speed sliders under their names (narrow column): 8 below instead of the shared 12, which pays for the two
+         choice rows above growing to the shared row height; the name sits 4 above its slider (one unit, 8 around it), which
+         keeps the tab free of scrolling in long translations too (the mapping card beside it tightens by as much) -->
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack > Grid.sliderValue.control">
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack:not(.inline) > StackPanel.text">
+      <Setter Property="Margin" Value="0,8,0,4" />
+    </Style>
+  </UserControl.Styles>
   <!-- Mouse mode: the switch, auto-off and the speeds (the controls legend is its own card beside it) -->
   <DockPanel Classes="card">
     <!-- As tall as the mapping card's title row (its Reset To Default button), so the two cards start level -->

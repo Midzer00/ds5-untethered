@@ -56,7 +56,7 @@ public sealed partial class FakeControllerService : IControllerService, ILiveInp
 	public bool IsConnected { get; set; }
 	public bool CablePluggedIn { get; set; }
 	public bool IsWired { get; set; }
-	public bool HasBattery => true;
+	public bool HasBattery { get; set; } = true;
 	public string Warning { get; set; } = string.Empty;
 	public double BatteryPercent { get; set; } = 78;
 	public bool IsCharging { get; set; }

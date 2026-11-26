@@ -646,6 +646,35 @@ public sealed partial class OtherGamesViewModel : GameModePageViewModel
 		};
 	}
 
+	// Two tabs, one card each, so the page fits the window without scrolling: the game's own effects (the default) and Xbox
+	// And DS4 Rumble. The tab names are the card titles. The selected tab is kept while the app runs (not saved), as on Settings.
+	public const int GameEffectsTab = 0;
+	public const int RumbleTab = 1;
+
+	private int _selectedTab = GameEffectsTab;
+
+	public IReadOnlyList<TabOption> Tabs { get; } = [new(() => Text.GameEffectsCard()), new(() => Text.ClassicRumbleCard())];
+
+	// Out of range values (-1: nothing selected) are ignored.
+	public int SelectedTab
+	{
+		get => _selectedTab;
+		set
+		{
+			if (value is < GameEffectsTab or > RumbleTab || value == _selectedTab)
+			{
+				return;
+			}
+			_selectedTab = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(IsGameEffectsTab));
+			OnPropertyChanged(nameof(IsRumbleTab));
+		}
+	}
+
+	public bool IsGameEffectsTab => SelectedTab == GameEffectsTab;
+	public bool IsRumbleTab => SelectedTab == RumbleTab;
+
 	// Opens the Games page on "Desteklenmeyen" (set by the main window).
 	public Action? OpenUnsupportedGames { get; set; }
 	public string UnsupportedLinkText => Text.UnsupportedGamesTitle();

@@ -8,8 +8,9 @@ namespace Kopru.App.Services;
 
 // One controller of several (IControllerService.Controllers): its id (device instance id), player slot 1-4, name,
 // battery and bridge state. HasOwnProfile: it runs its own profile instead of the global settings.
+// Address: the controller's own Bluetooth address (0x09) once its host read it, else null.
 public sealed record ControllerEntry(string Id, int Slot, string Name, bool IsEdge, bool HasBattery, double BatteryPercent, bool IsCharging,
-	BridgeState State, bool HasOwnProfile = false);
+	BridgeState State, bool HasOwnProfile = false, ulong? Address = null);
 
 // Several controllers: BridgeManager runs one host per controller; the existing host is slot 1. The single-controller
 // members describe the selected controller; settings go to every controller (or its own profile when it has one).
@@ -99,7 +100,8 @@ public sealed partial class RealControllerService
 			}
 			IReadOnlyList<ControllerSlot> list = m.Controllers;
 			HidDevice? listed = list.FirstOrDefault(c => c.Slot == s)?.Device;
-			return s == 1 ? host.Device ?? listed ?? (list.Count == 0 ? present : null) : m.Host(s).Device ?? listed;
+			// Nothing bound yet: a paired controller over Bluetooth, else (wired mode) a remembered one on the cable alone.
+			return s == 1 ? host.Device ?? listed ?? (list.Count == 0 ? present ?? Volatile.Read(ref cableOnlyPad) : null) : m.Host(s).Device ?? listed;
 		}
 	}
 
@@ -239,8 +241,9 @@ public sealed partial class RealControllerService
 		{
 			own = controllerSettings.ContainsKey(c.Id);
 		}
-		return new ControllerEntry(c.Id, c.Slot, c.Device.IsEdge ? "DualSense Edge" : "DualSense", c.Device.IsEdge, s.Battery != null,
-			s.Battery?.Percent ?? 0, s.Battery?.State is ChargeState.Charging, s.State, own);
+		ulong? address = c.Host.Details is { Address: { } a } && !PairingInfo.IsVirtual(a) ? a : null;
+		return new ControllerEntry(c.Id, c.Slot, c.Device.IsEdge ? "DualSense Edge" : "DualSense", c.Device.IsEdge, s.Battery is { LevelKnown: true },
+			s.Battery is { LevelKnown: true } b ? b.Percent : 0, s.Battery?.State is ChargeState.Charging, s.State, own, address);
 	}
 
 	private async Task StartOthersAsync()

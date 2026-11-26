@@ -125,7 +125,10 @@ public sealed partial class RealControllerService
 				controllers.Insert(0, held);
 			}
 			BridgeStatus status = host.Status;
-			HealthRuntime run = new(controllers, started, status.State, status.LastError, steamInput, hidHideAppAllowed, controllerHidden);
+			// Wired mode holds a controller on the cable alone, or takes one over once the bridge runs.
+			bool cableOnly = Volatile.Read(ref cableOnlyPad) != null || (multi?.Hosts ?? [host]).Any(h => h.IsUsbOnly);
+			HealthRuntime run = new(controllers, started, status.State, status.LastError, steamInput, hidHideAppAllowed, controllerHidden,
+				cableOnly);
 			HealthReport next = HealthReport.Build(env, run, time.GetUtcNow());
 			if (!SameReport(next, health))
 			{
@@ -145,7 +148,8 @@ public sealed partial class RealControllerService
 
 	private void RecordBattery(BridgeStatus status)
 	{
-		if (batteryStore != null && status.Battery is { } b && batteryStore.Record(b, time.GetUtcNow()))
+		// A reading without a level (USB "charging, level not reported") would overwrite the last real one with 0 %.
+		if (batteryStore != null && status.Battery is { LevelKnown: true } b && batteryStore.Record(b, time.GetUtcNow()))
 		{
 			Raise();
 		}

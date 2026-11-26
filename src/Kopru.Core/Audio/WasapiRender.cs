@@ -4,74 +4,129 @@ using System.Runtime.Versioning;
 
 namespace Kopru.Core.Audio;
 
+// The ducking preference of one audio session (IAudioSessionControl2::SetDuckingPreference); a seam for tests.
+internal interface IDuckingPreference
+{
+	// optOut true: the system's default communications ducking leaves this session alone. Returns the HRESULT.
+	int SetDuckingPreference(bool optOut);
+}
+
+// Windows' default communications ducking ("reduce other sounds by 80 %" while a communication stream is open,
+// Mmsys.cpl > Communications) lowers every other render session, including ours on the controller's USB endpoint:
+// haptics on channels 3-4 at 20 % are not felt (found on hardware 2026-11-24; the speaker stayed audible). A stream
+// opened on the default communications device counts as one (documented), e.g. a voice app using the controller's
+// mic. A shared-mode render session opts out right after it is initialized, before its first Start; on hardware
+// (2026-11-24) that opt-out alone did not bring the haptics back, so exclusive mode is the default (WiredAudioMode).
+internal static class WiredAudioDucking
+{
+	public const string OptedOut = "opted out of Windows communications ducking";
+
+	// What happened, for the open log line; never throws (a failure must not stop the stream).
+	public static string OptOut(Func<IDuckingPreference?> session)
+	{
+		try
+		{
+			if (session() is not { } control)
+			{
+				return "not opted out of Windows communications ducking (no session control)";
+			}
+			int hr = control.SetDuckingPreference(true);
+			return hr == 0 ? OptedOut
+				: string.Create(System.Globalization.CultureInfo.InvariantCulture,
+					$"not opted out of Windows communications ducking (0x{hr:X8})");
+		}
+		catch (Exception e)
+		{
+			return "not opted out of Windows communications ducking (" + WiredAudio.Describe(e) + ")";
+		}
+	}
+}
+
 // Plays the wired mode audio on the controller's own USB audio endpoint with documented Core Audio only
-// (IMMDeviceEnumerator.GetDevice, IAudioClient, IAudioRenderClient): the endpoint's mix format must be 48 kHz with at
-// least 4 channels, 32-bit float or 16-bit PCM. Shared mode, a 100 ms buffer; a haptics block is queued every
-// 10.67 ms while the stream runs. Every call that can fail surfaces an exception (COMException via
-// ThrowExceptionForHR), so the session drops the sink and keeps haptics on Bluetooth.
+// (IMMDeviceEnumerator.GetDevice, IAudioClient, IAudioRenderClient, IAudioClock). Shared mode by default; exclusive
+// (KOPRU_WIRED_AUDIO_MODE=exclusive, not proven to play on hardware):
+// a 48 kHz WAVEFORMATEXTENSIBLE format with the endpoint's channels (at least 4) the device accepts
+// (IsFormatSupported, 16-bit PCM first), timer-driven with a 100 ms buffer, so the haptics thread keeps pushing a
+// block every 10.67 ms and steering on the queue exactly as in shared mode. Shared mode (the default, and the
+// fallback) uses the endpoint's mix format (48 kHz, at least 4 channels, float or 16-bit PCM) and opts its session
+// out of communications ducking. The feeding itself is WiredRenderPump (tested with a fake stream). Every call that can fail surfaces an exception
+// (COMException via ThrowExceptionForHR), so the session drops the sink and keeps haptics on Bluetooth.
+// Side effect of exclusive mode: no other program can play on the real controller's endpoint while wired (games use
+// the virtual pad's endpoint).
 [SupportedOSPlatform("windows")]
 internal sealed class WasapiRenderSink : IWiredAudioSink
 {
 	private static readonly Guid EnumeratorClsid = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
 	private static readonly Guid AudioClientIid = new("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2");
 	private static readonly Guid RenderClientIid = new("F294ACFC-3146-4483-A7BF-ADDCA7C260E2");
+	private static readonly Guid SessionControlIid = new("F4B1A599-7266-4319-A8CA-E70ACB11E8CD");
+	private static readonly Guid ClockIid = new("CD63314F-3FBA-4A1B-812C-EF96358728E7");
 
 	private const int ShareModeShared = 0;
+	private const int ShareModeExclusive = 1;
 	private const int ClsctxAll = 23;
+	private const int AudclntEBufferSizeNotAligned = unchecked((int)0x88890019);
 	private const long BufferDuration = 1_000_000; // 100 ms in 100 ns units
-	private const int CushionFrames = 960;         // 20 ms of silence queued before the first block
-	private const int MaxQueuedFrames = 2880;      // 60 ms: more queued means the endpoint is not keeping up
 	private const ushort FormatPcm = 1;
 	private const ushort FormatFloat = 3;
 	private const ushort FormatExtensible = 0xFFFE;
+	private const uint QuadMask = 0x33;            // front left/right, back left/right
 	private static readonly Guid SubtypeFloat = new("00000003-0000-0010-8000-00AA00389B71");
 	private static readonly Guid SubtypePcm = new("00000001-0000-0010-8000-00AA00389B71");
 
-	private readonly WasapiCapture.IAudioClient client;
+	private readonly IRenderAudioClient client;
 	private readonly IAudioRenderClient render;
-	private readonly WiredAudioFrames frames = new();
-	private readonly WiredAudioPeaks peaks = new();
+	private readonly IAudioClock? clock;
+	private readonly WiredRenderPump pump;
 	private readonly object gate = new();
 	private readonly int channels;
-	private readonly bool isFloat;
-	private float[] mix = [];
-	private bool started;
 	private bool disposed;
-	private long droppedBlocks;
 
-	private WasapiRenderSink(WasapiCapture.IAudioClient client, IAudioRenderClient render, int channels, bool isFloat, uint? channelMask)
+	private WasapiRenderSink(IRenderAudioClient client, IAudioRenderClient render, int channels, WiredSampleFormat sample, string format,
+		uint? channelMask, string mode)
 	{
 		this.client = client;
 		this.render = render;
 		this.channels = channels;
-		this.isFloat = isFloat;
+		Format = format;
 		ChannelMask = channelMask;
+		Mode = mode;
+		clock = OpenClock(client);
+		pump = new WiredRenderPump(new ComStream(this), channels, sample, () => Mode, tuning: WiredAudioTuning.Current);
 	}
 
 	public int Channels => channels;
 
-	public string Format => isFloat ? "float" : "pcm16";
+	public string Format { get; }
 
-	// The endpoint's channel mask when its mix format is WAVE_FORMAT_EXTENSIBLE (diagnostics; null for a plain format).
+	// The channel mask of the format in use (diagnostics; null for a plain shared mix format).
 	public uint? ChannelMask { get; }
 
+	// "exclusive mode" / "shared mode, ..." with the ducking opt-out's outcome in shared mode, for the open log line.
+	public string Mode { get; private set; }
+
 	// Blocks dropped because too much audio was queued (the endpoint fell behind). Diagnostics.
-	public long DroppedBlocks => Interlocked.Read(ref droppedBlocks);
+	public long DroppedBlocks => pump.DroppedBlocks;
 
-	public bool HasSpeakerAudio => frames.HasSpeakerAudio;
+	public bool HasSpeakerAudio => pump.Frames.HasSpeakerAudio;
 
-	public static WasapiRenderSink Open(string endpointId)
+	public bool SpeakerSounding => pump.Frames.SpeakerSounding;
+
+	// Opens in the wanted mode; exclusive falls back to shared (Mode says which is in use and why).
+	public static WasapiRenderSink Open(string endpointId, WiredAudioMode wanted, string? note)
 	{
-		var enumerator = (IMMDeviceEnumerator)Activator.CreateInstance(Type.GetTypeFromCLSID(EnumeratorClsid, true)!)!;
-		IMMDevice? device = null;
-		WasapiCapture.IAudioClient? client = null;
+		WasapiRenderSink sink = WiredAudioModeChoice.Open(wanted, note, () => OpenExclusive(endpointId), () => OpenShared(endpointId), out string how);
+		sink.Mode = sink.Mode.Length == 0 ? how : how + "; " + sink.Mode;
+		return sink;
+	}
+
+	private static WasapiRenderSink OpenShared(string endpointId)
+	{
+		IRenderAudioClient? client = null;
 		IntPtr mixFormat = IntPtr.Zero;
 		try
 		{
-			Marshal.ThrowExceptionForHR(enumerator.GetDevice(endpointId, out device));
-			Guid iid = AudioClientIid;
-			Marshal.ThrowExceptionForHR(device!.Activate(ref iid, ClsctxAll, IntPtr.Zero, out object activated));
-			client = (WasapiCapture.IAudioClient)activated;
+			client = Activate(endpointId);
 			Marshal.ThrowExceptionForHR(client.GetMixFormat(out mixFormat));
 			WaveFormat format = Marshal.PtrToStructure<WaveFormat>(mixFormat);
 			bool isFloat = IsFloat(format, mixFormat);
@@ -85,7 +140,9 @@ internal sealed class WasapiRenderSink : IWiredAudioSink
 			Guid renderIid = RenderClientIid;
 			Marshal.ThrowExceptionForHR(client.GetService(ref renderIid, out object service));
 			uint? mask = format.Tag == FormatExtensible && format.Size >= 22 ? (uint)Marshal.ReadInt32(mixFormat + 20) : null;
-			return new WasapiRenderSink(client, (IAudioRenderClient)service, format.Channels, isFloat, mask);
+			string ducking = OptOutOfDucking(client);
+			return new WasapiRenderSink(client, (IAudioRenderClient)service, format.Channels,
+				isFloat ? WiredSampleFormat.Float32 : WiredSampleFormat.Pcm16, isFloat ? "float" : "pcm16", mask, ducking);
 		}
 		catch
 		{
@@ -94,8 +151,6 @@ internal sealed class WasapiRenderSink : IWiredAudioSink
 		}
 		finally
 		{
-			Release(device);
-			Release(enumerator);
 			if (mixFormat != IntPtr.Zero)
 			{
 				Marshal.FreeCoTaskMem(mixFormat);
@@ -103,85 +158,184 @@ internal sealed class WasapiRenderSink : IWiredAudioSink
 		}
 	}
 
-	// The haptics thread, every 10.67 ms: one block in, one block out. Throws when the endpoint is gone.
-	public void WriteHaptics(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right)
+	// Exclusive mode, timer-driven: the first candidate format the device supports, a 100 ms buffer and the device's
+	// default period. An unaligned buffer (documented for event-driven streams only) is retried once at the aligned
+	// size on a fresh client.
+	private static WasapiRenderSink OpenExclusive(string endpointId)
 	{
-		lock (gate)
+		IRenderAudioClient? client = null;
+		IntPtr mixFormat = IntPtr.Zero;
+		IntPtr chosen = IntPtr.Zero;
+		try
 		{
-			if (disposed)
+			client = Activate(endpointId);
+			Marshal.ThrowExceptionForHR(client.GetMixFormat(out mixFormat));
+			WaveFormat mixInfo = Marshal.PtrToStructure<WaveFormat>(mixFormat);
+			int channelCount = mixInfo.Channels;
+			if (channelCount < 4)
 			{
-				return;
+				throw new NotSupportedException($"{channelCount} channels");
 			}
-			if (mix.Length < (left.Length * WiredAudioFrames.Upsample + WiredAudioSteering.MaxFramesPerBlock) * channels)
+			uint mask = mixInfo.Tag == FormatExtensible && mixInfo.Size >= 22 ? (uint)Marshal.ReadInt32(mixFormat + 20) : QuadMask;
+			WiredExclusiveFormat? pick = null;
+			chosen = Marshal.AllocCoTaskMem(WiredExclusiveFormat.Size);
+			foreach (WiredExclusiveFormat candidate in WiredExclusiveFormat.Candidates(channelCount, mask))
 			{
-				mix = new float[(left.Length * WiredAudioFrames.Upsample + WiredAudioSteering.MaxFramesPerBlock) * channels];
+				Marshal.Copy(candidate.ToBytes(), 0, chosen, WiredExclusiveFormat.Size);
+				if (client.IsFormatSupported(ShareModeExclusive, chosen, IntPtr.Zero) == 0)
+				{
+					pick = candidate;
+					break;
+				}
 			}
-			int count = frames.Build(left, right, mix, channels);
-			Marshal.ThrowExceptionForHR(client.GetCurrentPadding(out uint padding));
-			if (!started || padding == 0)
+			if (pick is not { } format)
 			{
-				// Not playing yet (first block, or a just restarted stream): a short silence cushion first.
-				Queue(CushionFrames, null);
+				throw new NotSupportedException("no exclusive 48 kHz format");
 			}
-			if (padding > MaxQueuedFrames)
+			Marshal.ThrowExceptionForHR(client.GetDevicePeriod(out long defaultPeriod, out _));
+			long period = Math.Max(defaultPeriod, 1);
+			long buffer = Math.Max(BufferDuration, period);
+			int hr = client.Initialize(ShareModeExclusive, 0, buffer, period, chosen, IntPtr.Zero);
+			if (hr == AudclntEBufferSizeNotAligned)
 			{
-				droppedBlocks++;
-				return;
+				Marshal.ThrowExceptionForHR(client.GetBufferSize(out uint alignedFrames));
+				buffer = WiredExclusiveFormat.Duration(alignedFrames);
+				period = Math.Min(period, buffer);
+				Release(client);
+				client = null;
+				client = Activate(endpointId);
+				hr = client.Initialize(ShareModeExclusive, 0, buffer, period, chosen, IntPtr.Zero);
 			}
-			// The block is nudged a few frames so the queue drifts back to the target; the silence cushion above and
-			// the whole-block drop for MaxQueuedFrames stay as the last resorts.
-			count = WiredAudioSteering.Apply(mix, count, channels, WiredAudioSteering.Adjust((int)padding));
-			Queue(count, mix);
-			// Only what was really queued counts (the cushion above is silence; a dropped block never arrived).
-			peaks.Add(mix, count, channels);
-			if (peaks.TryTake(false, out float hapticsPeak, out float speakerPeak, out int window))
+			Marshal.ThrowExceptionForHR(hr);
+			Guid renderIid = RenderClientIid;
+			Marshal.ThrowExceptionForHR(client.GetService(ref renderIid, out object service));
+			return new WasapiRenderSink(client, (IAudioRenderClient)service, channelCount, format.Sample, format.Name, mask, string.Empty);
+		}
+		catch
+		{
+			Release(client);
+			throw;
+		}
+		finally
+		{
+			if (mixFormat != IntPtr.Zero)
 			{
-				LogPeaks(window, hapticsPeak, speakerPeak);
+				Marshal.FreeCoTaskMem(mixFormat);
 			}
-			if (!started)
+			if (chosen != IntPtr.Zero)
 			{
-				Marshal.ThrowExceptionForHR(client.Start());
-				started = true;
+				Marshal.FreeCoTaskMem(chosen);
 			}
 		}
 	}
 
-	public void PushSpeaker(ReadOnlySpan<byte> audio) => frames.PushSpeaker(audio);
+	private static IRenderAudioClient Activate(string endpointId)
+	{
+		var enumerator = (IMMDeviceEnumerator)Activator.CreateInstance(Type.GetTypeFromCLSID(EnumeratorClsid, true)!)!;
+		IMMDevice? device = null;
+		try
+		{
+			Marshal.ThrowExceptionForHR(enumerator.GetDevice(endpointId, out device));
+			Guid iid = AudioClientIid;
+			Marshal.ThrowExceptionForHR(device!.Activate(ref iid, ClsctxAll, IntPtr.Zero, out object activated));
+			return (IRenderAudioClient)activated;
+		}
+		finally
+		{
+			Release(device);
+			Release(enumerator);
+		}
+	}
+
+	// Opts this stream's session out of the default communications ducking (before the first Start, as documented);
+	// the session control is only held for the call. Shared mode only (exclusive bypasses the engine).
+	private static string OptOutOfDucking(IRenderAudioClient client)
+	{
+		object? service = null;
+		try
+		{
+			return WiredAudioDucking.OptOut(() =>
+			{
+				Guid iid = SessionControlIid;
+				Marshal.ThrowExceptionForHR(client.GetService(ref iid, out service));
+				return service is IAudioSessionControl2 control ? new SessionDucking(control) : null;
+			});
+		}
+		finally
+		{
+			Release(service);
+		}
+	}
+
+	private sealed class SessionDucking(IAudioSessionControl2 control) : IDuckingPreference
+	{
+		public int SetDuckingPreference(bool optOut) => control.SetDuckingPreference(optOut);
+	}
+
+	// The haptics thread, every 10.67 ms: one block in, one block out (WiredRenderPump). Throws when the endpoint is
+	// gone or the device clock did not move after a second of feeding (WiredAudioStalledException).
+	public void WriteHaptics(ReadOnlySpan<sbyte> left, ReadOnlySpan<sbyte> right)
+	{
+		lock (gate)
+		{
+			if (!disposed)
+			{
+				pump.WriteHaptics(left, right);
+			}
+		}
+	}
+
+	public void PushSpeaker(ReadOnlySpan<byte> audio) => pump.Frames.PushSpeaker(audio);
 
 	// The stream stopped: stop and reset the client so the endpoint may sleep until the next block. Never throws.
 	public void Idle()
 	{
 		lock (gate)
 		{
-			try
+			if (!disposed)
 			{
-				client.Stop();
-				client.Reset();
-				started = false;
-				// Nothing left over plays when the stream starts again.
-				frames.Reset();
-				if (peaks.TryTake(true, out float hapticsPeak, out float speakerPeak, out int window))
-				{
-					LogPeaks(window, hapticsPeak, speakerPeak);
-				}
-			}
-			catch (Exception)
-			{
-				// Already gone (device removed); the next write makes it fail anyway.
+				pump.Idle();
 			}
 		}
 	}
 
-	// What the last window of queued audio held, logged when WiredAudioPeaks lets one go (a full window while
-	// running, whatever is buffered on Idle). Written from the thread pool: the log's file write never delays the
-	// haptics thread.
-	private void LogPeaks(int framesWritten, float haptics, float speaker)
+	private static IAudioClock? OpenClock(IRenderAudioClient client)
 	{
-		string line = string.Create(System.Globalization.CultureInfo.InvariantCulture,
-			$"wired: usb audio {framesWritten / (double)WiredAudioFrames.Rate:0.0} s written:" +
-			$" peak ch3-4 (haptics) {haptics:0.000}, peak ch1-2 (speaker) {speaker:0.000}," +
-			$" {DroppedBlocks} blocks dropped");
-		_ = Task.Run(() => Diagnostics.AppLog.Write(line));
+		try
+		{
+			Guid iid = ClockIid;
+			return client.GetService(ref iid, out object service) == 0 ? service as IAudioClock : null;
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+	}
+
+	// The COM calls behind the pump.
+	private sealed class ComStream(WasapiRenderSink sink) : IRenderStream
+	{
+		public int GetCurrentPadding(out uint frames) => sink.client.GetCurrentPadding(out frames);
+
+		public int GetBuffer(uint frames, out IntPtr data) => sink.render.GetBuffer(frames, out data);
+
+		public int ReleaseBuffer(uint frames) => sink.render.ReleaseBuffer(frames, 0);
+
+		public int Start() => sink.client.Start();
+
+		public int Stop() => sink.client.Stop();
+
+		public int Reset() => sink.client.Reset();
+
+		public double? PlayedSeconds()
+		{
+			if (sink.clock is not { } c || c.GetFrequency(out ulong frequency) != 0 || frequency == 0 ||
+				c.GetPosition(out ulong position, out _) != 0)
+			{
+				return null;
+			}
+			return position / (double)frequency;
+		}
 	}
 
 	public void Dispose()
@@ -201,47 +355,9 @@ internal sealed class WasapiRenderSink : IWiredAudioSink
 			{
 				// Already gone.
 			}
+			Release(clock);
 			Release(render);
 			Release(client);
-		}
-	}
-
-	// count frames of `data` (null = silence) into the endpoint buffer.
-	private void Queue(int count, float[]? data)
-	{
-		Marshal.ThrowExceptionForHR(render.GetBuffer((uint)count, out IntPtr buffer));
-		try
-		{
-			if (data == null)
-			{
-				Clear(buffer, count);
-			}
-			else
-			{
-				Copy(buffer, data, count);
-			}
-		}
-		finally
-		{
-			Marshal.ThrowExceptionForHR(render.ReleaseBuffer((uint)count, 0));
-		}
-	}
-
-	private unsafe void Clear(IntPtr buffer, int count) =>
-		new Span<byte>((void*)buffer, count * channels * (isFloat ? 4 : 2)).Clear();
-
-	private unsafe void Copy(IntPtr buffer, float[] data, int count)
-	{
-		int samples = count * channels;
-		if (isFloat)
-		{
-			data.AsSpan(0, samples).CopyTo(new Span<float>((void*)buffer, samples));
-			return;
-		}
-		Span<short> pcm = new((void*)buffer, samples);
-		for (int i = 0; i < samples; i++)
-		{
-			pcm[i] = (short)Math.Clamp(data[i] * 32767f, -32768f, 32767f);
 		}
 	}
 
@@ -271,6 +387,48 @@ internal sealed class WasapiRenderSink : IWiredAudioSink
 		public ushort Size;
 	}
 
+	// IAudioClient (1CB9AD4C-DBFA-4C32-B178-C2F568A703B2) as the render sink uses it: IsFormatSupported takes a raw
+	// closest-match pointer so exclusive mode can pass NULL (it has no closest match).
+	[ComImport, Guid("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+	private interface IRenderAudioClient
+	{
+		[PreserveSig]
+		int Initialize(int shareMode, uint streamFlags, long bufferDuration, long periodicity, IntPtr format, IntPtr sessionGuid);
+
+		[PreserveSig]
+		int GetBufferSize(out uint frames);
+
+		[PreserveSig]
+		int GetStreamLatency(out long latency);
+
+		[PreserveSig]
+		int GetCurrentPadding(out uint frames);
+
+		[PreserveSig]
+		int IsFormatSupported(int shareMode, IntPtr format, IntPtr closest);
+
+		[PreserveSig]
+		int GetMixFormat(out IntPtr format);
+
+		[PreserveSig]
+		int GetDevicePeriod(out long defaultPeriod, out long minimumPeriod);
+
+		[PreserveSig]
+		int Start();
+
+		[PreserveSig]
+		int Stop();
+
+		[PreserveSig]
+		int Reset();
+
+		[PreserveSig]
+		int SetEventHandle(IntPtr handle);
+
+		[PreserveSig]
+		int GetService(ref Guid iid, [MarshalAs(UnmanagedType.IUnknown)] out object service);
+	}
+
 	// IMMDeviceEnumerator: only GetDevice is called; the slots before it keep the method order.
 	[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 	private interface IMMDeviceEnumerator
@@ -291,6 +449,37 @@ internal sealed class WasapiRenderSink : IWiredAudioSink
 	{
 		[PreserveSig]
 		int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object instance);
+	}
+
+	// IAudioSessionControl2 (BFB7FF88-7239-4FC9-8FA2-07C950BE9C6D), reached by QueryInterface on the IAudioSessionControl
+	// that IAudioClient::GetService returns. Only SetDuckingPreference is called; the slots before it (the nine
+	// IAudioSessionControl methods, then four of its own) keep the method order.
+	[ComImport, Guid("BFB7FF88-7239-4FC9-8FA2-07C950BE9C6D"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+	private interface IAudioSessionControl2
+	{
+		[PreserveSig] int GetState(out int state);
+		[PreserveSig] int GetDisplayName(out IntPtr name);
+		[PreserveSig] int SetDisplayName(IntPtr name, IntPtr eventContext);
+		[PreserveSig] int GetIconPath(out IntPtr path);
+		[PreserveSig] int SetIconPath(IntPtr path, IntPtr eventContext);
+		[PreserveSig] int GetGroupingParam(out Guid groupingParam);
+		[PreserveSig] int SetGroupingParam(IntPtr groupingParam, IntPtr eventContext);
+		[PreserveSig] int RegisterAudioSessionNotification(IntPtr client);
+		[PreserveSig] int UnregisterAudioSessionNotification(IntPtr client);
+		[PreserveSig] int GetSessionIdentifier(out IntPtr id);
+		[PreserveSig] int GetSessionInstanceIdentifier(out IntPtr id);
+		[PreserveSig] int GetProcessId(out uint processId);
+		[PreserveSig] int IsSystemSoundsSession();
+		[PreserveSig] int SetDuckingPreference([MarshalAs(UnmanagedType.Bool)] bool optOut);
+	}
+
+	// IAudioClock (CD63314F-3FBA-4A1B-812C-EF96358728E7): the device's play position, for the stall check and the log.
+	[ComImport, Guid("CD63314F-3FBA-4A1B-812C-EF96358728E7"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+	private interface IAudioClock
+	{
+		[PreserveSig] int GetFrequency(out ulong frequency);
+		[PreserveSig] int GetPosition(out ulong position, out ulong qpcPosition);
+		[PreserveSig] int GetCharacteristics(out uint characteristics);
 	}
 
 	// IAudioRenderClient (F294ACFC-3146-4483-A7BF-ADDCA7C260E2).

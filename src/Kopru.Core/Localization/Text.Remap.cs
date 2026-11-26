@@ -6,8 +6,6 @@ namespace Kopru.Core.Localization;
 // User-facing texts of button remapping and gyro aiming.
 public static partial class Text
 {
-	public static string RemapTab(Language? l = null) => T(l, "Remap.Tab");
-
 	public static string RemapIntro(Language? l = null) => T(l, "Remap.Intro");
 
 	public static string ButtonRemapping(Language? l = null) => T(l, "Button.Remapping");
@@ -55,6 +53,10 @@ public static partial class Text
 
 	public static string InvertRightY(Language? l = null) => T(l, "Invert.RightY");
 
+	public static string InvertLeftStick(Language? l = null) => T(l, "Invert.LeftStick");
+
+	public static string InvertRightStick(Language? l = null) => T(l, "Invert.RightStick");
+
 	public static string GyroAiming(Language? l = null) => T(l, "Gyro.Aiming");
 
 	public static string GyroAimingHint(Language? l = null) => T(l, "Gyro.AimingHint");
@@ -80,6 +82,13 @@ public static partial class Text
 	public static string GyroInvertX(Language? l = null) => T(l, "Gyro.InvertX");
 
 	public static string GyroInvertY(Language? l = null) => T(l, "Gyro.InvertY");
+
+	// The gyro's one Invert row and its two choices.
+	public static string GyroInvert(Language? l = null) => T(l, "Gyro.Invert");
+
+	public static string GyroInvertHorizontal(Language? l = null) => T(l, "Gyro.InvertHorizontal");
+
+	public static string GyroInvertVertical(Language? l = null) => T(l, "Gyro.InvertVertical");
 
 	public static string GyroSmoothing(Language? l = null) => T(l, "Gyro.Smoothing");
 

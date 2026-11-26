@@ -1,13 +1,20 @@
 /* Pure logic of the intake Action (ways 2 and 3 of the translation submission contract).
  *
  *   recognise(issue)            -> 'page' (marker, way 3) | 'form' (issue form headings, way 2) | null
+ *   isAppBot(user), isAppIssue(issue) -> true for our GitHub App's bot (the Worker behind "Send with GitHub")
+ *   verifiedSender(body)        -> { login, id } from the "**Sender:**" line the Worker puts under the marker
+ *   volunteerOf(issue)          -> who sent it: the verified sender of an App issue, else the issue author; null
+ *                                  for other bots and for an App issue without a valid sender line
  *   resolveSubmission(...)      -> what to do with an issue: ignore, wait for more parts, download, check or fail
  *   listingHidden(kind, body)   -> true when the volunteer asked not to be listed among the translators
  *   decodeParts(...)            -> joined gzip+base64 parts -> bytes, with size cap and sha256 check
  *   download(url, fetch)        -> the form attachment, only from https://github.com/user-attachments/, size capped
  *   checkSubmission(...)        -> the shared rule set (rules.js) on the file
- *   planPullRequest(...)        -> branch, path, commit message, PR title/body and the issue comments
+ *   plausiblePartComment(body)  -> true when a comment carries a well-formed file part (decided before any API call)
+ *   planPullRequest(...)        -> branch, path, commit message and author, PR title/body
+ *   ownOpenPulls(...)           -> the open bot pull requests of one volunteer (at most MAX_OPEN_PULLS)
  *   failureComment(...)         -> the comment for a submission that does not pass
+ *   limitComment(...)           -> the comment for a volunteer who already has MAX_OPEN_PULLS open
  *
  * Everything that comes from an issue is untrusted text: it is parsed here, never passed to a shell, and only
  * shown back in comments escaped (pr-check.mdEscape) or inside inline code.
@@ -26,10 +33,28 @@ const HIDE_LABEL = 'Do not list my name among the translators';
 const LISTING_TRAILER = 'Translator-Listing: hidden';
 const TITLE_PREFIX = 'Translation:';
 const MAX_PARTS = 64;
+// Only the first this many comments by the issue author are read for parts; real sends need at most MAX_PARTS - 1.
+const MAX_AUTHOR_COMMENTS = 2 * MAX_PARTS;
+// Open bot pull requests one volunteer may have at a time (one per language).
+const MAX_OPEN_PULLS = 3;
+// Refusal comments per issue; after that the run only logs, so a looping sender cannot make the bot spam.
+const MAX_FAILURE_COMMENTS = 3;
+// Hidden first line of every refusal comment, so later runs can count them.
+const FAILURE_MARK = '<!-- ds5-translate-intake: not accepted -->';
+const BRANCH_ROOT = 'translate/';
 // Base64 of a gzip stream that unpacks to at most 1 MB; real files compress to a fraction of this.
 const MAX_BASE64_CHARS = 2 * 1024 * 1024;
 const MAX_PROBLEMS_IN_COMMENT = 30;
 const SITE = 'ds5untethered.com/translate';
+// The GitHub App whose bot opens the issues of "Send with GitHub" (tools/i18n/translate-worker). Only its issues may
+// carry a trusted "**Sender:**" line; in every other issue that line is ignored.
+const APP_SLUG = 'ds5-untethered-translate';
+const APP_BOT_LOGIN = APP_SLUG + '[bot]';
+// "**Sender:** <login> (id N, verified)". The Worker writes the login without "@" so the bot notifies nobody; the
+// earlier "@<login>" form is still read.
+const SENDER_RE = /^\*\*Sender:\*\* @?([A-Za-z0-9](?:[A-Za-z0-9-]{0,38})) \(id ([1-9]\d{0,15}), verified\)$/;
+// The committer of the volunteer-authored commits (the identity the workflow token commits as by default).
+const BOT_COMMITTER = { name: 'github-actions[bot]', email: '41898282+github-actions[bot]@users.noreply.github.com' };
 
 function normalise(text) {
   return String(text == null ? '' : text).replace(/\r\n?/g, '\n');
@@ -102,6 +127,45 @@ function listingHidden(kind, body) {
   if (kind === 'page') return listingFromPageBody(body) === 'hidden';
   if (kind === 'form') return hideTickedInForm(parseFormBody(body).hide || '');
   return false;
+}
+
+/* ---------- who sent it ---------- */
+
+function isAppBot(user) {
+  return !!user && user.type === 'Bot' && user.login === APP_BOT_LOGIN;
+}
+
+// An issue opened by our App's bot (installation token), not by a user through some App.
+function isAppIssue(issue) {
+  if (!issue || !issue.user || issue.user.type !== 'Bot') return false;
+  const via = issue.performed_via_github_app;
+  return (!!via && via.slug === APP_SLUG) || issue.user.login === APP_BOT_LOGIN;
+}
+
+// The Worker writes the marker as the first line and the verified sender as the second. Nothing else counts.
+function verifiedSender(body) {
+  const lines = normalise(body).split('\n');
+  if (lines[0] !== MARKER || lines.length < 2) return null;
+  const m = SENDER_RE.exec(lines[1]);
+  if (!m) return null;
+  const id = Number(m[2]);
+  return Number.isSafeInteger(id) ? { login: m[1], id } : null;
+}
+
+/**
+ * The volunteer behind an issue: { login, id, verified }. For an issue of our App's bot it is the verified sender
+ * (null when the line is missing or malformed); for any other bot null; otherwise the issue author, and a "Sender"
+ * line in the body is just text.
+ */
+function volunteerOf(issue) {
+  if (!issue || !issue.user) return null;
+  if (isAppIssue(issue)) {
+    const s = verifiedSender(issue.body);
+    return s ? { login: s.login, id: s.id, verified: true } : null;
+  }
+  const u = issue.user;
+  if (u.type === 'Bot' || /\[bot\]$/.test(String(u.login || ''))) return null;
+  return { login: u.login, id: u.id, verified: false };
 }
 
 /* ---------- way 2: the form attachment ---------- */
@@ -302,6 +366,16 @@ function decodeParts(base64, sha256, maxBytes) {
   return { ok: true, bytes };
 }
 
+// A comment event is worth an API call only when the comment holds a well-formed further part: part=k/n with
+// 2 <= k <= n <= MAX_PARTS, encoding gzip+base64 and a 64-hex sha256. Anything else is ignored from the payload.
+function plausiblePartComment(body) {
+  const text = String(body == null ? '' : body);
+  if (text.indexOf('```ds5-translate') < 0) return false;
+  return extractBlocks([{ source: 'comment', id: 0, text }]).some((b) =>
+    b.part >= 2 && b.of >= 2 && b.of <= MAX_PARTS && b.part <= b.of &&
+    b.encoding === 'gzip+base64' && /^[0-9a-f]{64}$/.test(b.sha256));
+}
+
 /* ---------- the whole decision ---------- */
 
 /**
@@ -336,6 +410,7 @@ function resolveSubmission(issue, comments) {
   if (!code.ok) return { action: 'fail', kind, problems: code.problems };
   const texts = [{ source: 'body', id: 0, text: issue.body }];
   for (const c of comments || []) {
+    if (texts.length > MAX_AUTHOR_COMMENTS) break;
     if (c && c.user && author && c.user.login === author) texts.push({ source: 'comment', id: c.id, text: c.body });
   }
   const joined = joinParts(extractBlocks(texts));
@@ -369,10 +444,34 @@ function checkSubmission(code, bytes, en) {
 
 /* ---------- pull request plan ---------- */
 
+// translate/<numeric user id>/<code>. The id never changes and cannot contain "/" or "-", so two volunteers (or two
+// languages) can never share a branch, unlike the old translate/<code>-<login> (pt-BR + alice = pt + BR-alice).
+function branchFor(userId, code) {
+  return branchPrefix(userId) + code;
+}
+
+function branchPrefix(userId) {
+  if (!/^[1-9]\d*$/.test(String(userId))) throw new Error('unexpected user id');
+  return BRANCH_ROOT + String(userId) + '/';
+}
+
+/**
+ * The open pull requests of the bot for one volunteer: head branch translate/<userId>/... in this repository (forks
+ * with the same branch name do not count). pulls: the REST list of open pull requests; repoFullName: "owner/name".
+ */
+function ownOpenPulls(pulls, userId, repoFullName) {
+  const prefix = branchPrefix(userId);
+  const repo = String(repoFullName).toLowerCase();
+  return (pulls || []).filter((p) => p && p.head && typeof p.head.ref === 'string' && p.head.ref.startsWith(prefix) &&
+    p.head.repo && String(p.head.repo.full_name || '').toLowerCase() === repo);
+}
+
 /**
  * input: { code, login, userId, issueNumber, result (checkSubmission), en (parsed en.json), hidden?, baseBranch? }
- * hidden adds the trailer "Translator-Listing: hidden" after the Co-authored-by line.
- * Returns { branch, path, content, commitMessage, prTitle, prBody, count }.
+ * login and userId are the volunteer's (volunteerOf). The volunteer is the commit author (noreply address) and the
+ * workflow bot the committer, so the volunteer appears among the repository's contributors. hidden: the bot is the
+ * author too, the volunteer is named nowhere in the commit, and the message carries "Translator-Listing: hidden".
+ * Returns { branch, path, content, commitMessage, author (null = the bot), committer, prTitle, prBody, count }.
  * The committed file is normalised to the page's output format (en.json key order, 2-space indent, LF).
  */
 function planPullRequest(input) {
@@ -384,14 +483,14 @@ function planPullRequest(input) {
   const enKeys = Object.keys(en);
   const content = rules.buildOutput(enKeys, result.values || {});
   const count = result.counts.translated;
-  const branch = 'translate/' + code + '-' + login;
-  const commitMessage = 'Translation: ' + code + ' (' + count + ' strings)\n\n' +
-    'Co-authored-by: ' + login + ' <' + userId + '+' + login + '@users.noreply.github.com>\n' +
-    (hidden ? LISTING_TRAILER + '\n' : '');
-  const prTitle = 'Translation: ' + code + ' by @' + login;
+  const branch = branchFor(userId, code);
+  const commitMessage = 'Translation: ' + code + ' (' + count + ' strings)\n' + (hidden ? '\n' + LISTING_TRAILER + '\n' : '');
+  const author = hidden ? null : { name: String(login), email: String(userId) + '+' + login + '@users.noreply.github.com' };
+  // The default merge commit message is the pull request title, so a hidden volunteer is not named there either.
+  const prTitle = 'Translation: ' + code + (hidden ? '' : ' by @' + login);
   const warnings = result.warnings || [];
   const lines = [
-    'Translation for `' + code + '` sent by @' + login + ' in #' + issueNumber + '.',
+    'Translation for `' + code + '` sent ' + (hidden ? '' : 'by @' + login + ' ') + 'in #' + issueNumber + '.',
     '',
     '| Check | Result |',
     '| --- | --- |',
@@ -407,19 +506,39 @@ function planPullRequest(input) {
     lines.push('', '</details>', '');
   }
   if (hidden) {
-    lines.push('The volunteer asked not to be listed among the translators. The commit carries the trailer `' +
-      LISTING_TRAILER + '`; keep it when merging.', '');
+    lines.push('The volunteer asked not to be listed among the translators. The commit is authored by the bot and carries ' +
+      'the trailer `' + LISTING_TRAILER + '`; keep it when merging.', '');
+  } else {
+    lines.push('The commit is authored by @' + login + ', so they are credited as a contributor.', '');
   }
+  lines.push('**Merge with a merge commit or Rebase and merge (not Squash) so the volunteer stays the commit author.**', '');
   lines.push('Opened by the translation intake workflow. A later send from the same account for the same language updates this pull request. Review before merging; it is never merged automatically.');
   return {
     branch,
     path: rules.STRINGS_DIR + '/' + code + '.json',
     content,
     commitMessage,
+    author,
+    committer: author ? Object.assign({}, BOT_COMMITTER) : null,
     prTitle,
     prBody: lines.join('\n') + '\n',
     count
   };
+}
+
+// open: the volunteer's open bot pull requests (ownOpenPulls); only their numbers are shown.
+function limitComment(open) {
+  const numbers = (open || []).map((p) => Number(p.number)).filter((n) => Number.isInteger(n) && n > 0).map((n) => '#' + n);
+  return FAILURE_MARK + '\nThank you! You already have ' + MAX_OPEN_PULLS + ' translation pull requests waiting for review' +
+    (numbers.length ? ' (' + numbers.join(', ') + ')' : '') + '. To keep reviews manageable, a new language can be added ' +
+    'once one of them is merged or closed; then edit this issue or send the file again. A newer version of a language ' +
+    'that already has an open pull request is always accepted and updates that pull request.\n';
+}
+
+// A refusal comment posted by the intake workflow earlier (bot author, hidden mark).
+function isFailureComment(c) {
+  return !!c && !!c.user && (c.user.type === 'Bot' || /\[bot\]$/.test(String(c.user.login || ''))) &&
+    String(c.body || '').startsWith(FAILURE_MARK);
 }
 
 function successComment(plan, prUrl, updated) {
@@ -436,7 +555,7 @@ function unchangedComment(code) {
 function failureComment(problems, limit) {
   limit = limit || MAX_PROBLEMS_IN_COMMENT;
   const errors = problems.filter((p) => p.level !== 'warning');
-  const lines = ['The translation could not be accepted yet. Please fix ' + (errors.length === 1 ? 'this problem' : 'these problems') + ', then edit this issue or send the file again:', ''];
+  const lines = [FAILURE_MARK, 'The translation could not be accepted yet. Please fix ' + (errors.length === 1 ? 'this problem' : 'these problems') + ', then edit this issue or send the file again:', ''];
   for (const p of errors.slice(0, limit)) {
     lines.push('- ' + (p.line ? 'line ' + p.line + ': ' : '') + '[' + p.rule + '] ' + mdEscape(p.message));
   }
@@ -452,8 +571,19 @@ module.exports = {
   LISTING_TRAILER,
   TITLE_PREFIX,
   MAX_PARTS,
+  MAX_AUTHOR_COMMENTS,
+  MAX_OPEN_PULLS,
+  MAX_FAILURE_COMMENTS,
+  FAILURE_MARK,
   MAX_PROBLEMS_IN_COMMENT,
+  APP_SLUG,
+  APP_BOT_LOGIN,
+  BOT_COMMITTER,
   recognise,
+  isAppBot,
+  isAppIssue,
+  verifiedSender,
+  volunteerOf,
   hasFormHeadings,
   parseFormBody,
   codeFromTitle,
@@ -468,10 +598,16 @@ module.exports = {
   extractBlocks,
   joinParts,
   decodeParts,
+  plausiblePartComment,
   resolveSubmission,
   checkCodeInput,
   checkSubmission,
+  branchFor,
+  branchPrefix,
+  ownOpenPulls,
   planPullRequest,
+  limitComment,
+  isFailureComment,
   successComment,
   unchangedComment,
   failureComment

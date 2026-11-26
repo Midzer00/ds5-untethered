@@ -39,6 +39,7 @@ public class AppTests
 			.Where(p => p.PropertyType == typeof(string) && p.Name is not (nameof(SettingsViewModel.ToolResult) or nameof(OverviewViewModel.Warning) or nameof(SupportedGamesViewModel.SearchText)
 				or nameof(SticksViewModel.CalibrationText) or nameof(OverviewViewModel.PowerOffResult) or nameof(OverviewViewModel.SteamWarning)
 				or nameof(SupportedGamesViewModel.SteamText) or nameof(SupportedGamesViewModel.PendingGameLine) or nameof(OverviewViewModel.PrimaryTip) or nameof(OverviewViewModel.BridgeRowTip)
+				or nameof(OverviewViewModel.HealthFixTip) or nameof(OverviewViewModel.HealthSummary)
 				or nameof(OverviewViewModel.LastBatteryText) or nameof(OverviewViewModel.HeroActionText)
 				or nameof(OverviewViewModel.PadLossLine) or nameof(OverviewViewModel.PendingPadLine) or nameof(OverviewViewModel.LinkAdvice)
 				or nameof(SettingsState.LastRunVersion) or nameof(SettingsState.UpdateToastedVersion)
@@ -424,7 +425,7 @@ public class AppTests
 				Settle();
 				Assert.True(adapterRun.IsCompleted);
 				setupService.AdapterGate = null;
-				// Overview with the driver missing: the driver chip is red and the main action installs it.
+				// Overview with the driver missing: the driver item is a problem and the main action installs it.
 				setupVm.Setup = null;
 				var setupFake = (FakeControllerService)ServiceOf(setupVm);
 				setupFake.Health = OverviewHealthTests.Report(driver: false);

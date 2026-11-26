@@ -1,0 +1,178 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Kopru.App.ViewModels" xmlns:c="using:Kopru.App.Controls" x:Class="Kopru.App.Views.GyroSticksView" x:DataType="vm:RemapViewModel">
+  <UserControl.Styles>
+    <Style Selector=":disabled TextBlock">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <!-- A disabled button shows the shared disabled look (App.axaml), not faded on top of it -->
+    <Style Selector="Button:disabled TextBlock, ToggleButton:disabled TextBlock">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <!-- A card's title line: the h2 (its explanation in the tooltip) and, on the gyro card, Reset at the right -->
+    <Style Selector="Grid.cardTitle">
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+    <Style Selector="Grid.cardTitle > TextBlock.h2">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <!-- A slider row: the label at its natural width, the slider and its value in the rest of the row -->
+    <Style Selector="Grid.sliderRow > TextBlock.label">
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <!-- Invert choices: segmented strips in multi-select mode (several segments may be on), their right edge on the rows' -->
+    <Style Selector="ListBox.invert">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="MinWidth" Value="96" />
+    </Style>
+    <Style Selector="ListBox.invert.wide">
+      <Setter Property="MinWidth" Value="{StaticResource ControlWidthPicker}" />
+    </Style>
+    <Style Selector="ListBox.invert ListBoxItem" x:DataType="vm:ToggleChoice">
+      <Setter Property="ToolTip.Tip" Value="{Binding AccessibleName}" />
+      <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleName}" />
+    </Style>
+  </UserControl.Styles>
+  <UserControl.Resources>
+    <DataTemplate x:Key="ToggleChoiceTemplate" x:DataType="vm:ToggleChoice">
+      <TextBlock Text="{Binding Name}" Foreground="{Binding $parent[ListBoxItem].Foreground}" TextWrapping="NoWrap" />
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <!-- Gyro aiming left (the wider column); the gyro's calibration with its live offset, and the sticks' swap and invert
+       right. Rows are 44 high (settingRowCompact44) so the tab fits one window. -->
+  <Grid ColumnDefinitions="3*,2*" ColumnSpacing="16">
+    <Border Classes="panel" Name="GyroPanel">
+      <StackPanel>
+        <Grid Classes="cardTitle" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource GapLarge}">
+          <TextBlock Classes="h2" Text="{Binding GyroLabel}" ToolTip.Tip="{Binding GyroHint}" />
+          <Button Grid.Column="1" Name="ResetGyroButton" Classes="titleAction" Theme="{StaticResource QuietButton}" Content="{Binding ResetText}"
+                  Command="{Binding ResetGyroCommand}" />
+        </Grid>
+        <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto">
+          <TextBlock Classes="label" Text="{Binding ModeLabel}" />
+          <ComboBox Grid.Column="1" Name="GyroModePicker" Classes="control compact" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"
+                    AutomationProperties.Name="{Binding ModeLabel}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:GyroModeOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
+        <StackPanel IsVisible="{Binding HasActivationButton}">
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto" Background="Transparent" ToolTip.Tip="{Binding ToggleHint}">
+            <TextBlock Classes="label" Text="{Binding ToggleLabel}" />
+            <ToggleSwitch Grid.Column="1" Name="GyroToggleSwitch" IsChecked="{Binding Toggle}" OnContent="{x:Null}" OffContent="{x:Null}"
+                          AutomationProperties.Name="{Binding ToggleLabel}" />
+          </Grid>
+        </StackPanel>
+        <Border Classes="divider" />
+        <StackPanel IsEnabled="{Binding IsGyroOn}">
+          <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto" Background="Transparent" ToolTip.Tip="{Binding GyroTargetHint}">
+            <TextBlock Classes="label" Text="{Binding GyroTargetLabel}" />
+            <ComboBox Grid.Column="1" Name="GyroTargetPicker" Classes="control compact" ItemsSource="{Binding GyroTargets}" SelectedItem="{Binding SelectedGyroTarget}"
+                      AutomationProperties.Name="{Binding GyroTargetLabel}" AutomationProperties.HelpText="{Binding GyroTargetHint}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:GyroTargetOption"><TextBlock Text="{Binding Name}" TextWrapping="NoWrap" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44 sliderRow" ColumnDefinitions="Auto,*">
+            <TextBlock Classes="label" Text="{Binding SensitivityXLabel}" />
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+              <Slider Minimum="0.1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding SensitivityX}" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding SensitivityXLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding SensitivityXText}" />
+            </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44 sliderRow" ColumnDefinitions="Auto,*">
+            <TextBlock Classes="label" Text="{Binding SensitivityYLabel}" />
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+              <Slider Minimum="0.1" Maximum="5" TickFrequency="0.1" IsSnapToTickEnabled="True" Value="{Binding SensitivityY}" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding SensitivityYLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding SensitivityYText}" />
+            </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44 sliderRow" ColumnDefinitions="Auto,*">
+            <TextBlock Classes="label" Text="{Binding SmoothingLabel}" />
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+              <Slider Maximum="90" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Smoothing}" VerticalAlignment="Center" AutomationProperties.Name="{Binding SmoothingLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding SmoothingText}" />
+            </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44 sliderRow" ColumnDefinitions="Auto,*">
+            <TextBlock Classes="label" Text="{Binding DeadzoneLabel}" />
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Gap}">
+              <Slider Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Deadzone}" VerticalAlignment="Center" AutomationProperties.Name="{Binding DeadzoneLabel}" />
+              <TextBlock Grid.Column="1" Classes="value" Text="{Binding DeadzoneText}" />
+            </Grid>
+          </Grid>
+          <Border Classes="divider" />
+          <!-- Invert: Horizontal and Vertical, each on or off -->
+          <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding GyroInvertLabel}" />
+            <ListBox Grid.Column="1" Name="GyroInvertChoice" Classes="invert wide" Theme="{StaticResource Segmented}" SelectionMode="Multiple,Toggle"
+                     AutoScrollToSelectedItem="False" ItemsSource="{Binding GyroInvert.Choices}" Selection="{Binding GyroInvert.Selection}"
+                     ItemTemplate="{StaticResource ToggleChoiceTemplate}" AutomationProperties.Name="{Binding GyroInvertLabel}" />
+          </Grid>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Column="1" Spacing="16">
+      <!-- Gyro calibration: the live offset the gyro adds (a stick preview) left, Calibrate right, the progress under them while
+           it runs -->
+      <Border Classes="panel" Name="CalibrationPanel">
+        <StackPanel Spacing="8">
+          <Grid Classes="cardTitle" ColumnDefinitions="*">
+            <TextBlock Classes="h2" Text="{Binding CalibrationLabel}" ToolTip.Tip="{Binding CalibrationHint}" />
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*">
+            <c:StickPreview Name="GyroOffsetPreview" Width="96" Height="96" Accent="{StaticResource AccentBrush}" ToolTip.Tip="{Binding OffsetHint}"
+                            AutomationProperties.Name="{Binding OffsetLabel}" AutomationProperties.HelpText="{Binding OffsetHint}"
+                            RawX="{Binding OffsetX}" RawY="{Binding OffsetY}" TunedX="{Binding OffsetX}" TunedY="{Binding OffsetY}" IsLive="{Binding IsLive}" />
+            <Button Grid.Column="1" Name="CalibrateButton" Theme="{StaticResource QuietButton}" Content="{Binding CalibrateText}" Command="{Binding CalibrateCommand}"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="{Binding CalibrationHint}"
+                    AutomationProperties.HelpText="{Binding CalibrationHint}" />
+          </Grid>
+          <StackPanel Spacing="8" Margin="0,4,0,0" IsVisible="{Binding HasCalibrationText}">
+            <ProgressBar Classes="meter" Value="{Binding CalibrationProgress}" HorizontalAlignment="Stretch" />
+            <TextBlock Classes="label" Text="{Binding CalibrationText}" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Stick swap and inversion: swap as a switch, each stick's X and Y as a segmented strip -->
+      <Border Classes="panel" Name="SticksPanel">
+        <StackPanel>
+          <Grid Classes="cardTitle" ColumnDefinitions="*">
+            <TextBlock Classes="h2" Text="{Binding SticksLabel}" />
+          </Grid>
+          <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding SwapLabel}" TextWrapping="Wrap" />
+            <ToggleSwitch Grid.Column="1" Name="SwapSticksSwitch" IsChecked="{Binding SwapSticks}" OnContent="{x:Null}" OffContent="{x:Null}"
+                          AutomationProperties.Name="{Binding SwapLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding InvertLeftStickLabel}" TextWrapping="Wrap" />
+            <ListBox Grid.Column="1" Name="LeftStickInvertChoice" Classes="invert" Theme="{StaticResource Segmented}" SelectionMode="Multiple,Toggle"
+                     AutoScrollToSelectedItem="False" ItemsSource="{Binding LeftStickInvert.Choices}" Selection="{Binding LeftStickInvert.Selection}"
+                     ItemTemplate="{StaticResource ToggleChoiceTemplate}" AutomationProperties.Name="{Binding InvertLeftStickLabel}" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="settingRowCompact44" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="label" Text="{Binding InvertRightStickLabel}" TextWrapping="Wrap" />
+            <ListBox Grid.Column="1" Name="RightStickInvertChoice" Classes="invert" Theme="{StaticResource Segmented}" SelectionMode="Multiple,Toggle"
+                     AutoScrollToSelectedItem="False" ItemsSource="{Binding RightStickInvert.Choices}" Selection="{Binding RightStickInvert.Selection}"
+                     ItemTemplate="{StaticResource ToggleChoiceTemplate}" AutomationProperties.Name="{Binding InvertRightStickLabel}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Grid>
+</UserControl>

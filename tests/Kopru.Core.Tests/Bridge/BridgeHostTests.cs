@@ -167,7 +167,11 @@ public class BridgeHostTests
 			NoInputTimeout = Timeout.InfiniteTimeSpan,
 			// No test opens a real audio endpoint.
 			OpenWiredAudio = _ => null,
-			OpenWiredMic = (_, _) => null
+			OpenWiredMic = (_, _) => null,
+			// No test reaches the real radio: the wired Bluetooth hand-off is off and finds no address unless a test
+			// turns it on and sets one.
+			Power = new FakePower { Address = null },
+			DisconnectBluetoothWhenWired = false
 		};
 
 	[Fact]
@@ -423,7 +427,7 @@ public class BridgeHostTests
 	}
 
 	[Fact]
-	public async Task EnterWired_OnTheRunningConnection_WritesToUsb_AndLeaveWiredGoesBack()
+	public async Task EnterWired_OnTheRunningConnection_SendsTheStateOverUsb_AndLeaveWiredGoesBack()
 	{
 		await using BridgeHost host = Host();
 		controllers.Links.Enqueue(new RemovableLink(log, "a"));
@@ -436,7 +440,7 @@ public class BridgeHostTests
 		Assert.True(host.IsWired);
 		Assert.Same(usb.Device, host.WiredDevice);
 		Assert.Equal(BridgeState.Running, host.State);
-		// The bridge attached once and stays attached; the attach resent the output state to the USB link (0x02).
+		// The bridge attached once and stays attached; the attach sent the output state to the USB link (0x02).
 		Assert.Single(log, e => e.StartsWith("attach", StringComparison.Ordinal));
 		Assert.DoesNotContain(log, e => e.StartsWith("detach", StringComparison.Ordinal));
 		Assert.Equal(UsbReports.OutputId, usb.Writes.Last()[0]);
@@ -448,6 +452,60 @@ public class BridgeHostTests
 		host.LeaveWired("cable mode");
 		Assert.False(host.IsWired);
 		Assert.Equal(BridgeState.Running, host.State);
+		await host.StopAsync();
+	}
+
+	private static byte[] UsbInput(byte l2)
+	{
+		byte[] report = new byte[UsbReports.InputSize];
+		report[0] = UsbReports.InputId;
+		report[1 + 4] = l2;
+		report[1 + 52] = 0x08;
+		return report;
+	}
+
+	// Wired mode runs over USB alone: once USB input runs, the controller's Bluetooth link is disconnected (as Power Off
+	// does). The session and the virtual pad stay through the switch; a pulled cable afterwards is the controller lost
+	// (the virtual pad goes, the host waits for Bluetooth again).
+	[Fact]
+	public async Task EnterWired_DisconnectsBluetoothOnceUsbInputRuns_TheVirtualPadStays_ThenAPulledCableIsTheControllerLost()
+	{
+		await using BridgeHost host = Host();
+		FakePower power = new() { Address = 0xA0AB51123456 };
+		host.Power = power;
+		host.DisconnectBluetoothWhenWired = true;
+		RemovableLink bt = new(log, "a");
+		controllers.Links.Enqueue(bt);
+		await host.StartAsync();
+		WaitUntil(() => host.State == BridgeState.Running);
+
+		FakeLink usb = new(Transport.Usb, UsbReports.OutputSize);
+		host.OpenWired = _ => usb;
+		host.OpenWiredAudio = _ => null;
+		host.OpenWiredMic = (_, _) => null;
+		Assert.Null(host.EnterWired(usb.Device));
+		// No USB input yet: Bluetooth is kept.
+		Thread.Sleep(100);
+		Assert.Empty(power.Disconnected);
+
+		usb.Feed(UsbInput(55));
+		WaitUntil(() => power.Disconnected.Count == 1);
+		Assert.Equal(0xA0AB51123456UL, power.Disconnected.Single());
+		await host.BluetoothHandOff!;
+
+		// The radio drops the link: the Bluetooth reader ends quietly, nothing is torn down.
+		bt.Remove();
+		Thread.Sleep(200);
+		Assert.Equal(BridgeState.Running, host.State);
+		Assert.True(host.IsWired);
+		Assert.Single(log, e => e.StartsWith("attach", StringComparison.Ordinal));
+		Assert.DoesNotContain(log, e => e.StartsWith("detach", StringComparison.Ordinal));
+
+		// The cable is pulled: the controller is lost like a switched-off one.
+		usb.FailReads = true;
+		WaitUntil(() => host.State == BridgeState.WaitingForController);
+		Assert.False(host.IsWired);
+		WaitUntil(() => log.Any(e => e.StartsWith("detach", StringComparison.Ordinal)));
 		await host.StopAsync();
 	}
 

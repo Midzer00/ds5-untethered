@@ -50,8 +50,8 @@ public sealed class RemapRow : ViewModelBase
 	public void Refresh() => OnPropertyChanged(string.Empty);
 }
 
-// Remap & gyro tab of the sticks page: button targets, stick swap/invert, gyro aiming with a live offset and the gyro
-// calibration.
+// The controller page's remap tabs: button targets (Buttons), gyro aiming with a live offset, the gyro calibration and
+// stick swap/invert (Gyro & Sticks), and the Edge's paddles (Edge).
 public sealed partial class RemapViewModel : ViewModelBase
 {
 	public static readonly TimeSpan DefaultCalibrationLength = TimeSpan.FromSeconds(2);
@@ -71,10 +71,21 @@ public sealed partial class RemapViewModel : ViewModelBase
 		Rows = ButtonRemap.Physical.Select(b => new RemapRow(settings, b, () => _targets)).ToList();
 		Edge = new EdgeRemapPanel(service, settings, () => _targets);
 		Modes = BuildModes();
+		GyroInvert = new ToggleChoices(
+			new ToggleChoice(() => Text.GyroInvertHorizontal(), () => Text.GyroInvertX(), () => InvertX, v => InvertX = v),
+			new ToggleChoice(() => Text.GyroInvertVertical(), () => Text.GyroInvertY(), () => InvertY, v => InvertY = v));
+		LeftStickInvert = new ToggleChoices(
+			new ToggleChoice(() => "X", () => Text.InvertLeftX(), () => InvertLeftX, v => InvertLeftX = v),
+			new ToggleChoice(() => "Y", () => Text.InvertLeftY(), () => InvertLeftY, v => InvertLeftY = v));
+		RightStickInvert = new ToggleChoices(
+			new ToggleChoice(() => "X", () => Text.InvertRightX(), () => InvertRightX, v => InvertRightX = v),
+			new ToggleChoice(() => "Y", () => Text.InvertRightY(), () => InvertRightY, v => InvertRightY = v));
 		settings.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(SettingsState.Remap))
 			{
+				LeftStickInvert.Sync();
+				RightStickInvert.Sync();
 				Edge.Refresh();
 				foreach (RemapRow row in Rows)
 				{
@@ -85,6 +96,7 @@ public sealed partial class RemapViewModel : ViewModelBase
 			else if (e.PropertyName == nameof(SettingsState.Gyro))
 			{
 				_preview = new GyroAim(Settings.Gyro);
+				GyroInvert.Sync();
 				OnPropertyChanged(string.Empty);
 			}
 		};
@@ -97,6 +109,12 @@ public sealed partial class RemapViewModel : ViewModelBase
 	public EdgeRemapPanel Edge { get; }
 	public IReadOnlyList<GyroModeOption> Modes { get; }
 
+	// The invert settings as segmented strips (several segments may be on): the gyro's Horizontal / Vertical, each stick's
+	// X / Y. The same settings as InvertX ... InvertRightY.
+	public ToggleChoices GyroInvert { get; }
+	public ToggleChoices LeftStickInvert { get; }
+	public ToggleChoices RightStickInvert { get; }
+
 	public string Intro => Text.RemapIntro();
 	public string RemapLabel => Text.ButtonRemapping();
 	public string RemapHint => Text.ButtonRemappingHint();
@@ -108,6 +126,9 @@ public sealed partial class RemapViewModel : ViewModelBase
 	public string InvertLeftYLabel => Text.InvertLeftY();
 	public string InvertRightXLabel => Text.InvertRightX();
 	public string InvertRightYLabel => Text.InvertRightY();
+	public string InvertLeftStickLabel => Text.InvertLeftStick();
+	public string InvertRightStickLabel => Text.InvertRightStick();
+	public string GyroInvertLabel => Text.GyroInvert();
 	public string GyroLabel => Text.GyroAiming();
 	public string GyroHint => Text.GyroAimingHint();
 	public string ModeLabel => Text.GyroModeLabel();

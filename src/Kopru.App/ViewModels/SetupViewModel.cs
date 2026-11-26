@@ -15,9 +15,12 @@ public sealed class SetupActionItem(string label, IAsyncRelayCommand command)
 }
 
 // One row of the numbered stepper. Number is 1-based; IsCurrent marks the first pending required step; IsLast hides the connector.
-public sealed class SetupStepItem(SetupStep step, IReadOnlyList<SetupActionItem> actions, int number = 1, bool isCurrent = false, bool isLast = false,
-	string optionalText = "", SetupViewModel? adapterTest = null)
+// The stepper is an accordion: only the expanded step shows its instructions, notes and buttons; the others are one title line.
+public sealed partial class SetupStepItem(SetupStep step, IReadOnlyList<SetupActionItem> actions, int number = 1, bool isCurrent = false, bool isLast = false,
+	string optionalText = "", SetupViewModel? adapterTest = null) : ObservableObject
 {
+	private readonly SetupViewModel? _owner = adapterTest;
+
 	// The page, on the adapter test row only: its progress shows inside the row while the test runs.
 	public SetupViewModel? AdapterTest { get; } = step.Id == SetupStepId.AdapterTest ? adapterTest : null;
 	// The page, on the drivers row only: the restart button and its inline question show there.
@@ -43,6 +46,29 @@ public sealed class SetupStepItem(SetupStep step, IReadOnlyList<SetupActionItem>
 	public bool IsPending => !IsDone && !IsWarning;
 	public IReadOnlyList<SetupActionItem> Actions { get; } = actions;
 	public bool HasActions => Actions.Count > 0;
+
+	// Open in the accordion: the step's text and buttons show (one step at a time, SetupViewModel.ExpandStep).
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(ShowsTitleAction))]
+	private bool _isExpanded;
+
+	// A collapsed optional step offers its first button (Start Test) at the right of its title line.
+	public bool ShowsTitleAction => !IsExpanded && IsOptional && HasActions;
+	public SetupActionItem? TitleAction => Actions.Count > 0 ? Actions[0] : null;
+
+	// The title line pressed (click, Enter or Space): this step opens, the others close.
+	[RelayCommand]
+	private void Expand()
+	{
+		if (_owner != null)
+		{
+			_owner.ExpandStep(Id);
+		}
+		else
+		{
+			IsExpanded = true;
+		}
+	}
 }
 
 // One measured value of the adapter test: what was measured, what is needed (muted), and how it did (coloured word).
@@ -96,6 +122,7 @@ public sealed partial class SetupViewModel : PageViewModel
 		// The language is picked in Settings and follows Windows until then.
 		_wizard.LanguageChosen = true;
 		_steps = Build();
+		ApplyExpansion(_steps);
 	}
 
 	public SetupWizard Wizard => _wizard;
@@ -104,8 +131,41 @@ public sealed partial class SetupViewModel : PageViewModel
 	// One phase of the adapter test (idle, then with vibration).
 	public TimeSpan PhaseLength { get; init; } = RealControllerService.AdapterPhase;
 
-	// The step to scroll to when the page opens (a health fix), or null.
-	public SetupStepId? FocusStep { get; init; }
+	// The step to scroll to when the page opens (a health fix), or null; it opens in the accordion.
+	public SetupStepId? FocusStep
+	{
+		get => _focusStep;
+		init
+		{
+			_focusStep = value;
+			ApplyExpansion(Steps);
+		}
+	}
+
+	private readonly SetupStepId? _focusStep;
+
+	// The step the user opened (or a test or health fix opened); null: the current step is open (none when nothing is due).
+	private SetupStepId? _expandedStep;
+
+	public SetupStepId? ExpandedStep => OpenStep(Steps);
+
+	private SetupStepId? OpenStep(IReadOnlyList<SetupStepItem> steps) => _expandedStep ?? _focusStep ?? steps.FirstOrDefault(s => s.IsCurrent)?.Id;
+
+	// Opens one step of the accordion and closes the others.
+	public void ExpandStep(SetupStepId id)
+	{
+		_expandedStep = id;
+		ApplyExpansion(Steps);
+	}
+
+	private void ApplyExpansion(IReadOnlyList<SetupStepItem> steps)
+	{
+		SetupStepId? open = OpenStep(steps);
+		foreach (SetupStepItem item in steps)
+		{
+			item.IsExpanded = item.Id == open;
+		}
+	}
 	public override string Title => Text.SetupPageTitle();
 	public string Intro => Text.SetupPageIntro();
 	public string CloseText => Text.SetupClose();
@@ -185,6 +245,8 @@ public sealed partial class SetupViewModel : PageViewModel
 		}
 	}
 
+	partial void OnStepsChanging(IReadOnlyList<SetupStepItem> value) => ApplyExpansion(value);
+
 	partial void OnStepsChanged(IReadOnlyList<SetupStepItem> value)
 	{
 		OnPropertyChanged(nameof(IsRestartPending));
@@ -209,6 +271,8 @@ public sealed partial class SetupViewModel : PageViewModel
 
 	public AdapterExplanation? AdapterExplanation => _adapterResult is { } r && (r.Report != null || r.Verdict == null) ? AdapterCheck.Explain(r.Report) : null;
 	public bool HasAdapterResult => !IsTesting && AdapterExplanation != null;
+	// The adapter step's instructions give way to its result (the verdict says what was tested).
+	public bool ShowsStepInstructions => !HasAdapterResult;
 	public string AdapterHeadline => AdapterExplanation?.Headline ?? string.Empty;
 	public bool IsAdapterGood => AdapterExplanation?.Verdict == AdapterVerdict.Suitable;
 	public bool IsAdapterBorderline => AdapterExplanation?.Verdict == AdapterVerdict.Borderline;
@@ -221,10 +285,16 @@ public sealed partial class SetupViewModel : PageViewModel
 	public void ShowAdapterResult(AdapterTestResult? result)
 	{
 		_adapterResult = result;
+		// A result shows inside the adapter step: that step opens.
+		if (result != null)
+		{
+			_expandedStep = SetupStepId.AdapterTest;
+		}
 		_wizard.AdapterVerdict = result?.Verdict;
 		Message = result != null && AdapterExplanation == null ? result.Text : string.Empty;
 		OnPropertyChanged(nameof(AdapterExplanation));
 		OnPropertyChanged(nameof(HasAdapterResult));
+		OnPropertyChanged(nameof(ShowsStepInstructions));
 		OnPropertyChanged(nameof(AdapterHeadline));
 		OnPropertyChanged(nameof(IsAdapterGood));
 		OnPropertyChanged(nameof(IsAdapterBorderline));
@@ -235,7 +305,11 @@ public sealed partial class SetupViewModel : PageViewModel
 		Steps = Build();
 	}
 
-	partial void OnIsTestingChanged(bool value) => OnPropertyChanged(nameof(HasAdapterResult));
+	partial void OnIsTestingChanged(bool value)
+	{
+		OnPropertyChanged(nameof(HasAdapterResult));
+		OnPropertyChanged(nameof(ShowsStepInstructions));
+	}
 
 	partial void OnIsBusyChanged(bool value)
 	{
@@ -306,6 +380,11 @@ public sealed partial class SetupViewModel : PageViewModel
 			return;
 		}
 		bool wasComplete = IsComplete;
+		// The test runs inside its step (also when started from the collapsed step's title line): that step opens.
+		if (action.Kind == SetupActionKind.RunAdapterTest)
+		{
+			ExpandStep(SetupStepId.AdapterTest);
+		}
 		IsBusy = true;
 		try
 		{

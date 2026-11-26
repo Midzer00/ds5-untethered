@@ -71,10 +71,10 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
-    <!-- A short segmented choice stays beside its text in a narrow column too, as wide as its steps, in a lower row (the
-         choice is lower than a switch) -->
+    <!-- A short segmented choice stays beside its text in a narrow column too, ControlWidth wide like every other control
+         (so the choices of a card share one track width), in a row of the shared SettingRowHeight -->
     <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline">
-      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="MinHeight" Value="{StaticResource SettingRowHeight}" />
     </Style>
     <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline > StackPanel.text">
       <Setter Property="Grid.ColumnSpan" Value="1" />
@@ -83,13 +83,12 @@
       <Setter Property="Grid.Column" Value="1" />
       <Setter Property="Grid.Row" Value="0" />
       <Setter Property="Grid.ColumnSpan" Value="1" />
-      <Setter Property="Width" Value="NaN" />
+      <Setter Property="Width" Value="{StaticResource ControlWidth}" />
       <Setter Property="HorizontalAlignment" Value="Right" />
       <Setter Property="Margin" Value="0" />
     </Style>
-    <!-- Its steps as wide as their names (not all as wide as the longest), capped at ControlWidth so the label beside it keeps room -->
+    <!-- Its steps share the track in proportion to their names (a long name gets more room than a short one) -->
     <Style Selector="c|SettingsLayout.narrow Grid.settingRow.stack.inline > ListBox.control">
-      <Setter Property="MaxWidth" Value="{StaticResource ControlWidth}" />
       <Setter Property="ItemsPanel">
         <ItemsPanelTemplate><c:ProportionalRowPanel /></ItemsPanelTemplate>
       </Setter>

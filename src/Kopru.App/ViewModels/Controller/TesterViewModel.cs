@@ -235,7 +235,9 @@ public sealed partial class TesterViewModel : ViewModelBase
 
 	partial void OnRateHzChanged(double value) => OnPropertyChanged(nameof(RateText));
 
-	public string BatteryText => Battery is { } b
+	// Charging with the level not reported (USB): the live body's level nibble 0 is no reading, so "Charging" alone.
+	public string BatteryText => _service.IsConnected && _service.IsCharging && !_service.HasBattery ? Text.Charging()
+		: Battery is { } b
 		? b.State == ChargeState.Charging ? Text.BatteryValue(b.Percent) + " · " + Text.Charging() : Text.BatteryValue(b.Percent)
 		: _service.HasBattery
 			? _service.IsCharging ? Text.BatteryValue(Math.Round(_service.BatteryPercent)) + " · " + Text.Charging()
@@ -243,7 +245,7 @@ public sealed partial class TesterViewModel : ViewModelBase
 			: Text.BatteryUnknown();
 
 	public string ConnectionText => !_service.IsConnected && !HasInput ? Text.DeviceNotConnected()
-		: _service.IsWired ? Text.ConnectionWired()
+		: _service.IsWired || _service.IsCableOnly ? Text.ConnectionWired()
 		: _service.CablePluggedIn ? Text.ConnectionBluetoothCable() : "Bluetooth";
 	public string SourceText => !HasInput ? Text.TesterNoInput() : _service.IsBridgeRunning ? Text.TesterSourceBridge() : Text.TesterSourceDirect();
 	public string SourceHint => !HasInput ? Text.TesterNoInputHint() : _service.IsBridgeRunning ? StickHint : Text.TesterDirectHint();

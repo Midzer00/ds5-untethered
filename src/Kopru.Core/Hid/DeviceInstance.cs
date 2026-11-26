@@ -90,10 +90,70 @@ public static class DeviceInstance
 		return CM_Get_Device_IDW(parent, buffer, buffer.Length, 0) == CrSuccess ? new string(buffer).TrimEnd('\0') : null;
 	}
 
+	// Instance ID of the parent node as Windows last knew it, also for a device that is not present now (a paired
+	// Bluetooth controller that is off keeps its HID node as a non-present "phantom" node, with its parent recorded).
+	// Read-only: DEVPKEY_Device_Parent, then DEVPKEY_Device_LastKnownParent, then CM_Get_Parent. Device IDs are
+	// case-insensitive, but CM_Locate_DevNode refuses an all-lowercase one, so the upper-case spelling is tried too.
+	public static string? KnownParent(string instanceId)
+	{
+		if (!OperatingSystem.IsWindows() || string.IsNullOrEmpty(instanceId) || instanceId.Length > MaxDeviceIdLength)
+		{
+			return null;
+		}
+		if (CM_Locate_DevNodeW(out uint node, instanceId, LocatePhantom) != CrSuccess &&
+			CM_Locate_DevNodeW(out node, instanceId.ToUpperInvariant(), LocatePhantom) != CrSuccess)
+		{
+			return null;
+		}
+		if (StringProperty(node, ParentKey) is { Length: > 0 } parent)
+		{
+			return parent;
+		}
+		if (StringProperty(node, LastKnownParentKey) is { Length: > 0 } lastKnown)
+		{
+			return lastKnown;
+		}
+		char[] buffer = new char[MaxDeviceIdLength + 1];
+		return CM_Get_Parent(out uint p, node, 0) == CrSuccess && CM_Get_Device_IDW(p, buffer, buffer.Length, 0) == CrSuccess
+			? new string(buffer).TrimEnd('\0')
+			: null;
+	}
+
+	private static string? StringProperty(uint node, DevPropKey key)
+	{
+		int size = 0;
+		if (CM_Get_DevNode_PropertyW(node, ref key, out _, null, ref size, 0) != CrBufferSmall || size <= 0 || size > 4096)
+		{
+			return null;
+		}
+		byte[] buffer = new byte[size];
+		if (CM_Get_DevNode_PropertyW(node, ref key, out uint type, buffer, ref size, 0) != CrSuccess || type != DevPropTypeString)
+		{
+			return null;
+		}
+		return System.Text.Encoding.Unicode.GetString(buffer, 0, size).TrimEnd('\0');
+	}
+
 	private const int CrSuccess = 0;
 	private const int CrBufferSmall = 0x1A;
 	private const uint DevPropTypeString = 0x12;
 	private const int MaxDeviceIdLength = 200;
+	// CM_LOCATE_DEVNODE_PHANTOM: also a node whose device is not present now.
+	private const uint LocatePhantom = 0x1;
+
+	// DEVPKEY_Device_Parent
+	private static readonly DevPropKey ParentKey = new()
+	{
+		Fmtid = new Guid("4340a6c5-93fa-4706-972c-7b648008a5a7"),
+		Pid = 8
+	};
+
+	// DEVPKEY_Device_LastKnownParent
+	private static readonly DevPropKey LastKnownParentKey = new()
+	{
+		Fmtid = new Guid("83da6326-97a6-4088-9453-a1923f573b29"),
+		Pid = 10
+	};
 
 	// DEVPKEY_Device_InstanceId
 	private static readonly DevPropKey InstanceIdKey = new()
@@ -118,6 +178,10 @@ public static class DeviceInstance
 
 	[DllImport("cfgmgr32.dll")]
 	private static extern int CM_Get_Parent(out uint parent, uint devInst, uint flags);
+
+	[DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+	private static extern int CM_Get_DevNode_PropertyW(uint devInst, ref DevPropKey propertyKey, out uint propertyType, byte[]? propertyBuffer,
+		ref int propertyBufferSize, uint flags);
 
 	[DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
 	private static extern int CM_Get_Device_IDW(uint devInst, char[] buffer, int bufferLen, uint flags);

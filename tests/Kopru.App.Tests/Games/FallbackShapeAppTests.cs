@@ -156,16 +156,19 @@ public class FallbackShapeAppTests
 		var window = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
 		window.Show();
 		vm.Navigate(vm.OtherGames);
+		vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
 		FitCheck.Settle(window);
 		OtherGamesView page = window.GetVisualDescendants().OfType<OtherGamesView>().Single();
 		ScrollViewer scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Name == "PageScroll");
-		double offHeight = scroll.Extent.Height;
+		Grid tryRow = page.GetVisualDescendants().OfType<Grid>().Single(g => g.Name == "TryRow");
+		double offHeight = scroll.Extent.Height - tryRow.Bounds.Height;
 		foreach (int effect in new[] { 1, 2, 3 })
 		{
 			vm.OtherGames.Feel.FallbackIndex = effect;
 			FitCheck.Settle(window);
 			Assert.Equal(2, page.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ClassicRumbleCard").GetVisualDescendants().OfType<Slider>().Count());
-			Assert.Equal(offHeight, scroll.Extent.Height, 1);
+			// No rows come or go (the Try row's hint is its label's tooltip, so it keeps one line beside the fourth button).
+			Assert.Equal(offHeight, scroll.Extent.Height - tryRow.Bounds.Height, 1);
 		}
 		window.Close();
 

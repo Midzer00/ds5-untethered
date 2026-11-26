@@ -57,8 +57,8 @@ public sealed class UiPolishLayoutTests
 		Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
 	}
 
-	// The Xbox And DS4 Rumble card: its header holds no button, the try row does (the fallback effect's button only while an
-	// effect is chosen).
+	// The Xbox And DS4 Rumble card (its own tab): its header holds no button, the try row does (the fallback effect's button
+	// only while an effect is chosen).
 	[AvaloniaFact]
 	public void RumbleCard_TryButtonsAreARow_NotOnTheTitleLine()
 	{
@@ -68,6 +68,7 @@ public sealed class UiPolishLayoutTests
 			var window = new MainWindow { DataContext = vm, Width = 1152, Height = 700 };
 			window.Show();
 			vm.SelectedNav = vm.NavItems.Single(n => n.Page == vm.OtherGames);
+			vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
 			vm.OtherGames.Feel.IsFallbackOff = true;
 			Settle(window);
 			Border card = window.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "ClassicRumbleCard");
@@ -119,8 +120,12 @@ public sealed class UiPolishLayoutTests
 					}
 				}
 				vm.Navigate(vm.OtherGames);
-				Settle(window);
-				problems.AddRange(OffCentreRows(window.GetVisualDescendants().OfType<OtherGamesView>().Single()).Select(p => $"{code} {width}x{height} haptics: {p}"));
+				foreach (int tab in new[] { OtherGamesViewModel.GameEffectsTab, OtherGamesViewModel.RumbleTab })
+				{
+					vm.OtherGames.SelectedTab = tab;
+					Settle(window);
+					problems.AddRange(OffCentreRows(window.GetVisualDescendants().OfType<OtherGamesView>().Single()).Select(p => $"{code} {width}x{height} haptics tab {tab}: {p}"));
+				}
 				window.Close();
 			}
 		});

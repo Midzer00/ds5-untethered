@@ -15,10 +15,13 @@ namespace Kopru.Core.Bluetooth;
 // PauseHapticsInSilence on (opt-in, and in Low Power mode) silence from the game does not keep it running either. While
 // stopped, its one long-lived thread waits without a timer, sends nothing and holds no timer resolution.
 //
-// It can also carry input and output over a second, wired (USB) link of the same controller (AttachWired): report 0x01
-// in, 0x02 out, while Bluetooth stays connected for the mic and (without a wired audio sink) the haptics stream and
-// the speaker. With an IWiredAudioSink attached, the haptics stream's blocks go to the controller's own USB audio
-// endpoint (channels 3-4) and the game's speaker audio with them (channels 1-2); the mic keeps riding Bluetooth.
+// It can also move over to a second, wired (USB) link of the same controller (AttachWired, EXPERIMENTAL wired mode):
+// report 0x01 in, 0x02 out, and with an IWiredAudioSink the haptics stream's blocks on the controller's own USB audio
+// endpoint (channels 3-4) with the game's speaker audio (channels 1-2). The host then disconnects Bluetooth (owner
+// decision 2026-11-24: no dual-link fallback): once Bluetooth is gone its reader ends quietly, and the session keeps
+// running on USB alone, so the virtual pad never notices the switch. When the USB link fails after that (the cable
+// was pulled) the controller counts as lost (Lost), as a Bluetooth controller switched off does. While Bluetooth is
+// still connected (the hand-off has not happened, or the radio refused it) a failed USB link falls back to it.
 public delegate void InputBodyHandler(ReadOnlySpan<byte> body);
 
 public sealed class BluetoothSession : IDisposable
@@ -59,16 +62,6 @@ public sealed class BluetoothSession : IDisposable
 
 	private Thread? wiredReader;
 
-	// The successful sink write of a stream run the output state is also resent over USB on (the first one always is).
-	private const int WiredOutputResendBlock = 16;
-
-	// The diagnostic line the next successful wired UpdateOutput write should log (0 none, 1 "first report",
-	// 2 "haptics playing"), and whether the stream already armed it once since the attach.
-	private int wiredOutputLogDue;
-	private int wiredHapticsLogged;
-
-	private int wiredOutputLogs;
-
 	// Guards publishing input so the Bluetooth and the wired reader threads never interleave a report.
 	private readonly object inputGate = new();
 
@@ -93,14 +86,29 @@ public sealed class BluetoothSession : IDisposable
 
 	private int sequence;
 
+	// link: the controller's Bluetooth link, or (wired mode taking over a controller that is on the cable alone) its
+	// USB link: the session is then wired on it from the start, with no Bluetooth at all (IsUsbOnly).
 	public BluetoothSession(IHidLink link)
 	{
-		if (link.Device.Transport != Transport.Bluetooth)
+		if (link.Device.Transport == Transport.Usb)
 		{
-			throw new ArgumentException("Not a Bluetooth controller", nameof(link));
+			usbOnly = true;
+			wired = link;
+			bluetoothGone = true;
+			lastWiredInput = Stopwatch.GetTimestamp();
+		}
+		else if (link.Device.Transport != Transport.Bluetooth)
+		{
+			throw new ArgumentException("Not a DualSense link", nameof(link));
 		}
 		this.link = link;
 	}
+
+	private readonly bool usbOnly;
+
+	// Runs on the controller's USB link alone (taken over while on the cable, never on Bluetooth in this session):
+	// input 0x01, output 0x02, haptics and speaker only through a wired audio sink.
+	public bool IsUsbOnly => usbOnly;
 
 	public HidDevice Device => link.Device;
 
@@ -113,6 +121,9 @@ public sealed class BluetoothSession : IDisposable
 	public byte HapticsBufferDepth { get; set; } = BluetoothReports.DefaultBufferDepth;
 
 	public InputState LastInput { get; private set; }
+
+	// True when LastInput came over the USB link (report 0x01), false over Bluetooth (0x31).
+	public bool LastInputOverUsb { get; private set; }
 
 	// EXPERIMENTAL Bluetooth speaker / headset audio (null = off, the default). While it has audio, the haptics stream
 	// sends report 0x36 (haptics + one Opus frame) instead of 0x32; route and volume follow the headphone jack.
@@ -164,29 +175,81 @@ public sealed class BluetoothSession : IDisposable
 	// Sends the current speaker volume and route (call after changing Speaker.Volume or HeadphoneVolume).
 	public void ApplySpeakerRoute()
 	{
-		SpeakerAudioSender? s = speaker;
 		UpdateOutput(b =>
 		{
-			if (s == null)
+			if (!WriteRoute(b))
 			{
 				AudioOutput.Clear(b);
-			}
-			else
-			{
-				AudioOutput.SetRoute(b, s.Headset, s.OutputVolume);
 			}
 		});
 	}
 
 	// Puts the speaker route and volume into an output block about to be sent (e.g. the game's own output, which would
-	// otherwise overwrite them); no change while Speaker is off.
-	public void WriteSpeakerRoute(Span<byte> block)
+	// otherwise overwrite them); no change while Speaker is off (unless the speaker idle volume applies).
+	public void WriteSpeakerRoute(Span<byte> block) => WriteRoute(block);
+
+	// Fix 8 diagnostic (KOPRU_WIRED_SPEAKER_IDLE, WiredAudioTuning.SpeakerIdleVolume): while the wired audio endpoint
+	// plays and its channels 1-2 carry no sound, the controller's speaker gets this volume (0 = muted, preamp 0) instead
+	// of the user's, also while the speaker setting is off. Null (the default): the route is unchanged.
+	public Audio.WiredAudioTuning WiredTuning { get; set; } = Audio.WiredAudioTuning.Current;
+
+	// What the haptics thread last saw of the wired sink's SpeakerSounding (the route follows it).
+	private volatile bool wiredSpeakerSounding;
+
+	// The speaker idle volume in force now, or null.
+	private double? SpeakerIdleVolumeNow() =>
+		WiredTuning.SpeakerIdleVolume is { } idle && Volatile.Read(ref wiredAudio) != null && !wiredSpeakerSounding ? idle : null;
+
+	// Writes the route (user volume, or the idle volume while it applies); false when nothing was written (speaker off).
+	private bool WriteRoute(Span<byte> block)
 	{
 		SpeakerAudioSender? s = speaker;
-		if (s != null)
+		double? idle = SpeakerIdleVolumeNow();
+		if (idle is { } v)
 		{
-			AudioOutput.SetRoute(block, s.Headset, s.OutputVolume);
+			AudioOutput.SetRoute(block, s?.Headset ?? HeadphonesPlugged, v, 0);
+			return true;
 		}
+		if (s == null)
+		{
+			return false;
+		}
+		AudioOutput.SetRoute(block, s.Headset, s.OutputVolume);
+		return true;
+	}
+
+	// After the wired sink came or went: the route again when the speaker idle volume is in use.
+	private void RefreshIdleRoute()
+	{
+		if (WiredTuning.SpeakerIdleVolume == null)
+		{
+			return;
+		}
+		try
+		{
+			ApplySpeakerRoute();
+		}
+		catch (Exception)
+		{
+			// The next output fixes the state.
+		}
+	}
+
+	// On the haptics thread: the sink's speaker turned sounding or quiet, so the route changes; sent off the thread so
+	// the HID write never delays a block.
+	private void FollowWiredSpeaker(Audio.IWiredAudioSink sink)
+	{
+		if (WiredTuning.SpeakerIdleVolume == null)
+		{
+			return;
+		}
+		bool sounding = sink.SpeakerSounding;
+		if (sounding == wiredSpeakerSounding)
+		{
+			return;
+		}
+		wiredSpeakerSounding = sounding;
+		ThreadPool.QueueUserWorkItem(_ => RefreshIdleRoute());
 	}
 
 	// EXPERIMENTAL Bluetooth microphone (off by default): asks for the mic in the stream-control sub-packet of every
@@ -338,23 +401,33 @@ public sealed class BluetoothSession : IDisposable
 	// True while the wired link's USB audio endpoint carries haptics and the game's speaker.
 	public bool IsWiredAudio => Volatile.Read(ref wiredAudio) != null;
 
-	// Raised (on the wired reader or the output writer) after the session fell back to Bluetooth by itself; the
-	// argument is a short fixed reason.
+	// Raised (on the wired reader) after the session fell back to Bluetooth by itself (only while Bluetooth is still
+	// connected); the argument is a short fixed reason.
 	public event Action<string>? WiredLost;
 
 	// Raised (on the haptics thread) when the wired audio sink failed and haptics/speaker moved back to Bluetooth.
 	public event Action<string>? WiredAudioLost;
 
-	// Consecutive failed USB reads (10 ms apart) before the session falls back to Bluetooth.
+	// Consecutive failed USB reads (10 ms apart) before the wired link counts as gone.
 	public int WiredLostAfterFailures { get; set; } = 3;
 
-	// A wired link that never delivered input or went silent for this long counts as dead on the next Bluetooth
-	// report: the session falls back to Bluetooth then. Far beyond the ~4 ms report interval, short enough to feel
-	// instant.
-	public TimeSpan WiredSilentTimeout { get; set; } = TimeSpan.FromMilliseconds(150);
+	// True once the wired link delivered its first input report (the host disconnects Bluetooth only after that).
+	public bool IsWiredInputLive
+	{
+		get
+		{
+			lock (inputGate)
+			{
+				return Volatile.Read(ref wired) != null && wiredInputLive;
+			}
+		}
+	}
 
-	// Diagnostic lines written about the USB output report since the last AttachWired (tests read it).
-	public int WiredOutputLogs => Volatile.Read(ref wiredOutputLogs);
+	// True once the Bluetooth link's reads failed while wired (it was disconnected on purpose): the session runs on
+	// USB alone.
+	public bool IsBluetoothGone => Volatile.Read(ref bluetoothGone);
+
+	private bool bluetoothGone;
 
 	// Input reports taken from the wired link.
 	public long WiredInputReports => Interlocked.Read(ref wiredInputReports);
@@ -387,7 +460,15 @@ public sealed class BluetoothSession : IDisposable
 			b[OutputBlock.Flag2] &= unchecked((byte)~OutputBlock.LightbarSetupControl);
 			b[OutputBlock.LightbarSetup] = 0;
 		});
-		reader = new Thread(ReadLoop) { Name = "Controller input", IsBackground = true, Priority = ThreadPriority.AboveNormal };
+		if (usbOnly)
+		{
+			Diagnostics.AppLog.Write("wired: controller on the cable alone, input and output over USB (no Bluetooth)");
+			wiredReader = reader = new Thread(() => WiredReadLoop(link)) { Name = "Controller input (USB)", IsBackground = true, Priority = ThreadPriority.AboveNormal };
+		}
+		else
+		{
+			reader = new Thread(ReadLoop) { Name = "Controller input", IsBackground = true, Priority = ThreadPriority.AboveNormal };
+		}
 		reader.Start();
 	}
 
@@ -396,93 +477,45 @@ public sealed class BluetoothSession : IDisposable
 
 	private Lighting.LightOutput sentLight = Lighting.LightOutput.None;
 
-	// Changes the output state and sends it at once. While wired the update goes over the USB link instead and
-	// nothing is written to Bluetooth; a failed USB write falls the session back and this update lands on Bluetooth.
+	// Changes the output state and sends it at once: over USB (0x02) while wired, else over Bluetooth (0x31). A failed
+	// USB write is left to the wired reader (a pulled cable fails its reads too).
 	public void UpdateOutput(Action<byte[]> change)
 	{
-		string? lost = null;
-		string? usbLog = null;
 		lock (outputGate)
 		{
 			change(block);
 			byte[] sent = (byte[])block.Clone();
 			Volatile.Write(ref sentLight, sentLight.After(sent));
-			bool sentOverUsb = false;
 			if (Volatile.Read(ref wired) is { } usb)
 			{
-				// The same haptics-mode controls as over Bluetooth (haptics un-muted, no power save, full motor
-				// power). With only the rumble bits cleared, USB audio haptics were silent on hardware while the
-				// speaker, whose route flags were sent, played: the likely cause, not yet confirmed on hardware.
 				if (HapticsMode)
 				{
-					OutputBlock.SetHapticsMode(sent);
+					OutputBlock.SetUsbHapticsMode(sent);
 				}
 				byte[] report = new byte[Math.Max(usb.Device.OutputLength, UsbReports.OutputSize)];
 				UsbReports.BuildOutput(sent, report);
 				try
 				{
 					usb.Write(report);
-					int why = Interlocked.Exchange(ref wiredOutputLogDue, 0);
-					if (why != 0)
-					{
-						usbLog = string.Create(System.Globalization.CultureInfo.InvariantCulture,
-							$"wired: usb output 0x02 ({(why == 1 ? "first report" : "haptics playing")}):" +
-							$" flags 0x{sent[OutputBlock.Flag0]:X2} 0x{sent[OutputBlock.Flag1]:X2} 0x{sent[OutputBlock.Flag2]:X2}," +
-							$" mute/power save 0x{sent[OutputBlock.PowerSave]:X2}, motor power 0x{sent[OutputBlock.MotorPowerReduction]:X2}," +
-							$" audio control 0x{sent[AudioOutput.AudioControl]:X2} 0x{sent[AudioOutput.AudioControl2]:X2}," +
-							$" volumes headphone {sent[AudioOutput.HeadphoneVolume]} speaker {sent[AudioOutput.SpeakerVolume]}," +
-							$" low pass 0x{sent[39]:X2}");
-					}
-					sentOverUsb = true;
 				}
 				catch (Exception)
 				{
-					if (FallBack(usb, "usb write failed"))
-					{
-						lost = "usb write failed";
-					}
-					// Falls through: this update still goes out, over Bluetooth.
+					// The cable is going; the wired reader notices.
 				}
+				return;
 			}
-			if (!sentOverUsb)
+			if (usbOnly)
 			{
-				if (HapticsMode)
-				{
-					OutputBlock.SetHapticsMode(sent);
-				}
-				byte[] btReport = new byte[Math.Max(link.Device.OutputLength, BluetoothReports.OutputSize)];
-				BluetoothReports.BuildOutput(sent, NextSequence(), btReport);
-				link.Write(btReport);
+				// The USB link is gone and there is no Bluetooth: nothing to send to.
+				return;
 			}
-		}
-		// Outside the gate: a subscriber may call back into the session.
-		if (lost != null)
-		{
-			WiredLost?.Invoke(lost);
-		}
-		if (usbLog != null)
-		{
-			Interlocked.Increment(ref wiredOutputLogs);
-			Diagnostics.AppLog.Write(usbLog);
-		}
-	}
-
-	// Sends the current output state over USB again (no state change): the controller gets the haptics-mode flags
-	// again once its USB audio endpoint is playing — right at the first block and once more ~170 ms later (the
-	// WiredOutputResendBlock-th write of a run) when the endpoint is surely streaming.
-	private void ResendWiredOutput()
-	{
-		if (Volatile.Read(ref wired) == null)
-		{
-			return;
-		}
-		try
-		{
-			UpdateOutput(_ => { });
-		}
-		catch (Exception)
-		{
-			// The link is going away; the next output fixes the state.
+			if (HapticsMode)
+			{
+				OutputBlock.SetHapticsMode(sent);
+			}
+			byte[] btReport = new byte[Math.Max(link.Device.OutputLength, BluetoothReports.OutputSize)];
+			BluetoothReports.BuildOutput(sent, NextSequence(), btReport);
+			link.Write(btReport);
 		}
 	}
 
@@ -572,8 +605,8 @@ public sealed class BluetoothSession : IDisposable
 		}
 	}
 
-	// Attaches the controller's own USB link: input and output move over the cable while Bluetooth stays connected
-	// (the mic keeps using it). audio: its USB audio endpoint (WiredAudio.OpenDefault), which then carries the haptics
+	// Attaches the controller's own USB link: input and output move over the cable (the host disconnects Bluetooth
+	// once USB input is live). audio: its USB audio endpoint (WiredAudio.OpenDefault), which then carries the haptics
 	// stream's blocks and the game's speaker audio; it lives exactly as long as the link. Ends by sending the current
 	// state over USB.
 	public void AttachWired(IHidLink usb, Audio.IWiredAudioSink? audio = null)
@@ -617,16 +650,22 @@ public sealed class BluetoothSession : IDisposable
 				return;
 			}
 			Diagnostics.AppLog.Write("wired: haptics and speaker over USB audio");
+			wiredSpeakerSounding = false;
 		}
 		wiredReader = new Thread(() => WiredReadLoop(usb)) { Name = "Controller input (USB)", IsBackground = true, Priority = ThreadPriority.AboveNormal };
 		wiredReader.Start();
-		Diagnostics.AppLog.Write("wired: input and output over USB, Bluetooth stays connected");
-		Volatile.Write(ref wiredOutputLogs, 0);
-		Volatile.Write(ref wiredHapticsLogged, 0);
-		Volatile.Write(ref wiredOutputLogDue, 1);
+		Diagnostics.AppLog.Write(audio != null
+			? "wired: input and output over USB, haptics/speaker over USB audio"
+			: "wired: input and output over USB");
 		try
 		{
-			UpdateOutput(_ => { });
+			UpdateOutput(b =>
+			{
+				if (WiredTuning.SpeakerIdleVolume != null && !WriteRoute(b))
+				{
+					AudioOutput.Clear(b);
+				}
+			});
 		}
 		catch (Exception)
 		{
@@ -649,6 +688,8 @@ public sealed class BluetoothSession : IDisposable
 			if (attached)
 			{
 				Diagnostics.AppLog.Write("wired: haptics and speaker over USB audio");
+				wiredSpeakerSounding = false;
+				RefreshIdleRoute();
 				return true;
 			}
 			// The link went away during this attach: take the sink back when this call still owns it — whoever
@@ -669,8 +710,9 @@ public sealed class BluetoothSession : IDisposable
 		return false;
 	}
 
-	// Detaches the wired link (the cable went out, the mode changed): back to Bluetooth over everything, ending by
-	// sending the current state over it. False when no wired link was attached.
+	// Detaches the wired link (the mode changed, the host leaves wired): back to Bluetooth over everything, ending by
+	// sending the current state over it. With Bluetooth already disconnected nothing carries the controller any more:
+	// the session raises Lost (the host waits for Bluetooth again). False when no wired link was attached.
 	public bool DetachWired(string reason)
 	{
 		IHidLink? usb = Interlocked.Exchange(ref wired, null);
@@ -700,9 +742,22 @@ public sealed class BluetoothSession : IDisposable
 		}
 		Diagnostics.AppLog.Write(string.Create(System.Globalization.CultureInfo.InvariantCulture,
 			$"wired: back on Bluetooth ({reason}; {WiredInputReports} usb inputs, {IgnoredBluetoothInputs} bluetooth inputs ignored)"));
+		if (Volatile.Read(ref bluetoothGone))
+		{
+			Diagnostics.AppLog.Write("wired: Bluetooth was disconnected, so the controller is gone until it reconnects");
+			Lost?.Invoke();
+			return true;
+		}
 		try
 		{
-			UpdateOutput(_ => { });
+			// The user's speaker route again if the speaker idle volume was in force.
+			UpdateOutput(b =>
+			{
+				if (WiredTuning.SpeakerIdleVolume != null && !WriteRoute(b))
+				{
+					AudioOutput.Clear(b);
+				}
+			});
 		}
 		catch (Exception)
 		{
@@ -728,10 +783,12 @@ public sealed class BluetoothSession : IDisposable
 			// A sink that fails to close is gone either way.
 		}
 		Diagnostics.AppLog.Write($"wired: audio back on Bluetooth ({reason})");
+		RefreshIdleRoute();
 		WiredAudioLost?.Invoke(reason);
 	}
 
-	// The session falls back to Bluetooth by itself (a failed USB read or write) when usb is still the wired link.
+	// The session falls back to Bluetooth by itself (failed USB reads while Bluetooth is still connected) when usb is
+	// still the wired link.
 	// True when this call did it; never joins the wired reader (it can be the caller).
 	private bool FallBack(IHidLink usb, string reason)
 	{
@@ -754,6 +811,7 @@ public sealed class BluetoothSession : IDisposable
 		usb.Dispose();
 		Diagnostics.AppLog.Write(string.Create(System.Globalization.CultureInfo.InvariantCulture,
 			$"wired: back on Bluetooth ({reason}; {WiredInputReports} usb inputs, {IgnoredBluetoothInputs} bluetooth inputs ignored)"));
+		RefreshIdleRoute();
 		return true;
 	}
 
@@ -781,8 +839,11 @@ public sealed class BluetoothSession : IDisposable
 			}
 			usb.Dispose();
 		}
-		link.CancelRead();
-		reader?.Join(1000);
+		if (!usbOnly)
+		{
+			link.CancelRead();
+			reader?.Join(1000);
+		}
 		Thread? haptics;
 		lock (hapticsGate)
 		{
@@ -790,7 +851,10 @@ public sealed class BluetoothSession : IDisposable
 			Monitor.PulseAll(hapticsGate);
 		}
 		haptics?.Join(1000);
-		link.Dispose();
+		if (!usbOnly)
+		{
+			link.Dispose();
+		}
 	}
 
 	private byte NextSequence() => (byte)(Interlocked.Increment(ref sequence) & 0x0F);
@@ -810,6 +874,13 @@ public sealed class BluetoothSession : IDisposable
 			{
 				if (stopping)
 				{
+					return;
+				}
+				if (Volatile.Read(ref wired) != null)
+				{
+					// Wired: the host disconnected Bluetooth on purpose (or it dropped); the session runs on USB alone.
+					Volatile.Write(ref bluetoothGone, true);
+					Diagnostics.AppLog.Write($"bt: link gone while wired ({e.GetType().Name}), the controller runs over USB only");
 					return;
 				}
 				if (++failures >= LostAfterFailures)
@@ -844,54 +915,25 @@ public sealed class BluetoothSession : IDisposable
 			}
 			ReadOnlySpan<byte> body = InputState.Body(report);
 			long readTicks = Stopwatch.GetTimestamp();
-			string? silent = null;
 			lock (inputGate)
 			{
-				// While wired the USB link carries input: a valid Bluetooth report still arriving is counted and
-				// dropped — unless the link never started or went silent, which falls the session back to
-				// Bluetooth (this report is published), or is up but has not delivered its first report yet
-				// (Bluetooth keeps carrying input until then).
-				if (Volatile.Read(ref wired) is not { } usb)
+				// While wired the USB link carries input: a valid Bluetooth report still arriving (before the host
+				// disconnected Bluetooth) is counted and dropped, except until the USB link delivered its first report.
+				if (Volatile.Read(ref wired) is null || !wiredInputLive)
 				{
-					Publish(body, readTicks);
-					continue;
-				}
-				if (Stopwatch.GetElapsedTime(lastWiredInput) > WiredSilentTimeout)
-				{
-					if (FallBack(usb, "usb silent"))
-					{
-						silent = "usb silent";
-					}
-					Publish(body, readTicks);
-				}
-				else if (!wiredInputLive)
-				{
-					Publish(body, readTicks);
+					Publish(body, readTicks, false);
 				}
 				else
 				{
 					Interlocked.Increment(ref ignoredBluetoothInputs);
 				}
 			}
-			if (silent == null)
-			{
-				continue;
-			}
-			try
-			{
-				// Back on Bluetooth: the output state is sent over it again (outside any lock).
-				UpdateOutput(_ => { });
-			}
-			catch (Exception)
-			{
-				// The next output fixes the state.
-			}
-			WiredLost?.Invoke(silent);
 		}
 	}
 
 	// The wired reader: report 0x01 carries the same input body as Bluetooth's 0x31 (no CRC). Runs while this link is
-	// the wired one (a detach cancels its read); enough failed reads in a row fall the session back to Bluetooth.
+	// the wired one (a detach cancels its read). Enough failed reads in a row: with Bluetooth disconnected the
+	// controller is lost (the cable was pulled); with Bluetooth still connected the session falls back to it.
 	private void WiredReadLoop(IHidLink usb)
 	{
 		byte[] buffer = new byte[Math.Max(usb.Device.InputLength, UsbReports.InputSize)];
@@ -913,16 +955,15 @@ public sealed class BluetoothSession : IDisposable
 				{
 					if (FallBack(usb, "usb reads failed"))
 					{
-						try
+						if (Volatile.Read(ref bluetoothGone))
 						{
-							// Back on Bluetooth: the output state is sent over it again (outside any lock).
-							UpdateOutput(_ => { });
+							Diagnostics.AppLog.Write("wired: USB link gone with Bluetooth disconnected, controller lost");
+							Lost?.Invoke();
 						}
-						catch (Exception)
+						else
 						{
-							// The next output fixes the state.
+							WiredLost?.Invoke("usb reads failed");
 						}
-						WiredLost?.Invoke("usb reads failed");
 					}
 					return;
 				}
@@ -945,7 +986,7 @@ public sealed class BluetoothSession : IDisposable
 					lastWiredInput = now;
 					wiredInputLive = true;
 					Interlocked.Increment(ref wiredInputReports);
-					Publish(body, now);
+					Publish(body, now, true);
 				}
 			}
 		}
@@ -953,10 +994,11 @@ public sealed class BluetoothSession : IDisposable
 
 	// The tail of a good input report on either link: state, headphone tracking and the events. inputGate held, so
 	// LastReadTicks and LastInput can never be set by the two reader threads at once.
-	private void Publish(ReadOnlySpan<byte> body, long readTicks)
+	private void Publish(ReadOnlySpan<byte> body, long readTicks, bool overUsb)
 	{
 		LastReadTicks = readTicks;
 		LastInput = InputState.Parse(body);
+		LastInputOverUsb = overUsb;
 		bool plugged = AudioOutput.HeadphonesPlugged(body);
 		HeadphonesPlugged = plugged;
 		SpeakerAudioSender? s = speaker;
@@ -1106,27 +1148,37 @@ public sealed class BluetoothSession : IDisposable
 					{
 						sink.WriteHaptics(left, right);
 						wrote = true;
-						if (++sinkWrites == 1 || sinkWrites == WiredOutputResendBlock)
+						FollowWiredSpeaker(sink);
+						if (++sinkWrites == 1)
 						{
-							if (sinkWrites == 1)
-							{
-								firstToUsb = true;
-								if (Interlocked.Exchange(ref wiredHapticsLogged, 1) == 0)
-								{
-									Volatile.Write(ref wiredOutputLogDue, 2);
-								}
-							}
-							ResendWiredOutput();
+							firstToUsb = true;
 						}
 					}
-					catch (Exception)
+					catch (Exception e)
 					{
-						// This block is lost; later ticks are Bluetooth reports again.
-						DropWiredAudio(sink, "usb audio write failed");
+						// This block is lost; later ticks are Bluetooth reports again. A stream whose device clock never
+						// moved is said loudly: it played nothing at all.
+						if (e is Audio.WiredAudioStalledException stalled)
+						{
+							Diagnostics.AppLog.Write("wired: USB AUDIO NOT PLAYING: " + stalled.Message + "; haptics and speaker back on Bluetooth");
+							DropWiredAudio(sink, "usb audio not playing");
+						}
+						else
+						{
+							DropWiredAudio(sink, "usb audio write failed");
+						}
 					}
 					// No Bluetooth report this tick except when the Bluetooth mic needs the stream: a 0x32 report
-					// with all-zero samples (not the real frames) carries the control byte.
-					if (micOn || sendingOff)
+					// with all-zero samples (not the real frames) carries the control byte. A USB-only session has
+					// no Bluetooth: a pending mic-off just runs out.
+					if (usbOnly)
+					{
+						if (sendingOff)
+						{
+							Interlocked.Decrement(ref micOffToSend);
+						}
+					}
+					else if (micOn || sendingOff)
 					{
 						Array.Clear(left);
 						Array.Clear(right);
@@ -1154,6 +1206,16 @@ public sealed class BluetoothSession : IDisposable
 							// A lost report is a few ms of haptics; keep the stream going.
 						}
 					}
+				}
+				else if (usbOnly)
+				{
+					// No wired audio sink and no Bluetooth: nothing carries haptics (the host asks for the sink again).
+					// The tick still counts, so the watchdog does not take a running stream for a stalled one.
+					if (sendingOff)
+					{
+						Interlocked.Decrement(ref micOffToSend);
+					}
+					wrote = true;
 				}
 				else
 				{

@@ -14,7 +14,7 @@ public readonly record struct ShownStatus(BridgeState State, BridgeError LastErr
 	bool HeadphonesPlugged)
 {
 	public static ShownStatus Of(BridgeStatus s, bool headphonesPlugged = false) => new(s.State, s.LastError, s.LastErrorDetail,
-		s.Battery?.Percent, s.Battery?.State,
+		s.Battery is { LevelKnown: true } b ? b.Percent : null, s.Battery?.State,
 		(long)Math.Round(s.InputRateHz), s.HapticsReportsPerSecond > 1,
 		Tenths(s.LinkLatencyP50Ms), Tenths(s.LinkLatencyP99Ms), s.RelayMs is { } r ? (long)Math.Round(r * 100) : null,
 		s.Link?.State, s.Link?.WarningDue == true, headphonesPlugged);

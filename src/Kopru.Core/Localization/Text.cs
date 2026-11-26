@@ -21,7 +21,9 @@ public readonly struct Language : IEquatable<Language>
 	public string Code => string.IsNullOrEmpty(_code) ? "en" : _code;
 	public string NativeName => PseudoLocale.IsPseudo(Code)
 		? PseudoLocale.NativeName
-		: StringCatalog.GetBundle(Code)?.NativeName ?? Code;
+		: KeyTagLocale.IsKeyTag(Code)
+			? KeyTagLocale.NativeName
+			: StringCatalog.GetBundle(Code)?.NativeName ?? Code;
 
 	public bool Equals(Language other) => string.Equals(Code, other.Code, StringComparison.OrdinalIgnoreCase);
 	public override bool Equals(object? obj) => obj is Language other && Equals(other);
@@ -152,7 +154,8 @@ public static class Localizer
 		{
 			return TurkishCulture;
 		}
-		if (code.Equals("en", StringComparison.OrdinalIgnoreCase) || code.Equals("qps", StringComparison.OrdinalIgnoreCase))
+		if (code.Equals("en", StringComparison.OrdinalIgnoreCase) || code.Equals("qps", StringComparison.OrdinalIgnoreCase)
+			|| KeyTagLocale.IsKeyTag(code))
 		{
 			return EnglishCulture;
 		}

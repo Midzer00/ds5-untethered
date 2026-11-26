@@ -49,8 +49,25 @@ public sealed class TranslatorScreenshotTests
 					vm.Navigate(vm.Overview);
 					Save(window, langDir, "overview.png");
 
+					// The health line when items need a look (worst first, "Fix ›" opens a menu of the fixes)
+					Kopru.Core.Health.HealthReport health = fake.Health;
+					fake.Health = OverviewHealthLineTests.State("several");
+					fake.RaiseStateChanged();
+					Save(window, langDir, "overview-health-warning.png");
+					// All good: no health line
+					fake.Health = OverviewHealthLineTests.State("good");
+					fake.RaiseStateChanged();
+					Save(window, langDir, "overview-all-good.png");
+					fake.Health = health;
+					fake.RaiseStateChanged();
+
+					// Haptics & Triggers: both tabs (the game's own effects, then Xbox And DS4 Rumble).
 					vm.Navigate(vm.OtherGames);
+					vm.OtherGames.SelectedTab = OtherGamesViewModel.GameEffectsTab;
 					Save(window, langDir, "haptics-triggers.png");
+					vm.OtherGames.SelectedTab = OtherGamesViewModel.RumbleTab;
+					Save(window, langDir, "haptics-triggers-rumble.png");
+					vm.OtherGames.SelectedTab = OtherGamesViewModel.GameEffectsTab;
 
 					// Controller tabs + Look picker dialog
 					vm.OpenController(ControllerPageViewModel.TestTab);
@@ -70,8 +87,14 @@ public sealed class TranslatorScreenshotTests
 					vm.OpenController(ControllerPageViewModel.OutputsTab);
 					Save(window, langDir, "controller-outputs.png");
 
-					vm.OpenController(ControllerPageViewModel.RemapTab);
-					Save(window, langDir, "controller-remap.png");
+					vm.OpenController(ControllerPageViewModel.ButtonsTab);
+					Save(window, langDir, "controller-buttons.png");
+
+					Kopru.Core.Input.GyroSettings savedGyro = vm.Settings.Gyro;
+					vm.Settings.Gyro = savedGyro with { Mode = Kopru.Core.Input.GyroMode.WhileL2 };
+					vm.OpenController(ControllerPageViewModel.GyroTab);
+					Save(window, langDir, "controller-gyro-sticks.png");
+					vm.Settings.Gyro = savedGyro;
 
 					vm.Navigate(vm.Light);
 					Save(window, langDir, "light.png");
@@ -116,7 +139,26 @@ public sealed class TranslatorScreenshotTests
 					gamesWindow.Close();
 				}
 
-				// Setup wizard page
+				// Controller Edge tab (shown only while a DualSense Edge is connected)
+				Localizer.Chosen = language;
+				var edgeVm = new MainWindowViewModel(
+					new FakeControllerService(ControllerKind.DualSenseEdge, animate: false),
+					new AppEnvironment(new MemorySettingsStore(new AppSettings { GameListCheckedAt = DateTimeOffset.Now, Language = code })));
+				Localizer.Chosen = language;
+				edgeVm.Sticks.StopPreview();
+				edgeVm.OpenController(ControllerPageViewModel.EdgeTab);
+				var edgeWindow = new MainWindow { DataContext = edgeVm, Width = width, Height = height };
+				edgeWindow.Show();
+				try
+				{
+					Save(edgeWindow, langDir, "controller-edge.png");
+				}
+				finally
+				{
+					edgeWindow.Close();
+				}
+
+				// Setup wizard page (Drivers open, then Adapter Test open)
 				Localizer.Chosen = language;
 				var probes = new RealServiceTests.Probes(drivers: false);
 				var setupVm = new MainWindowViewModel(
@@ -131,6 +173,8 @@ public sealed class TranslatorScreenshotTests
 				try
 				{
 					Save(setupWindow, langDir, "setup.png");
+					setupVm.Setup!.ExpandStep(SetupStepId.AdapterTest);
+					Save(setupWindow, langDir, "setup-adapter.png");
 				}
 				finally
 				{
