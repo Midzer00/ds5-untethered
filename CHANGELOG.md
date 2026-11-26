@@ -6,6 +6,17 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 
 ## English
 
+### 0.2.3 — 2026-11-26
+
+- Use The Cable (Experimental) now runs the controller fully over USB: while the cable is in, input, triggers, light, haptics, speaker and microphone go over the cable and Bluetooth is disconnected. Game haptics now play over the cable too. After unplugging, press the ø button to reconnect over Bluetooth. The setting is on the Controller page, Tests & Cable tab.
+- A controller that is plugged in by cable alone (Bluetooth off) is picked up when the app starts, with its own name, colours and settings, as long as it was paired over Bluetooth once.
+- Fixed: a crackle from the controller speaker while it vibrated over the cable. On the cable the battery now shows Charging instead of 0 % while the controller does not report a level.
+- Every page fits the window without scrolling: Haptics And Triggers has two tabs (Game's Own Effects, Xbox And DS4 Rumble), the Controller page splits Remap & Gyro into Buttons and Gyro & Sticks (plus an Edge tab for a DualSense Edge), and Setup shows one step at a time.
+- Xbox Trigger Rumble on the Haptics And Triggers page is now one choice: Off, Xbox-Like, Soft or Sharp.
+- Choice controls look the same everywhere, with a clearer selected option.
+- Overview: the status cards are gone; a single line with a Fix link appears only when something needs attention.
+- Help translate the app: ds5untethered.com/translate shows the app's real screens, so you can translate on them in your browser and send it in a few clicks.
+
 ### 0.2.2 — 2026-11-24
 
 - The cable setting, When The Cable Is Plugged In, moved to the Controller page, on the new Tests & Cable tab (formerly Output Tests). The extra Trigger Strength slider there is gone; it stays on Haptics And Triggers, the Overview and a game's settings.
@@ -108,6 +119,17 @@ Downloads and full notes for each version are on the [Releases](https://github.c
 ## Türkçe
 
 Her sürümün indirme dosyaları ve tam notları [Releases](https://github.com/Midzer00/ds5-untethered/releases) sayfasında.
+
+### 0.2.3 — 26.11.2026
+
+- "Kablo Üzerinden Çalış (Deneysel)" seçiliyken kumandanın tüm işlevleri artık USB üzerinden çalışıyor ve Bluetooth bağlantısı kesiliyor. Buna giriş, tetikler, ışık, hoparlör, mikrofon ve oyun haptiği de dahil. Kabloyu çıkardıktan sonra Bluetooth ile yeniden bağlanmak için ø tuşuna basmanız yeterli. Ayar "Kumanda" sayfasında, "Testler ve Kablo" sekmesinde.
+- Daha önce Bluetooth ile eşleştirilen kumanda, uygulama açılırken yalnızca kabloyla bağlı olsa bile adı, rengi ve ayarlarıyla tanınıyor.
+- Düzeltildi: Kablo takılıyken titreşim sırasında kumandanın hoparlöründen gelen çıtırtı. Kablodayken kumanda pil seviyesini bildirmiyorsa pil artık %0 yerine "Şarj Oluyor" olarak görünüyor.
+- Artık hiçbir sayfa kaydırma gerektirmiyor: "Titreşim ve Tetikler" iki sekmeye ayrıldı ("Oyunun Kendi Efektleri", "Xbox ve DS4 Titreşimi"), "Kumanda" sayfasında "Tuş Atama ve Gyro" yerine "Tuşlar" ve "Gyro ve Çubuklar" sekmeleri var (DualSense Edge için ayrıca "Edge"), "Kurulum" ise adımları tek tek gösteriyor.
+- "Titreşim ve Tetikler" sayfasındaki Xbox Tetik Titreşimi artık tek bir seçim: Kapalı, Xbox Gibi, Yumuşak veya Sert.
+- Seçim kutuları her yerde aynı görünüyor ve seçili seçenek daha belirgin.
+- "Genel Bakış": Durum kartları kaldırıldı; yalnızca bir şeye bakmak gerektiğinde "Düzelt" bağlantılı tek bir satır görünüyor.
+- Uygulamanın çevirisine katkıda bulunabilirsiniz: ds5untethered.com/translate adresinde metinleri uygulamanın gerçek ekranları üzerinde çevirip birkaç tıkla gönderebilirsiniz.
 
 ### 0.2.2 — 24.11.2026
 

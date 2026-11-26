@@ -155,10 +155,11 @@ DS5 Untethered is free and stays free. If it is useful to you, you can support i
   within a few metres; if nothing changes, try a Bluetooth 5 or newer adapter.
 - **The controller is paired in Windows, but the app shows "Not Connected".** It is off or asleep: press the ø button.
   If the app shows "Not Paired", hold Create and the ø button until the light blinks, then pair it.
-- **The controller is plugged in with a USB cable.** While Bluetooth is connected the cable only charges: the
-  virtual controller keeps running and games still see one controller (Controller > Tests & Cable). If
-  Bluetooth drops while the cable is in, the app stops the virtual controller ("Bluetooth Connection Lost") and
-  games use the wired controller; it starts again by itself when Bluetooth is back.
+- **The controller is plugged in with a USB cable.** What happens depends on Controller > Tests & Cable. With
+  Charge Only (the default) the cable only charges: everything stays on Bluetooth and games still see one controller.
+  With Use The Cable (Experimental) the app runs the controller over USB and disconnects Bluetooth; after unplugging,
+  press the ø button to reconnect over Bluetooth. A controller paired once is also picked up when it is on the cable
+  alone at app start.
 - **SmartScreen warns when you start the installer.** The build is not signed: choose "More info", then "Run anyway".
 - **A game doesn't see the controller after a Controller Type change.** A change made while the game is open applies
   when you restart the game. "Apply Now" switches right away, but the game may lose the controller; then restart the
@@ -404,10 +405,10 @@ Hata bildirimleri, öneriler ve kod katkıları da projenin gelişmesine yardım
   birkaç metre içinde tutun; sonuç değişmezse Bluetooth 5 ya da daha yeni bir adaptör deneyin.
 - **Kumanda Windows'ta eşleşmiş ama uygulama "Bağlı Değil" gösteriyor.** Kumanda kapalı ya da uykuda: PS tuşuna basın.
   Uygulama "Eşleşmemiş" gösteriyorsa Create ve ø tuşlarını ışık yanıp sönene kadar basılı tutup eşleştirin.
-- **Kumanda USB kablosuyla takılı.** Bluetooth bağlıyken kablo yalnızca şarj eder: sanal kumanda çalışmaya devam
-  eder ve oyunlar yine tek kumanda görür (Kumanda > Testler ve Kablo). Kablo takılıyken Bluetooth koparsa
-  uygulama sanal kumandayı durdurur ("Bluetooth Bağlantısı Koptu") ve oyunlar kablolu kumandayı kullanır; Bluetooth
-  geri gelince sanal kumanda kendiliğinden yeniden başlar.
+- **Kumanda USB kablosuyla takılı.** Kumandanın nasıl bağlanacağını Kumanda > Testler ve Kablo bölümünden seçebilirsiniz.
+  Sadece Şarj Et (varsayılan) seçiliyken kablo yalnızca şarj eder. Kumanda Bluetooth üzerinden çalışmaya devam eder ve oyunlar yine tek kumanda görür.
+  Kablo Üzerinden Çalış (Deneysel) seçiliyken kumanda USB üzerinden çalışır ve Bluetooth bağlantısı kesilir.
+  Kabloyu çıkardıktan sonra Bluetooth ile yeniden bağlanmak için ø tuşuna basın. Uygulama açılırken daha önce eşleştirilmiş kumandayı yalnızca kabloyla bağlı olsa bile tanır.
 - **Kurulum dosyasını açarken SmartScreen uyarı veriyor.** Uygulamada kod imzası yok: "Ek bilgi"ye, ardından "Yine de
   çalıştır"a tıklayın.
 - **Kumanda Türü değişince oyun kumandayı görmüyor.** Oyun açıkken yapılan değişiklik, oyunu yeniden başlatınca geçerli

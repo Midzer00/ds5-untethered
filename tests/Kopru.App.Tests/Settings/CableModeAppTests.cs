@@ -189,7 +189,7 @@ public class CableModeAppTests
 		Assert.Equal("Charge Only", Text.CableModeChargeOnly(Language.English));
 		Assert.Equal("Kablo takılıyken kumanda kablo üzerinden çalışır, Bluetooth bağlantısı kesilir.", Text.CableModeShort(Language.Turkish));
 		Assert.Equal("While the cable is in, the app runs the controller over it and disconnects Bluetooth.", Text.CableModeShort(Language.English));
-		Assert.Equal("Kablo Üzerinden Çalış: kablo takılıyken giriş, tetikler, ışık, haptik, hoparlör ve mikrofon USB üzerinden gider, Bluetooth kesilir; kablo çıkınca yeniden bağlanmak için ø tuşuna bas. Sorun çıkarsa Sadece Şarj Et'i seç: kablo yalnızca şarj eder, her şey Bluetooth'ta kalır.", Text.CableModeHint(Language.Turkish));
+		Assert.Equal("Kablo Üzerinden Çalış (Deneysel) seçiliyken kumandanın tüm işlevleri USB üzerinden çalışır ve Bluetooth bağlantısı kesilir. Kabloyu çıkarınca yeniden bağlanmak için ø tuşuna bas. Sorun olursa Sadece Şarj Et’i seç. Kablo yalnızca şarj eder, kumanda Bluetooth üzerinden çalışmaya devam eder.", Text.CableModeHint(Language.Turkish));
 		Assert.Equal("Use The Cable: while the cable is in, input, triggers, light, haptics, speaker and microphone go over USB and Bluetooth is disconnected; after unplugging, press the ø button to reconnect. If anything misbehaves choose Charge Only: the cable only charges and everything stays on Bluetooth.", Text.CableModeHint(Language.English));
 		Assert.Equal("USB Kablosu (Deneysel)", Text.ConnectionWired(Language.Turkish));
 		Assert.Equal("USB Cable (Experimental)", Text.ConnectionWired(Language.English));
