@@ -1,6 +1,7 @@
-/* GitHub sends the volunteer back here (the GitHub App's callback URL) with ?code=&state=, or ?error=.
+/* GitHub sends the volunteer back here (under the OAuth App's callback URL) with ?code=&state=, or ?error=.
    This page only hands the result to the translation page and goes away. The code is useless without the
-   PKCE verifier (held by the translation page) and the client secret (held by the Worker). */
+   PKCE verifier (held by the translation page) and the client secret (held by the Worker), and the Worker uses it
+   only to learn who the volunteer is. */
 (function () {
   'use strict';
   var CHANNEL = 'ds5-gh-oauth', PENDING_KEY = 'ds5-gh-oauth', RESULT_KEY = 'ds5-gh-oauth-result';
@@ -32,6 +33,6 @@
   try { localStorage.setItem(RESULT_KEY, JSON.stringify(msg)); localStorage.removeItem(RESULT_KEY); sent = true; } catch (e) { /* storage blocked */ }
   out.textContent = !sent
     ? 'This Browser Blocked the Hand-Over. Close This Window and Use Paste in Browser or Upload Form.'
-    : msg.error ? 'Sign-In Cancelled. You Can Close This Window.' : 'Signed In. You Can Close This Window.';
+    : msg.error ? 'Cancelled. You Can Close This Window.' : 'Confirmed. You Can Close This Window.';
   setTimeout(function () { window.close(); }, 300);
 })();

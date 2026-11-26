@@ -1141,8 +1141,9 @@
 
   /* ---------- submit sheet ----------
      Three ways to send, in this order:
-       1. Send with GitHub: the page opens one issue in the volunteer's name (GitHub App, Issues only); the repo's
-          intake Action makes the pull request. Shown only when config.js names the App and the Worker.
+       1. Send with GitHub: GitHub confirms who the volunteer is (OAuth App, no scope), the Worker opens the issue
+          as the project's bot naming that verified sender, and the repo's intake Action makes the pull request with
+          the volunteer as the commit author. Shown only when config.js names the OAuth App and the Worker.
        2. Paste in Browser: copy the file, paste it into GitHub's web editor, propose the change.
        3. Upload Form: download the file and attach it to the repo's translation issue form.
      The same checks run before any of them; Send with GitHub and the form wait until the problems are fixed. */
@@ -1151,20 +1152,21 @@
   var GHI = window.GhIssue;
   var REPO_NAME = typeof CFG.repo === 'string' && /^[\w.-]+\/[\w.-]+$/.test(CFG.repo) ? CFG.repo : 'Midzer00/ds5-untethered';
   function ghConfigured() {
-    var id = String(CFG.clientId || ''), w = String(CFG.workerUrl || '');
+    var id = String(CFG.oauthClientId || ''), w = String(CFG.workerUrl || '');
     if (!GHI || !GHI.supported(window)) return false;
-    if (!/^Iv[A-Za-z0-9._-]{8,}$/.test(id)) return false;
+    // an OAuth App client id: Ov23… now, 20 hex characters for older Apps
+    if (!/^[A-Za-z0-9._-]{16,64}$/.test(id)) return false;
     return /^https:\/\/[^\s/?#]+(\/[^\s?#]*)?$/.test(w) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s?#]*)?$/.test(w);
   }
   var GH_ON = ghConfigured();
-  var auth = GH_ON ? GHI.createAuth({ clientId: CFG.clientId, workerUrl: CFG.workerUrl, redirectUri: new URL('oauth-callback.html', location.href).href }) : null;
-  // phase: idle | auth | send | done | error. progress survives a failed send so Try Again continues the same issue.
-  var G = { phase: 'idle', status: '', sig: '', issueP: null, progress: {}, existing: null, result: null, error: null, code: null, blocked: false };
+  var auth = GH_ON ? GHI.createAuth({ clientId: CFG.oauthClientId, workerUrl: CFG.workerUrl, redirectUri: new URL('oauth-callback.html', location.href).href }) : null;
+  // phase: idle | auth | send | done | error. A code is used once: Try Again asks GitHub again.
+  var G = { phase: 'idle', status: '', sig: '', issueP: null, result: null, error: null, code: null, blocked: false };
   var pendingResume = null;
 
   var sheet = document.getElementById('sheet');
   var copyBtn, dlBtn, ghBtn, step1Text, step2Text, problemBox, summary, ways = {}, wayList, ghBox, formStep1Text, formDlBtn, formLink, formNote, pasteNote, lastWay = null;
-  // Do not list my name: Send with GitHub marks the issue; the form and a pull request need the volunteer to say so
+  // Do not list my name: Send with GitHub tells the Worker; the form and a pull request need the volunteer to say so
   // (GitHub's issue-form URL parameters fill text fields only, not checkboxes)
   var UNLISTED_KEY = 'ds5-translate:unlisted';
   var unlistedBox, pasteUnlisted, formUnlisted;
@@ -1235,10 +1237,6 @@
     ]));
     sheet.setAttribute('aria-labelledby', 'sheet-title');
     sheet.addEventListener('click', function (e) { if (e.target === sheet) sheet.close(); });
-    sheet.addEventListener('close', function () {
-      // a token kept for Try Again goes when the sheet does (never while GitHub is still being asked)
-      if (auth && G.phase !== 'auth' && G.phase !== 'send') auth.revoke();
-    });
     // One way open at a time, also where <details name> is not supported
     wayList.addEventListener('toggle', function (e) {
       var d = e.target;
@@ -1357,8 +1355,7 @@
   }
   function ghErrorText(e) {
     var E = T.ghErr, c = e && e.code;
-    if (c === 'http') return E.http(e.status);
-    return E[c] && typeof E[c] === 'string' ? E[c] : E.other;
+    return c && Object.prototype.hasOwnProperty.call(E, c) && typeof E[c] === 'string' ? E[c] : E.other;
   }
   function renderGh() {
     if (!ghBox) return;
@@ -1370,17 +1367,13 @@
       var again = h('button', 'au-btn', { type: 'button', text: T.ghSendAgain });
       again.addEventListener('click', function () { setGh('idle'); });
       ghBox.append(h('p', 'tr-gh-done', { role: 'status', text: T.ghSent }));
-      var ex = existingNote();
-      if (ex) ghBox.append(ex);
       ghBox.append(h('div', 'tr-actions', null, [link, again]), h('p', 'au-caption', { text: T.ghAfter }));
       return;
     }
-    ghBox.append(h('p', 'tr-gh-what', { text: T.ghWhat(REPO_NAME) }));
+    ghBox.append(h('p', 'tr-gh-what', { text: T.ghWhat }));
     if (p === 'auth' || p === 'send') {
       var line = h('p', 'tr-gh-status', { role: 'status', text: p === 'auth' ? T.ghWaiting : G.status });
       ghBox.append(line);
-      var ex2 = p === 'send' ? existingNote() : null;
-      if (ex2) ghBox.append(ex2);
       if (p === 'auth') {
         var cancel = h('button', 'au-btn', { type: 'button', text: T.ghCancel });
         cancel.addEventListener('click', function () { auth.cancel(); });
@@ -1397,14 +1390,6 @@
     ghBox.append(h('div', 'tr-actions', null, [send]));
     if (G.blocked) ghBox.append(h('p', 'au-caption tr-way-note', { text: T.ghFixFirst }));
   }
-  // An earlier send from the same login for this code is still open: this send updates it
-  function existingNote() {
-    var ex = G.existing, hit = ex && (ex.pulls[0] ? { what: T.ghWhatPr, it: ex.pulls[0] } : ex.issues[0] ? { what: T.ghWhatIssue, it: ex.issues[0] } : null);
-    if (!hit) return null;
-    var p = h('p', 'tr-gh-note', null, [T.ghUpdates(G.code, hit.what) + ' ']);
-    p.append(h('a', null, { href: hit.it.url, target: '_blank', rel: 'noopener', text: '#' + hit.it.number }));
-    return p;
-  }
 
   function issueInfo() {
     var name = val('@name');
@@ -1417,11 +1402,12 @@
       listing: unlisted() ? 'hidden' : 'shown'
     };
   }
-  // The issue to send; a changed file starts a new one
+  /* The issue to send; a changed file builds a new one. The body carries no **Listing:** line: the listing choice
+     goes to the Worker on its own, and the Worker adds that line under its verified **Sender:** line. */
   function prepareIssue() {
-    var info = issueInfo(), sig = info.code + '\n' + info.listing + '\n' + info.text;
+    var info = issueInfo(), sig = info.code + '\n' + info.text;
     if (sig !== G.sig || !G.issueP) {
-      G.sig = sig; G.issueP = GHI.buildIssue(info); G.progress = {}; G.existing = null;
+      G.sig = sig; G.issueP = GHI.buildIssue(Object.assign({}, info, { listing: 'shown' }));
       G.issueP.catch(function () { /* reported by the send */ });
     }
     G.code = info.code;
@@ -1432,38 +1418,31 @@
     if (badKeys().length) { openSheet(); return; }
     prepareIssue();
     setGh('auth');
-    // signIn opens the GitHub window first thing, still inside this click
-    auth.signIn({ code: S.code }).then(deliver).catch(ghFail);
+    // authorize opens the GitHub window first thing, still inside this click
+    auth.authorize({ code: S.code }).then(deliver).catch(ghFail);
   }
 
-  function deliver(user) {
-    setGh('send', T.ghChecking);
-    var gh = auth.client(), code = G.code;
-    var found = G.existing ? Promise.resolve(G.existing) : GHI.findExisting({ gh: gh, anon: auth.anon(), repo: REPO_NAME, login: user.login, userId: user.id, code: code });
-    return Promise.all([G.issueP, found]).then(function (r) {
-      G.existing = r[1];
-      return GHI.sendIssue({
-        gh: gh, repo: REPO_NAME, issue: r[0], state: G.progress,
-        onStep: function (k, n) { setGh('send', T.ghPart(fmt(k), fmt(n))); }
-      });
+  // grant: { code, verifier } from GitHub's authorize step. The Worker confirms the volunteer and opens the issue.
+  function deliver(grant) {
+    setGh('send', T.ghSending);
+    return G.issueP.then(function (issue) {
+      return auth.submit({ code: grant.code, verifier: grant.verifier, issue: issue, listing: unlisted() ? 'hidden' : 'shown' });
     }).then(function (res) {
       G.result = res;
-      G.progress = {}; G.sig = ''; G.issueP = null;
+      G.sig = ''; G.issueP = null;
       setGh('done');
-      auth.revoke();
     });
   }
 
   function ghFail(e) {
     if (e && e.code === 'cancelled') { setGh('idle'); return; }
-    if (e && e.code === 'http' && e.status === 401 && auth) auth.revoke();   // the token is no longer valid
     G.error = e || {};
     setGh('error');
   }
 
   // Same-tab fallback: the popup was blocked, GitHub sent the whole page through the callback and back here.
   if (auth) auth.resume().then(function (r) {
-    if (r) { pendingResume = { user: r.user, code: r.extra && r.extra.code }; tryResume(); }
+    if (r) { pendingResume = { grant: { code: r.code, verifier: r.verifier }, code: r.extra && r.extra.code }; tryResume(); }
   }, function (e) {
     if (e && e.extra) { pendingResume = { error: e, code: e.extra.code }; tryResume(); }
   });
@@ -1473,10 +1452,10 @@
     pendingResume = null;
     lastWay = 'gh';
     if (r.error) { G.code = r.code; ghFail(r.error); openSheet(); return; }
-    if (badKeys().length) { auth.revoke(); openSheet(); return; }
+    if (badKeys().length) { openSheet(); return; }
     prepareIssue();
     openSheet();
-    deliver(r.user).catch(ghFail);
+    deliver(r.grant).catch(ghFail);
   }
 
   function goToKey(k) {

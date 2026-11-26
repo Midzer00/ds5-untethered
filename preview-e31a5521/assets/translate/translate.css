@@ -305,7 +305,6 @@ a:hover{color:var(--powder-deep)}
 .tr-gh-what{color:var(--au-text-secondary)}
 .tr-gh-status{font:500 11px/1.45 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--paper)}
 .tr-gh-done{font-size:var(--au-font-h2);font-weight:600;color:var(--paper)}
-.tr-gh-note{color:var(--au-text-secondary)}
 .tr-ghbox .tr-warn{font-size:var(--au-font-body);line-height:19px}
 .tr-ghbox .tr-way-note{margin-top:-4px!important}
 .tr-app a.au-btn[aria-disabled=true]{color:var(--au-disabled-text);cursor:default}

@@ -30,7 +30,7 @@
     tr: {
       title: 'DS5 Untethered’ı Çevir', line: 'Bir dil seç. Birkaç satır bile işe yarar.',
       pct: function (n) { return '%' + n + ' çevrildi'; }, under: '<%1 çevrildi',
-      notStarted: 'Başlanmadı', maintained: 'Projenin kendi çevirisi', by: 'çeviren:',
+      notStarted: 'Başlanmadı', maintained: 'Proje tarafından çevriliyor', by: 'çeviren:',
       other: 'Başka Bir Dil…', open: 'Çeviri Sayfasını Aç', close: 'Kapat'
     }
   };

@@ -1,10 +1,11 @@
-/* Send with GitHub settings. All three values are public; the client secret lives only in the Worker.
-   While clientId or workerUrl is empty, the page hides Send with GitHub and offers the other two ways.
-   See OWNER-SETUP.md for where each value comes from. */
+/* Send with GitHub settings. All three values are public; the OAuth client secret and the GitHub App's private key
+   live only in the Worker. While oauthClientId or workerUrl is empty, the page hides Send with GitHub and offers
+   the other two ways. See OWNER-SETUP.md for where each value comes from. */
 window.TrConfig = {
-  // The GitHub App's Client ID (starts with "Iv"), from the App's settings page
-  clientId: 'Iv23ctYlmBbJsIrz6c26',
-  // The token Worker, without a trailing slash, e.g. https://translate-auth.ds5untethered.com
+  // The Client ID of the OAuth App "DS5 Untethered Translate" (not the GitHub App's), from the OAuth App's settings page.
+  // The App requests no scope; its callback URL must cover this site's translate/oauth-callback.html.
+  oauthClientId: 'Ov23liHBZezVjeTgG5qL',
+  // The Worker that serves POST /submit, without a trailing slash, e.g. https://translate-auth.ds5untethered.com
   // Another address must also be added to connect-src in the CSP of translate/index.html, or the page cannot reach it.
   workerUrl: 'https://translate-auth.ds5untethered.com',
   // owner/name of the repository the issue goes to

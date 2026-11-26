@@ -1,12 +1,11 @@
-/* Send with GitHub: the volunteer authorizes the project's GitHub App in a popup, and this page opens one issue
-   in the volunteer's name. The repo's intake Action turns that issue into a pull request.
+/* Send with GitHub (verified-identity sending): the volunteer confirms who they are with the project's OAuth App
+   in a popup, and the Worker opens the issue as the project's GitHub App bot, naming the verified sender. The
+   repo's intake Action turns that issue into a pull request with the volunteer as the commit author.
 
-   - The GitHub App has a single repository permission, Issues: Read and write, and is installed only on the
-     project's repository. Its user token can therefore only open and read issues there.
-   - The client secret lives only in the Worker (code exchange and revocation). This file holds the public
-     client id, read from config.js.
-   - The token lives only in this module's closure: never in storage, a URL or a cookie. It is revoked as soon
-     as the issue is complete, and on the way out of the page.
+   - The OAuth App asks for no scope ("Public data only"). The page never holds a GitHub token: it hands the
+     one-time code and its PKCE verifier to the Worker's POST /submit with the issue, and gets back the issue link.
+   - The client secret and the GitHub App's private key live only in the Worker. This file holds the public
+     OAuth client id, read from config.js.
    - The issue follows the shared contract: marker, gzip + base64 parts under 60000 characters per body,
      sha256 of the uncompressed file. Pure helpers take no DOM, so Node tests drive them. */
 (function (root, factory) {
@@ -16,7 +15,6 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var API = 'https://api.github.com';
   var AUTHORIZE = 'https://github.com/login/oauth/authorize';
   var MARKER = '<!-- ds5-translate v1 -->';
   var LIMIT = 60000;            // every issue body and comment stays under this many characters
@@ -25,7 +23,7 @@
   var CHANNEL = 'ds5-gh-oauth';
   var PENDING_KEY = 'ds5-gh-oauth';          // sessionStorage, same-tab fallback only
   var RESULT_KEY = 'ds5-gh-oauth-result';    // sessionStorage (same tab) or a localStorage ping (popup)
-  var COMMENT_GAP = 1000;       // GitHub asks for a pause between content-creating requests
+  var RETRY_GAP = 1500;         // the pause before the one retry of a /submit that never reached the Worker
 
   function err(code, extra) { var e = new Error(code); e.code = code; if (extra) for (var k in extra) e[k] = extra[k]; return e; }
 
@@ -148,93 +146,108 @@
     });
   }
 
-  /* ---------- GitHub REST client ---------- */
+  /* ---------- the Worker's POST /submit ---------- */
 
-  // token null: an anonymous request (public data only)
-  function client(fetchFn, token) {
-    function call(method, path, body) {
-      var headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-      if (token) headers.Authorization = 'Bearer ' + token;
-      if (body !== undefined) headers['Content-Type'] = 'application/json';
-      return fetchFn(API + path, { method: method, headers: headers, body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' })
-        .then(function (r) {
-          return r.text().then(function (t) {
-            var j = null;
-            try { j = t ? JSON.parse(t) : null; } catch (e) { j = null; }
-            if (!r.ok) throw err('http', { status: r.status, message: (j && j.message) || '', path: path });
-            return j;
-          });
-        }, function () { throw err('network', { path: path }); });
-    }
+  /* The request body, exactly as the Worker reads it. issue: buildIssue() result. listing: 'hidden' or 'shown'.
+     The body leaves out the **Listing:** line (build it with listing 'shown'): the Worker adds that line under
+     its verified **Sender:** line when listing is hidden. redirectUri: the callback page this sign-in used; the
+     Worker accepts only the known callback pages and sends it to GitHub with the code. */
+  function submitBody(o) {
+    var iss = o.issue || {};
     return {
-      get: function (p) { return call('GET', p); },
-      post: function (p, b) { return call('POST', p, b || {}); }
+      code: String(o.code || ''),
+      code_verifier: String(o.verifier || ''),
+      redirect_uri: String(o.redirectUri || ''),
+      title: iss.title,
+      body: iss.body,
+      comments: (iss.comments || []).slice(),
+      listing: o.listing === 'hidden' ? 'hidden' : 'shown'
     };
   }
 
-  /* The intake Action's branch for a volunteer and a language: translate/<numeric user id>/<code>. Built from the id,
-     which never changes and holds no "-" or "/", so two accounts or two languages never share a branch. */
-  function branchFor(userId, code) {
-    if (!/^[1-9][0-9]*$/.test(String(userId))) return null;
-    return 'translate/' + String(userId) + '/' + code;
+  /* The Worker answers errors as { error: <name> } with an HTTP status. The page shows one short message per kind:
+       busy      rate limited (per account or per address)
+       tooBig    over the Worker's size caps
+       origin    this page's address is not allowed to send
+       signIn    GitHub did not confirm the volunteer (bad, used or expired code, wrong verifier, /user failed)
+       rejected  the request itself was refused (title, marker, part fences, listing, JSON)
+       github    GitHub refused the bot (installation, token, issue or comment)
+       other     anything else
+     submit() adds workerNetwork (no answer, even after the one retry) and maybeSent (the retry's code was refused,
+     so the first try may have reached GitHub). Known names map directly; an unknown name is matched by its words, then by the status. */
+  var WORKER_ERRORS = {
+    rate_limited: 'busy', rate_limit: 'busy', too_many_requests: 'busy', busy: 'busy',
+    too_large: 'tooBig', payload_too_large: 'tooBig', too_many_parts: 'tooBig', body_too_long: 'tooBig', comment_too_long: 'tooBig',
+    origin: 'origin', bad_origin: 'origin', forbidden_origin: 'origin', forbidden: 'origin',
+    bad_code: 'signIn', bad_verification_code: 'signIn', code: 'signIn', exchange: 'signIn', exchange_failed: 'signIn',
+    oauth: 'signIn', user: 'signIn', user_failed: 'signIn', identity: 'signIn', unverified: 'signIn',
+    bad_request: 'rejected', bad_json: 'rejected', bad_redirect: 'rejected', bad_title: 'rejected', bad_body: 'rejected', bad_marker: 'rejected',
+    bad_part: 'rejected', bad_parts: 'rejected', bad_fence: 'rejected', bad_listing: 'rejected', bad_comments: 'rejected',
+    method: 'rejected', not_found: 'rejected',
+    github: 'github', installation: 'github', install: 'github', app_token: 'github', installation_token: 'github',
+    issue: 'github', issue_failed: 'github', comment_failed: 'github', upstream: 'github'
+  };
+  function workerError(status, name) {
+    var n = String(name == null ? '' : name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    if (n && Object.prototype.hasOwnProperty.call(WORKER_ERRORS, n)) return WORKER_ERRORS[n];
+    if (status === 429 || /rate|limit|busy/.test(n)) return 'busy';
+    if (status === 413 || /too_?(large|big|long|many)|size/.test(n)) return 'tooBig';
+    if (/origin/.test(n)) return 'origin';
+    if (/install|app_|jwt|github|issue|upstream/.test(n)) return 'github';
+    if (/code|verifier|exchange|oauth|user|identity|login|expired|denied/.test(n)) return 'signIn';
+    if (/title|body|part|fence|marker|json|request|invalid|listing|comment/.test(n)) return 'rejected';
+    if (status === 401) return 'signIn';
+    if (status === 403) return 'origin';
+    if (status === 400 || status === 422) return 'rejected';
+    if (status >= 500) return 'github';
+    return 'other';
   }
 
-  /* An earlier send from this account for this code that is still open: the issue (titled as ours, opened by this
-     login) and the bot's pull request on branch translate/<user id>/<code>, in this repository. A new send updates
-     that pull request. Old-format branches (translate/<code>-<login>) are not matches.
-     o: { gh, anon, repo, login, userId, code }. Never rejects; a failed lookup just finds nothing. */
-  function findExisting(o) {
-    var R = '/repos/' + o.repo, title = issueTitle(o.code).toLowerCase(), branch = branchFor(o.userId, o.code);
-    var repoName = String(o.repo).toLowerCase();
-    var issues = o.gh.get(R + '/issues?state=open&creator=' + encodeURIComponent(o.login) + '&per_page=100').then(function (list) {
-      return (list || []).filter(function (i) { return !i.pull_request && String(i.title || '').trim().toLowerCase() === title; })
-        .map(function (i) { return { number: i.number, url: i.html_url }; });
-    }).catch(function () { return []; });
-    function pullsVia(gh) {
-      return gh.get(R + '/pulls?state=open&per_page=100').then(function (list) {
-        return (list || []).filter(function (p) {
-          return p && p.head && p.head.ref === branch &&
-            !!p.head.repo && String(p.head.repo.full_name || '').toLowerCase() === repoName;
-        }).map(function (p) { return { number: p.number, url: p.html_url }; });
-      });
-    }
-    var pulls = !branch ? Promise.resolve([]) :
-      pullsVia(o.gh).catch(function () { return o.anon ? pullsVia(o.anon) : []; }).catch(function () { return []; });
-    return Promise.all([issues, pulls]).then(function (r) { return { issues: r[0], pulls: r[1] }; });
-  }
+  var ISSUE_URL = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/[1-9][0-9]*$/;
 
-  /* Creates the issue, then one comment per further part, a second apart. o:
-       gh       client(fetch, token)
-       repo     'owner/name'
-       issue    buildIssue() result
-       state    {} kept by the caller: { number, url, posted } so a retry continues where it stopped
-       onStep   (k, n) called before part k of n is sent
-       sleep    injectable for tests
-     Resolves to { number, url }. */
-  function sendIssue(o) {
-    var st = o.state, R = '/repos/' + o.repo, iss = o.issue, n = iss.parts;
-    var step = o.onStep || function () {};
+  /* POSTs the issue to <workerUrl>/submit. o: { fetch, workerUrl, code, verifier, redirectUri, issue, listing, sleep,
+     retries }.
+     A request that never reached the Worker (fetch rejects) is tried once more after a short pause; the code is
+     single-use, so the Worker refuses a second use of one it already took and no issue is ever made twice.
+     Resolves to { url, number }; rejects with code workerNetwork or one of workerError()'s kinds. */
+  function submit(o) {
+    var url = String(o.workerUrl || '').replace(/\/+$/, '') + '/submit';
+    var payload = JSON.stringify(submitBody(o));
     var sleep = o.sleep || function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-    var first;
-    if (st.number) first = Promise.resolve();
-    else {
-      step(1, n);
-      first = o.gh.post(R + '/issues', { title: iss.title, body: iss.body }).then(function (j) {
-        st.number = j.number; st.url = j.html_url; st.posted = 0;
+    var left = o.retries == null ? 1 : o.retries, retried = false;
+    function attempt() {
+      return o.fetch(url, {
+        method: 'POST',
+        // text/plain keeps this a simple CORS request: no preflight round trip
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: payload,
+        credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer'
+      }).then(null, function () {
+        if (left-- > 0) { retried = true; return sleep(RETRY_GAP).then(attempt); }
+        throw err('workerNetwork');
       });
     }
-    function next() {
-      if (st.posted >= iss.comments.length) return { number: st.number, url: st.url };
-      step(st.posted + 2, n);
-      return sleep(COMMENT_GAP).then(function () {
-        return o.gh.post(R + '/issues/' + st.number + '/comments', { body: iss.comments[st.posted] });
-      }).then(function () { st.posted++; return next(); });
-    }
-    return first.then(next);
+    return attempt().then(function (r) {
+      return r.text().catch(function () { return ''; }).then(function (t) {
+        var j = null;
+        try { j = t ? JSON.parse(t) : null; } catch (e) { j = null; }
+        if (!r.ok || !j || j.error) {
+          var name = j && typeof j.error === 'string' ? j.error : '';
+          var kind = workerError(r.status, name);
+          // after a dropped first try, a refused code may mean the first try went through
+          if (retried && kind === 'signIn') kind = 'maybeSent';
+          throw err(kind, { status: r.status, detail: name });
+        }
+        var n = j.issue_number, u = j.issue_url;
+        if (typeof u !== 'string' || !ISSUE_URL.test(u) || !(n === +n && n > 0 && Math.floor(n) === n)) throw err('other', { status: r.status, detail: 'reply' });
+        return { url: u, number: n };
+      });
+    });
   }
 
   /* ---------- authorization (browser) ---------- */
 
+  // The OAuth App's authorize page. No scope: GitHub shows "Public data only" and grants nothing beyond it.
   function authorizeUrl(o) {
     var q = new URLSearchParams({
       client_id: o.clientId, redirect_uri: o.redirectUri, state: o.state,
@@ -246,9 +259,8 @@
   /* cfg: { clientId, workerUrl, redirectUri }. window/fetch are injection points for tests. */
   function createAuth(cfg) {
     var W = cfg.window || (typeof window !== 'undefined' ? window : null);
-    var fetchFn = cfg.fetch || (W && W.fetch.bind(W));
-    var token = null, user = null, waiting = null;
-    var worker = String(cfg.workerUrl || '').replace(/\/+$/, '');
+    var fetchFn = cfg.fetch || (W && W.fetch && W.fetch.bind(W));
+    var waiting = null;
 
     function randomB64(n) { var a = new Uint8Array(n); W.crypto.getRandomValues(a); return b64url(a); }
     function challengeOf(verifier) {
@@ -256,32 +268,9 @@
     }
     function session() { try { return W.sessionStorage; } catch (e) { return null; } }
 
-    function exchange(code, verifier) {
-      return fetchFn(worker + '/token', {
-        method: 'POST',
-        // text/plain keeps this a simple CORS request: no preflight round trip
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body: JSON.stringify({ code: code, code_verifier: verifier }),
-        credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer'
-      }).then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
-      }, function () { throw err('workerNetwork'); }).then(function (res) {
-        if (!res.ok || typeof res.j.access_token !== 'string') throw err(res.status === 429 ? 'busy' : 'exchange', { detail: res.j.error || '' });
-        token = res.j.access_token;
-        return client(fetchFn, token).get('/user');
-      }).then(function (u) {
-        user = { login: u.login, id: u.id };
-        return user;
-      }, function (e) {
-        if (token) { revoke(); }
-        throw e;
-      });
-    }
-
     /* Must run inside the click handler: the popup opens before anything async happens.
-       extra: kept with the same-tab fallback, handed back by resume(). */
-    function signIn(extra) {
-      if (token && user) return Promise.resolve(user);
+       extra: kept with the same-tab fallback, handed back by resume(). Resolves to { code, verifier }. */
+    function authorize(extra) {
       cancel();
       var popup = null;
       try { popup = W.open('', 'ds5-gh-auth', 'popup,width=560,height=760'); } catch (e) { popup = null; }
@@ -297,7 +286,7 @@
           return new Promise(function () { /* the page unloads */ });
         }
         try { popup.location.href = url; } catch (e) { throw err('popupBlocked'); }
-        return waitForCode(state).then(function (code) { return exchange(code, verifier); });
+        return waitForCode(state).then(function (code) { return { code: code, verifier: verifier }; });
       });
     }
 
@@ -328,8 +317,8 @@
     }
     function cancel() { if (waiting) waiting.cancel(); }
 
-    /* Same-tab fallback: call once on page load. Resolves to { user, extra } when a sign-in just came back,
-       else null. */
+    /* Same-tab fallback: call once on page load. Resolves to { code, verifier, extra } when an authorization just
+       came back, else null. */
     function resume() {
       var ss = session();
       if (!ss) return Promise.resolve(null);
@@ -340,42 +329,23 @@
       var extra = p.extra || null;
       if (r.state !== p.state || Date.now() - p.at > 15 * 60 * 1000) return Promise.reject(err('state', { extra: extra }));
       if (r.error || !r.code) return Promise.reject(err(r.error === 'access_denied' ? 'denied' : 'authorize', { extra: extra }));
-      return exchange(r.code, p.verifier).then(function (u) { return { user: u, extra: extra }; }, function (e) { e.extra = extra; throw e; });
+      return Promise.resolve({ code: r.code, verifier: p.verifier, extra: extra });
     }
-
-    function revoke() {
-      var t = token;
-      token = null; user = null;
-      if (!t) return Promise.resolve();
-      return fetchFn(worker + '/revoke', {
-        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ access_token: t }),
-        credentials: 'omit', keepalive: true, referrerPolicy: 'no-referrer'
-      }).then(function () {}, function () {});
-    }
-    // Leaving the page with a live token: revoke it on the way out.
-    if (W && W.addEventListener) W.addEventListener('pagehide', function () {
-      if (!token) return;
-      var t = token;
-      token = null; user = null;
-      try { W.navigator.sendBeacon(worker + '/revoke', JSON.stringify({ access_token: t })); } catch (e) { /* best effort */ }
-    });
 
     return {
-      user: function () { return user; },
-      signedIn: function () { return !!token; },
-      signIn: signIn,
+      authorize: authorize,
       cancel: cancel,
       resume: resume,
-      revoke: revoke,
-      // the API client for the current token (null when signed out)
-      client: function () { return token ? client(fetchFn, token) : null; },
-      anon: function () { return client(fetchFn, null); }
+      // o: { code, verifier, issue, listing }
+      submit: function (o) {
+        return submit({ fetch: fetchFn, workerUrl: cfg.workerUrl, code: o.code, verifier: o.verifier, redirectUri: cfg.redirectUri, issue: o.issue, listing: o.listing });
+      }
     };
   }
 
   return {
     buildIssue: buildIssue, decodeIssue: decodeIssue, layout: layout, issueTitle: issueTitle, cleanName: cleanName,
-    sendIssue: sendIssue, findExisting: findExisting, branchFor: branchFor, client: client,
+    submitBody: submitBody, submit: submit, workerError: workerError,
     createAuth: createAuth, authorizeUrl: authorizeUrl, supported: supported,
     utf8: utf8, bytesToB64: bytesToB64, b64ToBytes: b64ToBytes, b64url: b64url, sha256Hex: sha256Hex, gzip: gzip, gunzip: gunzip,
     MARKER: MARKER, LIMIT: LIMIT, LINE: LINE, MAX_FILE: MAX_FILE, CHANNEL: CHANNEL, PENDING_KEY: PENDING_KEY, RESULT_KEY: RESULT_KEY
